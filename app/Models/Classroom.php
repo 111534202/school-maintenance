@@ -7,9 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class Classroom extends Model
 {
     protected $fillable = [
-        'campus', 'building', 'floor', 'room_code', 'room_name',
+        'department_id', 'campus', 'building', 'floor', 'room_code', 'room_name',
         'room_type', 'manager_id', 'is_active', 'reservation_status',
     ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
 
     public function manager()
     {
