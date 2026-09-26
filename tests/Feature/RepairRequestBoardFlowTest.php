@@ -120,6 +120,82 @@ class RepairRequestBoardFlowTest extends TestCase
         $this->assertCount(0, $repairRequest->fresh()->repairLogs);
     }
 
+    public function test_reviewer_can_approve_a_pending_review_case_to_completed(): void
+    {
+        // 依《第三週個人工作計畫》第 2 項：報修人驗收通過，案件變成已結案。
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+
+        $response = $this->post(route('repair-requests.complete', $repairRequest));
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $this->assertSame('completed', $repairRequest->fresh()->status->value);
+    }
+
+    public function test_reviewer_can_reject_a_pending_review_case_back_to_in_progress(): void
+    {
+        // 依《第三週個人工作計畫》第 3 項：驗收不通過退回「處理中」（不是退回「已派工」），
+        // 且要記錄退回原因，讓維修人員知道還要補做什麼。
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+
+        $response = $this->post(route('repair-requests.reject', $repairRequest), [
+            'rejection_reason' => '開機還是會自動關機，沒有真的修好。',
+        ]);
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+        $this->assertSame('開機還是會自動關機，沒有真的修好。', $repairRequest->fresh()->rejection_reason);
+    }
+
+    public function test_rejecting_does_not_delete_existing_repair_logs(): void
+    {
+        // 「退回後可再處理，不遺失原 repair_logs」——退回是狀態改變，不是刪除歷史紀錄。
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+        \App\Models\RepairLog::factory()->create(['repair_request_id' => $repairRequest->id]);
+
+        $this->post(route('repair-requests.reject', $repairRequest), [
+            'rejection_reason' => '還有問題',
+        ]);
+
+        $this->assertCount(1, $repairRequest->fresh()->repairLogs);
+    }
+
+    public function test_reject_requires_a_reason(): void
+    {
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+
+        $response = $this->post(route('repair-requests.reject', $repairRequest), [
+            'rejection_reason' => '',
+        ]);
+
+        $response->assertSessionHasErrors('rejection_reason');
+        $this->assertSame('pending_review', $repairRequest->fresh()->status->value);
+    }
+
+    public function test_cannot_complete_a_case_that_is_not_pending_review(): void
+    {
+        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
+
+        $response = $this->post(route('repair-requests.complete', $repairRequest));
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $response->assertSessionHas('error');
+        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+    }
+
+    public function test_index_shows_active_case_count_for_each_assignee(): void
+    {
+        // 看板資訊補強（第三週第 6 項）：同一個維修人員名下還有幾張未結案案件，
+        // 只顯示客觀數字，不做自動派工推薦。
+        RepairRequest::factory()->create(['status' => 'assigned', 'assignee_note' => '王小明']);
+        RepairRequest::factory()->create(['status' => 'in_progress', 'assignee_note' => '王小明']);
+        RepairRequest::factory()->create(['status' => 'completed', 'assignee_note' => '王小明']);
+
+        $response = $this->get(route('repair-requests.index'));
+
+        // 已結案的那筆不算「未結案」，所以王小明應該顯示還有 2 件（不是 3 件）。
+        $response->assertSee('手上還有 2 件未結案', false);
+    }
+
     public function test_index_can_filter_by_status_and_location(): void
     {
         RepairRequest::factory()->create(['status' => 'pending', 'title' => '待處理案件', 'location' => 'A101']);

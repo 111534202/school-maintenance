@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/** 主管「派工」表單的驗證規則：一定要填維修人員，處理日期選填。 */
 class AssignRepairRequestRequest extends FormRequest
 {
     /**

@@ -2,7 +2,11 @@
 
 負責人：彭仕衡（111534205）｜隨每週進度更新。
 2026-09-22 起改依《五週壓縮完工版 v2.0》個人工作計畫執行，取代舊版四週排程；
-以下內容已對齊新排程的第 1、2 週。
+以下內容已對齊新排程的第 1～3 週。
+
+**跨組待確認事項**：所有需要其他組員配合的資料/介面，都拆成一週一人一個檔案放在
+`docs/待確認/` 資料夾（例如 `Week3_劉家芸.md`），方便直接傳給對方看、對方回覆後
+也方便追蹤。這份文件只記錄「已經確定」的設計，尚未確定的都在那個資料夾裡。
 
 本模組共四張表：`knowledge_base`、`repair_requests`、`repair_logs`、`attachments`（附件共用表）。
 
@@ -39,9 +43,10 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 | assignee_note | string, nullable | users 表合併前，暫時用文字記錄維修人員（Week2 新增） |
 | scheduled_at | timestamp, nullable | 預計處理日期（Week2 新增） |
 | location | string, nullable | 地點，見待確認⑥ |
+| rejection_reason | text, nullable | 驗收不通過退回時的原因，只保留最新一次（Week3 新增） |
 | timestamps | | |
 
-### 狀態機（`App\Services\RepairRequestWorkflow`，Week2 新增）
+### 狀態機（`App\Services\RepairRequestWorkflow`）
 
 ```
 新報修(pending) → 已派工(assigned) → 處理中(in_progress) → 待驗收(pending_review) → 已結案(completed)
@@ -49,7 +54,9 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 ```
 
 所有轉換規則集中在 `App\Services\RepairRequestWorkflow`，Controller 一律呼叫這個 service，
-不直接改 `status` 欄位。非法轉換會丟出 `DomainException`。
+不直接改 `status` 欄位。非法轉換會丟出 `DomainException`。Week3 補上 `complete()`（驗收通過結案）
+與 `reject()`（驗收不通過退回，需附退回原因）兩個方法，對應 `repair-requests.complete`/
+`repair-requests.reject` 這兩個路由。
 
 ## 3. repair_logs（正式表，Week2 加上填單 UI + 附件）
 
@@ -92,6 +99,19 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
 - 案件進入「處理中」時，若該設備為核心設備，標記設備狀態為「維修中」。
 - 案件進入「待驗收」或「已結案」時，若該設備沒有其他進行中的案件，標記設備狀態改回「正常」。
 
+## 6. 看板資訊補強（Week3）
+
+`repair-requests.index`（維修案件看板）新增：
+- 每個維修人員（`assignee_note`）手上還有幾張「未結案」的案件，方便主管判斷（只顯示
+  客觀數字，不做自動派工推薦，依規格「未確認規則不做自動推薦」）。
+- 每張案件「等待多久」（`created_at->diffForHumans()`）。
+
+## 7. 保養 NG 轉報修接口（`App\Actions\CreateRepairRequestFromMaintenanceNg`，Week3）
+
+提供給王佑恩（保養/AI 模組）呼叫的穩定介面，讓保養檢查 NG 可以直接建立一張報修單。
+因為 `maintenance_results` 表還沒合併，暫時用 `sourceLabel` 字串記錄來源，不建外鍵。
+詳細用法見 `docs/待確認/Week3_王佑恩.md`。
+
 ## 待確認事項（不自行寫死，等規格/跨模組資料表確認後再定案）
 
 1. `knowledge_base.category` 是否應改為關聯 `device_categories` 表，目前先用自由文字欄位。
@@ -110,9 +130,9 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
    本週先不建立（避免建立假的 audit_logs 替代表），改用 `repair_requests` 自己的 `updated_at` 與
    Week3 後續會有的維修紀錄當替代審計軌跡；待 `audit_logs` 合併後再補寫入。
 
-## 本週（Week2）明確不做（依規格排除）
+## Week3 明確不做（依規格排除，等跨組介面確認後才做）
 
+- 備品真正扣庫存（等 `docs/待確認/Week3_劉家芸.md` 的 InventoryService 介面確認）
+- QR Code 掃描帶入設備（等 `docs/待確認/Week3_林政寬.md` 的介面確認）
 - 附件刪除、正式檔案管理 UI（只做上傳與查看）
-- 驗收/退回結案的實際操作介面（狀態機已支援轉換，但驗收頁面規劃在 Week3）
-- 備品扣庫存串接
-- 完整 QR → 自助排除 → 報修 → 派工 → 維修 → 驗收全流程
+- 自行發明派工負荷量演算法或自動推薦人選（規格明確禁止，只顯示客觀資料）

@@ -6,11 +6,13 @@ use App\Models\KnowledgeBase;
 use App\Http\Requests\StoreKnowledgeBaseRequest;
 use App\Http\Requests\UpdateKnowledgeBaseRequest;
 
+/**
+ * 自助排除知識庫的網頁功能：列表、查看、新增、修改、刪除（標準 CRUD），
+ * 再加上「問題已解決」這個小功能。
+ */
 class KnowledgeBaseController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    /** 知識庫文章列表頁，最新的排前面，每頁 10 筆。 */
     public function index()
     {
         $knowledgeBaseEntries = KnowledgeBase::latest()->paginate(10);
@@ -18,17 +20,13 @@ class KnowledgeBaseController extends Controller
         return view('knowledge-base.index', compact('knowledgeBaseEntries'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    /** 顯示「新增知識庫項目」的空白表單。 */
     public function create()
     {
         return view('knowledge-base.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    /** 使用者送出「新增」表單後，把資料存進資料庫。 */
     public function store(StoreKnowledgeBaseRequest $request)
     {
         KnowledgeBase::create($request->validated());
@@ -38,25 +36,19 @@ class KnowledgeBaseController extends Controller
             ->with('status', '已新增知識庫項目。');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    /** 單篇知識庫文章的詳細頁，底下會有「問題已解決」／「前往報修」兩個按鈕。 */
     public function show(KnowledgeBase $knowledgeBase)
     {
         return view('knowledge-base.show', compact('knowledgeBase'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    /** 顯示「編輯」表單，內容預先帶入這篇文章目前的資料。 */
     public function edit(KnowledgeBase $knowledgeBase)
     {
         return view('knowledge-base.edit', compact('knowledgeBase'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    /** 使用者送出「編輯」表單後，更新資料庫裡的資料。 */
     public function update(UpdateKnowledgeBaseRequest $request, KnowledgeBase $knowledgeBase)
     {
         $knowledgeBase->update($request->validated());
@@ -66,9 +58,7 @@ class KnowledgeBaseController extends Controller
             ->with('status', '已更新知識庫項目。');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    /** 刪除這篇知識庫文章。 */
     public function destroy(KnowledgeBase $knowledgeBase)
     {
         $knowledgeBase->delete();
@@ -79,8 +69,8 @@ class KnowledgeBaseController extends Controller
     }
 
     /**
-     * 自助除錯頁「問題已解決」最小流程（依《第四週進度安排》第 2 項）。
-     * 只做跳轉並顯示感謝訊息，不記錄額外狀態或统计。
+     * 自助除錯頁「問題已解決」最小流程。
+     * 只做跳轉並顯示感謝訊息，不記錄額外狀態或統計數字（規格明確不要求這週做這個）。
      */
     public function resolved(KnowledgeBase $knowledgeBase)
     {

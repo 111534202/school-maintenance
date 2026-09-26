@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/** 「編輯知識庫項目」表單的驗證規則，欄位跟新增時完全一樣。 */
 class UpdateKnowledgeBaseRequest extends FormRequest
 {
     /**

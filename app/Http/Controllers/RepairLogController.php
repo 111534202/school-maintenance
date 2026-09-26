@@ -11,11 +11,14 @@ use Carbon\Carbon;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * 「維修填單」的網頁功能：維修人員處理完一張報修單後，在這裡填故障原因、
+ * 處置方式、處理起訖時間，並可以上傳維修前後照片。送出後案件狀態會自動
+ * 從「處理中」推進到「待驗收」。
+ */
 class RepairLogController extends Controller
 {
-    /**
-     * 維修填單表單（依《第 2 週個人工作計畫》第 4 項）。
-     */
+    /** 顯示維修填單的空白表單，$repairRequest 是這筆維修紀錄要掛在哪一張報修單下面。 */
     public function create(RepairRequest $repairRequest)
     {
         return view('repair-logs.create', compact('repairRequest'));

@@ -53,6 +53,7 @@
                     <th>狀態</th>
                     <th>維修人員</th>
                     <th>送出時間</th>
+                    <th>等待多久</th>
                 </tr>
             </thead>
             <tbody>
@@ -70,8 +71,16 @@
                                 {{ $repairRequest->status->label() }}
                             </span>
                         </td>
-                        <td>{{ $repairRequest->assignee_note ?? '未指派' }}</td>
+                        <td>
+                            {{ $repairRequest->assignee_note ?? '未指派' }}
+                            @if ($repairRequest->assignee_note && ($activeCaseCountsByAssignee[$repairRequest->assignee_note] ?? 0) > 0)
+                                {{-- 讓主管看到「這個人手上還有幾件沒結案」，方便自己判斷要不要再加派給他，
+                                     這裡只顯示客觀數字，系統不會自動幫忙排序或推薦人選。 --}}
+                                <br><small style="color:#616e7c;">手上還有 {{ $activeCaseCountsByAssignee[$repairRequest->assignee_note] }} 件未結案</small>
+                            @endif
+                        </td>
                         <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>
+                        <td>{{ $repairRequest->created_at->diffForHumans() }}</td>
                     </tr>
                 @endforeach
             </tbody>

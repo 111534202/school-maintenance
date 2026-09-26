@@ -8,12 +8,18 @@ namespace App\Enums;
  */
 enum RepairRequestStatus: string
 {
+    /** 新報修：使用者剛送出，還沒有人接手 */
     case Pending = 'pending';
+    /** 已派工：主管已經指定維修人員 */
     case Assigned = 'assigned';
+    /** 處理中：維修人員正在處理 */
     case InProgress = 'in_progress';
+    /** 待驗收：維修人員填完維修紀錄，等報修人確認有沒有修好 */
     case PendingReview = 'pending_review';
+    /** 已結案：報修人驗收通過，流程結束（不能再變動） */
     case Completed = 'completed';
 
+    /** 把英文代碼轉成畫面上要顯示的中文文字，例如 'pending' -> '新報修'。 */
     public function label(): string
     {
         return match ($this) {

@@ -5,6 +5,10 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * 「維修填單」表單的驗證規則。ended_at 一定要晚於或等於 started_at，
+ * 這樣才不會算出負的維修工時。
+ */
 class StoreRepairLogRequest extends FormRequest
 {
     /**

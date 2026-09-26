@@ -37,6 +37,13 @@
         <strong>送出時間：</strong>{{ $repairRequest->created_at->format('Y-m-d H:i') }}
     </p>
 
+    @if ($repairRequest->rejection_reason)
+        {{-- 這張案件曾經被驗收退回，把最新一次的退回原因秀出來，讓維修人員知道要補做什麼。 --}}
+        <div class="errors">
+            <strong>上次驗收退回原因：</strong>{{ $repairRequest->rejection_reason }}
+        </div>
+    @endif
+
     <h3>故障描述</h3>
     <p style="white-space: pre-line;">{{ $repairRequest->description }}</p>
 
@@ -72,7 +79,24 @@
         @elseif ($repairRequest->status === \App\Enums\RepairRequestStatus::InProgress)
             <a class="btn btn-primary" href="{{ route('repair-logs.create', $repairRequest) }}">填寫維修紀錄</a>
         @elseif ($repairRequest->status === \App\Enums\RepairRequestStatus::PendingReview)
-            <p style="color:#616e7c;">案件待驗收中，驗收流程規劃在下一週實作。</p>
+            {{-- 驗收兩條路：通過就結案（不用填原因），不通過要退回並說明原因。 --}}
+            <h3>驗收</h3>
+            <form method="POST" action="{{ route('repair-requests.complete', $repairRequest) }}" class="inline">
+                @csrf
+                <button class="btn btn-primary" type="submit">驗收通過，結案</button>
+            </form>
+
+            <details style="margin-top: 1rem;">
+                <summary style="cursor:pointer; color:#dc2626;">驗收不通過，退回重新處理</summary>
+                <form method="POST" action="{{ route('repair-requests.reject', $repairRequest) }}" style="margin-top: 0.8rem;">
+                    @csrf
+                    <div class="field">
+                        <label for="rejection_reason">退回原因（維修人員會看到，請具體說明還有什麼問題）</label>
+                        <textarea id="rejection_reason" name="rejection_reason" required></textarea>
+                    </div>
+                    <button class="btn btn-danger" type="submit">確認退回</button>
+                </form>
+            </details>
         @endif
     </div>
 

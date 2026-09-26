@@ -5,11 +5,9 @@ namespace Database\Seeders;
 use App\Models\KnowledgeBase;
 use Illuminate\Database\Seeder;
 
+/** 塞幾筆知識庫測試資料，讓「自助排除知識庫」頁面一打開就有內容可以看。 */
 class KnowledgeBaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $entries = [

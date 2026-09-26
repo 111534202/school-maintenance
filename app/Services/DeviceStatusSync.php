@@ -20,8 +20,15 @@ use Illuminate\Support\Facades\Log;
  */
 class DeviceStatusSync
 {
+    /**
+     * 案件進入「處理中」時呼叫。目前只寫 log（不會真的改資料庫），
+     * 等 devices 表合併後，這裡要換成：如果 $repairRequest->device_id 是核心設備，
+     * 就把那台設備的 status 欄位改成 'repairing'（維修中）。
+     */
     public function markUnderRepair(RepairRequest $repairRequest): void
     {
+        // 目前這個暫存分支裡沒有真正的設備資料（device_id 大多是 null），
+        // 如果沒有設備 id 就什麼都不用做。
         if (! $repairRequest->device_id) {
             return;
         }
@@ -32,6 +39,12 @@ class DeviceStatusSync
         ]);
     }
 
+    /**
+     * 案件進入「待驗收」或「已結案」時呼叫。目前只寫 log，
+     * 等 devices 表合併後，這裡要換成：檢查同一台設備還有沒有「其他」進行中的
+     * 報修案件，如果沒有了，才把設備狀態改回 'normal'（正常）——因為同一台設備
+     * 可能同時被開了兩張報修單，不能一張結案就急著把設備狀態改回正常。
+     */
     public function markNormalIfNoActiveRepairs(RepairRequest $repairRequest): void
     {
         if (! $repairRequest->device_id) {

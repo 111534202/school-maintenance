@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
+/** 「新增報修」表單的驗證規則。 */
 class StoreRepairRequestRequest extends FormRequest
 {
     /**

@@ -31,3 +31,9 @@ Route::get('repair-requests/{repair_request}/repair-logs/create', [RepairLogCont
     ->name('repair-logs.create');
 Route::post('repair-requests/{repair_request}/repair-logs', [RepairLogController::class, 'store'])
     ->name('repair-logs.store');
+
+// 驗收通過結案 / 驗收不通過退回重修（依《第三週個人工作計畫》第 2、3 項）。
+Route::post('repair-requests/{repair_request}/complete', [RepairRequestController::class, 'complete'])
+    ->name('repair-requests.complete');
+Route::post('repair-requests/{repair_request}/reject', [RepairRequestController::class, 'reject'])
+    ->name('repair-requests.reject');
