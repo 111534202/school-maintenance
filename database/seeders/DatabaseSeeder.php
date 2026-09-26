@@ -21,5 +21,9 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        // feature/repair（彭仕衡）的測試資料。
+        $this->call(KnowledgeBaseSeeder::class);
+        $this->call(RepairRequestSeeder::class);
     }
 }
