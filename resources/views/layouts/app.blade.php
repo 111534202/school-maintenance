@@ -14,6 +14,11 @@
         @media (max-width: 575.98px) {
             .app-content { padding: 1rem !important; }
         }
+        /* 中文在窄欄位會逐字換行，讓表格看起來直排；改成不換行，
+           太寬就交給 .table-responsive 的水平捲動處理 */
+        .table-responsive table th, .table-responsive table td {
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body class="bg-light">
