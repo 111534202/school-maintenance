@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             ClassroomSeeder::class,
             DeviceCategorySeeder::class,
             DeviceSeeder::class,
+            PartSeeder::class,
         ]);
     }
 }
