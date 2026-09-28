@@ -8,6 +8,30 @@
         <a href="{{ route('classrooms.create') }}" class="btn btn-primary">新增教室</a>
     </div>
 
+    <form method="GET" action="{{ route('classrooms.index') }}" class="row g-2 mb-3">
+        <div class="col-6 col-md-4">
+            <input type="text" name="keyword" class="form-control form-control-sm" placeholder="教室代碼/名稱" value="{{ request('keyword') }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="department_id" class="form-select form-select-sm">
+                <option value="">所有部門</option>
+                @foreach ($departments as $department)
+                    <option value="{{ $department->id }}" @selected(request('department_id') == $department->id)>{{ $department->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="is_active" class="form-select form-select-sm">
+                <option value="">所有狀態</option>
+                <option value="1" @selected(request('is_active') === '1')>啟用中</option>
+                <option value="0" @selected(request('is_active') === '0')>已停用</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">篩選</button>
+        </div>
+    </form>
+
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">

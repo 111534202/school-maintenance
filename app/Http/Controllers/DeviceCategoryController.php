@@ -3,13 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeviceCategory;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class DeviceCategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = DeviceCategory::withCount('devices')->orderBy('name')->paginate(15);
+        $categories = DeviceCategory::withCount('devices')
+            ->when($request->filled('keyword'), fn ($query) => $query->where('name', 'like', '%' . $request->string('keyword') . '%'))
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('device-categories.index', compact('categories'));
     }
@@ -25,7 +30,9 @@ class DeviceCategoryController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:device_categories,name'],
         ]);
 
-        DeviceCategory::create($data);
+        $category = DeviceCategory::create($data);
+
+        AuditLogger::log('created', $category, $data);
 
         return redirect()->route('device-categories.index')->with('success', '設備類別已新增。');
     }
@@ -43,6 +50,8 @@ class DeviceCategoryController extends Controller
 
         $deviceCategory->update($data);
 
+        AuditLogger::log('updated', $deviceCategory, $data);
+
         return redirect()->route('device-categories.index')->with('success', '設備類別已更新。');
     }
 
@@ -53,6 +62,8 @@ class DeviceCategoryController extends Controller
         }
 
         $deviceCategory->delete();
+
+        AuditLogger::log('deleted', $deviceCategory);
 
         return redirect()->route('device-categories.index')->with('success', '設備類別已刪除。');
     }

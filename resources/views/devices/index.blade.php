@@ -8,6 +8,39 @@
         <a href="{{ route('devices.create') }}" class="btn btn-primary">新增設備</a>
     </div>
 
+    <form method="GET" action="{{ route('devices.index') }}" class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <input type="text" name="keyword" class="form-control form-control-sm" placeholder="設備編號/資產編號/品牌/型號" value="{{ request('keyword') }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="classroom_id" class="form-select form-select-sm">
+                <option value="">所有教室</option>
+                @foreach ($classrooms as $classroom)
+                    <option value="{{ $classroom->id }}" @selected(request('classroom_id') == $classroom->id)>{{ $classroom->room_code }} - {{ $classroom->room_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <select name="device_category_id" class="form-select form-select-sm">
+                <option value="">所有類別</option>
+                @foreach ($categories as $category)
+                    <option value="{{ $category->id }}" @selected(request('device_category_id') == $category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <select name="status" class="form-select form-select-sm">
+                <option value="">所有狀態</option>
+                @foreach (\App\Models\Device::STATUSES as $status)
+                    <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-12 col-md-1">
+            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">篩選</button>
+        </div>
+    </form>
+
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
@@ -46,7 +79,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">尚無設備資料</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">尚無符合條件的設備</td></tr>
                     @endforelse
                 </tbody>
             </table>

@@ -5,15 +5,30 @@ namespace App\Http\Controllers;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class ClassroomController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $classrooms = Classroom::with(['department', 'manager'])->orderBy('room_code')->paginate(15);
+        $classrooms = Classroom::with(['department', 'manager'])
+            ->when($request->filled('keyword'), function ($query) use ($request) {
+                $keyword = $request->string('keyword');
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('room_code', 'like', "%{$keyword}%")
+                      ->orWhere('room_name', 'like', "%{$keyword}%");
+                });
+            })
+            ->when($request->filled('department_id'), fn ($query) => $query->where('department_id', $request->integer('department_id')))
+            ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active') === '1'))
+            ->orderBy('room_code')
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('classrooms.index', compact('classrooms'));
+        $departments = Department::orderBy('name')->get();
+
+        return view('classrooms.index', compact('classrooms', 'departments'));
     }
 
     public function create()
@@ -28,7 +43,9 @@ class ClassroomController extends Controller
     {
         $data = $this->validated($request);
 
-        Classroom::create($data);
+        $classroom = Classroom::create($data);
+
+        AuditLogger::log('created', $classroom, $data);
 
         return redirect()->route('classrooms.index')->with('success', '教室已新增。');
     }
@@ -47,12 +64,16 @@ class ClassroomController extends Controller
 
         $classroom->update($data);
 
+        AuditLogger::log('updated', $classroom, $data);
+
         return redirect()->route('classrooms.index')->with('success', '教室已更新。');
     }
 
     public function toggle(Classroom $classroom)
     {
         $classroom->update(['is_active' => !$classroom->is_active]);
+
+        AuditLogger::log('status_changed', $classroom, ['is_active' => $classroom->is_active]);
 
         return redirect()->route('classrooms.index')
             ->with('success', $classroom->is_active ? '教室已啟用。' : '教室已停用。');

@@ -13,6 +13,7 @@ class ClassroomSeeder extends Seeder
     {
         $cs = Department::where('name', '資訊工程系')->first();
         $ee = Department::where('name', '電機工程系')->first();
+        $ge = Department::where('name', '通識教育中心')->first();
         $manager = User::where('email', 'teacher@school.test')->first();
 
         $classrooms = [
@@ -46,6 +47,17 @@ class ClassroomSeeder extends Seeder
                 'room_code' => 'EE-201',
                 'room_name' => '電機實習教室',
                 'room_type' => '一般教室',
+                'manager_id' => null,
+                'is_active' => true,
+            ],
+            [
+                'department_id' => $ge?->id,
+                'campus' => '分校區',
+                'building' => '研創大樓',
+                'floor' => '1F',
+                'room_code' => 'IN-101',
+                'room_name' => '創客教室',
+                'room_type' => '多功能教室',
                 'manager_id' => null,
                 'is_active' => true,
             ],

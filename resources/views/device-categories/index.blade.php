@@ -8,6 +8,15 @@
         <a href="{{ route('device-categories.create') }}" class="btn btn-primary">新增類別</a>
     </div>
 
+    <form method="GET" action="{{ route('device-categories.index') }}" class="row g-2 mb-3">
+        <div class="col-8 col-md-4">
+            <input type="text" name="keyword" class="form-control form-control-sm" placeholder="搜尋類別名稱" value="{{ request('keyword') }}">
+        </div>
+        <div class="col-4 col-md-2">
+            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">搜尋</button>
+        </div>
+    </form>
+
     <div class="card">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">

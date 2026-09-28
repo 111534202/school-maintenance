@@ -8,16 +8,23 @@
     <style>
         body { min-height: 100vh; }
         .app-sidebar { min-height: calc(100vh - 56px); }
-        .app-sidebar .nav-link { color: #495057; }
-        .app-sidebar .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .app-sidebar .nav-link, .offcanvas .nav-link { color: #495057; }
+        .app-sidebar .nav-link.active, .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .app-content { min-width: 0; }
+        @media (max-width: 575.98px) {
+            .app-content { padding: 1rem !important; }
+        }
     </style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
-            <span class="navbar-brand">學校設備維保電子化系統</span>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-light small">
+            <button class="btn btn-outline-light d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <span class="navbar-brand text-truncate">學校設備維保電子化系統</span>
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <span class="text-light small d-none d-sm-inline">
                     {{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}
                 </span>
                 <form method="POST" action="{{ route('logout') }}">
@@ -28,19 +35,27 @@
         </div>
     </nav>
 
+    {{-- 手機版側邊選單（< md 才會出現按鈕觸發） --}}
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
+        <div class="offcanvas-header">
+            <h6 class="offcanvas-title">選單</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="nav flex-column">
+                @include('layouts.partials.nav-links')
+            </div>
+        </div>
+    </div>
+
     <div class="d-flex">
-        <div class="app-sidebar bg-white border-end" style="width: 220px;">
+        <div class="app-sidebar bg-white border-end d-none d-md-block" style="width: 220px;">
             <div class="nav flex-column p-2">
-                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">主控台</a>
-                @if (in_array(Auth::user()->role?->slug, ['admin', 'it_manager']))
-                    <a class="nav-link {{ request()->routeIs('classrooms.*') ? 'active' : '' }}" href="{{ route('classrooms.index') }}">教室管理</a>
-                    <a class="nav-link {{ request()->routeIs('device-categories.*') ? 'active' : '' }}" href="{{ route('device-categories.index') }}">設備類別</a>
-                    <a class="nav-link {{ request()->routeIs('devices.*') ? 'active' : '' }}" href="{{ route('devices.index') }}">設備管理</a>
-                @endif
+                @include('layouts.partials.nav-links')
             </div>
         </div>
 
-        <div class="flex-grow-1 p-4">
+        <div class="flex-grow-1 app-content p-3 p-md-4">
             @if (session('success'))
                 <div class="alert alert-success">{{ session('success') }}</div>
             @endif
@@ -60,5 +75,7 @@
             @yield('content')
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
