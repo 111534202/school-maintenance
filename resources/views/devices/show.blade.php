@@ -11,7 +11,9 @@
         </div>
     </div>
 
-    <div class="card p-4" style="max-width: 720px;">
+    <div class="row g-4">
+    <div class="col-lg-8">
+    <div class="card p-4">
         <dl class="row mb-0">
             <dt class="col-sm-4">設備編號</dt>
             <dd class="col-sm-8">{{ $device->device_code }}</dd>
@@ -49,5 +51,17 @@
                 @endif
             </dd>
         </dl>
+    </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card p-4 text-center">
+            <h6 class="mb-3">設備 QR Code</h6>
+            <img src="{{ route('devices.qrcode', $device) }}" alt="設備 QR Code" class="img-fluid mb-3" style="max-width: 220px; margin: 0 auto;">
+            <p class="text-muted small mb-3">掃描後開啟本設備的自助入口頁，內容只依設備代碼即時查詢，不會寫死教室等資料。</p>
+            <a href="{{ route('devices.qrcode', $device) }}" class="btn btn-outline-secondary btn-sm" download="{{ $device->device_code }}-qrcode.svg">下載 QR Code</a>
+            <a href="{{ route('devices.entry', $device) }}" class="btn btn-outline-primary btn-sm mt-2" target="_blank">預覽入口頁</a>
+        </div>
+    </div>
     </div>
 @endsection
