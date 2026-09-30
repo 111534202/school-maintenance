@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', '知識庫') - {{ config('app.name') }}</title>
+    <title>@yield('title', __('common.nav.knowledge_base')) - {{ config('app.name') }}</title>
     <style>
         body { font-family: -apple-system, "Microsoft JhengHei", Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1f2933; }
         header { background: #1f2933; color: #fff; padding: 1rem 1.5rem; }
@@ -57,6 +57,14 @@
             display: block; padding: 0.7rem 1.2rem; color: #fff; text-decoration: none;
         }
         .hamburger-menu a:hover { background: #374151; }
+
+        /* i18n 語言切換下拉選單：固定在右上角（跟漢堡選單分開，不佔用漢堡選單版位）。
+           margin-left: auto 讓它在 flex header 裡自動被推到最右邊。 */
+        .locale-switcher { margin-left: auto; }
+        .locale-switcher select {
+            background: #374151; color: #fff; border: 1px solid #4b5563; border-radius: 4px;
+            padding: 0.3rem 0.5rem; font-size: 0.9rem; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -65,12 +73,23 @@
         <button type="button" class="hamburger-btn" id="menu-toggle" aria-expanded="false" aria-controls="site-menu">
             ☰
         </button>
-        <a href="{{ route('knowledge-base.index') }}" class="site-title">學校設備維保電子化系統</a>
+        <a href="{{ route('knowledge-base.index') }}" class="site-title">{{ __('common.site_title') }}</a>
 
         <nav id="site-menu" class="hamburger-menu" hidden>
-            <a href="{{ route('knowledge-base.index') }}">自助知識庫</a>
-            <a href="{{ route('repair-requests.index') }}">我的報修（維修案件看板）</a>
+            <a href="{{ route('knowledge-base.index') }}">{{ __('common.nav.knowledge_base') }}</a>
+            <a href="{{ route('repair-requests.index') }}">{{ __('common.nav.repair_requests') }}</a>
         </nav>
+
+        {{-- i18n 語言切換：放在右上角、跟漢堡選單分開，下拉選單選了就直接跳轉。
+             每個 option 的 value 直接放完整網址，JS 只要把網址設進 location.href 就好，
+             不用另外寫 route 對照表。 --}}
+        <div class="locale-switcher">
+            <label for="locale-select" class="sr-only" style="position:absolute; left:-9999px;">{{ __('common.locale.zh_TW') }} / {{ __('common.locale.en') }}</label>
+            <select id="locale-select">
+                <option value="{{ route('locale.switch', 'zh_TW') }}" @selected(app()->getLocale() === 'zh_TW')>{{ __('common.locale.zh_TW') }}</option>
+                <option value="{{ route('locale.switch', 'en') }}" @selected(app()->getLocale() === 'en')>{{ __('common.locale.en') }}</option>
+            </select>
+        </div>
     </header>
 
     <script>
@@ -97,6 +116,11 @@
                 }
             });
         })();
+
+        // 語言切換下拉選單：選了哪個語言，value 本身就是那個語言的切換網址，直接跳轉過去。
+        document.getElementById('locale-select').addEventListener('change', function () {
+            window.location.href = this.value;
+        });
     </script>
     <main>
         @if (session('status'))

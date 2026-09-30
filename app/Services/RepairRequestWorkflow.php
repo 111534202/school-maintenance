@@ -76,8 +76,13 @@ class RepairRequestWorkflow
     public function assertCanTransition(RepairRequest $repairRequest, RepairRequestStatus $to): void
     {
         if (! $this->canTransition($repairRequest, $to)) {
+            // 這個訊息會被 Controller 捕捉、透過 session('error') 顯示給使用者看，
+            // 所以用 label() 顯示翻譯後的中文/英文狀態名稱，不要顯示 pending/assigned 這種原始代碼。
             throw new DomainException(
-                "無法把案件從「{$repairRequest->status->value}」轉成「{$to->value}」，不符合合法的狀態流程。"
+                __('repair_requests.errors.invalid_transition', [
+                    'from' => $repairRequest->status->label(),
+                    'to' => $to->label(),
+                ])
             );
         }
     }
@@ -202,7 +207,7 @@ class RepairRequestWorkflow
 
         if (! in_array($repairRequest->status, $allowedStatuses, true)) {
             throw new DomainException(
-                "案件狀態是「{$repairRequest->status->label()}」，不是「已派工」或「處理中」，不能重新指派。"
+                __('repair_requests.errors.reassign_invalid_status', ['status' => $repairRequest->status->label()])
             );
         }
 

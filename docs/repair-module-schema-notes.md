@@ -133,6 +133,29 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
    本週先不建立（避免建立假的 audit_logs 替代表），改用 `repair_requests` 自己的 `updated_at` 與
    Week3 後續會有的維修紀錄當替代審計軌跡；待 `audit_logs` 合併後再補寫入。
 
+## 8. i18n 多語系（中文／英文，額外需求追加）
+
+除了原本五週排程外，追加「支援中英文雙語」的需求。做法：
+
+- 所有畫面文字、驗證錯誤訊息、flash 訊息（`session('status')`/`session('error')`）、
+  狀態機丟出的 `DomainException` 訊息，全部改用 Laravel 的 `__()` 翻譯函式，
+  對照的翻譯檔放在 `lang/zh_TW/` 與 `lang/en/`（`common.php`、`knowledge_base.php`、
+  `repair_requests.php`、`repair_logs.php`、`validation.php`、`pagination.php`）。
+- 語言判斷：`App\Http\Middleware\SetLocale` 每次請求時從 session 讀出使用者上次選的
+  語言（沒選過就用 `.env` 的 `APP_LOCALE`，目前預設 `zh_TW`），同時呼叫
+  `Carbon::setLocale()`，讓「等待多久」這類 `diffForHumans()` 也會跟著換語言，
+  不然 Carbon 的語言不會自動跟著 Laravel 的 App 語言走。
+- 切換入口：漢堡選單最下面「中文／English」兩個連結，打
+  `GET /locale/{locale}` 把選擇存進 session、導回原本那一頁。
+- **刻意不翻譯的部分**：使用者自己輸入的內容（報修標題、故障描述、維修備註、
+  退回原因等自由文字欄位）與資料庫種子測試資料，這些是「資料」不是「介面」，
+  跟其他語言網站的慣例一樣不會被機器翻譯。`CreateRepairRequestFromMaintenanceNg`
+  裡自動加在描述最前面的「【保養 NG 自動轉入，來源：...】」標記也一樣：它在
+  案件建立當下就寫死存進資料庫，不是每次顯示時即時套用目前語言，所以維持中文，
+  跟其他自由文字欄位一致（如果之後要讓這個標記也能跟著語言切換，需要改成另外
+  存一個來源類型欄位、顯示時才組字串，不是單純套用 `__()` 就能做到，目前規格
+  沒有要求做到這麼細）。
+
 ## 明確不做（依規格排除，等跨組介面確認後才做）
 
 - 備品真正扣庫存（等 `docs/待確認/Week3_劉家芸.md`、`Week4_劉家芸.md` 的 InventoryService 介面確認）

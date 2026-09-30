@@ -9,6 +9,16 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// i18n 語言切換：把選的語言存進 session，然後導回原本那一頁。
+// 只接受 SetLocale 中介層支援的代碼，其他一律忽略，避免任意字串污染 session。
+Route::get('locale/{locale}', function (string $locale) {
+    if (in_array($locale, ['zh_TW', 'en'], true)) {
+        session(['locale' => $locale]);
+    }
+
+    return back();
+})->name('locale.switch');
+
 // feature/repair（彭仕衡）：自助知識庫 + 報修 + 維修主流程。
 Route::resource('knowledge-base', KnowledgeBaseController::class);
 

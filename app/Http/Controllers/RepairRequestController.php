@@ -88,7 +88,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '報修案件已送出。');
+            ->with('status', __('repair_requests.flash.submitted'));
     }
 
     /**
@@ -120,7 +120,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '已派工。');
+            ->with('status', __('repair_requests.flash.dispatched'));
     }
 
     /**
@@ -143,7 +143,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '已重新指派。');
+            ->with('status', __('repair_requests.flash.reassigned'));
     }
 
     /**
@@ -159,7 +159,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '已標記為處理中。');
+            ->with('status', __('repair_requests.flash.started'));
     }
 
     /**
@@ -176,7 +176,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '已驗收結案。');
+            ->with('status', __('repair_requests.flash.completed'));
     }
 
     /**
@@ -194,7 +194,7 @@ class RepairRequestController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '已退回重新處理。');
+            ->with('status', __('repair_requests.flash.rejected'));
     }
 
     /**

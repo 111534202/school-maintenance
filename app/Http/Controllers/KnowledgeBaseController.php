@@ -33,7 +33,7 @@ class KnowledgeBaseController extends Controller
 
         return redirect()
             ->route('knowledge-base.index')
-            ->with('status', '已新增知識庫項目。');
+            ->with('status', __('knowledge_base.flash.created'));
     }
 
     /** 單篇知識庫文章的詳細頁，底下會有「問題已解決」／「前往報修」兩個按鈕。 */
@@ -55,7 +55,7 @@ class KnowledgeBaseController extends Controller
 
         return redirect()
             ->route('knowledge-base.index')
-            ->with('status', '已更新知識庫項目。');
+            ->with('status', __('knowledge_base.flash.updated'));
     }
 
     /** 刪除這篇知識庫文章。 */
@@ -65,7 +65,7 @@ class KnowledgeBaseController extends Controller
 
         return redirect()
             ->route('knowledge-base.index')
-            ->with('status', '已刪除知識庫項目。');
+            ->with('status', __('knowledge_base.flash.deleted'));
     }
 
     /**
@@ -76,6 +76,6 @@ class KnowledgeBaseController extends Controller
     {
         return redirect()
             ->route('knowledge-base.index')
-            ->with('status', "太好了，很高興「{$knowledgeBase->title}」幫你解決了問題！");
+            ->with('status', __('knowledge_base.flash.resolved_message', ['title' => $knowledgeBase->title]));
     }
 }

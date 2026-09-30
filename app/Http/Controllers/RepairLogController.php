@@ -69,6 +69,6 @@ class RepairLogController extends Controller
 
         return redirect()
             ->route('repair-requests.show', $repairRequest)
-            ->with('status', '維修紀錄已送出，案件已進入待驗收。');
+            ->with('status', __('repair_logs.flash.submitted'));
     }
 }

@@ -19,15 +19,13 @@ enum RepairRequestStatus: string
     /** 已結案：報修人驗收通過，流程結束（不能再變動） */
     case Completed = 'completed';
 
-    /** 把英文代碼轉成畫面上要顯示的中文文字，例如 'pending' -> '新報修'。 */
+    /**
+     * 把狀態代碼轉成畫面上要顯示的文字，例如 'pending' -> '新報修'（或英文 'New'，
+     * 依目前語言而定）。翻譯文字放在 lang/{locale}/repair_requests.php 的 status 區塊，
+     * i18n 新增語言時只需要在那邊補一份翻譯，這裡不用改。
+     */
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => '新報修',
-            self::Assigned => '已派工',
-            self::InProgress => '處理中',
-            self::PendingReview => '待驗收',
-            self::Completed => '已結案',
-        };
+        return __('repair_requests.status.' . $this->value);
     }
 }

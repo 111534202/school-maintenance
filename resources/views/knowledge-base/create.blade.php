@@ -1,9 +1,9 @@
 @extends('layouts.app')
 
-@section('title', '新增知識庫項目')
+@section('title', __('knowledge_base.create_title'))
 
 @section('content')
-    <h1>新增知識庫項目</h1>
+    <h1>{{ __('knowledge_base.create_title') }}</h1>
 
     <form method="POST" action="{{ route('knowledge-base.store') }}">
         @csrf
