@@ -11,6 +11,7 @@
     @if ($knowledgeBaseEntries->isEmpty())
         <p>目前還沒有任何知識庫項目。</p>
     @else
+        <div class="table-scroll">
         <table>
             <thead>
                 <tr>
@@ -46,6 +47,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
 
         <div style="margin-top: 1rem;">
             {{ $knowledgeBaseEntries->links() }}

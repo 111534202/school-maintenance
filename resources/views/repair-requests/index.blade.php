@@ -43,6 +43,7 @@
     @if ($repairRequests->isEmpty())
         <p>目前沒有符合條件的報修案件。</p>
     @else
+        <div class="table-scroll">
         <table>
             <thead>
                 <tr>
@@ -72,11 +73,11 @@
                             </span>
                         </td>
                         <td>
+                            {{-- 讓主管看到「這個人手上還有幾件沒結案」，跟名字放在同一行、用括號附註，
+                                 不要換行，方便自己判斷要不要再加派給他；系統不會自動幫忙排序或推薦人選。 --}}
                             {{ $repairRequest->assignee_note ?? '未指派' }}
                             @if ($repairRequest->assignee_note && ($activeCaseCountsByAssignee[$repairRequest->assignee_note] ?? 0) > 0)
-                                {{-- 讓主管看到「這個人手上還有幾件沒結案」，方便自己判斷要不要再加派給他，
-                                     這裡只顯示客觀數字，系統不會自動幫忙排序或推薦人選。 --}}
-                                <br><small style="color:#616e7c;">手上還有 {{ $activeCaseCountsByAssignee[$repairRequest->assignee_note] }} 件未結案</small>
+                                <span style="color:#616e7c;">（未結案 {{ $activeCaseCountsByAssignee[$repairRequest->assignee_note] }} 件）</span>
                             @endif
                         </td>
                         <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>
@@ -85,6 +86,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
 
         <div style="margin-top: 1rem;">
             {{ $repairRequests->links() }}

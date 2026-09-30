@@ -8,9 +8,14 @@
         body { font-family: -apple-system, "Microsoft JhengHei", Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1f2933; }
         header { background: #1f2933; color: #fff; padding: 1rem 1.5rem; }
         header a { color: #fff; text-decoration: none; font-weight: 600; }
-        main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+        /* 表格外面包一層可以左右捲動的容器，欄位文字就不會被硬擠到下一行。 */
+        .table-scroll { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td { padding: 0.6rem 0.8rem; border-bottom: 1px solid #e4e7eb; text-align: left; vertical-align: top; }
+        th, td {
+            padding: 0.6rem 0.8rem; border-bottom: 1px solid #e4e7eb; text-align: left; vertical-align: top;
+            white-space: nowrap; /* 同一列的文字一律保持在同一行，太長就讓外層容器左右捲動 */
+        }
         th { background: #eceff1; }
         .btn { display: inline-block; padding: 0.4rem 0.9rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; cursor: pointer; border: none; }
         .btn-primary { background: #2563eb; color: #fff; }

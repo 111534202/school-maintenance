@@ -193,7 +193,8 @@ class RepairRequestBoardFlowTest extends TestCase
         $response = $this->get(route('repair-requests.index'));
 
         // 已結案的那筆不算「未結案」，所以王小明應該顯示還有 2 件（不是 3 件）。
-        $response->assertSee('手上還有 2 件未結案', false);
+        // 這段文字現在跟人名放在同一格、同一行（版面調整：同一個項目不換行）。
+        $response->assertSee('（未結案 2 件）', false);
     }
 
     public function test_index_can_filter_by_status_and_location(): void
