@@ -115,8 +115,12 @@ class RepairRequestWorkflow
     }
 
     /**
-     * 主管派工：新報修 -> 已派工，同時記錄維修人員（assignee_note）與
-     * 預計處理日期（scheduled_at）。
+     * 主管派工：新報修 -> 已派工，同時記錄維修人員（assignee_note 文字備援 +
+     * assigned_to 真正的 users.id 外鍵）與預計處理日期（scheduled_at）。
+     *
+     * $assignedTo 是 devices/users 表合併後新增的參數，預設 null 是為了不動到
+     * 既有呼叫端（例如舊測試、NG 轉報修等還沒接上真實帳號的情境），只有真的
+     * 挑了一個系統使用者當維修人員時才會帶入、寫進 assigned_to 這個外鍵欄位。
      *
      * 先檢查狀態合不合法，合法才寫欄位＋轉狀態，兩件事包在同一個 DB transaction
      * 裡（要嘛兩個都成功，要嘛兩個都不生效，不會有「寫一半」的情況）。
@@ -127,12 +131,13 @@ class RepairRequestWorkflow
      * 會被悄悄覆蓋成新值，即使畫面顯示操作失敗——資料跟畫面對不上。現在改成
      * 「先確認狀態合法，才動手寫欄位」，就不會有這個問題。
      */
-    public function assign(RepairRequest $repairRequest, ?string $assigneeNote, ?string $scheduledAt): RepairRequest
+    public function assign(RepairRequest $repairRequest, ?string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
     {
         $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
 
-        return DB::transaction(function () use ($repairRequest, $assigneeNote, $scheduledAt) {
+        return DB::transaction(function () use ($repairRequest, $assigneeNote, $scheduledAt, $assignedTo) {
             $repairRequest->assignee_note = $assigneeNote;
+            $repairRequest->assigned_to = $assignedTo;
             $repairRequest->scheduled_at = $scheduledAt;
             $repairRequest->save();
 
@@ -201,7 +206,7 @@ class RepairRequestWorkflow
      * 派過工，應該走 assign()；「待驗收」「已結案」代表已經在走驗收流程，
      * 這時候換人意義不大，也容易造成混亂，所以不開放。
      */
-    public function reassign(RepairRequest $repairRequest, string $assigneeNote, ?string $scheduledAt): RepairRequest
+    public function reassign(RepairRequest $repairRequest, string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
     {
         $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
 
@@ -212,6 +217,7 @@ class RepairRequestWorkflow
         }
 
         $repairRequest->assignee_note = $assigneeNote;
+        $repairRequest->assigned_to = $assignedTo;
         $repairRequest->scheduled_at = $scheduledAt;
         $repairRequest->save();
 

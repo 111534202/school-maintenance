@@ -115,23 +115,49 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
 因為 `maintenance_results` 表還沒合併，暫時用 `sourceLabel` 字串記錄來源，不建外鍵。
 詳細用法見 `docs/待確認/Week3_王佑恩.md`。
 
+## 9. devices/users 表正式合併後的變更（額外需求追加：資產報修 + 派工通知信）
+
+`develop` 合併了林政寬的 `feature/auth-device`（devices/users/roles/classrooms/audit_logs 都是
+真正的表了），所以把待確認②⑤原本「先用文字欄位頂著」的部分正式補上：
+
+- `repair_requests.device_id` / `reporter_id` / `assigned_to` 都補上真正外鍵
+  （`2026_09_30_064236_add_foreign_keys_to_repair_requests_table.php`），`RepairRequest` model
+  新增 `device()`／`reporter()`／`assignedTechnician()` 三個 `belongsTo()`。`device_note` /
+  `assignee_note` 兩個文字欄位保留當後備顯示（沒有對應真實設備/帳號時，例如舊資料、保養 NG
+  轉報修尚未掃碼建立設備關聯的案件）。
+- **資產報修（簡化流程）**：報修表單新增「設備條碼」輸入框，掃描（條碼掃描器對電腦來說就是
+  鍵盤輸入+Enter，不需要相機或解碼函式庫）或手動輸入設備編號後，用
+  `GET repairs/device-lookup/{device_code}`（`RepairRequestController::deviceLookup()`）即時查
+  詢，前端 JS 自動帶入設備名稱/型號/教室與報修標題建議，不用再手動描述設備。也支援林政寬
+  `DeviceEntryController`（QR 掃描設備進入頁）「前往報修」按鈕直接帶 `?device={id}` 過來預填。
+- **派工信件通知**：`RepairRequestController::assign()`/`reassign()` 呼叫
+  `App\Services\RepairAssignmentNotifier`，寄送 `App\Mail\RepairDispatchedMail` 給被指派的
+  維修人員（`to`），並副本（`cc`）給所有 `it_manager` 角色（決定「設備管理員」= `it_manager`，
+  這個角色字面上沒有寫「設備管理員」但語意最接近）。目前 `.env` 是 `MAIL_MAILER=log`（寫進
+  `storage/logs/laravel.log`，不會真的寄出），之後要接上真的 SMTP 只需要改 `.env`，
+  Mailable／Notifier 完全不用改。
+- 派工／重新指派表單改成挑選真正的 `users`（角色 = `technician`）下拉選單，不再讓主管自己
+  打字輸入姓名（`AssignRepairRequestRequest` 用 `Rule::exists('users','id')->where('role_id', ...)`
+  驗證）。
+- 因為登入系統合併了，`knowledge-base`/`repairs` 系列路由全部搬進 `Route::middleware('auth')`
+  群組裡，`reporter_id` 現在直接用 `Auth::id()`，不再是 null。
+- 路由名稱從 `repair-requests.*` 改成 `repairs.*`，對齊林政寬 `layouts/partials/nav-links.blade.php`
+  （用 `Route::has('repairs.index')` 判斷要不要顯示報修連結）與 `DeviceEntryController` 的命名。
+
 ## 待確認事項（不自行寫死，等規格/跨模組資料表確認後再定案）
 
 1. `knowledge_base.category` 是否應改為關聯 `device_categories` 表，目前先用自由文字欄位。
-2. `created_by` / `reporter_id` / `assigned_to` 都應該是 `users.id` 的外鍵，但這個暫存專案裡還沒有正式合併
-   林政寬的 `users`/角色權限成果，先以純欄位記錄 id，不加 `->constrained()`。等共用 Repository 合併、
-   `users` 表穩定後，補一支新的 migration 加上外鍵約束。同時要跟林政寬確認設備狀態枚舉值，
-   才能把 `DeviceStatusSync` 的兩個方法從「只寫 log」換成真正寫入。
+2. ~~`created_by` / `reporter_id` / `assigned_to` 都應該是 `users.id` 的外鍵~~ —— **已完成**，見上方第 9 節。
+   `KnowledgeBaseController` 的 `created_by` 尚未補（知識庫文章目前沒有作者欄位需求，暫不處理）。
 3. `repair_requests.impact_level` 目前列舉值僅為草案（low/medium/high），需與其他組員對齊全系統的分級慣例。
 4. `repair_requests.status` 五個狀態值與轉換規則（含驗收退回規則）已由彭仕衡在自己模組範圍內拍板，
    詳見上方「狀態機」；跟其他模組的介接方式（例如維修完成率統計公式：以 `repair_logs.total_hours`
    計算平均維修時間）也已先訂一版，供全組討論用。
-5. `repair_requests.device_id` / `device_note` 需等林政寬的 `devices` 表真正合併進本專案後，把 `device_note`
-   文字輸入換成 `device_id` 下拉選單 + `exists` 驗證，並補上外鍵約束。
+5. ~~`repair_requests.device_id` / `device_note` 需等林政寬的 `devices` 表真正合併~~ —— **已完成**，見上方第 9 節。
 6. `repair_requests.location` 是否直接關聯 `classrooms`，或維持自由文字，待該表合併後再確認。
-7. 「人工派工」原規劃要記錄派工事件到 `audit_logs`，但這張表屬於林政寬的系統基礎模組，尚未合併，
-   本週先不建立（避免建立假的 audit_logs 替代表），改用 `repair_requests` 自己的 `updated_at` 與
-   Week3 後續會有的維修紀錄當替代審計軌跡；待 `audit_logs` 合併後再補寫入。
+7. 「人工派工」原規劃要記錄派工事件到 `audit_logs`，但這張表屬於林政寬的系統基礎模組，現在已經
+   合併進來了，之後可以評估要不要接上（本次只先做通知信，尚未把派工事件寫進 audit_logs，
+   範圍留給下一輪再做）。
 
 ## 8. i18n 多語系（中文／英文，額外需求追加）
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\RepairRequestStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
@@ -12,10 +13,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * 維修人員處理完會填一筆或多筆維修紀錄（見 RepairLog），最後報修人驗收通過就結案。
  *
  * 重要提醒：
- * - users/devices 表現在還沒合併進這個分支，所以 reporter_id（報修人）、
- *   device_id（設備）、assigned_to（維修人員）目前只是單純存一個數字 id，
- *   沒有真正的資料庫外鍵關聯，也沒有 Eloquent 的 belongsTo() 關聯方法。
- *   等其他組員的表合併進來後，才會補上正式的關聯。
+ * - devices/users 表已經合併進來了（林政寬的 feature/auth-device），reporter_id
+ *   （報修人）、device_id（設備）、assigned_to（維修人員）現在都有正式外鍵約束，
+ *   也有下面對應的 belongsTo() 關聯可以直接用。device_note / assignee_note 兩個
+ *   文字欄位保留當後備顯示（例如保養 NG 自動轉入、沒有對應真實設備/帳號的案件）。
  * - status（案件狀態）欄位請一律透過 App\Services\RepairRequestWorkflow 這支
  *   service 來修改，不要在 Controller 或其他地方直接寫 `$repairRequest->status = ...`。
  *   因為狀態怎麼轉換是有規則的（例如「新報修」不能直接跳到「處理中」），這些
@@ -88,5 +89,23 @@ class RepairRequest extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /** 這張報修單是報修哪一台真實設備（掃描設備條碼建立的報修單才會有值）。 */
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(Device::class);
+    }
+
+    /** 送出這張報修單的使用者。 */
+    public function reporter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reporter_id');
+    }
+
+    /** 目前被指派處理這張報修單的維修人員。 */
+    public function assignedTechnician(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 }

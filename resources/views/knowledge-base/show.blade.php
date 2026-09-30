@@ -30,6 +30,6 @@
     <div class="field" style="margin-top: 2rem; border-top: 1px solid #e4e7eb; padding-top: 1.5rem;">
         <p><strong>{{ __('knowledge_base.show.resolved_prompt') }}</strong></p>
         <a class="btn btn-primary" href="{{ route('knowledge-base.resolved', $knowledgeBase) }}">{{ __('knowledge_base.show.resolved_button') }}</a>
-        <a class="btn btn-danger" href="{{ route('repair-requests.create', ['from_kb' => $knowledgeBase->id]) }}">{{ __('knowledge_base.show.unresolved_button') }}</a>
+        <a class="btn btn-danger" href="{{ route('repairs.create', ['from_kb' => $knowledgeBase->id]) }}">{{ __('knowledge_base.show.unresolved_button') }}</a>
     </div>
 @endsection

@@ -4,11 +4,21 @@ namespace Tests\Feature;
 
 use App\Models\KnowledgeBase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 class KnowledgeBaseCrudTest extends TestCase
 {
     use RefreshDatabase;
+    use InteractsWithRolesAndUsers;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // devices/users 表合併後，所有報修/知識庫路由都要求登入。
+        $this->loginAsAnyUser();
+    }
 
     public function test_index_page_lists_entries(): void
     {

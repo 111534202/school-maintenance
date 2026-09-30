@@ -15,13 +15,21 @@
 @section('content')
     <div class="toolbar">
         <h1>{{ $repairRequest->title }}</h1>
-        <a class="btn btn-secondary" href="{{ route('repair-requests.index') }}">{{ __('repair_requests.show.back_to_board') }}</a>
+        <a class="btn btn-secondary" href="{{ route('repairs.index') }}">{{ __('repair_requests.show.back_to_board') }}</a>
     </div>
 
-    @php($impactLabel = __('repair_requests.impact_level.' . $repairRequest->impact_level))
+    @php
+        $impactLabel = __('repair_requests.impact_level.' . $repairRequest->impact_level);
+
+        $deviceDisplay = $repairRequest->device
+            ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->room_name ?? $repairRequest->device->classroom->room_code ?? '') . '）')
+            : ($repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled'));
+
+        $assigneeDisplay = $repairRequest->assignedTechnician->name ?? $repairRequest->assignee_note ?? __('repair_requests.unassigned');
+    @endphp
 
     <p>
-        <strong>{{ __('repair_requests.show.device_location_prefix') }}</strong>{{ $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}<br>
+        <strong>{{ __('repair_requests.show.device_location_prefix') }}</strong>{{ $deviceDisplay }}<br>
         <strong>{{ __('repair_requests.show.impact_level_prefix') }}</strong>
         <span class="badge {{ $repairRequest->impact_level === 'high' ? 'badge-off' : 'badge-on' }}">{{ $impactLabel }}</span><br>
         <strong>{{ __('repair_requests.show.affects_class_prefix') }}</strong>{{ $repairRequest->affects_class ? __('repair_requests.yes') : __('repair_requests.no') }}<br>
@@ -29,7 +37,7 @@
         <span class="badge" style="background: {{ $statusColors[$repairRequest->status->value] }};">
             {{ $repairRequest->status->label() }}
         </span><br>
-        <strong>{{ __('repair_requests.show.assignee_prefix') }}</strong>{{ $repairRequest->assignee_note ?? __('repair_requests.unassigned') }}
+        <strong>{{ __('repair_requests.show.assignee_prefix') }}</strong>{{ $assigneeDisplay }}
         @if ($repairRequest->scheduled_at)
             {{ __('repair_requests.show.scheduled_suffix', ['datetime' => $repairRequest->scheduled_at->format('Y-m-d H:i')]) }}
         @endif
@@ -59,11 +67,16 @@
     <div class="field" style="margin-top: 2rem; border-top: 1px solid #e4e7eb; padding-top: 1.5rem;">
         @if ($repairRequest->status === \App\Enums\RepairRequestStatus::Pending)
             <h3>{{ __('repair_requests.show.dispatch_heading') }}</h3>
-            <form method="POST" action="{{ route('repair-requests.assign', $repairRequest) }}">
+            <form method="POST" action="{{ route('repairs.assign', $repairRequest) }}">
                 @csrf
                 <div class="field">
-                    <label for="assignee_note">{{ __('repair_requests.show.assignee_field_label') }}</label>
-                    <input type="text" id="assignee_note" name="assignee_note" required>
+                    <label for="assigned_to">{{ __('repair_requests.show.assignee_field_label') }}</label>
+                    <select id="assigned_to" name="assigned_to" required>
+                        <option value="">{{ __('repair_requests.show.assignee_field_placeholder') }}</option>
+                        @foreach ($technicians as $technician)
+                            <option value="{{ $technician->id }}">{{ $technician->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="field">
                     <label for="scheduled_at">{{ __('repair_requests.show.scheduled_field_label') }}</label>
@@ -72,7 +85,7 @@
                 <button class="btn btn-primary" type="submit">{{ __('repair_requests.show.confirm_dispatch') }}</button>
             </form>
         @elseif ($repairRequest->status === \App\Enums\RepairRequestStatus::Assigned)
-            <form method="POST" action="{{ route('repair-requests.start', $repairRequest) }}">
+            <form method="POST" action="{{ route('repairs.start', $repairRequest) }}">
                 @csrf
                 <button class="btn btn-primary" type="submit">{{ __('repair_requests.show.start_processing') }}</button>
             </form>
@@ -85,12 +98,16 @@
         @if (in_array($repairRequest->status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::InProgress], true))
             <details style="margin-top: 1rem;">
                 <summary style="cursor:pointer; color:#616e7c;">{{ __('repair_requests.show.reassign_summary') }}</summary>
-                <form method="POST" action="{{ route('repair-requests.reassign', $repairRequest) }}" style="margin-top: 0.8rem;">
+                <form method="POST" action="{{ route('repairs.reassign', $repairRequest) }}" style="margin-top: 0.8rem;">
                     @csrf
                     <div class="field">
-                        <label for="reassign_assignee_note">{{ __('repair_requests.show.reassign_to_label') }}</label>
-                        <input type="text" id="reassign_assignee_note" name="assignee_note"
-                            value="{{ $repairRequest->assignee_note }}" required>
+                        <label for="reassign_assigned_to">{{ __('repair_requests.show.reassign_to_label') }}</label>
+                        <select id="reassign_assigned_to" name="assigned_to" required>
+                            <option value="">{{ __('repair_requests.show.assignee_field_placeholder') }}</option>
+                            @foreach ($technicians as $technician)
+                                <option value="{{ $technician->id }}" @selected($repairRequest->assigned_to === $technician->id)>{{ $technician->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="field">
                         <label for="reassign_scheduled_at">{{ __('repair_requests.show.scheduled_field_label') }}</label>
@@ -104,14 +121,14 @@
         @if ($repairRequest->status === \App\Enums\RepairRequestStatus::PendingReview)
             {{-- 驗收兩條路：通過就結案（不用填原因），不通過要退回並說明原因。 --}}
             <h3>{{ __('repair_requests.show.acceptance_heading') }}</h3>
-            <form method="POST" action="{{ route('repair-requests.complete', $repairRequest) }}" class="inline">
+            <form method="POST" action="{{ route('repairs.complete', $repairRequest) }}" class="inline">
                 @csrf
                 <button class="btn btn-primary" type="submit">{{ __('repair_requests.show.accept_pass') }}</button>
             </form>
 
             <details style="margin-top: 1rem;">
                 <summary style="cursor:pointer; color:#dc2626;">{{ __('repair_requests.show.accept_fail_summary') }}</summary>
-                <form method="POST" action="{{ route('repair-requests.reject', $repairRequest) }}" style="margin-top: 0.8rem;">
+                <form method="POST" action="{{ route('repairs.reject', $repairRequest) }}" style="margin-top: 0.8rem;">
                     @csrf
                     <div class="field">
                         <label for="rejection_reason">{{ __('repair_requests.show.rejection_reason_label') }}</label>

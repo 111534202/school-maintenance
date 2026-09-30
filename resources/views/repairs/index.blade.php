@@ -15,10 +15,10 @@
 @section('content')
     <div class="toolbar">
         <h1>{{ __('repair_requests.board_title') }}</h1>
-        <a class="btn btn-primary" href="{{ route('repair-requests.create') }}">{{ __('repair_requests.add_request') }}</a>
+        <a class="btn btn-primary" href="{{ route('repairs.create') }}">{{ __('repair_requests.add_request') }}</a>
     </div>
 
-    <form method="GET" action="{{ route('repair-requests.index') }}" class="filter-form">
+    <form method="GET" action="{{ route('repairs.index') }}" class="filter-form">
         <div class="field">
             <label for="status">{{ __('repair_requests.filter.status') }}</label>
             <select id="status" name="status">
@@ -40,7 +40,7 @@
         </div>
         <button class="btn btn-secondary" type="submit">{{ __('common.buttons.filter') }}</button>
         @if (request('status') || request('location') || request('assignee'))
-            <a class="btn btn-secondary" href="{{ route('repair-requests.index') }}">{{ __('common.buttons.clear_filter') }}</a>
+            <a class="btn btn-secondary" href="{{ route('repairs.index') }}">{{ __('common.buttons.clear_filter') }}</a>
         @endif
     </form>
 
@@ -64,8 +64,8 @@
             <tbody>
                 @foreach ($repairRequests as $repairRequest)
                     <tr>
-                        <td><a href="{{ route('repair-requests.show', $repairRequest) }}">{{ $repairRequest->title }}</a></td>
-                        <td>{{ $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}</td>
+                        <td><a href="{{ route('repairs.show', $repairRequest) }}">{{ $repairRequest->title }}</a></td>
+                        <td>{{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}</td>
                         <td>
                             @php($impactLabel = __('repair_requests.impact_level.' . $repairRequest->impact_level))
                             <span class="badge {{ $repairRequest->impact_level === 'high' ? 'badge-off' : 'badge-on' }}">{{ $impactLabel }}</span>
@@ -79,9 +79,9 @@
                         <td>
                             {{-- 讓主管看到「這個人手上還有幾件沒結案」，跟名字放在同一行、用括號附註，
                                  不要換行，方便自己判斷要不要再加派給他；系統不會自動幫忙排序或推薦人選。 --}}
-                            {{ $repairRequest->assignee_note ?? __('repair_requests.unassigned') }}
-                            @if ($repairRequest->assignee_note && ($activeCaseCountsByAssignee[$repairRequest->assignee_note] ?? 0) > 0)
-                                <span style="color:#616e7c;">{{ __('repair_requests.active_case_suffix', ['count' => $activeCaseCountsByAssignee[$repairRequest->assignee_note]]) }}</span>
+                            {{ $repairRequest->assignedTechnician->name ?? $repairRequest->assignee_note ?? __('repair_requests.unassigned') }}
+                            @if ($repairRequest->assigned_to && ($activeCaseCountsByAssignee[$repairRequest->assigned_to] ?? 0) > 0)
+                                <span style="color:#616e7c;">{{ __('repair_requests.active_case_suffix', ['count' => $activeCaseCountsByAssignee[$repairRequest->assigned_to]]) }}</span>
                             @endif
                         </td>
                         <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>

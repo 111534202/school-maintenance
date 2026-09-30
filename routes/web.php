@@ -63,7 +63,11 @@ Route::middleware('auth')->group(function () {
         ->name('knowledge-base.resolved');
 
     // 本週不做編輯、刪除報修單本身，狀態改變一律走下面的 assign/start/repair-logs 動作路由。
+    // ->parameters(...) 讓 resource 路由的網址參數也叫 repair_request，跟下面
+    // assign/start/reassign 等動作路由的參數名稱一致（曾經因為預設縮寫成 {repair}
+    // 導致 show() 的隱性路由模型綁定對不上，這裡明確指定就不會再犯）。
     Route::resource('repairs', RepairRequestController::class)
+        ->parameters(['repairs' => 'repair_request'])
         ->only(['index', 'create', 'store', 'show']);
 
     // 設備條碼／QR 掃描查詢（供新增報修頁的「掃描設備條碼」欄位即時查詢用），

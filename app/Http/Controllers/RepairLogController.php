@@ -37,7 +37,7 @@ class RepairLogController extends Controller
             $workflow->assertCanTransition($repairRequest, RepairRequestStatus::PendingReview);
         } catch (DomainException $exception) {
             return redirect()
-                ->route('repair-requests.show', $repairRequest)
+                ->route('repairs.show', $repairRequest)
                 ->with('error', $exception->getMessage());
         }
 
@@ -68,7 +68,7 @@ class RepairLogController extends Controller
         });
 
         return redirect()
-            ->route('repair-requests.show', $repairRequest)
-            ->with('status', __('repair_logs.flash.submitted'));
+            ->route('repairs.show', $repairRequest)
+            ->with('success', __('repair_logs.flash.submitted'));
     }
 }

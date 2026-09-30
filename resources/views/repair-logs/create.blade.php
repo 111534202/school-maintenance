@@ -41,6 +41,6 @@
         </div>
 
         <button class="btn btn-primary" type="submit">{{ __('repair_logs.submit') }}</button>
-        <a class="btn btn-secondary" href="{{ route('repair-requests.show', $repairRequest) }}">{{ __('common.buttons.cancel') }}</a>
+        <a class="btn btn-secondary" href="{{ route('repairs.show', $repairRequest) }}">{{ __('common.buttons.cancel') }}</a>
     </form>
 @endsection
