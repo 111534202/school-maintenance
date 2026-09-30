@@ -33,9 +33,10 @@ class StoreRepairRequestRequest extends FormRequest
             // devices 表尚未合併，先用自由文字描述設備；合併後改為 device_id 下拉 + exists 驗證
             'device_note' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
-            // 附件上傳第一版：只允許常見圖片格式與 PDF，單檔上限 5MB，避免任意檔案類型
+            // 附件：圖片/PDF/影片都允許（依《第四週個人工作計畫》第 2 項「故障照片/影片」新增
+            // 影片格式），單檔上限提高到 20MB 以容納短片，避免任意檔案類型。
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm', 'max:20480'],
         ];
     }
 }

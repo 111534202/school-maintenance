@@ -48,6 +48,7 @@ class RepairLogController extends Controller
             $repairLog = $repairRequest->repairLogs()->create([
                 'cause' => $request->validated('cause'),
                 'resolution' => $request->validated('resolution'),
+                'parts_used_note' => $request->validated('parts_used_note'),
                 'started_at' => $startedAt,
                 'ended_at' => $endedAt,
                 // 不用 Carbon 的 diffInMinutes()：Carbon 3.x 起預設回傳「有號數」，呼叫方向
@@ -59,6 +60,10 @@ class RepairLogController extends Controller
                 $attachmentUploader->storeMany($repairLog, $request->file('attachments'));
             }
 
+            // 這整個 function 包在 DB::transaction 裡：只要上面任何一步失敗（例如未來
+            // 接上真正的 InventoryService 後扣庫存失敗），前面寫的 repair_log／附件都會
+            // 自動回復，案件也不會被誤標記成「待驗收」——這就是《第四週個人工作計畫》
+            // 第 4 項要求的「扣庫存失敗時不得把維修錯誤地完成」的安全機制。
             $workflow->submitForReview($repairRequest);
         });
 

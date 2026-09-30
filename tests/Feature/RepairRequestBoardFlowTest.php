@@ -210,4 +210,116 @@ class RepairRequestBoardFlowTest extends TestCase
         $response->assertSee('待處理案件');
         $response->assertDontSee('已結案案件');
     }
+
+    public function test_index_can_filter_by_assignee(): void
+    {
+        // 依《第四週個人工作計畫》第 1 項新增的維修人員篩選。
+        RepairRequest::factory()->create(['title' => '王小明的案件', 'assignee_note' => '王小明']);
+        RepairRequest::factory()->create(['title' => '劉小華的案件', 'assignee_note' => '劉小華']);
+
+        $response = $this->get(route('repair-requests.index', ['assignee' => '王小明']));
+
+        $response->assertSee('王小明的案件');
+        $response->assertDontSee('劉小華的案件');
+    }
+
+    public function test_can_reassign_an_assigned_case_to_a_different_technician(): void
+    {
+        // 依《第四週個人工作計畫》第 1 項「重新指派操作」：換人不改變案件狀態。
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'assigned',
+            'assignee_note' => '王小明',
+        ]);
+
+        $response = $this->post(route('repair-requests.reassign', $repairRequest), [
+            'assignee_note' => '劉小華',
+        ]);
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $this->assertSame('劉小華', $repairRequest->fresh()->assignee_note);
+        // 狀態應該維持「已派工」不變，重新指派不是狀態轉換。
+        $this->assertSame('assigned', $repairRequest->fresh()->status->value);
+    }
+
+    public function test_can_reassign_an_in_progress_case(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'in_progress',
+            'assignee_note' => '王小明',
+        ]);
+
+        $response = $this->post(route('repair-requests.reassign', $repairRequest), [
+            'assignee_note' => '劉小華',
+        ]);
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $this->assertSame('劉小華', $repairRequest->fresh()->assignee_note);
+        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+    }
+
+    public function test_cannot_reassign_a_case_that_has_not_been_assigned_yet(): void
+    {
+        // 「新報修」還沒派過工，應該走 assign() 而不是 reassign()。
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
+
+        $response = $this->post(route('repair-requests.reassign', $repairRequest), [
+            'assignee_note' => '王小明',
+        ]);
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $response->assertSessionHas('error');
+        $this->assertNull($repairRequest->fresh()->assignee_note);
+    }
+
+    public function test_cannot_reassign_a_completed_case(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'completed',
+            'assignee_note' => '王小明',
+        ]);
+
+        $response = $this->post(route('repair-requests.reassign', $repairRequest), [
+            'assignee_note' => '劉小華',
+        ]);
+
+        $response->assertSessionHas('error');
+        // 已結案的案件不能被重新指派，維修人員應該維持原本記錄的人。
+        $this->assertSame('王小明', $repairRequest->fresh()->assignee_note);
+    }
+
+    public function test_repair_log_accepts_a_video_attachment_and_parts_used_note(): void
+    {
+        // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
+        Storage::fake('public');
+        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
+
+        $response = $this->post(route('repair-logs.store', $repairRequest), [
+            'cause' => '風扇葉片變形產生異音',
+            'resolution' => '更換風扇並錄影確認運轉恢復正常',
+            'parts_used_note' => '投影機散熱風扇 x1',
+            'started_at' => now()->subHour()->format('Y-m-d\TH:i'),
+            'ended_at' => now()->format('Y-m-d\TH:i'),
+            'attachments' => [UploadedFile::fake()->create('after.mp4', 500, 'video/mp4')],
+        ]);
+
+        $response->assertRedirect(route('repair-requests.show', $repairRequest));
+        $log = $repairRequest->fresh()->repairLogs->first();
+        $this->assertSame('投影機散熱風扇 x1', $log->parts_used_note);
+        $this->assertCount(1, $log->attachments);
+    }
+
+    public function test_repair_request_attachment_rejects_disallowed_file_type(): void
+    {
+        // 附件驗證：不在允許清單裡的檔案類型（例如 .exe）要被擋下，不能悄悄接受任意檔案。
+        $response = $this->post(route('repair-requests.store'), [
+            'title' => '測試不合法附件類型',
+            'description' => '測試用',
+            'impact_level' => 'low',
+            'affects_class' => '0',
+            'attachments' => [UploadedFile::fake()->create('virus.exe', 100, 'application/x-msdownload')],
+        ]);
+
+        $response->assertSessionHasErrors('attachments.0');
+        $this->assertDatabaseMissing('repair_requests', ['title' => '測試不合法附件類型']);
+    }
 }

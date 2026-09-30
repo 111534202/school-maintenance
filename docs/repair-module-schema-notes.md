@@ -56,7 +56,8 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 所有轉換規則集中在 `App\Services\RepairRequestWorkflow`，Controller 一律呼叫這個 service，
 不直接改 `status` 欄位。非法轉換會丟出 `DomainException`。Week3 補上 `complete()`（驗收通過結案）
 與 `reject()`（驗收不通過退回，需附退回原因）兩個方法，對應 `repair-requests.complete`/
-`repair-requests.reject` 這兩個路由。
+`repair-requests.reject` 這兩個路由。Week4 補上 `reassign()`（重新指派，只換
+`assignee_note`/`scheduled_at`，不屬於狀態轉換，只允許在「已派工」「處理中」時使用）。
 
 ## 3. repair_logs（正式表，Week2 加上填單 UI + 附件）
 
@@ -66,6 +67,7 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 | repair_request_id | foreignId | **正式外鍵** -> repair_requests.id（自己負責的表，可直接加外鍵） |
 | cause | text | 故障原因說明 |
 | resolution | text | 處置方式 |
+| parts_used_note | string, nullable | 使用備品說明（Week4 新增，文字暫代，待劉家芸 InventoryService 介面確認後改正式關聯+扣庫存） |
 | started_at | timestamp, nullable | 處理起始時間 |
 | ended_at | timestamp, nullable | 處理結束時間 |
 | total_hours | decimal(5,2), nullable | 總工時（小時）＝ (ended_at - started_at) / 3600，用時間戳相減算，
@@ -87,8 +89,9 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 | size_bytes | unsignedBigInteger | 檔案大小 |
 | timestamps | | |
 
-只允許 jpg/jpeg/png/pdf，單檔 5MB、單次最多 5 個檔案（`App\Services\AttachmentUploader`
-統一處理上傳邏輯，兩個 Controller 共用，不各寫一份）。
+允許 jpg/jpeg/png/pdf/mp4/mov/webm（Week4 新增影片格式，對應「故障照片/影片」規格），
+單檔 20MB、單次最多 5 個檔案（`App\Services\AttachmentUploader` 統一處理上傳邏輯，
+兩個 Controller 共用，不各寫一份）。
 
 ## 5. 設備狀態同步（`App\Services\DeviceStatusSync`，Week2，暫時為空介面）
 
@@ -130,9 +133,12 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
    本週先不建立（避免建立假的 audit_logs 替代表），改用 `repair_requests` 自己的 `updated_at` 與
    Week3 後續會有的維修紀錄當替代審計軌跡；待 `audit_logs` 合併後再補寫入。
 
-## Week3 明確不做（依規格排除，等跨組介面確認後才做）
+## 明確不做（依規格排除，等跨組介面確認後才做）
 
-- 備品真正扣庫存（等 `docs/待確認/Week3_劉家芸.md` 的 InventoryService 介面確認）
+- 備品真正扣庫存（等 `docs/待確認/Week3_劉家芸.md`、`Week4_劉家芸.md` 的 InventoryService 介面確認）
 - QR Code 掃描帶入設備（等 `docs/待確認/Week3_林政寬.md` 的介面確認）
 - 附件刪除、正式檔案管理 UI（只做上傳與查看）
 - 自行發明派工負荷量演算法或自動推薦人選（規格明確禁止，只顯示客觀資料）
+- 角色權限限制（等林政寬的登入/角色系統合併，目前任何人都能操作所有按鈕）
+- 第五週範圍控制：不改狀態模型、不重做 UI、不新增功能（只做回歸測試、RWD 收尾、
+  文件整理），本次的漢堡選單/篩選欄位換行修正屬於 RWD 收尾範圍，不算新增功能。

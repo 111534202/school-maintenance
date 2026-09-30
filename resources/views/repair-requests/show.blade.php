@@ -78,7 +78,30 @@
             </form>
         @elseif ($repairRequest->status === \App\Enums\RepairRequestStatus::InProgress)
             <a class="btn btn-primary" href="{{ route('repair-logs.create', $repairRequest) }}">填寫維修紀錄</a>
-        @elseif ($repairRequest->status === \App\Enums\RepairRequestStatus::PendingReview)
+        @endif
+
+        {{-- 重新指派（依《第四週個人工作計畫》第 1 項）：已派工／處理中都可以換人，
+             不影響案件本身的狀態，跟上面「派工」（新報修 -> 已派工）是不同的動作。 --}}
+        @if (in_array($repairRequest->status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::InProgress], true))
+            <details style="margin-top: 1rem;">
+                <summary style="cursor:pointer; color:#616e7c;">重新指派維修人員</summary>
+                <form method="POST" action="{{ route('repair-requests.reassign', $repairRequest) }}" style="margin-top: 0.8rem;">
+                    @csrf
+                    <div class="field">
+                        <label for="reassign_assignee_note">改指派給（維修人員）</label>
+                        <input type="text" id="reassign_assignee_note" name="assignee_note"
+                            value="{{ $repairRequest->assignee_note }}" required>
+                    </div>
+                    <div class="field">
+                        <label for="reassign_scheduled_at">預計處理日期（選填）</label>
+                        <input type="datetime-local" id="reassign_scheduled_at" name="scheduled_at">
+                    </div>
+                    <button class="btn btn-secondary" type="submit">確認重新指派</button>
+                </form>
+            </details>
+        @endif
+
+        @if ($repairRequest->status === \App\Enums\RepairRequestStatus::PendingReview)
             {{-- 驗收兩條路：通過就結案（不用填原因），不通過要退回並說明原因。 --}}
             <h3>驗收</h3>
             <form method="POST" action="{{ route('repair-requests.complete', $repairRequest) }}" class="inline">
@@ -110,8 +133,11 @@
                 </p>
                 <p><strong>故障原因：</strong>{{ $log->cause }}</p>
                 <p><strong>處置方式：</strong>{{ $log->resolution }}</p>
+                @if ($log->parts_used_note)
+                    <p><strong>使用備品：</strong>{{ $log->parts_used_note }}</p>
+                @endif
                 @if ($log->attachments->isNotEmpty())
-                    <p><strong>維修前後照片：</strong></p>
+                    <p><strong>維修前後照片／影片：</strong></p>
                     <ul>
                         @foreach ($log->attachments as $attachment)
                             <li><a href="{{ $attachment->url() }}" target="_blank">{{ $attachment->original_name }}</a></li>

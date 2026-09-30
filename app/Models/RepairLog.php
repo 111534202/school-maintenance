@@ -19,6 +19,7 @@ class RepairLog extends Model
         'repair_request_id', // 屬於哪一張報修單
         'cause',             // 故障原因說明
         'resolution',        // 處置方式（怎麼修的）
+        'parts_used_note',   // 使用備品說明（文字，parts 表介面確認前的暫時做法）
         'started_at',        // 開始處理時間
         'ended_at',          // 結束處理時間
         'total_hours',       // 總共花了幾小時（由 ended_at - started_at 算出來）

@@ -18,8 +18,8 @@
         <a class="btn btn-primary" href="{{ route('repair-requests.create') }}">＋ 新增報修</a>
     </div>
 
-    <form method="GET" action="{{ route('repair-requests.index') }}" style="display:flex; gap:0.5rem; margin-bottom:1rem; align-items:flex-end;">
-        <div class="field" style="margin-bottom:0;">
+    <form method="GET" action="{{ route('repair-requests.index') }}" class="filter-form">
+        <div class="field">
             <label for="status">狀態</label>
             <select id="status" name="status">
                 <option value="">全部</option>
@@ -30,12 +30,16 @@
                 @endforeach
             </select>
         </div>
-        <div class="field" style="margin-bottom:0;">
+        <div class="field">
             <label for="location">教室／地點</label>
             <input type="text" id="location" name="location" value="{{ request('location') }}" placeholder="例如：A101">
         </div>
+        <div class="field">
+            <label for="assignee">維修人員</label>
+            <input type="text" id="assignee" name="assignee" value="{{ request('assignee') }}" placeholder="例如：王小明">
+        </div>
         <button class="btn btn-secondary" type="submit">篩選</button>
-        @if (request('status') || request('location'))
+        @if (request('status') || request('location') || request('assignee'))
             <a class="btn btn-secondary" href="{{ route('repair-requests.index') }}">清除篩選</a>
         @endif
     </form>

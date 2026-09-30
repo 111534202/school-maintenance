@@ -185,4 +185,31 @@ class RepairRequestWorkflow
             return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
         });
     }
+
+    /**
+     * 重新指派（依《第四週個人工作計畫》第 1 項「重新指派操作」）：主管想把
+     * 案件改指派給別的維修人員，或改一下預計處理日期，但案件本身狀態不需要
+     * 跟著變動（跟 assign() 不一樣，assign() 是「新報修 -> 已派工」的狀態轉換，
+     * reassign() 純粹只是換人、不改變狀態）。
+     *
+     * 只允許在「已派工」或「處理中」這兩個狀態做重新指派——「新報修」還沒
+     * 派過工，應該走 assign()；「待驗收」「已結案」代表已經在走驗收流程，
+     * 這時候換人意義不大，也容易造成混亂，所以不開放。
+     */
+    public function reassign(RepairRequest $repairRequest, string $assigneeNote, ?string $scheduledAt): RepairRequest
+    {
+        $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
+
+        if (! in_array($repairRequest->status, $allowedStatuses, true)) {
+            throw new DomainException(
+                "案件狀態是「{$repairRequest->status->label()}」，不是「已派工」或「處理中」，不能重新指派。"
+            );
+        }
+
+        $repairRequest->assignee_note = $assigneeNote;
+        $repairRequest->scheduled_at = $scheduledAt;
+        $repairRequest->save();
+
+        return $repairRequest;
+    }
 }

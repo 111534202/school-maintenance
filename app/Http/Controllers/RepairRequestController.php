@@ -25,7 +25,8 @@ class RepairRequestController extends Controller
      * 維修案件看板（依《第 2 週個人工作計畫》第 2 項，第三週補強看板資訊）。
      *
      * 可以用網址參數 ?status=xxx 依狀態篩選、?location=xxx 依教室/地點篩選
-     * （模糊比對，例如打 "A1" 也找得到 "A101"）。
+     * （模糊比對，例如打 "A1" 也找得到 "A101"）、?assignee=xxx 依維修人員篩選
+     * （依《第四週個人工作計畫》第 1 項新增，一樣是模糊比對）。
      *
      * 另外會算出「每個維修人員手上還有幾張未結案的案件」，讓主管可以看客觀
      * 資料自己判斷要不要多分派給某人（規格明確要求「不做自動派工推薦」，
@@ -36,6 +37,7 @@ class RepairRequestController extends Controller
         $repairRequests = RepairRequest::query()
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('location'), fn ($query) => $query->where('location', 'like', '%' . $request->string('location') . '%'))
+            ->when($request->filled('assignee'), fn ($query) => $query->where('assignee_note', 'like', '%' . $request->string('assignee') . '%'))
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -119,6 +121,29 @@ class RepairRequestController extends Controller
         return redirect()
             ->route('repair-requests.show', $repairRequest)
             ->with('status', '已派工。');
+    }
+
+    /**
+     * 重新指派（依《第四週個人工作計畫》第 1 項）：案件已經派過工了，但主管想
+     * 換一個維修人員或改一下處理日期，不需要重新走一次狀態轉換。
+     * 跟 assign() 共用同一份表單驗證規則（欄位一模一樣），只是呼叫的 workflow
+     * 方法不同：assign() 會把狀態從「新報修」轉成「已派工」，reassign() 只換人。
+     */
+    public function reassign(AssignRepairRequestRequest $request, RepairRequest $repairRequest, RepairRequestWorkflow $workflow)
+    {
+        try {
+            $workflow->reassign(
+                $repairRequest,
+                $request->validated('assignee_note'),
+                $request->validated('scheduled_at'),
+            );
+        } catch (DomainException $exception) {
+            return $this->redirectWithWorkflowError($repairRequest, $exception);
+        }
+
+        return redirect()
+            ->route('repair-requests.show', $repairRequest)
+            ->with('status', '已重新指派。');
     }
 
     /**

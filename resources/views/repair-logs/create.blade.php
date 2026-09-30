@@ -30,8 +30,14 @@
         </div>
 
         <div class="field">
-            <label for="attachments">維修前後照片（選填，最多 5 個檔案，jpg/png/pdf，單檔 5MB 以內）</label>
-            <input type="file" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf">
+            <label for="parts_used_note">使用備品說明（選填，例如：更換投影機燈泡 x1）</label>
+            <input type="text" id="parts_used_note" name="parts_used_note" value="{{ old('parts_used_note') }}">
+            <small style="color:#616e7c;">備品主檔尚未合併進來，暫時用文字描述；之後會改成選單並自動扣庫存。</small>
+        </div>
+
+        <div class="field">
+            <label for="attachments">維修前後照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，單檔 20MB 以內）</label>
+            <input type="file" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm">
         </div>
 
         <button class="btn btn-primary" type="submit">送出維修紀錄（送出後案件進入待驗收）</button>

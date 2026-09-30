@@ -55,8 +55,8 @@
         </div>
 
         <div class="field">
-            <label for="attachments">附件（選填，最多 5 個檔案，jpg/png/pdf，單檔 5MB 以內）</label>
-            <input type="file" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf">
+            <label for="attachments">故障照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，單檔 20MB 以內）</label>
+            <input type="file" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm">
         </div>
 
         <button class="btn btn-primary" type="submit">送出報修</button>

@@ -26,6 +26,10 @@ Route::post('repair-requests/{repair_request}/assign', [RepairRequestController:
 Route::post('repair-requests/{repair_request}/start', [RepairRequestController::class, 'start'])
     ->name('repair-requests.start');
 
+// 重新指派（依《第四週個人工作計畫》第 1 項）：換維修人員/處理日期，不改變案件狀態。
+Route::post('repair-requests/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])
+    ->name('repair-requests.reassign');
+
 // 維修填單，送出後自動把案件推進到「待驗收」。
 Route::get('repair-requests/{repair_request}/repair-logs/create', [RepairLogController::class, 'create'])
     ->name('repair-logs.create');
