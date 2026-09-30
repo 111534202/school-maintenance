@@ -3,6 +3,7 @@
 use App\Http\Controllers\MaintenanceItemController;
 use App\Http\Controllers\MaintenanceOrderController;
 use App\Http\Controllers\MaintenancePlanController;
+use App\Http\Controllers\MaintenanceResultController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -34,4 +35,8 @@ Route::prefix('maintenance-plans')->name('maintenance-plans.')->group(function (
 Route::prefix('maintenance-orders')->name('maintenance-orders.')->group(function () {
     Route::get('/', [MaintenanceOrderController::class, 'index'])->name('index');
     Route::get('/{maintenanceOrder}', [MaintenanceOrderController::class, 'show'])->name('show');
+
+    // 保養結果（maintenance_results）— 第 2 週任務，OK/NG 回報與 NG 轉報修
+    Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
+    Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
 });

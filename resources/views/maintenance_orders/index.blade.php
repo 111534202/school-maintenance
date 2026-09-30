@@ -5,6 +5,38 @@
 @section('content')
     <h1 class="h3 mb-3">保養工單</h1>
 
+    <form method="GET" class="row g-2 align-items-end bg-white p-3 rounded shadow-sm mb-3">
+        <div class="col-auto">
+            <label for="status" class="form-label small mb-1">狀態</label>
+            <select name="status" id="status" class="form-select form-select-sm">
+                <option value="">全部</option>
+                <option value="pending" @selected(request('status') === 'pending')>待處理</option>
+                <option value="in_progress" @selected(request('status') === 'in_progress')>進行中</option>
+                <option value="completed" @selected(request('status') === 'completed')>已完成</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="source" class="form-label small mb-1">來源</label>
+            <select name="source" id="source" class="form-select form-select-sm">
+                <option value="">全部</option>
+                <option value="periodic" @selected(request('source') === 'periodic')>定期</option>
+                <option value="ai" @selected(request('source') === 'ai')>AI 辨識</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="from" class="form-label small mb-1">排定日期（起）</label>
+            <input type="date" name="from" id="from" class="form-control form-control-sm" value="{{ request('from') }}">
+        </div>
+        <div class="col-auto">
+            <label for="to" class="form-label small mb-1">排定日期（迄）</label>
+            <input type="date" name="to" id="to" class="form-control form-control-sm" value="{{ request('to') }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-primary">篩選</button>
+            <a href="{{ route('maintenance-orders.index') }}" class="btn btn-sm btn-outline-secondary">清除</a>
+        </div>
+    </form>
+
     <table class="table table-bordered bg-white align-middle">
         <thead class="table-light">
             <tr>
@@ -29,6 +61,9 @@
                     <td>{{ $order->created_at?->format('Y-m-d H:i') }}</td>
                     <td class="text-end">
                         <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary">詳細</a>
+                        @if (! $order->result)
+                            <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success">回報結果</a>
+                        @endif
                     </td>
                 </tr>
             @empty

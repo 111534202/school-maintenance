@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'maintenance_plan_id',
@@ -45,6 +47,20 @@ class MaintenanceOrder extends Model
     public function maintenancePlan(): BelongsTo
     {
         return $this->belongsTo(MaintenancePlan::class);
+    }
+
+    public function result(): HasOne
+    {
+        return $this->hasOne(MaintenanceResult::class);
+    }
+
+    /**
+     * 給設備履歷、Dashboard 等其他模組使用的穩定查詢介面（第 2 週任務 6）：
+     * 只回傳已完成的保養工單，不用讓其他模組自己拼 where 條件。
+     */
+    public function scopeCompleted(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
     }
 
     /**

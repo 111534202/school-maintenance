@@ -6,27 +6,35 @@ use App\Models\MaintenanceOrder;
 use App\Models\MaintenancePlan;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class MaintenanceOrderController extends Controller
 {
     /**
-     * 保養工單列表（第 1 週任務 6）。
+     * 保養工單列表（第 1 週任務 6；第 2 週任務 6 加上狀態/來源/日期篩選，
+     * 供設備履歷、Dashboard 等其他模組之後也能穩定查詢）。
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $orders = MaintenanceOrder::with('maintenancePlan')
+        $orders = MaintenanceOrder::query()
+            ->with(['maintenancePlan', 'result'])
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
+            ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
+            ->when($request->filled('to'), fn ($query) => $query->whereDate('scheduled_date', '<=', $request->date('to')))
             ->orderByDesc('scheduled_date')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('maintenance_orders.index', compact('orders'));
     }
 
     /**
-     * 保養工單詳細頁（第 1 週任務 6）。
+     * 保養工單詳細頁（第 1 週任務 6；第 2 週起一併顯示保養結果）。
      */
     public function show(MaintenanceOrder $maintenanceOrder): View
     {
-        $maintenanceOrder->load('maintenancePlan.maintenanceItems');
+        $maintenanceOrder->load('maintenancePlan.maintenanceItems', 'result');
 
         return view('maintenance_orders.show', compact('maintenanceOrder'));
     }

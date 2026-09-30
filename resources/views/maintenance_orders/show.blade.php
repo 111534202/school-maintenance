@@ -7,7 +7,12 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">保養工單詳細</h1>
-        <a href="{{ route('maintenance-orders.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
+        <div>
+            @if (! $maintenanceOrder->result)
+                <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
+            @endif
+            <a href="{{ route('maintenance-orders.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
+        </div>
     </div>
 
     <div class="card">
@@ -48,6 +53,39 @@
             </dl>
         </div>
     </div>
+
+    @if ($maintenanceOrder->result)
+        @php [$resultText, $resultColor] = $maintenanceOrder->result->resultLabel(); @endphp
+        <div class="card mt-3">
+            <div class="card-header">保養結果</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">結果</dt>
+                    <dd class="col-sm-9"><span class="badge text-bg-{{ $resultColor }}">{{ $resultText }}</span></dd>
+
+                    <dt class="col-sm-3">執行人</dt>
+                    <dd class="col-sm-9">{{ $maintenanceOrder->result->executed_by ?? '—' }}</dd>
+
+                    <dt class="col-sm-3">執行時間</dt>
+                    <dd class="col-sm-9">{{ $maintenanceOrder->result->executed_at?->format('Y-m-d H:i') }}</dd>
+
+                    <dt class="col-sm-3">備註</dt>
+                    <dd class="col-sm-9">{{ $maintenanceOrder->result->notes ?? '—' }}</dd>
+
+                    @if ($maintenanceOrder->result->isNg())
+                        <dt class="col-sm-3">轉報修狀態</dt>
+                        <dd class="col-sm-9">
+                            @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
+                                <span class="badge text-bg-warning">待轉報修（等彭仕衡介面串接）</span>
+                            @else
+                                {{ $maintenanceOrder->result->ng_conversion_status ?? '—' }}
+                            @endif
+                        </dd>
+                    @endif
+                </dl>
+            </div>
+        </div>
+    @endif
 
     @if ($maintenanceOrder->maintenancePlan?->maintenanceItems->isNotEmpty())
         <div class="card mt-3">
