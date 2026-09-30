@@ -1,147 +1,113 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', __('common.nav.knowledge_base')) - {{ config('app.name') }}</title>
+    <title>@yield('title', __('common.site_title'))</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, "Microsoft JhengHei", Arial, sans-serif; margin: 0; background: #f5f6f8; color: #1f2933; }
-        header { background: #1f2933; color: #fff; padding: 1rem 1.5rem; }
-        header a { color: #fff; text-decoration: none; font-weight: 600; }
-        main { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
-        /* 表格外面包一層可以左右捲動的容器，欄位文字就不會被硬擠到下一行。 */
-        .table-scroll { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td {
-            padding: 0.6rem 0.8rem; border-bottom: 1px solid #e4e7eb; text-align: left; vertical-align: top;
-            white-space: nowrap; /* 同一列的文字一律保持在同一行，太長就讓外層容器左右捲動 */
+        body { min-height: 100vh; }
+        .app-sidebar { min-height: calc(100vh - 56px); }
+        .app-sidebar .nav-link, .offcanvas .nav-link { color: #495057; }
+        .app-sidebar .nav-link.active, .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .app-content { min-width: 0; }
+        @media (max-width: 575.98px) {
+            .app-content { padding: 1rem !important; }
         }
-        th { background: #eceff1; }
-        .btn { display: inline-block; padding: 0.4rem 0.9rem; border-radius: 4px; text-decoration: none; font-size: 0.9rem; cursor: pointer; border: none; }
-        .btn-primary { background: #2563eb; color: #fff; }
-        .btn-danger { background: #dc2626; color: #fff; }
-        .btn-secondary { background: #9aa5b1; color: #fff; }
-        form.inline { display: inline; }
-        .field { margin-bottom: 1rem; }
-        .field label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
-        .field input[type=text], .field textarea, .field select {
-            width: 100%; padding: 0.5rem; border: 1px solid #cbd2d9; border-radius: 4px; box-sizing: border-box;
+        /* 中文在窄欄位會逐字換行，讓表格看起來直排；改成不換行，
+           太寬就交給 .table-responsive 的水平捲動處理 */
+        .table-responsive table th, .table-responsive table td {
+            white-space: nowrap;
         }
-        .field textarea { min-height: 6rem; }
-        .errors { background: #fde8e8; color: #9b1c1c; padding: 0.8rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
-        .status { background: #e3f9e5; color: #0e6245; padding: 0.8rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
-        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 3px; font-size: 0.8rem; }
-        .badge-on { background: #e3f9e5; color: #0e6245; }
-        .badge-off { background: #eceff1; color: #616e7c; }
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
-
-        /* 篩選表單（依第五週 RWD 收尾）：桌面版並排顯示，手機畫面不夠寬時自動換行，
-           每個欄位至少保留 140px，不會被硬擠到選項文字都看不完整。 */
-        .filter-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; align-items: flex-end; }
-        .filter-form .field { margin-bottom: 0; flex: 1 1 140px; min-width: 140px; }
-
-        /* 漢堡選單（依《第五週個人工作計畫》第 3 項 RWD 收尾）：手機畫面窄的時候，
-           把導覽連結收進左上角的選單按鈕裡，不會跟標題擠在一起換行。 */
-        .hamburger-btn {
-            background: none; border: none; color: #fff; font-size: 1.5rem; line-height: 1;
-            cursor: pointer; padding: 0.2rem 0.6rem; margin-right: 0.75rem;
-        }
-        .site-title { color: #fff; text-decoration: none; font-weight: 600; }
-        .hamburger-menu {
-            position: absolute; top: 100%; left: 0; background: #1f2933; min-width: 200px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 10;
-        }
-        /* [hidden] 是瀏覽器內建屬性，比用 class 切換 display 更簡單可靠。 */
-        .hamburger-menu[hidden] { display: none; }
-        .hamburger-menu a {
-            display: block; padding: 0.7rem 1.2rem; color: #fff; text-decoration: none;
-        }
-        .hamburger-menu a:hover { background: #374151; }
-
-        /* i18n 語言切換下拉選單：固定在右上角（跟漢堡選單分開，不佔用漢堡選單版位）。
-           margin-left: auto 讓它在 flex header 裡自動被推到最右邊。 */
-        .locale-switcher { margin-left: auto; }
+        /* i18n 語言切換下拉選單：跟登出按鈕放在同一排右上角。 */
         .locale-switcher select {
-            background: #374151; color: #fff; border: 1px solid #4b5563; border-radius: 4px;
-            padding: 0.3rem 0.5rem; font-size: 0.9rem; cursor: pointer;
+            background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 4px; padding: 0.25rem 0.4rem; font-size: 0.85rem;
         }
+        .locale-switcher select option { color: #212529; }
     </style>
 </head>
-<body>
-    <header style="display:flex; align-items:center; position:relative;">
-        {{-- 左上角漢堡選單按鈕：點下去展開／收合下面的導覽選單，純前端 JS 切換，不用任何框架。 --}}
-        <button type="button" class="hamburger-btn" id="menu-toggle" aria-expanded="false" aria-controls="site-menu">
-            ☰
-        </button>
-        <a href="{{ route('knowledge-base.index') }}" class="site-title">{{ __('common.site_title') }}</a>
-
-        <nav id="site-menu" class="hamburger-menu" hidden>
-            <a href="{{ route('knowledge-base.index') }}">{{ __('common.nav.knowledge_base') }}</a>
-            <a href="{{ route('repair-requests.index') }}">{{ __('common.nav.repair_requests') }}</a>
-        </nav>
-
-        {{-- i18n 語言切換：放在右上角、跟漢堡選單分開，下拉選單選了就直接跳轉。
-             每個 option 的 value 直接放完整網址，JS 只要把網址設進 location.href 就好，
-             不用另外寫 route 對照表。 --}}
-        <div class="locale-switcher">
-            <label for="locale-select" class="sr-only" style="position:absolute; left:-9999px;">{{ __('common.locale.zh_TW') }} / {{ __('common.locale.en') }}</label>
-            <select id="locale-select">
-                <option value="{{ route('locale.switch', 'zh_TW') }}" @selected(app()->getLocale() === 'zh_TW')>{{ __('common.locale.zh_TW') }}</option>
-                <option value="{{ route('locale.switch', 'en') }}" @selected(app()->getLocale() === 'en')>{{ __('common.locale.en') }}</option>
-            </select>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <button class="btn btn-outline-light d-md-none me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <span class="navbar-brand text-truncate">{{ __('common.site_title') }}</span>
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                {{-- i18n 語言切換：選了直接跳轉到 /locale/{locale}，value 本身就是完整網址。 --}}
+                <div class="locale-switcher">
+                    <select id="locale-select" aria-label="{{ __('common.locale.zh_TW') }} / {{ __('common.locale.en') }}">
+                        <option value="{{ route('locale.switch', 'zh_TW') }}" @selected(app()->getLocale() === 'zh_TW')>{{ __('common.locale.zh_TW') }}</option>
+                        <option value="{{ route('locale.switch', 'en') }}" @selected(app()->getLocale() === 'en')>{{ __('common.locale.en') }}</option>
+                    </select>
+                </div>
+                @auth
+                    <span class="text-light small d-none d-sm-inline">
+                        {{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}
+                    </span>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-light btn-sm">登出</button>
+                    </form>
+                @endauth
+            </div>
         </div>
-    </header>
+    </nav>
 
     <script>
-        // 純陽春的顯示/隱藏切換：點按鈕就打開或關閉選單；點選單以外的地方也會自動關閉。
-        (function () {
-            var toggleButton = document.getElementById('menu-toggle');
-            var menu = document.getElementById('site-menu');
-
-            toggleButton.addEventListener('click', function (event) {
-                event.stopPropagation();
-                var isHidden = menu.hasAttribute('hidden');
-                if (isHidden) {
-                    menu.removeAttribute('hidden');
-                } else {
-                    menu.setAttribute('hidden', '');
-                }
-                toggleButton.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
-            });
-
-            document.addEventListener('click', function (event) {
-                if (!menu.contains(event.target) && event.target !== toggleButton) {
-                    menu.setAttribute('hidden', '');
-                    toggleButton.setAttribute('aria-expanded', 'false');
-                }
-            });
-        })();
-
-        // 語言切換下拉選單：選了哪個語言，value 本身就是那個語言的切換網址，直接跳轉過去。
         document.getElementById('locale-select').addEventListener('change', function () {
             window.location.href = this.value;
         });
     </script>
-    <main>
-        @if (session('status'))
-            <div class="status">{{ session('status') }}</div>
-        @endif
 
-        @if (session('error'))
-            <div class="errors">{{ session('error') }}</div>
-        @endif
-
-        @if ($errors->any())
-            <div class="errors">
-                <ul style="margin:0; padding-left: 1.2rem;">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+    @auth
+        {{-- 手機版側邊選單（< md 才會出現按鈕觸發） --}}
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
+            <div class="offcanvas-header">
+                <h6 class="offcanvas-title">選單</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
             </div>
-        @endif
+            <div class="offcanvas-body">
+                <div class="nav flex-column">
+                    @include('layouts.partials.nav-links')
+                </div>
+            </div>
+        </div>
 
-        @yield('content')
-    </main>
+        <div class="d-flex">
+            <div class="app-sidebar bg-white border-end d-none d-md-block" style="width: 220px;">
+                <div class="nav flex-column p-2">
+                    @include('layouts.partials.nav-links')
+                </div>
+            </div>
+
+            <div class="flex-grow-1 app-content p-3 p-md-4">
+                @if (session('success'))
+                    <div class="alert alert-success">{{ session('success') }}</div>
+                @endif
+                @if (session('error'))
+                    <div class="alert alert-danger">{{ session('error') }}</div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @yield('content')
+            </div>
+        </div>
+    @else
+        <div class="app-content p-3 p-md-4">
+            @yield('content')
+        </div>
+    @endauth
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
