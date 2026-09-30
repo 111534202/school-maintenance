@@ -5,7 +5,7 @@
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">保養工單詳細</h1>
         <div>
             @if (! $maintenanceOrder->result)
