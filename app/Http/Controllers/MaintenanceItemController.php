@@ -40,7 +40,7 @@ class MaintenanceItemController extends Controller
 
         return redirect()
             ->route('maintenance-items.index')
-            ->with('status', '保養項目新增成功');
+            ->with('success', '保養項目新增成功');
     }
 
     public function edit(MaintenanceItem $maintenanceItem): View
@@ -54,7 +54,7 @@ class MaintenanceItemController extends Controller
 
         return redirect()
             ->route('maintenance-items.index')
-            ->with('status', '保養項目更新成功');
+            ->with('success', '保養項目更新成功');
     }
 
     /**
@@ -66,6 +66,6 @@ class MaintenanceItemController extends Controller
 
         return redirect()
             ->route('maintenance-items.index')
-            ->with('status', $maintenanceItem->is_active ? '已重新啟用' : '已停用');
+            ->with('success', $maintenanceItem->is_active ? '已重新啟用' : '已停用');
     }
 }

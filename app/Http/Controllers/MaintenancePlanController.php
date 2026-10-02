@@ -48,7 +48,7 @@ class MaintenancePlanController extends Controller
 
         return redirect()
             ->route('maintenance-plans.index')
-            ->with('status', '保養計畫新增成功');
+            ->with('success', '保養計畫新增成功');
     }
 
     public function edit(MaintenancePlan $maintenancePlan): View
@@ -70,7 +70,7 @@ class MaintenancePlanController extends Controller
 
         return redirect()
             ->route('maintenance-plans.index')
-            ->with('status', '保養計畫更新成功');
+            ->with('success', '保養計畫更新成功');
     }
 
     /**
@@ -82,7 +82,7 @@ class MaintenancePlanController extends Controller
 
         return redirect()
             ->route('maintenance-plans.index')
-            ->with('status', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
+            ->with('success', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
     }
 
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon

@@ -57,6 +57,6 @@ class MaintenanceOrderController extends Controller
             'scheduled_date' => $maintenancePlan->next_due_date,
         ]);
 
-        return redirect()->route('maintenance-orders.index')->with('status', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單');
+        return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單');
     }
 }

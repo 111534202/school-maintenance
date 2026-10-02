@@ -41,6 +41,6 @@ class MaintenanceResultController extends Controller
             ? '保養結果已回報為 NG，已標記待轉報修（等彭仕衡的報修介面串接後會自動建立報修單）'
             : '保養結果已回報為 OK，工單已完成';
 
-        return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('status', $status);
+        return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('success', $status);
     }
 }
