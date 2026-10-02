@@ -6,6 +6,8 @@ use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\DeviceCategoryController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceEntryController;
+use App\Http\Controllers\DeviceProfileController;
+use App\Http\Controllers\MaintenanceCompletionRateController;
 use App\Http\Controllers\MaintenanceItemController;
 use App\Http\Controllers\MaintenanceOrderController;
 use App\Http\Controllers\MaintenancePlanController;
@@ -57,9 +59,23 @@ Route::middleware('auth')->group(function () {
         Route::get('/{maintenanceOrder}', [MaintenanceOrderController::class, 'show'])->name('show');
 
         // 保養結果（maintenance_results）— 第 2 週任務，OK/NG 回報與 NG 轉報修
+        // 第 3 週任務 3：加一個獨立的結果詳細頁，不只嵌在工單詳細頁裡。
         Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
         Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
+        Route::get('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'show'])->name('results.show');
     });
+
+    // 設備履歷（device_profile）— 第 3 週任務 2：以設備為中心的唯讀彙總頁，
+    // 不建立新資料表，報修/維修/成本/附件等待其他組員的分支併入 develop 後再串接。
+    // 工程實作決定：暫不限定角色，跟保養模組其餘頁面一致。
+    Route::prefix('device-profile')->name('device-profile.')->group(function () {
+        Route::get('/', [DeviceProfileController::class, 'index'])->name('index');
+        Route::get('/{device:device_code}', [DeviceProfileController::class, 'show'])->name('show');
+    });
+
+    // 保養完成率資料接口（第 3 週任務 4）— 給劉家芸的 Dashboard 模組呼叫，回傳 JSON，不是使用者頁面。
+    Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
+        ->name('maintenance-completion-rate.index');
 
     // 管理端入口：教室、設備類別、設備管理、audit log 查詢僅開放 admin / it_manager
     Route::middleware('role:admin,it_manager')->group(function () {

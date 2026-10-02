@@ -40,8 +40,11 @@
             <label for="executed_by" class="form-label">執行人 <span class="text-danger">*</span></label>
             <input type="text" name="executed_by" id="executed_by"
                 class="form-control @error('executed_by') is-invalid @enderror"
-                value="{{ old('executed_by') }}" required maxlength="100"
-                placeholder="工程實作欄位：目前尚無登入系統，先手動輸入姓名">
+                value="{{ old('executed_by', auth()->user()->name) }}" required maxlength="100">
+            <div class="form-text">
+                預設帶入登入帳號的姓名；欄位目前仍是純文字記錄（工程實作決定，待全組確認後再評估改成 user_id 外鍵），
+                如果是代別人回報可以直接改掉。
+            </div>
             @error('executed_by')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror

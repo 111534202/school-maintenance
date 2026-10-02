@@ -57,7 +57,10 @@
     @if ($maintenanceOrder->result)
         @php [$resultText, $resultColor] = $maintenanceOrder->result->resultLabel(); @endphp
         <div class="card mt-3">
-            <div class="card-header">保養結果</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>保養結果</span>
+                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary">查看完整詳細</a>
+            </div>
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-3">結果</dt>
