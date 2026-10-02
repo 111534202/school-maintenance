@@ -4,7 +4,7 @@
 // 修改這個檔案時，記得同步修改 lang/en/repair_requests.php，兩邊的 key 必須完全一致。
 return [
     'board_title' => '維修案件看板',
-    'add_request' => '＋ 新增報修',
+    'add_request' => '新增報修',
     'empty_list' => '目前沒有符合條件的報修案件。',
 
     'filter' => [
@@ -50,14 +50,23 @@ return [
     'create' => [
         'title' => '新增報修案件',
         'from_kb_notice' => '承接自知識庫「:title」，已排除步驟仍無法解決，請補充下面資訊送出報修。',
+        'section_device' => '設備',
+        'section_issue' => '問題描述',
+        'section_attachments' => '附件',
         'title_label' => '報修標題',
         'device_code_label' => '設備條碼／編號（可掃描或手動輸入）',
         'device_code_placeholder' => '例如：DEV-A101-01',
-        'device_code_hint' => '掃描或輸入設備編號後會自動帶入設備資訊，不用再手動描述設備。',
+        'device_code_hint' => '可用條碼槍、相機掃描，或手動輸入設備編號、資產編號；掃描後會自動帶入設備資訊。',
+        'scan_button' => '用相機掃描',
+        'scan_title' => '掃描設備條碼／QR',
+        'scan_hint' => '把設備上的條碼或 QR 貼紙對準畫面中央，掃到後會自動帶入設備資訊。',
+        'scan_insecure' => '瀏覽器只允許在 HTTPS 或 localhost 開啟相機，請改用 HTTPS 網址，或直接在欄位輸入設備編號。',
+        'scan_camera_error' => '無法開啟相機，請確認已允許瀏覽器使用相機，或直接在欄位輸入設備編號。',
+        'scan_library_error' => '掃描元件載入失敗（可能是網路問題），請直接在欄位輸入設備編號。',
         'device_lookup_error' => '找不到這個設備編號，請確認條碼或改用下面的文字描述。',
         'device_display_label' => '掃描到的設備：',
-        'device_note_label' => '設備位置／描述（例如：A101 教室投影機；若上面已掃描到設備可略過）',
-        'device_note_hint' => '沒有掃描設備條碼時，用文字描述設備位置；有掃描的話系統會自動記錄真正的設備資料。',
+        'device_note_label' => '設備位置／描述（沒有條碼時填寫）',
+        'device_note_hint' => '已掃描設備的話，系統會自動記錄真正的設備資料，這兩欄可以留空。',
         'location_label' => '地點（選填）',
         'description_label' => '故障描述',
         'description_prefill' => "已依「:title」的排除步驟嘗試過，仍無法解決：\n",

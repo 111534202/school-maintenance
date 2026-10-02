@@ -96,12 +96,33 @@ class RepairRequestController extends Controller
 
     /**
      * 設備條碼／QR 掃描查詢（給新增報修頁的「掃描設備條碼」欄位用 AJAX 查詢），
-     * 掃描或輸入 device_code 後直接回傳 JSON，前端 JS 收到後即時把設備資訊填進
-     * 表單欄位，不用整頁重新導向，是「簡化報修流程」的核心功能。
+     * 回傳 JSON，前端 JS 收到後即時把設備資訊填進表單欄位，不用整頁重新導向，
+     * 是「簡化報修流程」的核心功能。
+     *
+     * 掃描到的內容有好幾種可能，這裡都要接得住：
+     * - 設備編號（device_code，一般條碼貼紙或手動輸入）
+     * - 資產編號（asset_code）、序號（serial_number）
+     * - 設備 QR 貼紙：編碼的是整串網址 https://.../d/{device_code}（見 DeviceController::qrcode），
+     *   掃到整串網址時只取最後的設備編號。
      */
-    public function deviceLookup(Device $device)
+    public function deviceLookup(Request $request)
     {
-        $device->load(['category', 'classroom']);
+        $code = trim((string) $request->query('code'));
+
+        if (preg_match('#/d/([^/?\#\s]+)#', $code, $matches)) {
+            $code = urldecode($matches[1]);
+        }
+
+        abort_if($code === '', 404);
+
+        $device = Device::with(['category', 'classroom'])
+            ->where(fn ($query) => $query
+                ->where('device_code', $code)
+                ->orWhere('asset_code', $code)
+                ->orWhere('serial_number', $code))
+            ->first();
+
+        abort_if($device === null, 404);
 
         return response()->json([
             'id' => $device->id,

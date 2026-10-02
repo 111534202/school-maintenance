@@ -7,7 +7,7 @@ return [
 
     'nav' => [
         'knowledge_base' => 'Self-Help Knowledge Base',
-        'repair_requests' => 'My Repairs (Repair Request Board)',
+        'repair_requests' => 'Repairs',
     ],
 
     'locale' => [
@@ -23,5 +23,6 @@ return [
         'back_to_list' => 'Back to List',
         'filter' => 'Filter',
         'clear_filter' => 'Clear Filter',
+        'view' => 'View',
     ],
 ];

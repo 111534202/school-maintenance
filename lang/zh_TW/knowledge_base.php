@@ -5,7 +5,7 @@
 return [
     'index_title' => '知識庫列表',
     'index_heading' => '自助排除知識庫',
-    'add_entry' => '＋ 新增項目',
+    'add_entry' => '新增項目',
     'empty_list' => '目前還沒有任何知識庫項目。',
 
     'table' => [

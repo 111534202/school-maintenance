@@ -156,10 +156,38 @@ class RepairRequestFlowTest extends TestCase
     {
         $device = $this->makeDevice();
 
-        $response = $this->getJson(route('repairs.device-lookup', $device->device_code));
+        $response = $this->getJson(route('repairs.device-lookup', ['code' => $device->device_code]));
 
         $response->assertOk();
         $response->assertJson(['id' => $device->id, 'device_code' => $device->device_code]);
+    }
+
+    public function test_device_lookup_accepts_the_full_url_encoded_in_the_qr_sticker(): void
+    {
+        // 設備 QR 貼紙編碼的是 route('devices.entry') 的整串網址（.../d/{device_code}），
+        // 掃到整串網址也要找得到設備（曾經只認純設備編號，掃 QR 會「找不到設備」）。
+        $device = $this->makeDevice();
+
+        $response = $this->getJson(route('repairs.device-lookup', ['code' => route('devices.entry', $device)]));
+
+        $response->assertOk();
+        $response->assertJson(['id' => $device->id]);
+    }
+
+    public function test_device_lookup_accepts_asset_code_and_serial_number(): void
+    {
+        $device = $this->makeDevice(['asset_code' => 'AST-9001', 'serial_number' => 'SN-777']);
+
+        $this->getJson(route('repairs.device-lookup', ['code' => 'AST-9001']))->assertOk()->assertJson(['id' => $device->id]);
+        $this->getJson(route('repairs.device-lookup', ['code' => 'SN-777']))->assertOk()->assertJson(['id' => $device->id]);
+    }
+
+    public function test_device_lookup_returns_404_for_unknown_or_empty_code(): void
+    {
+        $this->makeDevice();
+
+        $this->getJson(route('repairs.device-lookup', ['code' => 'NOPE-000']))->assertNotFound();
+        $this->getJson(route('repairs.device-lookup'))->assertNotFound();
     }
 
     public function test_submitting_a_repair_request_with_device_id_links_the_real_device(): void

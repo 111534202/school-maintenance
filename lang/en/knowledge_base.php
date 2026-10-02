@@ -5,7 +5,7 @@
 return [
     'index_title' => 'Knowledge Base List',
     'index_heading' => 'Self-Help Troubleshooting Knowledge Base',
-    'add_entry' => '+ Add Entry',
+    'add_entry' => 'Add Entry',
     'empty_list' => 'There are no knowledge base entries yet.',
 
     'table' => [

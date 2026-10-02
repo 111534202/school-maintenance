@@ -7,7 +7,7 @@ return [
 
     'nav' => [
         'knowledge_base' => '自助知識庫',
-        'repair_requests' => '我的報修（維修案件看板）',
+        'repair_requests' => '報修',
     ],
 
     'locale' => [
@@ -23,5 +23,6 @@ return [
         'back_to_list' => '返回列表',
         'filter' => '篩選',
         'clear_filter' => '清除篩選',
+        'view' => '檢視',
     ],
 ];

@@ -62,6 +62,12 @@ Route::middleware('auth')->group(function () {
     Route::get('knowledge-base/{knowledge_base}/resolved', [KnowledgeBaseController::class, 'resolved'])
         ->name('knowledge-base.resolved');
 
+    // 設備條碼／QR 掃描查詢（供新增報修頁的「掃描設備條碼」欄位即時查詢用），回傳 JSON。
+    // 用 ?code= 查詢參數而不是網址片段，因為掃到的內容可能是整串網址（含斜線）；
+    // 一定要放在下面 resource 之前，不然 repairs/device-lookup 會被當成 repairs/{repair_request}。
+    Route::get('repairs/device-lookup', [RepairRequestController::class, 'deviceLookup'])
+        ->name('repairs.device-lookup');
+
     // 本週不做編輯、刪除報修單本身，狀態改變一律走下面的 assign/start/repair-logs 動作路由。
     // ->parameters(...) 讓 resource 路由的網址參數也叫 repair_request，跟下面
     // assign/start/reassign 等動作路由的參數名稱一致（曾經因為預設縮寫成 {repair}
@@ -69,11 +75,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('repairs', RepairRequestController::class)
         ->parameters(['repairs' => 'repair_request'])
         ->only(['index', 'create', 'store', 'show']);
-
-    // 設備條碼／QR 掃描查詢（供新增報修頁的「掃描設備條碼」欄位即時查詢用），
-    // 回傳 JSON，不是頁面。
-    Route::get('repairs/device-lookup/{device:device_code}', [RepairRequestController::class, 'deviceLookup'])
-        ->name('repairs.device-lookup');
 
     // 人工派工（新報修 -> 已派工）與開始處理（已派工 -> 處理中）。
     Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])

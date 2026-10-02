@@ -4,7 +4,7 @@
 // accept/reject/reassign). Keep the keys identical to lang/zh_TW/repair_requests.php.
 return [
     'board_title' => 'Repair Request Board',
-    'add_request' => '+ New Repair Request',
+    'add_request' => 'New Repair Request',
     'empty_list' => 'No repair requests match the current filter.',
 
     'filter' => [
@@ -50,14 +50,23 @@ return [
     'create' => [
         'title' => 'New Repair Request',
         'from_kb_notice' => 'Continuing from knowledge base article ":title" — the steps above did not solve it. Please fill in the details below to submit a repair request.',
+        'section_device' => 'Device',
+        'section_issue' => 'Issue Details',
+        'section_attachments' => 'Attachments',
         'title_label' => 'Request Title',
         'device_code_label' => 'Device Barcode / Code (scan or type it in)',
         'device_code_placeholder' => 'e.g. DEV-A101-01',
-        'device_code_hint' => 'Scanning or typing a device code auto-fills the device info below — no need to describe the device manually.',
+        'device_code_hint' => 'Use a barcode scanner, the camera, or type the device or asset code — the device info is filled in automatically.',
+        'scan_button' => 'Scan with camera',
+        'scan_title' => 'Scan device barcode / QR',
+        'scan_hint' => 'Point the camera at the barcode or QR sticker on the device. The device info is filled in automatically once it is scanned.',
+        'scan_insecure' => 'Browsers only allow camera access on HTTPS or localhost. Use an HTTPS address, or type the device code into the field.',
+        'scan_camera_error' => 'Could not open the camera. Make sure the browser is allowed to use it, or type the device code into the field.',
+        'scan_library_error' => 'Failed to load the scanner component (possibly a network issue). Type the device code into the field instead.',
         'device_lookup_error' => "Couldn't find that device code — check the barcode or describe the device in the text field below instead.",
         'device_display_label' => 'Scanned device: ',
-        'device_note_label' => 'Device Location / Description (e.g. Classroom A101 projector; skip if a device was already scanned above)',
-        'device_note_hint' => "If you didn't scan a device code, describe the device location here — if you did, the real device record is used automatically.",
+        'device_note_label' => 'Device Location / Description (if no barcode)',
+        'device_note_hint' => 'If you scanned a device, the real device record is used automatically — these two fields can stay empty.',
         'location_label' => 'Location (optional)',
         'description_label' => 'Issue Description',
         'description_prefill' => "Already tried the steps from \":title\", still not resolved:\n",
