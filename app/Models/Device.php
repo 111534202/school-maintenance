@@ -23,6 +23,15 @@ class Device extends Model
     // 設備狀態列舉：normal=正常, repairing=維修中, retired=已淘汰, disabled=停用
     public const STATUSES = ['normal', 'repairing', 'retired', 'disabled'];
 
+    /** 狀態的顯示名稱（中文／英文依目前語言），翻譯檔沒有的代碼就原樣顯示。 */
+    public static function statusLabel(?string $status): string
+    {
+        $key = 'devices.status.' . $status;
+        $label = __($key);
+
+        return $label === $key ? (string) $status : $label;
+    }
+
     public function category()
     {
         return $this->belongsTo(DeviceCategory::class, 'device_category_id');

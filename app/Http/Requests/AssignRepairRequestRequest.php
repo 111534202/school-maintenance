@@ -25,15 +25,15 @@ class AssignRepairRequestRequest extends FormRequest
     public function rules(): array
     {
         // Rule::exists()->where() 的 closure 收到的是純 query builder（不是 Eloquent
-        // Builder），不能用 whereHas()，所以先查出 technician 角色的 id，直接用
-        // role_id 這個外鍵欄位比對。
-        $technicianRoleId = Role::where('slug', 'technician')->value('id');
+        // Builder），不能用 whereHas()，所以先查出「有勾選可被指派為維修人員」的身分 id，
+        // 直接用 role_id 這個外鍵欄位比對；停用中的帳號也不能被指派。
+        $assignableRoleIds = Role::withPermission('repairs.assignable')->pluck('id')->all();
 
         return [
             'assigned_to' => [
                 'required',
                 'integer',
-                Rule::exists('users', 'id')->where('role_id', $technicianRoleId),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role_id', $assignableRoleIds)->where('is_active', true)),
             ],
             'scheduled_at' => ['nullable', 'date'],
         ];

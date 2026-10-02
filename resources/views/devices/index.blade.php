@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', '設備管理')
+@section('title', '設備主檔')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">設備管理</h3>
+        <h3 class="mb-0">設備主檔</h3>
         <a href="{{ route('devices.create') }}" class="btn btn-primary">新增設備</a>
     </div>
 
@@ -32,7 +32,7 @@
             <select name="status" class="form-select form-select-sm">
                 <option value="">所有狀態</option>
                 @foreach (\App\Models\Device::STATUSES as $status)
-                    <option value="{{ $status }}" @selected(request('status') === $status)>{{ $status }}</option>
+                    <option value="{{ $status }}" @selected(request('status') === $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
                 @endforeach
             </select>
         </div>
@@ -43,7 +43,7 @@
 
     <div class="card">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-bordered table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>設備編號</th>
@@ -62,7 +62,7 @@
                             <td>{{ $device->category->name ?? '－' }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
                             <td>{{ $device->classroom->room_name ?? '－' }}</td>
-                            <td><span class="badge bg-info text-dark">{{ $device->status }}</span></td>
+                            <td><span class="badge bg-info text-dark">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
                             <td>
                                 @if ($device->is_core)
                                     <span class="badge bg-warning text-dark">核心</span>

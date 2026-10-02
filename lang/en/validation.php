@@ -218,6 +218,18 @@ return [
         'assignee_note' => 'technician',
         'scheduled_at' => 'scheduled date',
         'rejection_reason' => 'rejection reason',
+        'username' => 'username',
+        'email' => 'email',
+        'phone' => 'phone',
+        'role_id' => 'role',
+        'department_id' => 'department',
+        'is_active' => 'account status',
+        'password' => 'password',
+        'password_confirmation' => 'password confirmation',
+        'login' => 'account',
+        'code' => 'code',
+        'permissions' => 'permissions',
+        'permissions.*' => 'permission',
     ],
 
 ];

@@ -190,6 +190,14 @@ class RepairRequestFlowTest extends TestCase
         $this->getJson(route('repairs.device-lookup'))->assertNotFound();
     }
 
+    public function test_old_repair_requests_urls_redirect_to_the_new_repairs_urls(): void
+    {
+        // 路由曾經叫 /repair-requests，書籤裡的舊網址不能變成 404。
+        $this->get('/repair-requests')->assertRedirect('/repairs')->assertStatus(301);
+        $this->get('/repair-requests/create')->assertRedirect('/repairs/create');
+        $this->get('/repair-requests/5')->assertRedirect('/repairs/5');
+    }
+
     public function test_submitting_a_repair_request_with_device_id_links_the_real_device(): void
     {
         $device = $this->makeDevice();

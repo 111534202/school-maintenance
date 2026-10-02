@@ -33,7 +33,8 @@ class ClassroomController extends Controller
 
     public function create()
     {
-        $departments = Department::orderBy('name')->get();
+        // 部門下拉選單從部門主檔讀，只列啟用中的部門。
+        $departments = Department::forSelect()->get();
         $managers = User::orderBy('name')->get();
 
         return view('classrooms.create', compact('departments', 'managers'));
@@ -52,7 +53,8 @@ class ClassroomController extends Controller
 
     public function edit(Classroom $classroom)
     {
-        $departments = Department::orderBy('name')->get();
+        // 這間教室目前所屬的部門即使被停用，也要保留在選項裡。
+        $departments = Department::forSelect($classroom->department_id)->get();
         $managers = User::orderBy('name')->get();
 
         return view('classrooms.edit', compact('classroom', 'departments', 'managers'));

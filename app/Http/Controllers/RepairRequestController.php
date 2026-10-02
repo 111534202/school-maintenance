@@ -11,6 +11,7 @@ use App\Http\Requests\AssignRepairRequestRequest;
 use App\Http\Requests\RejectRepairRequestRequest;
 use App\Http\Requests\StoreRepairRequestRequest;
 use App\Services\AttachmentUploader;
+use App\Services\AuditLogger;
 use App\Services\RepairAssignmentNotifier;
 use App\Services\RepairRequestWorkflow;
 use DomainException;
@@ -151,6 +152,12 @@ class RepairRequestController extends Controller
             $attachmentUploader->storeMany($repairRequest, $request->file('attachments'));
         }
 
+        AuditLogger::log('created', $repairRequest, [
+            'title' => $repairRequest->title,
+            'device_id' => $repairRequest->device_id,
+            'impact_level' => $repairRequest->impact_level,
+        ], __('audit.messages.repair_created', ['title' => $repairRequest->title]));
+
         return redirect()
             ->route('repairs.show', $repairRequest)
             ->with('success', __('repair_requests.flash.submitted'));
@@ -163,9 +170,10 @@ class RepairRequestController extends Controller
     {
         $repairRequest->load(['attachments', 'repairLogs.attachments', 'device.category', 'device.classroom', 'assignedTechnician']);
 
-        // 派工／重新指派表單要挑選真正的維修人員（角色 = technician），
-        // 不再讓主管自己打字輸入姓名。
-        $technicians = User::whereHas('role', fn ($q) => $q->where('slug', 'technician'))
+        // 派工／重新指派表單要挑選真正的維修人員，不再讓主管自己打字輸入姓名。
+        // 誰能被指派由身分主檔決定：身分有勾選「可被指派為維修人員」權限、且帳號啟用中的用戶。
+        $technicians = User::whereHas('role', fn ($q) => $q->withPermission('repairs.assignable'))
+            ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
@@ -180,6 +188,7 @@ class RepairRequestController extends Controller
     public function assign(AssignRepairRequestRequest $request, RepairRequest $repairRequest, RepairRequestWorkflow $workflow, RepairAssignmentNotifier $notifier)
     {
         $technician = User::findOrFail($request->validated('assigned_to'));
+        $from = $repairRequest->status;
 
         try {
             $workflow->assign(
@@ -191,6 +200,13 @@ class RepairRequestController extends Controller
         } catch (DomainException $exception) {
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
+
+        AuditLogger::log('assigned', $repairRequest, [
+            'technician' => $technician->name,
+            'scheduled_at' => $repairRequest->scheduled_at?->format('Y-m-d H:i'),
+            'from' => $from->value,
+            'to' => $repairRequest->status->value,
+        ], __('audit.messages.repair_assigned', ['technician' => $technician->name, 'title' => $repairRequest->title]));
 
         $notifier->notify($repairRequest, $technician);
 
@@ -220,6 +236,11 @@ class RepairRequestController extends Controller
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
 
+        AuditLogger::log('reassigned', $repairRequest, [
+            'technician' => $technician->name,
+            'scheduled_at' => $repairRequest->scheduled_at?->format('Y-m-d H:i'),
+        ], __('audit.messages.repair_reassigned', ['technician' => $technician->name, 'title' => $repairRequest->title]));
+
         $notifier->notify($repairRequest, $technician);
 
         return redirect()
@@ -232,11 +253,15 @@ class RepairRequestController extends Controller
      */
     public function start(RepairRequest $repairRequest, RepairRequestWorkflow $workflow)
     {
+        $from = $repairRequest->status;
+
         try {
             $workflow->start($repairRequest);
         } catch (DomainException $exception) {
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
+
+        $this->logStatusChange($repairRequest, $from);
 
         return redirect()
             ->route('repairs.show', $repairRequest)
@@ -249,11 +274,15 @@ class RepairRequestController extends Controller
      */
     public function complete(RepairRequest $repairRequest, RepairRequestWorkflow $workflow)
     {
+        $from = $repairRequest->status;
+
         try {
             $workflow->complete($repairRequest);
         } catch (DomainException $exception) {
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
+
+        $this->logStatusChange($repairRequest, $from);
 
         return redirect()
             ->route('repairs.show', $repairRequest)
@@ -273,9 +302,26 @@ class RepairRequestController extends Controller
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
 
+        AuditLogger::log('rejected', $repairRequest, [
+            'reason' => $request->validated('rejection_reason'),
+        ], __('audit.messages.repair_rejected', ['title' => $repairRequest->title]));
+
         return redirect()
             ->route('repairs.show', $repairRequest)
             ->with('success', __('repair_requests.flash.rejected'));
+    }
+
+    /** 把一次狀態變更寫進操作紀錄：「報修單「xxx」狀態：已派工 → 處理中」。 */
+    private function logStatusChange(RepairRequest $repairRequest, RepairRequestStatus $from): void
+    {
+        AuditLogger::log('status_changed', $repairRequest, [
+            'from' => $from->value,
+            'to' => $repairRequest->status->value,
+        ], __('audit.messages.repair_status', [
+            'title' => $repairRequest->title,
+            'from' => $from->label(),
+            'to' => $repairRequest->status->label(),
+        ]));
     }
 
     /**

@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', '教室管理')
+@section('title', '教室主檔')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">教室管理</h3>
+        <h3 class="mb-0">教室主檔</h3>
         <a href="{{ route('classrooms.create') }}" class="btn btn-primary">新增教室</a>
     </div>
 
@@ -34,7 +34,7 @@
 
     <div class="card">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-bordered table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>教室代碼</th>

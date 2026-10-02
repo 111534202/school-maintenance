@@ -26,7 +26,7 @@
 
                     <dt class="col-sm-4">目前狀態</dt>
                     <dd class="col-sm-8">
-                        <span class="badge bg-info text-dark">{{ $device->status }}</span>
+                        <span class="badge bg-info text-dark">{{ \App\Models\Device::statusLabel($device->status) }}</span>
                         @if ($device->is_core)
                             <span class="badge bg-warning text-dark">核心設備</span>
                         @endif

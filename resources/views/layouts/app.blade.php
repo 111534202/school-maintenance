@@ -43,6 +43,10 @@
             border-radius: 4px; padding: 0.25rem 0.4rem; font-size: 0.85rem;
         }
         .locale-switcher select option { color: #212529; }
+        /* 選單裡可展開的群組（主檔）：箭頭展開時翻轉，子項目縮排並用左邊線標示層級。 */
+        .nav-group-toggle .nav-chevron { transition: transform .2s; }
+        .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
+        .app-sidebar .nav-group-toggle, .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
 </head>
 <body class="bg-light">
@@ -56,14 +60,45 @@
             @endauth
             <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
-                {{-- i18n 語言切換：選了直接跳轉到 /locale/{locale}，value 本身就是完整網址。 --}}
-                <div class="locale-switcher">
-                    <select id="locale-select" aria-label="{{ __('common.locale.zh_TW') }} / {{ __('common.locale.en') }}">
-                        <option value="{{ route('locale.switch', 'zh_TW') }}" @selected(app()->getLocale() === 'zh_TW')>{{ __('common.locale.zh_TW') }}</option>
-                        <option value="{{ route('locale.switch', 'en') }}" @selected(app()->getLocale() === 'en')>{{ __('common.locale.en') }}</option>
-                    </select>
-                </div>
+                {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
+                     .env 的 APP_LOCALE_SWITCHER 設成 true 就好，翻譯與切換功能都還在）。 --}}
+                @if (config('app.locale_switcher'))
+                    <div class="locale-switcher">
+                        <select id="locale-select" aria-label="{{ __('common.locale.zh_TW') }} / {{ __('common.locale.en') }}">
+                            <option value="{{ route('locale.switch', 'zh_TW') }}" @selected(app()->getLocale() === 'zh_TW')>{{ __('common.locale.zh_TW') }}</option>
+                            <option value="{{ route('locale.switch', 'en') }}" @selected(app()->getLocale() === 'en')>{{ __('common.locale.en') }}</option>
+                        </select>
+                    </div>
+                @endif
                 @auth
+                    {{-- 通知鈴鐺：有「新報修待派工」「待驗收」「指派給我的案件」時顯示紅色數字，
+                         點開清單，點其中一項直接跳到對應的案件列表。資料由 AppServiceProvider 的 view composer 算好。 --}}
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm icon-btn position-relative" type="button" id="notificationBell"
+                            data-bs-toggle="dropdown" aria-expanded="false"
+                            title="{{ __('notifications.title') }}" aria-label="{{ __('notifications.title') }}">
+                            <i class="bi {{ ($notificationTotal ?? 0) > 0 ? 'bi-bell-fill' : 'bi-bell' }}"></i>
+                            @if (($notificationTotal ?? 0) > 0)
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger" id="notificationBadge">
+                                    {{ $notificationTotal > 99 ? '99+' : $notificationTotal }}
+                                </span>
+                            @endif
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationBell" style="min-width: 17rem;">
+                            <li><h6 class="dropdown-header">{{ __('notifications.title') }}</h6></li>
+                            @forelse (($notificationItems ?? []) as $item)
+                                <li>
+                                    <a class="dropdown-item d-flex justify-content-between align-items-center gap-3" href="{{ $item['url'] }}">
+                                        <span><i class="bi {{ $item['icon'] }} me-2"></i>{{ $item['text'] }}</span>
+                                        <span class="badge rounded-pill text-bg-danger">{{ $item['count'] }}</span>
+                                    </a>
+                                </li>
+                            @empty
+                                <li><span class="dropdown-item-text text-muted small">{{ __('notifications.empty') }}</span></li>
+                            @endforelse
+                        </ul>
+                    </div>
+
                     <span class="text-light small d-none d-sm-inline">
                         {{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}
                     </span>
@@ -78,11 +113,13 @@
         </div>
     </nav>
 
-    <script>
-        document.getElementById('locale-select').addEventListener('change', function () {
-            window.location.href = this.value;
-        });
-    </script>
+    @if (config('app.locale_switcher'))
+        <script>
+            document.getElementById('locale-select').addEventListener('change', function () {
+                window.location.href = this.value;
+            });
+        </script>
+    @endif
 
     @auth
         {{-- 手機與平板的側邊選單（< lg 才會出現按鈕觸發） --}}
@@ -93,7 +130,7 @@
             </div>
             <div class="offcanvas-body">
                 <div class="nav flex-column">
-                    @include('layouts.partials.nav-links')
+                    @include('layouts.partials.nav-links', ['navId' => 'drawer'])
                 </div>
             </div>
         </div>
@@ -101,7 +138,7 @@
         <div class="d-flex">
             <div class="app-sidebar bg-white border-end d-none d-lg-block flex-shrink-0" style="width: 220px;">
                 <div class="nav flex-column p-2">
-                    @include('layouts.partials.nav-links')
+                    @include('layouts.partials.nav-links', ['navId' => 'side'])
                 </div>
             </div>
 

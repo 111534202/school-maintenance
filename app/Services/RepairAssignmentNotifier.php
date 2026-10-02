@@ -17,7 +17,9 @@ class RepairAssignmentNotifier
 {
     public function notify(RepairRequest $repairRequest, User $technician): void
     {
-        $itManagerEmails = User::whereHas('role', fn ($q) => $q->where('slug', 'it_manager'))
+        // 副本收件人由身分主檔決定：身分有勾選「接收派工通知副本」權限、且帳號啟用中的用戶。
+        $itManagerEmails = User::whereHas('role', fn ($q) => $q->withPermission('repairs.notice_cc'))
+            ->where('is_active', true)
             ->pluck('email')
             ->all();
 

@@ -188,6 +188,18 @@ return [
         'assignee_note' => '維修人員',
         'scheduled_at' => '預計處理日期',
         'rejection_reason' => '退回原因',
+        'username' => '帳號',
+        'email' => '電子郵件',
+        'phone' => '電話',
+        'role_id' => '身分權限',
+        'department_id' => '部門',
+        'is_active' => '帳號狀態',
+        'password' => '密碼',
+        'password_confirmation' => '確認密碼',
+        'login' => '帳號',
+        'code' => '代碼',
+        'permissions' => '權限',
+        'permissions.*' => '權限',
     ],
 
 ];

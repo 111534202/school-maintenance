@@ -40,7 +40,7 @@
             </dd>
 
             <dt class="col-sm-4">狀態</dt>
-            <dd class="col-sm-8"><span class="badge bg-info text-dark">{{ $device->status }}</span></dd>
+            <dd class="col-sm-8"><span class="badge bg-info text-dark">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
 
             <dt class="col-sm-4">核心設備</dt>
             <dd class="col-sm-8">

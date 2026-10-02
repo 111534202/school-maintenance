@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             DepartmentSeeder::class,
+            UserDemoSeeder::class, // 用戶主檔示範資料，需要部門已存在所以排在 DepartmentSeeder 後面
             ClassroomSeeder::class,
             DeviceCategorySeeder::class,
             DeviceSeeder::class,

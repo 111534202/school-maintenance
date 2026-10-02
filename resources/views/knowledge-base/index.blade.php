@@ -5,9 +5,11 @@
 @section('content')
     <div class="page-header mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-book me-2"></i>{{ __('knowledge_base.index_heading') }}</h1>
-        <a class="btn btn-primary" href="{{ route('knowledge-base.create') }}">
-            <i class="bi bi-plus-lg me-1"></i>{{ __('knowledge_base.add_entry') }}
-        </a>
+        @can('knowledge-base.manage')
+            <a class="btn btn-primary" href="{{ route('knowledge-base.create') }}">
+                <i class="bi bi-plus-lg me-1"></i>{{ __('knowledge_base.add_entry') }}
+            </a>
+        @endcan
     </div>
 
     @if ($knowledgeBaseEntries->isEmpty())
@@ -42,15 +44,17 @@
                                     <div class="d-inline-flex gap-1">
                                         <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('knowledge-base.show', $entry) }}"
                                             title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
-                                        <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('knowledge-base.edit', $entry) }}"
-                                            title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
-                                        <form method="POST" action="{{ route('knowledge-base.destroy', $entry) }}"
-                                            onsubmit="return confirm('{{ __('knowledge_base.confirm_delete', ['title' => $entry->title]) }}');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="btn btn-outline-danger btn-sm icon-btn" type="submit"
-                                                title="{{ __('common.buttons.delete') }}" aria-label="{{ __('common.buttons.delete') }}"><i class="bi bi-trash"></i></button>
-                                        </form>
+                                        @can('knowledge-base.manage')
+                                            <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('knowledge-base.edit', $entry) }}"
+                                                title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
+                                            <form method="POST" action="{{ route('knowledge-base.destroy', $entry) }}"
+                                                onsubmit="return confirm('{{ __('knowledge_base.confirm_delete', ['title' => $entry->title]) }}');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-outline-danger btn-sm icon-btn" type="submit"
+                                                    title="{{ __('common.buttons.delete') }}" aria-label="{{ __('common.buttons.delete') }}"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

@@ -9,8 +9,10 @@
             <div class="d-inline-flex gap-1 flex-shrink-0">
                 <a class="btn btn-outline-secondary icon-btn" href="{{ route('knowledge-base.index') }}"
                     title="{{ __('common.buttons.back_to_list') }}" aria-label="{{ __('common.buttons.back_to_list') }}"><i class="bi bi-arrow-left"></i></a>
-                <a class="btn btn-outline-primary icon-btn" href="{{ route('knowledge-base.edit', $knowledgeBase) }}"
-                    title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
+                @can('knowledge-base.manage')
+                    <a class="btn btn-outline-primary icon-btn" href="{{ route('knowledge-base.edit', $knowledgeBase) }}"
+                        title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
+                @endcan
             </div>
         </div>
 
@@ -40,9 +42,11 @@
                     <a class="btn btn-success" href="{{ route('knowledge-base.resolved', $knowledgeBase) }}">
                         <i class="bi bi-check-circle me-1"></i>{{ __('knowledge_base.show.resolved_button') }}
                     </a>
-                    <a class="btn btn-danger" href="{{ route('repairs.create', ['from_kb' => $knowledgeBase->id]) }}">
-                        <i class="bi bi-tools me-1"></i>{{ __('knowledge_base.show.unresolved_button') }}
-                    </a>
+                    @can('repairs.create')
+                        <a class="btn btn-danger" href="{{ route('repairs.create', ['from_kb' => $knowledgeBase->id]) }}">
+                            <i class="bi bi-tools me-1"></i>{{ __('knowledge_base.show.unresolved_button') }}
+                        </a>
+                    @endcan
                 </div>
             </div>
         </div>

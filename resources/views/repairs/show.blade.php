@@ -12,8 +12,16 @@
     $assigneeDisplay = $repairRequest->assignedTechnician->name ?? $repairRequest->assignee_note ?? __('repair_requests.unassigned');
 
     $status = $repairRequest->status;
-    $canReassign = in_array($status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::InProgress], true);
-    $hasActions = $status !== \App\Enums\RepairRequestStatus::Completed;
+    // 每個按鈕都要「案件狀態對」而且「這位用戶的身分有開放對應權限」才顯示；
+    // 路由本身也有 can: 保護，這裡只是不顯示按了也沒用的按鈕。
+    $viewer = auth()->user();
+    $showDispatch = $status === \App\Enums\RepairRequestStatus::Pending && $viewer->can('repairs.dispatch');
+    $showStart = $status === \App\Enums\RepairRequestStatus::Assigned && $viewer->can('repairs.process');
+    $showFillLog = $status === \App\Enums\RepairRequestStatus::InProgress && $viewer->can('repairs.process');
+    $showAccept = $status === \App\Enums\RepairRequestStatus::PendingReview && $viewer->can('repairs.accept');
+    $canReassign = in_array($status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::InProgress], true)
+        && $viewer->can('repairs.dispatch');
+    $hasActions = $showDispatch || $showStart || $showFillLog || $showAccept || $canReassign;
 @endphp
 
 @section('content')
@@ -128,7 +136,7 @@
             <div class="col-lg-4">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        @if ($status === \App\Enums\RepairRequestStatus::Pending)
+                        @if ($showDispatch)
                             <h2 class="h6 mb-3"><i class="bi bi-person-check me-2"></i>{{ __('repair_requests.show.dispatch_heading') }}</h2>
                             <form method="POST" action="{{ route('repairs.assign', $repairRequest) }}">
                                 @csrf
@@ -147,14 +155,14 @@
                                 </div>
                                 <button class="btn btn-primary w-100" type="submit"><i class="bi bi-person-check me-1"></i>{{ __('repair_requests.show.confirm_dispatch') }}</button>
                             </form>
-                        @elseif ($status === \App\Enums\RepairRequestStatus::Assigned)
+                        @elseif ($showStart)
                             <form method="POST" action="{{ route('repairs.start', $repairRequest) }}">
                                 @csrf
                                 <button class="btn btn-primary w-100" type="submit"><i class="bi bi-play-fill me-1"></i>{{ __('repair_requests.show.start_processing') }}</button>
                             </form>
-                        @elseif ($status === \App\Enums\RepairRequestStatus::InProgress)
+                        @elseif ($showFillLog)
                             <a class="btn btn-primary w-100" href="{{ route('repair-logs.create', $repairRequest) }}"><i class="bi bi-journal-plus me-1"></i>{{ __('repair_requests.show.fill_repair_log') }}</a>
-                        @elseif ($status === \App\Enums\RepairRequestStatus::PendingReview)
+                        @elseif ($showAccept)
                             <h2 class="h6 mb-3"><i class="bi bi-clipboard-check me-2"></i>{{ __('repair_requests.show.acceptance_heading') }}</h2>
                             {{-- 驗收兩條路：通過就結案（不用填原因），不通過要退回並說明原因。 --}}
                             <form method="POST" action="{{ route('repairs.complete', $repairRequest) }}" class="mb-2">

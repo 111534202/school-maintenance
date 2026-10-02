@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\KnowledgeBase;
 use App\Http\Requests\StoreKnowledgeBaseRequest;
 use App\Http\Requests\UpdateKnowledgeBaseRequest;
+use App\Services\AuditLogger;
 
 /**
  * 自助排除知識庫的網頁功能：列表、查看、新增、修改、刪除（標準 CRUD），
@@ -29,7 +30,9 @@ class KnowledgeBaseController extends Controller
     /** 使用者送出「新增」表單後，把資料存進資料庫。 */
     public function store(StoreKnowledgeBaseRequest $request)
     {
-        KnowledgeBase::create($request->validated());
+        $knowledgeBase = KnowledgeBase::create($request->validated());
+
+        AuditLogger::log('created', $knowledgeBase, ['title' => $knowledgeBase->title, 'is_published' => $knowledgeBase->is_published]);
 
         return redirect()
             ->route('knowledge-base.index')
@@ -53,6 +56,8 @@ class KnowledgeBaseController extends Controller
     {
         $knowledgeBase->update($request->validated());
 
+        AuditLogger::log('updated', $knowledgeBase, ['title' => $knowledgeBase->title, 'is_published' => $knowledgeBase->is_published]);
+
         return redirect()
             ->route('knowledge-base.index')
             ->with('success', __('knowledge_base.flash.updated'));
@@ -62,6 +67,8 @@ class KnowledgeBaseController extends Controller
     public function destroy(KnowledgeBase $knowledgeBase)
     {
         $knowledgeBase->delete();
+
+        AuditLogger::log('deleted', $knowledgeBase);
 
         return redirect()
             ->route('knowledge-base.index')

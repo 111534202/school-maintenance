@@ -5,9 +5,11 @@
 @section('content')
     <div class="page-header mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-tools me-2"></i>{{ __('repair_requests.board_title') }}</h1>
-        <a class="btn btn-primary" href="{{ route('repairs.create') }}">
-            <i class="bi bi-plus-lg me-1"></i>{{ __('repair_requests.add_request') }}
-        </a>
+        @can('repairs.create')
+            <a class="btn btn-primary" href="{{ route('repairs.create') }}">
+                <i class="bi bi-plus-lg me-1"></i>{{ __('repair_requests.add_request') }}
+            </a>
+        @endcan
     </div>
 
     {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}

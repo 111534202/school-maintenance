@@ -1,74 +1,110 @@
 @extends('layouts.app')
 
-@section('title', '操作紀錄查詢')
+@section('title', __('audit.index_title'))
 
 @section('content')
-    <h3 class="mb-3">操作紀錄查詢</h3>
+    <div class="page-header mb-4">
+        <h1 class="h4 mb-0"><i class="bi bi-clock-history me-2"></i>{{ __('audit.index_title') }}</h1>
+    </div>
 
-    <form method="GET" action="{{ route('audit-logs.index') }}" class="row g-2 mb-3">
-        <div class="col-6 col-md-3">
-            <select name="user_id" class="form-select form-select-sm">
-                <option value="">所有使用者</option>
-                @foreach ($users as $user)
-                    <option value="{{ $user->id }}" @selected(request('user_id') == $user->id)>{{ $user->name }}</option>
-                @endforeach
-            </select>
+    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            <form method="GET" action="{{ route('audit-logs.index') }}" class="filter-bar">
+                <div>
+                    <label for="user_id" class="form-label small mb-1">{{ __('audit.filter.user') }}</label>
+                    <select id="user_id" name="user_id" class="form-select form-select-sm" style="width: 10rem;">
+                        <option value="">{{ __('audit.filter.user_all') }}</option>
+                        @foreach ($users as $user)
+                            <option value="{{ $user->id }}" @selected((string) request('user_id') === (string) $user->id)>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="action" class="form-label small mb-1">{{ __('audit.filter.action') }}</label>
+                    <select id="action" name="action" class="form-select form-select-sm" style="width: 10rem;">
+                        <option value="">{{ __('audit.filter.action_all') }}</option>
+                        @foreach ($actions as $action)
+                            <option value="{{ $action }}" @selected(request('action') === $action)>{{ \App\Services\AuditLogger::label('audit.actions.' . $action, $action) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="loggable_type" class="form-label small mb-1">{{ __('audit.filter.type') }}</label>
+                    <select id="loggable_type" name="loggable_type" class="form-select form-select-sm" style="width: 10rem;">
+                        <option value="">{{ __('audit.filter.type_all') }}</option>
+                        @foreach ($loggableTypes as $type)
+                            <option value="{{ $type }}" @selected(request('loggable_type') === $type)>{{ \App\Services\AuditLogger::label('audit.types.' . class_basename($type), class_basename($type)) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="date_from" class="form-label small mb-1">{{ __('audit.filter.date_from') }}</label>
+                    <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" style="width: 9.5rem;" value="{{ request('date_from') }}">
+                </div>
+                <div>
+                    <label for="date_to" class="form-label small mb-1">{{ __('audit.filter.date_to') }}</label>
+                    <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" style="width: 9.5rem;" value="{{ request('date_to') }}">
+                </div>
+                <div>
+                    <label for="keyword" class="form-label small mb-1">{{ __('audit.filter.keyword') }}</label>
+                    <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 12rem;" value="{{ request('keyword') }}">
+                </div>
+                <div class="d-inline-flex gap-1">
+                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
+                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
+                    @if (request()->hasAny(['user_id', 'action', 'loggable_type', 'date_from', 'date_to', 'keyword']))
+                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('audit-logs.index') }}"
+                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
+                    @endif
+                </div>
+            </form>
         </div>
-        <div class="col-6 col-md-3">
-            <select name="action" class="form-select form-select-sm">
-                <option value="">所有事件</option>
-                @foreach ($actions as $action)
-                    <option value="{{ $action }}" @selected(request('action') === $action)>{{ $action }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-6 col-md-3">
-            <select name="loggable_type" class="form-select form-select-sm">
-                <option value="">所有對象類型</option>
-                @foreach ($loggableTypes as $type)
-                    <option value="{{ $type }}" @selected(request('loggable_type') === $type)>{{ class_basename($type) }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-6 col-md-2">
-            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">查詢</button>
-        </div>
-    </form>
+    </div>
 
-    <div class="card">
+    <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
+            <table class="table table-bordered table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>時間</th>
-                        <th>使用者</th>
-                        <th>事件</th>
-                        <th>對象</th>
-                        <th>內容</th>
+                        <th>{{ __('audit.table.time') }}</th>
+                        <th>{{ __('audit.table.user') }}</th>
+                        <th class="text-center">{{ __('audit.table.action') }}</th>
+                        <th>{{ __('audit.table.description') }}</th>
+                        <th>{{ __('audit.table.details') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($logs as $log)
+                        @php
+                            // 新寫入的紀錄都有說明；舊紀錄（沒有說明）退回用「類型 #編號」。
+                            $description = $log->description
+                                ?: ($log->loggable_type
+                                    ? \App\Services\AuditLogger::label('audit.types.' . class_basename($log->loggable_type), class_basename($log->loggable_type)) . ' #' . $log->loggable_id
+                                    : '—');
+                            $badge = match ($log->action) {
+                                'deleted', 'login_failed', 'rejected' => 'text-bg-danger',
+                                'created', 'restored' => 'text-bg-success',
+                                'login', 'logout' => 'text-bg-light border text-dark',
+                                'password_reset', 'status_changed' => 'text-bg-warning',
+                                default => 'text-bg-primary',
+                            };
+                        @endphp
                         <tr>
                             <td class="text-nowrap">{{ $log->created_at->format('Y-m-d H:i:s') }}</td>
-                            <td>{{ $log->user->name ?? '系統' }}</td>
-                            <td><span class="badge bg-secondary">{{ $log->action }}</span></td>
-                            <td>
-                                @if ($log->loggable_type)
-                                    {{ class_basename($log->loggable_type) }} #{{ $log->loggable_id }}
-                                @else
-                                    －
-                                @endif
-                            </td>
+                            <td class="text-nowrap">{{ $log->user->name ?? __('audit.system_user') }}</td>
+                            <td class="text-center text-nowrap"><span class="badge {{ $badge }}">{{ \App\Services\AuditLogger::label('audit.actions.' . $log->action, $log->action) }}</span></td>
+                            <td>{{ $description }}</td>
                             <td class="small text-muted">
-                                {{ $log->description }}
                                 @if ($log->changes)
                                     <code>{{ json_encode($log->changes, JSON_UNESCAPED_UNICODE) }}</code>
+                                @else
+                                    —
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">尚無符合條件的紀錄</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-4">{{ __('audit.empty') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

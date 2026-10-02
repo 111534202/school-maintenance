@@ -54,7 +54,7 @@
         <label class="form-label">狀態</label>
         <select name="status" class="form-select" required>
             @foreach (\App\Models\Device::STATUSES as $status)
-                <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ $status }}</option>
+                <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
             @endforeach
         </select>
     </div>

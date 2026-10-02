@@ -8,6 +8,17 @@ return [
     'nav' => [
         'knowledge_base' => 'Self-Help Knowledge Base',
         'repair_requests' => 'Repairs',
+        'dashboard' => 'Dashboard',
+        'system_section' => 'System',
+        'master_section' => 'Master Data',
+        'business_section' => 'Operations',
+        'users' => 'User Master',
+        'roles' => 'Role Master',
+        'departments' => 'Department Master',
+        'classrooms' => 'Classroom Master',
+        'device_categories' => 'Device Categories',
+        'devices' => 'Device Master',
+        'audit_logs' => 'Audit Log',
     ],
 
     'locale' => [

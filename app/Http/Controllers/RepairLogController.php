@@ -6,6 +6,7 @@ use App\Enums\RepairRequestStatus;
 use App\Http\Requests\StoreRepairLogRequest;
 use App\Models\RepairRequest;
 use App\Services\AttachmentUploader;
+use App\Services\AuditLogger;
 use App\Services\RepairRequestWorkflow;
 use Carbon\Carbon;
 use DomainException;
@@ -44,8 +45,10 @@ class RepairLogController extends Controller
         $startedAt = Carbon::parse($request->validated('started_at'));
         $endedAt = Carbon::parse($request->validated('ended_at'));
 
-        DB::transaction(function () use ($request, $repairRequest, $attachmentUploader, $workflow, $startedAt, $endedAt) {
-            $repairLog = $repairRequest->repairLogs()->create([
+        $createdLog = null;
+
+        DB::transaction(function () use ($request, $repairRequest, $attachmentUploader, $workflow, $startedAt, $endedAt, &$createdLog) {
+            $repairLog = $createdLog = $repairRequest->repairLogs()->create([
                 'cause' => $request->validated('cause'),
                 'resolution' => $request->validated('resolution'),
                 'parts_used_note' => $request->validated('parts_used_note'),
@@ -66,6 +69,12 @@ class RepairLogController extends Controller
             // 第 4 項要求的「扣庫存失敗時不得把維修錯誤地完成」的安全機制。
             $workflow->submitForReview($repairRequest);
         });
+
+        // 交易成功才記（上面失敗會整個回復，不會留下不存在的紀錄）。
+        AuditLogger::log('created', $createdLog, [
+            'repair_request_id' => $repairRequest->id,
+            'total_hours' => $createdLog->total_hours,
+        ], __('audit.messages.repair_log_created', ['title' => $repairRequest->title, 'hours' => $createdLog->total_hours]));
 
         return redirect()
             ->route('repairs.show', $repairRequest)

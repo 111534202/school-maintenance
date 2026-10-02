@@ -8,6 +8,17 @@ return [
     'nav' => [
         'knowledge_base' => '自助知識庫',
         'repair_requests' => '報修',
+        'dashboard' => '主控台',
+        'system_section' => '系統',
+        'master_section' => '主檔',
+        'business_section' => '業務功能',
+        'users' => '用戶主檔',
+        'roles' => '身分主檔',
+        'departments' => '部門主檔',
+        'classrooms' => '教室主檔',
+        'device_categories' => '設備類別',
+        'devices' => '設備主檔',
+        'audit_logs' => '操作紀錄',
     ],
 
     'locale' => [
