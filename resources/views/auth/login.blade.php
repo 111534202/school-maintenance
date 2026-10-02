@@ -2,6 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登入 - 學校設備維保電子化系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
@@ -22,8 +23,8 @@
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
                     <div class="mb-3">
-                        <label for="email" class="form-label">帳號（Email）</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ old('email') }}" required autofocus>
+                        <label for="login" class="form-label">帳號</label>
+                        <input type="text" class="form-control" id="login" name="login" value="{{ old('login') }}" placeholder="帳號名稱或 Email" autocomplete="username" required autofocus>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">密碼</label>

@@ -16,10 +16,15 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $input = $request->validate([
+            'login' => ['required', 'string'],
             'password' => ['required'],
         ]);
+
+        // 同一個欄位同時支援「帳號名稱」與「Email」：長得像 Email 就用 email 欄位比對，
+        // 否則用 username 欄位比對。
+        $field = filter_var($input['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $credentials = [$field => $input['login'], 'password' => $input['password']];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
@@ -28,8 +33,8 @@ class LoginController extends Controller
         }
 
         return back()->withErrors([
-            'email' => '帳號或密碼錯誤。',
-        ])->onlyInput('email');
+            'login' => '帳號或密碼錯誤。',
+        ])->onlyInput('login');
     }
 
     public function logout(Request $request)
