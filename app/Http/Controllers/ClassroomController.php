@@ -35,7 +35,9 @@ class ClassroomController extends Controller
             // 部門篩選：下拉選單送來的是部門編號。
             ->when($request->filled('department_id'), fn ($query) => $query->where('department_id', $request->integer('department_id')))
             // 啟用篩選：網址上 is_active=1 代表「啟用」，其他值（0）代表「停用」。
-            ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active') === '1'))
+            // 注意要先 toString() 轉成純文字再比較：$request->string() 回傳的是物件，物件跟字串用 === 比較永遠是 false，
+            // 以前少了這一步，選「啟用中」反而列出已停用的教室。
+            ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active')->toString() === '1'))
             ->orderBy('room_code')   // 依教室代碼排序
             ->paginate(15)
             ->withQueryString();     // 換頁時保留篩選條件
@@ -66,7 +68,7 @@ class ClassroomController extends Controller
 
         AuditLogger::log('created', $classroom, $data);
 
-        return redirect()->route('classrooms.index')->with('success', '教室已新增。');
+        return redirect()->route('classrooms.index')->with('success', __('classrooms.flash.created'));
     }
 
     /** 顯示編輯表單（GET /classrooms/{classroom}/edit）。 */
@@ -89,7 +91,7 @@ class ClassroomController extends Controller
 
         AuditLogger::log('updated', $classroom, $data);
 
-        return redirect()->route('classrooms.index')->with('success', '教室已更新。');
+        return redirect()->route('classrooms.index')->with('success', __('classrooms.flash.updated'));
     }
 
     /** 啟用／停用切換（列表上的快速按鈕）：目前啟用就變停用，停用就變啟用。 */
@@ -101,7 +103,7 @@ class ClassroomController extends Controller
         AuditLogger::log('status_changed', $classroom, ['is_active' => $classroom->is_active]);
 
         return redirect()->route('classrooms.index')
-            ->with('success', $classroom->is_active ? '教室已啟用。' : '教室已停用。');
+            ->with('success', $classroom->is_active ? __('classrooms.flash.activated') : __('classrooms.flash.deactivated'));
     }
 
     /**

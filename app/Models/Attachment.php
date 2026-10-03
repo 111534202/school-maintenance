@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Storage;                       // Laravel 的檔�
  * RepairRequest（報修單）和 RepairLog（維修紀錄）共用，不用各自建一張附件表。
  * 判斷「這筆附件是誰的」是靠 attachable_type（存 Model 類別名稱）跟
  * attachable_id（存那個 Model 的 id）這兩個欄位。
+ *
+ * 檔案本身存在私有磁碟，只能透過 AttachmentController 下載（會檢查報修單的檢視權限）。
  */
 class Attachment extends Model
 {
@@ -35,10 +37,28 @@ class Attachment extends Model
         return $this->morphTo();
     }
 
-    /** 產生一個瀏覽器可以直接打開來看這個檔案的網址。 */
+    /**
+     * 開啟這個檔案的網址。檔案存在私有磁碟，不能直接用網址存取，
+     * 這個網址會先經過 AttachmentController 檢查「你能不能看這張報修單」才輸出檔案。
+     */
     public function url(): string
     {
-        // 檔案存在 public 磁碟（storage/app/public），url() 把路徑換成可公開存取的網址。
-        return Storage::disk('public')->url($this->disk_path);
+        return route('attachments.show', $this);
+    }
+
+    /**
+     * 檔案實際所在的磁碟名稱：新上傳的在私有磁碟（local）；
+     * 早期版本上傳、還沒搬走的舊檔案在公開磁碟（public），找不到時回傳 null。
+     * （舊檔案會由 2026_10_04 的 migration 搬到私有磁碟，之後這個備援就不會再用到。）
+     */
+    public function storageDisk(): ?string
+    {
+        foreach (['local', 'public'] as $disk) {
+            if (Storage::disk($disk)->exists($this->disk_path)) {
+                return $disk;
+            }
+        }
+
+        return null;
     }
 }

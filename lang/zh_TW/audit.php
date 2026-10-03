@@ -67,6 +67,8 @@ return [
         'login' => ':name 登入系統',
         'logout' => ':name 登出系統',
         'login_failed' => '登入失敗（輸入的帳號：:account）',
+        // 輸入的帳號不存在時，操作紀錄裡顯示這句，不記錄輸入的原文（可能是誤打進去的密碼）。
+        'unknown_account' => '（不存在的帳號）',
         'repair_assigned' => '派工給「:technician」，報修單「:title」',
         'repair_reassigned' => '重新指派給「:technician」，報修單「:title」',
         'repair_rejected' => '驗收退回報修單「:title」',

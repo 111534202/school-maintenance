@@ -127,6 +127,20 @@ class SecurityHardeningTest extends TestCase
         $this->assertGuest();
     }
 
+    // 帳號欄位被誤打成密碼時，操作紀錄不能把那串文字原文記下來；真實存在的帳號才記原文。
+    public function test_failed_login_log_does_not_store_text_that_is_not_a_real_account(): void
+    {
+        $this->makeLoginUser('real.user');
+
+        $this->post(route('login'), ['login' => 'MyS3cretPassw0rd!', 'password' => 'x']);
+        $this->post(route('login'), ['login' => 'real.user', 'password' => 'wrong']);
+
+        $descriptions = AuditLog::where('action', 'login_failed')->orderBy('id')->pluck('description')->all();
+        $this->assertStringNotContainsString('MyS3cretPassw0rd!', json_encode(AuditLog::all()->toArray(), JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString('不存在的帳號', $descriptions[0]);
+        $this->assertStringContainsString('real.user', $descriptions[1]);
+    }
+
     // ---------- 2. 停用帳號後強制登出 ----------
 
     // 已登入的用戶被停用後，他的下一個請求就會被登出並導回登入頁，並且換掉 remember_token

@@ -3,15 +3,19 @@
 {{-- 套用主版面。 --}}
 @extends('layouts.app')
 
-@section('title', '編輯教室')
+@section('title', __('classrooms.form.edit_title'))
 
 @section('content')
-    <h3 class="mb-3">編輯教室</h3>
-    <div class="card p-4" style="max-width: 720px;">
-        {{-- 表單送出到 PUT /classrooms/{id}（ClassroomController::update）。 --}}
-        <form method="POST" action="{{ route('classrooms.update', $classroom) }}">
-            {{-- 引入共用的欄位表單。 --}}
-            @include('classrooms._form')
-        </form>
+    <div class="page-narrow">
+        <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('classrooms.form.edit_title') }}</h1>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                {{-- 表單送出到 PUT /classrooms/{id}（ClassroomController::update）。 --}}
+                <form method="POST" action="{{ route('classrooms.update', $classroom) }}">
+                    {{-- 引入共用的欄位表單。 --}}
+                    @include('classrooms._form')
+                </form>
+            </div>
+        </div>
     </div>
 @endsection

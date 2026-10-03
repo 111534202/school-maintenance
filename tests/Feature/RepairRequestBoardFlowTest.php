@@ -29,7 +29,7 @@ class RepairRequestBoardFlowTest extends TestCase
     // 送出報修時附上照片，檔案會被存起來並關聯到這張報修單。
     public function test_submitting_a_repair_request_with_attachments_stores_them(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $payload = [
             'title' => 'A101 投影機燈泡燒壞',
@@ -45,13 +45,13 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::firstWhere('title', 'A101 投影機燈泡燒壞');
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $this->assertCount(1, $repairRequest->attachments);
-        Storage::disk('public')->assertExists($repairRequest->attachments->first()->disk_path);
+        Storage::disk('local')->assertExists($repairRequest->attachments->first()->disk_path);
     }
 
     // 完整流程：新報修 → 派工 → 開始處理 → 填維修紀錄 → 待驗收。
     public function test_full_board_flow_from_pending_to_pending_review(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         Mail::fake();
 
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
@@ -344,7 +344,7 @@ class RepairRequestBoardFlowTest extends TestCase
     public function test_repair_log_accepts_a_video_attachment_and_parts_used_note(): void
     {
         // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
-        Storage::fake('public');
+        Storage::fake('local');
         $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [

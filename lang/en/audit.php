@@ -66,6 +66,8 @@ return [
         'login' => ':name logged in',
         'logout' => ':name logged out',
         'login_failed' => 'Login failed (account entered: :account)',
+        // Shown instead of the typed text when the account does not exist (it may be a mistyped password).
+        'unknown_account' => '(unknown account)',
         'repair_assigned' => 'Dispatched to ":technician", repair request ":title"',
         'repair_reassigned' => 'Reassigned to ":technician", repair request ":title"',
         'repair_rejected' => 'Rejected repair request ":title"',

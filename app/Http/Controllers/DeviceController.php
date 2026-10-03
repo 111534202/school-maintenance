@@ -74,7 +74,7 @@ class DeviceController extends Controller
         // 新設備可能一開始就是異常狀態，所以要重新計算它所在教室的「設備異常」標記。
         DeviceStatusService::syncClassroom($device->classroom);
 
-        return redirect()->route('devices.index')->with('success', '設備已新增。');
+        return redirect()->route('devices.index')->with('success', __('devices.flash.created'));
     }
 
     /** 檢視單一設備（GET /devices/{device}）；Device $device 由網址上的編號自動帶入。 */
@@ -114,12 +114,14 @@ class DeviceController extends Controller
         DeviceStatusService::updateStatus($device, $newStatus);
         DeviceStatusService::setCore($device, $newIsCore);
 
-        // 設備換了教室：舊教室少了一台設備，要重新檢查它是不是還有異常設備。
+        // 設備換了教室：舊教室少了一台設備，要重新檢查它是不是還有異常設備；
+        // 新教室多了一台設備（可能是壞掉的核心設備），也要重新檢查，不然新教室不會被標成異常。
         if ($oldClassroom && $oldClassroom->id !== $device->classroom_id) {
             DeviceStatusService::syncClassroom($oldClassroom);
+            DeviceStatusService::syncClassroom(Classroom::find($device->classroom_id));
         }
 
-        return redirect()->route('devices.index')->with('success', '設備已更新。');
+        return redirect()->route('devices.index')->with('success', __('devices.flash.updated'));
     }
 
     /** 停用設備（PATCH /devices/{device}/disable）：狀態改成 disabled 並軟刪除（資料保留，不再出現在列表）。 */
@@ -130,7 +132,7 @@ class DeviceController extends Controller
         $device->delete();
         DeviceStatusService::syncClassroom($classroom);
 
-        return redirect()->route('devices.index')->with('success', '設備已停用。');
+        return redirect()->route('devices.index')->with('success', __('devices.flash.disabled'));
     }
 
     /**

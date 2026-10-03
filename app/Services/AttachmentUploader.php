@@ -8,12 +8,13 @@ use Illuminate\Support\Facades\Storage;     // Laravel 的檔案儲存功能（�
 
 /**
  * 附件上傳第一版（依《第 2 週個人工作計畫》第 1 項）。
- * 統一存到 storage/app/public/attachments，報修單與維修紀錄共用這支服務，
- * 避免兩個 Controller 各寫一份上傳邏輯。
+ * 統一存到私有磁碟的 attachments 資料夾（storage/app/private/attachments），報修單與維修紀錄
+ * 共用這支服務，避免兩個 Controller 各寫一份上傳邏輯。
  *
- * 注意：要讓瀏覽器能看到上傳的圖片，專案需要執行過一次 `php artisan storage:link`
- * （把 public/storage 連到 storage/app/public）。想限制檔案大小或類型，改的是表單驗證規則
- * （app/Http/Requests 裡的 attachments 規則），不是這支服務。
+ * 【為什麼存私有磁碟？】附件（故障照片、維修照片）要跟報修單一樣受「誰看得到這張單」的權限控管
+ * （見 App\Policies\RepairRequestPolicy）。存在公開磁碟的話，任何人只要拿到網址就能直接開檔，
+ * 不用登入。所以檔案放在網站根目錄之外，一律透過 AttachmentController 先檢查權限才輸出。
+ * 想限制檔案大小或類型，改的是表單驗證規則（app/Http/Requests 裡的 attachments 規則），不是這支服務。
  */
 class AttachmentUploader
 {
@@ -30,9 +31,9 @@ class AttachmentUploader
     {
         // 一個一個處理使用者選的檔案。
         foreach ($files as $file) {
-            // ->store() 會把檔案存到 storage/app/public/attachments，
+            // ->store() 會把檔案存到私有磁碟（local）的 attachments 資料夾，
             // 並自動產生一個不會重複的隨機檔名，回傳存檔後的相對路徑。
-            $path = $file->store('attachments', 'public');
+            $path = $file->store('attachments', 'local');
 
             // 在 attachments 資料表新增一筆紀錄，並自動綁到這個 $attachable 底下。
             $attachable->attachments()->create([

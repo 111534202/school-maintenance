@@ -48,7 +48,7 @@ class DeviceCategoryController extends Controller
 
         AuditLogger::log('created', $category, $data);
 
-        return redirect()->route('device-categories.index')->with('success', '設備類別已新增。');
+        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.created'));
     }
 
     /** 顯示編輯表單（GET /device-categories/{deviceCategory}/edit）。 */
@@ -70,7 +70,7 @@ class DeviceCategoryController extends Controller
 
         AuditLogger::log('updated', $deviceCategory, $data);
 
-        return redirect()->route('device-categories.index')->with('success', '設備類別已更新。');
+        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.updated'));
     }
 
     /** 刪除類別（DELETE /device-categories/{deviceCategory}）：還有設備在用就擋下。 */
@@ -78,13 +78,13 @@ class DeviceCategoryController extends Controller
     {
         // exists()：只問「有沒有」，不需要真的把設備全部撈出來。
         if ($deviceCategory->devices()->exists()) {
-            return redirect()->route('device-categories.index')->with('error', '此類別仍有設備使用中，無法刪除。');
+            return redirect()->route('device-categories.index')->with('error', __('device_categories.errors.in_use'));
         }
 
         $deviceCategory->delete();
 
         AuditLogger::log('deleted', $deviceCategory);
 
-        return redirect()->route('device-categories.index')->with('success', '設備類別已刪除。');
+        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.deleted'));
     }
 }

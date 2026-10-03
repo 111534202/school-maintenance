@@ -83,7 +83,7 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 |---|---|---|
 | id | bigint | 主鍵 |
 | attachable_type / attachable_id | morphs | 多型關聯，目前被 `repair_requests`（報修附件）與 `repair_logs`（維修前後照片）共用 |
-| disk_path | string | 存放路徑（`storage/app/public/attachments`，透過 `php artisan storage:link` 對外） |
+| disk_path | string | 存放路徑（私有磁碟 `storage/app/private/attachments`，**不對外公開**；一律透過 `GET /attachments/{id}` 下載，會先檢查「能不能檢視所屬報修單」。早期版本放在 `storage/app/public`，由 `2026_10_04_000001_move_attachments_to_private_disk` 搬到私有磁碟） |
 | original_name | string | 原始檔名 |
 | mime_type | string | MIME type |
 | size_bytes | unsignedBigInteger | 檔案大小 |

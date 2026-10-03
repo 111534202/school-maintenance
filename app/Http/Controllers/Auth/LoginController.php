@@ -4,8 +4,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;       // 所有 Controller 的共同父類別（在上一層資料夾，所以要特別 use）
+use App\Models\User;                       // 用戶資料表模型（登入失敗時判斷輸入的帳號是否存在）
 use App\Services\AuditLogger;              // 共用的操作紀錄寫入工具
-use Illuminate\Http\Request;               // 這一次瀏覽器送來的請求
+use Illuminate\Http\Request;              // 這一次瀏覽器送來的請求
 use Illuminate\Support\Facades\Auth;       // Laravel 內建的「登入驗證」功能
 use Illuminate\Support\Facades\RateLimiter; // 次數限制：記錄一段時間內失敗了幾次
 use Illuminate\Support\Str;                // 字串小工具（這裡用來把帳號統一轉小寫）
@@ -81,8 +82,12 @@ class LoginController extends Controller
         RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
         RateLimiter::hit($ipKey, self::DECAY_SECONDS);
 
-        // 登入失敗也要留紀錄（稽核常看的項目）：只記輸入的帳號，絕對不記密碼。
-        AuditLogger::log('login_failed', null, ['ip' => $request->ip()], __('audit.messages.login_failed', ['account' => $input['login']]));
+        // 登入失敗也要留紀錄（稽核常看的項目），絕對不記密碼。
+        // 帳號欄位的內容只有在「真的是某個用戶的帳號或 Email」時才記下原文；
+        // 不存在的就記成「（不存在的帳號）」，避免有人把密碼誤打進帳號欄位時，密碼被原文寫進操作紀錄。
+        $accountKnown = User::withTrashed()->where('username', $input['login'])->orWhere('email', $input['login'])->exists();
+        $account = $accountKnown ? $input['login'] : __('audit.messages.unknown_account');
+        AuditLogger::log('login_failed', null, ['ip' => $request->ip()], __('audit.messages.login_failed', ['account' => $account]));
 
         // 不特別說明是「密碼錯」還是「帳號被停用」，避免讓外人探測帳號是否存在。
         // onlyInput('login')：導回表單時只保留帳號欄位，密碼欄位一定清空。

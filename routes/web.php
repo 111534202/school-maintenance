@@ -19,6 +19,7 @@
  * 3. 若是新的權限，先到 app/Support/PermissionCatalog.php 加上權限代碼。
  */
 
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClassroomController;
@@ -151,6 +152,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::resource('repairs', RepairRequestController::class)
         ->parameters(['repairs' => 'repair_request'])
         ->only(['index', 'show']);
+
+    // 附件下載（報修與維修紀錄的照片、影片）：檔案存在私有磁碟，不能直接用網址開，
+    // 這裡先檢查「能不能檢視所屬的報修單」才輸出檔案（見 AttachmentController）。
+    Route::get('attachments/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
 
     // 派工與重新指派（重新指派不改變案件狀態）：需要 repairs.dispatch。
     Route::middleware('can:repairs.dispatch')->group(function () {
