@@ -6,12 +6,14 @@
 // 注意：權限代碼裡的句點在 Laravel 翻譯裡代表「下一層」，所以 'repairs.create' 要寫成
 // 'repairs' => ['create' => [...]] 這種巢狀結構，不能寫成一個含句點的平面 key。
 return [
+    // 權限分組的名稱（身分主檔勾選畫面上的卡片標題）。
     'groups' => [
         'master' => '主檔管理',
         'repair' => '報修與維修',
         'knowledge' => '自助知識庫',
     ],
 
+    // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
     'items' => [
         'users' => [
             'manage' => ['name' => '用戶主檔', 'description' => '新增、編輯、停用、刪除用戶，重設密碼，指定身分與部門'],

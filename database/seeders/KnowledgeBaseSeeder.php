@@ -8,10 +8,13 @@ use Illuminate\Database\Seeder;
 /** 塞幾筆知識庫測試資料，讓「自助排除知識庫」頁面一打開就有內容可以看。 */
 class KnowledgeBaseSeeder extends Seeder
 {
+    // 執行這個 Seeder：建立六篇示範知識庫文章（用標題判斷，重跑不會重複）。
     public function run(): void
     {
+        // 文章清單：標題、分類、故障現象、排除步驟、是否上架（\n 代表換行）。
         $entries = [
             [
+                // 第 1 篇：已上架。
                 'title' => '投影機無法開機',
                 'category' => '投影機',
                 'symptom' => '按下電源鍵後指示燈不亮，畫面無任何顯示。',
@@ -19,6 +22,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'is_published' => true,
             ],
             [
+                // 第 2 篇：已上架。
                 'title' => '教室電腦無法連上網路',
                 'category' => '電腦',
                 'symptom' => '電腦畫面右下角網路圖示顯示紅色叉叉，無法開啟任何網頁。',
@@ -26,6 +30,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'is_published' => true,
             ],
             [
+                // 第 3 篇：未上架（用來示範「隱藏中」的文章）。
                 'title' => '投影機畫面模糊或色偏',
                 'category' => '投影機',
                 'symptom' => '畫面可以顯示，但文字模糊不清或顏色明顯偏差。',
@@ -34,6 +39,7 @@ class KnowledgeBaseSeeder extends Seeder
             ],
             // 以下為第五週補充的展示資料，讓知識庫列表更豐富，涵蓋更多常見設備類型。
             [
+                // 第 4 篇：已上架。
                 'title' => '教室冷氣沒有冷房效果',
                 'category' => '空調',
                 'symptom' => '冷氣出風正常，但吹出來的風不冷，室溫沒有下降。',
@@ -41,6 +47,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'is_published' => true,
             ],
             [
+                // 第 5 篇：已上架。
                 'title' => '無線網路（Wi-Fi）連不上或訊號很弱',
                 'category' => '網路',
                 'symptom' => '手機/筆電搜尋不到教室 Wi-Fi，或訊號顯示很弱、常常斷線。',
@@ -48,6 +55,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'is_published' => true,
             ],
             [
+                // 第 6 篇：已上架。
                 'title' => '電腦開機後畫面卡在黑畫面',
                 'category' => '電腦',
                 'symptom' => '按下電源鍵風扇有轉、指示燈有亮，但螢幕一直是黑的，沒有任何畫面。',
@@ -56,7 +64,9 @@ class KnowledgeBaseSeeder extends Seeder
             ],
         ];
 
+        // 逐一建立或更新。
         foreach ($entries as $entry) {
+            // 用標題找：已存在就更新內容，不存在就新增；所以重跑 Seeder 不會產生重複文章。
             KnowledgeBase::updateOrCreate(['title' => $entry['title']], $entry);
         }
     }

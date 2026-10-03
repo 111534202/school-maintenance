@@ -161,12 +161,14 @@ return [
     'ulid' => ':attribute 必須是有效的 ULID。',
     'uuid' => ':attribute 必須是有效的 UUID。',
 
+    // 針對特定欄位自訂的驗證錯誤訊息（目前沒有自訂）。
     'custom' => [
         //
     ],
 
     // 把英文欄位名稱換成使用者看得懂的中文，例如 title -> 標題，
     // 這樣驗證錯誤訊息才會是「標題為必填欄位。」而不是「title 為必填欄位。」
+    // 欄位名稱的中文對照：驗證錯誤訊息裡的 :attribute 會換成這裡的名稱。
     'attributes' => [
         'title' => '標題',
         'category' => '分類',

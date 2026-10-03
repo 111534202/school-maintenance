@@ -13,11 +13,13 @@ use Tests\TestCase;
 /** 身分主檔：像 Discord 身分組，新增身分後勾選要開放的權限。 */
 class RoleManagementTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
     private User $admin;
 
+    // 每個測試開始前先登入一位系統管理員。
     protected function setUp(): void
     {
         parent::setUp();
@@ -25,6 +27,7 @@ class RoleManagementTest extends TestCase
         $this->admin = $this->loginAsAnyUser();
     }
 
+    // 只有被勾選「身分主檔」權限的人進得去；沒勾的（例如資訊組主管）得到 403，連送出表單也不行。
     public function test_only_users_with_roles_manage_permission_can_open_the_role_master(): void
     {
         $this->actingAs($this->makeItManager());
@@ -36,6 +39,7 @@ class RoleManagementTest extends TestCase
         $this->get(route('roles.index'))->assertOk();
     }
 
+    // 列表顯示每個身分的名稱、人數與「已勾選 N 項權限」，並標示系統內建。
     public function test_index_lists_roles_with_user_count_and_permission_count(): void
     {
         $this->makeTechnician();
@@ -49,6 +53,7 @@ class RoleManagementTest extends TestCase
             ->assertSee('系統內建');
     }
 
+    // 管理員能新增自訂身分並勾選權限；自訂身分不是系統內建，代碼自動產生。
     public function test_admin_can_create_a_custom_role_with_ticked_permissions(): void
     {
         $response = $this->post(route('roles.store'), [
@@ -66,6 +71,7 @@ class RoleManagementTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $role->id]);
     }
 
+    // 新增時名稱不可重複；送來不存在的權限代碼會被擋下。
     public function test_create_validates_name_uniqueness_and_unknown_permissions(): void
     {
         $this->makeTechnician(); // 先讓「維修人員」這個身分名稱存在，才能測重複名稱
@@ -78,6 +84,7 @@ class RoleManagementTest extends TestCase
         $this->assertDatabaseMissing('roles', ['name' => '怪身分']);
     }
 
+    // 新增的身分會立刻出現在用戶表單的身分下拉選單。
     public function test_new_role_shows_up_in_the_user_form_dropdown(): void
     {
         $this->post(route('roles.store'), ['name' => '實習生', 'permissions' => ['repairs.create']]);
@@ -86,6 +93,7 @@ class RoleManagementTest extends TestCase
         $this->get(route('users.create'))->assertOk()->assertSee('實習生');
     }
 
+    // 修改權限後，操作紀錄會記下「新增了哪些、移除了哪些」。
     public function test_update_changes_permissions_and_logs_what_was_added_and_removed(): void
     {
         $role = $this->makeRole('custom_x', '自訂身分', ['repairs.create', 'repairs.accept']);
@@ -105,6 +113,7 @@ class RoleManagementTest extends TestCase
         $this->assertSame(['repairs.accept'], $log->changes['permissions_removed']);
     }
 
+    // 調整某身分的權限，屬於這個身分的人下一個動作就依新權限生效（不用重新登入）。
     public function test_permission_changes_take_effect_immediately_for_users_of_that_role(): void
     {
         $user = $this->makeUserWithPermissions(['repairs.create']);
@@ -122,6 +131,7 @@ class RoleManagementTest extends TestCase
         $this->get(route('repairs.create'))->assertForbidden();
     }
 
+    // 系統管理員永遠擁有全部權限，就算送出取消勾選也沒用。
     public function test_admin_role_always_keeps_every_permission(): void
     {
         $adminRole = $this->admin->role;
@@ -135,6 +145,7 @@ class RoleManagementTest extends TestCase
         $this->get(route('roles.index'))->assertOk();                          // 管理員自己沒被鎖在門外
     }
 
+    // 編輯頁會依分組列出全部權限，並把目前已開放的打勾。
     public function test_edit_page_shows_all_permissions_grouped_and_ticked(): void
     {
         $role = $this->makeRole('custom_y', '自訂 Y', ['devices.manage']);
@@ -148,6 +159,7 @@ class RoleManagementTest extends TestCase
         $response->assertSee('value="devices.manage"', false);
     }
 
+    // 系統內建身分不能刪除。
     public function test_system_roles_cannot_be_deleted(): void
     {
         $technician = $this->makeRole('technician', '維修人員');
@@ -157,6 +169,7 @@ class RoleManagementTest extends TestCase
         $this->assertDatabaseHas('roles', ['id' => $technician->id]);
     }
 
+    // 還有用戶在用的身分不能刪；沒人用的自訂身分可以刪。
     public function test_role_in_use_cannot_be_deleted_but_unused_custom_role_can(): void
     {
         $inUse = $this->makeUserWithPermissions(['repairs.create'])->role;
@@ -168,6 +181,7 @@ class RoleManagementTest extends TestCase
         $this->assertDatabaseMissing('roles', ['id' => $unused->id]);
     }
 
+    // 每個權限與分組都有中文與英文名稱（新增權限卻忘了補翻譯，這個測試會失敗提醒）。
     public function test_every_permission_and_group_has_a_chinese_and_english_label(): void
     {
         // 新增權限卻忘了補翻譯的話，畫面上會直接顯示 permissions.items.xxx 這種代碼，這個測試會先擋下來。
@@ -188,6 +202,7 @@ class RoleManagementTest extends TestCase
         app()->setLocale('zh_TW');
     }
 
+    // Role::withPermission 只會找出「明確勾選」該權限的身分，不含隱含全開的系統管理員。
     public function test_with_permission_scope_only_matches_explicitly_ticked_roles(): void
     {
         $this->makeRole('technician', '維修人員');      // 預設有 repairs.assignable

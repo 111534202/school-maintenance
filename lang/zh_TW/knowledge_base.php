@@ -8,6 +8,7 @@ return [
     'add_entry' => '新增項目',
     'empty_list' => '目前還沒有任何知識庫項目。',
 
+    // 知識庫列表表格欄位標題。
     'table' => [
         'title' => '標題',
         'category' => '分類',
@@ -24,6 +25,7 @@ return [
     'create_title' => '新增知識庫項目',
     'edit_title' => '編輯知識庫項目',
 
+    // 知識庫新增／編輯表單的欄位名稱。
     'form' => [
         'title' => '標題',
         'category' => '分類（選填，例如：投影機 / 電腦 / 網路）',
@@ -32,6 +34,7 @@ return [
         'is_published' => '上架顯示給使用者',
     ],
 
+    // 詳細頁的文字。
     'show' => [
         'category_prefix' => '分類：',
         'status_prefix' => '狀態：',
@@ -42,6 +45,7 @@ return [
         'unresolved_button' => '無法排除，前往報修',
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'created' => '已新增知識庫項目。',
         'updated' => '已更新知識庫項目。',

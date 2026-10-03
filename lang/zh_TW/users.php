@@ -9,6 +9,7 @@ return [
     'current_user_badge' => '目前登入',
     'no_department' => '未指定',
 
+    // 篩選列的文字：欄位名稱、輸入框提示、「全部」選項。
     'filter' => [
         'keyword' => '關鍵字',
         'keyword_placeholder' => '帳號／姓名／Email／電話',
@@ -20,12 +21,14 @@ return [
         'status_all' => '全部',
     ],
 
+    // 狀態的顯示名稱。
     'status' => [
         'active' => '啟用中',
         'inactive' => '已停用',
         'deleted' => '已刪除',
     ],
 
+    // 表格欄位標題。
     'table' => [
         'username' => '帳號',
         'name' => '姓名',
@@ -38,6 +41,7 @@ return [
         'actions' => '操作',
     ],
 
+    // 按鈕的提示文字（滑鼠移上去時看到的說明）。
     'actions' => [
         'activate' => '啟用帳號',
         'deactivate' => '停用帳號',
@@ -45,12 +49,14 @@ return [
         'reset_password' => '重設密碼',
     ],
 
+    // 刪除或停用前跳出的確認視窗文字（:name 之類帶冒號的字會被換成實際名稱）。
     'confirm' => [
         'deactivate' => '確定要停用「:name」嗎？停用後這個帳號無法登入，目前已登入的連線也會被登出。',
         'delete' => '確定要刪除「:name」嗎？帳號會被標記為已刪除（可以還原），目前已登入的連線會被登出。',
         'restore' => '確定要還原「:name」嗎？',
     ],
 
+    // 新增／編輯表單的標題、欄位名稱與說明文字。
     'form' => [
         'create_title' => '新增用戶',
         'edit_title' => '編輯用戶',
@@ -78,6 +84,7 @@ return [
         'last_login_at' => '最後登入',
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'created' => '用戶已新增。',
         'updated' => '用戶資料已更新。',
@@ -88,6 +95,7 @@ return [
         'restored' => '用戶已還原。',
     ],
 
+    // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'self_protected' => '不能刪除、停用自己的帳號，也不能變更自己的身分權限。',
         'last_admin' => '系統必須保留至少一位啟用中的系統管理員，這個帳號不能被刪除、停用或降級。',

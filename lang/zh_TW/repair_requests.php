@@ -7,6 +7,7 @@ return [
     'add_request' => '新增報修',
     'empty_list' => '目前沒有符合條件的報修案件。',
 
+    // 報修看板篩選列的文字。
     'filter' => [
         'status' => '狀態',
         'status_all' => '全部',
@@ -16,6 +17,7 @@ return [
         'assignee_placeholder' => '例如：王小明',
     ],
 
+    // 報修看板表格欄位標題。
     'table' => [
         'title' => '標題',
         'device_location' => '設備／地點',
@@ -33,12 +35,14 @@ return [
     'yes' => '是',
     'no' => '否',
 
+    // 影響程度（輕微／中等／嚴重）的顯示名稱。
     'impact_level' => [
         'low' => '輕微',
         'medium' => '中等',
         'high' => '嚴重',
     ],
 
+    // 報修單狀態的顯示名稱；鍵必須和 App\Enums\RepairRequestStatus 的值一致。
     'status' => [
         'pending' => '新報修',
         'assigned' => '已派工',
@@ -47,6 +51,7 @@ return [
         'completed' => '已結案',
     ],
 
+    // 新增頁的文字。
     'create' => [
         'title' => '新增報修案件',
         'from_kb_notice' => '承接自知識庫「:title」，已排除步驟仍無法解決，請補充下面資訊送出報修。',
@@ -76,6 +81,7 @@ return [
         'submit' => '送出報修',
     ],
 
+    // 詳細頁的文字。
     'show' => [
         'back_to_board' => '返回看板',
         'device_location_prefix' => '設備／地點：',
@@ -116,6 +122,7 @@ return [
         'log_attachments_prefix' => '維修前後照片／影片：',
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => '報修案件已送出。',
         'dispatched' => '已派工。',
@@ -125,6 +132,7 @@ return [
         'rejected' => '已退回重新處理。',
     ],
 
+    // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'invalid_transition' => '無法把案件從「:from」轉成「:to」，不符合合法的狀態流程。',
         'reassign_invalid_status' => '案件狀態是「:status」，不是「已派工」或「處理中」，不能重新指派。',

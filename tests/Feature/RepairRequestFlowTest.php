@@ -12,11 +12,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
+// 報修單建立流程測試：列表、新增、驗證、從知識庫或掃描設備帶入資料、設備查詢 API、舊網址轉址。
 class RepairRequestFlowTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
+    // 每個測試開始前先登入一位系統管理員（報修的路由都需要登入）。
     protected function setUp(): void
     {
         parent::setUp();
@@ -24,6 +27,7 @@ class RepairRequestFlowTest extends TestCase
         $this->loginAsAnyUser();
     }
 
+    // 輔助方法：建立一台完整的測試設備（含部門、教室、類別），可用參數覆蓋欄位。
     private function makeDevice(array $attrs = []): Device
     {
         $department = Department::create(['name' => '資訊組']);
@@ -48,6 +52,7 @@ class RepairRequestFlowTest extends TestCase
         ]);
     }
 
+    // 報修看板會列出報修單。
     public function test_index_page_lists_requests(): void
     {
         RepairRequest::factory()->create(['title' => 'A101 投影機無法開機']);
@@ -58,6 +63,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSee('A101 投影機無法開機');
     }
 
+    // 新增報修頁可以正常開啟。
     public function test_create_page_loads(): void
     {
         $response = $this->get(route('repairs.create'));
@@ -65,6 +71,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertStatus(200);
     }
 
+    // 可以送出報修單，並成為「新報修」狀態。
     public function test_can_submit_a_repair_request(): void
     {
         $payload = [
@@ -88,6 +95,7 @@ class RepairRequestFlowTest extends TestCase
         ]);
     }
 
+    // 標題、描述、影響程度是必填，沒填會被擋下。
     public function test_store_requires_title_description_and_impact_level(): void
     {
         $response = $this->post(route('repairs.store'), [
@@ -101,6 +109,7 @@ class RepairRequestFlowTest extends TestCase
         $this->assertDatabaseCount('repair_requests', 0);
     }
 
+    // 可以開啟剛送出的報修單詳細頁。
     public function test_can_view_a_submitted_request(): void
     {
         $repairRequest = RepairRequest::factory()->create(['title' => '網路孔沒有訊號']);
@@ -111,6 +120,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSee('網路孔沒有訊號');
     }
 
+    // 知識庫文章頁有「仍無法排除，前往報修」連結，指向新增報修頁。
     public function test_knowledge_base_show_page_links_to_repair_request_create(): void
     {
         $entry = KnowledgeBase::factory()->create();
@@ -121,6 +131,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSee(route('repairs.create', ['from_kb' => $entry->id]), false);
     }
 
+    // 從知識庫文章過來的報修頁，會帶入該文章的提示與標題。
     public function test_repair_request_create_prefills_from_knowledge_base(): void
     {
         $entry = KnowledgeBase::factory()->create(['title' => '投影機無法開機']);
@@ -131,6 +142,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSee('投影機無法開機');
     }
 
+    // 按「問題已解決」會回到知識庫列表並顯示感謝訊息。
     public function test_knowledge_base_resolved_redirects_with_thank_you_message(): void
     {
         $entry = KnowledgeBase::factory()->create(['title' => '投影機無法開機']);
@@ -141,6 +153,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSessionHas('success');
     }
 
+    // 從設備入口頁（掃描 QR）過來時，報修頁自動帶入設備資訊。
     public function test_create_page_prefills_from_scanned_device(): void
     {
         $device = $this->makeDevice();
@@ -152,6 +165,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertSee('Epson');
     }
 
+    // 設備查詢 API 輸入設備編號，會回傳設備資訊（給掃描條碼自動帶入用）。
     public function test_device_lookup_endpoint_returns_device_info(): void
     {
         $device = $this->makeDevice();
@@ -162,6 +176,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertJson(['id' => $device->id, 'device_code' => $device->device_code]);
     }
 
+    // 設備查詢 API 也能處理 QR 貼紙上的整串網址（取其中的設備編號）。
     public function test_device_lookup_accepts_the_full_url_encoded_in_the_qr_sticker(): void
     {
         // 設備 QR 貼紙編碼的是 route('devices.entry') 的整串網址（.../d/{device_code}），
@@ -174,6 +189,7 @@ class RepairRequestFlowTest extends TestCase
         $response->assertJson(['id' => $device->id]);
     }
 
+    // 設備查詢 API 也能用資產編號、序號查到設備。
     public function test_device_lookup_accepts_asset_code_and_serial_number(): void
     {
         $device = $this->makeDevice(['asset_code' => 'AST-9001', 'serial_number' => 'SN-777']);
@@ -182,6 +198,7 @@ class RepairRequestFlowTest extends TestCase
         $this->getJson(route('repairs.device-lookup', ['code' => 'SN-777']))->assertOk()->assertJson(['id' => $device->id]);
     }
 
+    // 查不到的編號或空白編號，回傳 404（找不到）。
     public function test_device_lookup_returns_404_for_unknown_or_empty_code(): void
     {
         $this->makeDevice();
@@ -190,6 +207,7 @@ class RepairRequestFlowTest extends TestCase
         $this->getJson(route('repairs.device-lookup'))->assertNotFound();
     }
 
+    // 舊網址 /repair-requests 會自動轉址到新的 /repairs，不會出現 404。
     public function test_old_repair_requests_urls_redirect_to_the_new_repairs_urls(): void
     {
         // 路由曾經叫 /repair-requests，書籤裡的舊網址不能變成 404。
@@ -198,6 +216,7 @@ class RepairRequestFlowTest extends TestCase
         $this->get('/repair-requests/5')->assertRedirect('/repairs/5');
     }
 
+    // 報修時帶 device_id，報修單會正式關聯到那台設備。
     public function test_submitting_a_repair_request_with_device_id_links_the_real_device(): void
     {
         $device = $this->makeDevice();

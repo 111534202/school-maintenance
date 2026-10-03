@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-use App\Enums\RepairRequestStatus;
+use App\Enums\RepairRequestStatus;   // 報修單狀態列舉
+use App\Policies\RepairRequestPolicy;   // 報修單的歸屬權限（誰看得到、誰能處理）
+use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;   // 「屬於某一筆」關聯的型別
+use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型關聯」的型別
 
 /**
  * 「報修單」Model。使用者發現設備壞掉時，填一張報修單，之後主管會指派維修人員、
@@ -24,8 +26,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  */
 class RepairRequest extends Model
 {
-    use HasFactory;
+    use HasFactory;   // 可以用 RepairRequest::factory() 產生測試資料
 
+    // 資料表名稱（明確寫出來，避免 Laravel 自己猜錯）。
     protected $table = 'repair_requests';
 
     /**
@@ -36,12 +39,12 @@ class RepairRequest extends Model
      * - affects_class：是否正在影響上課（布林值）
      * - status：案件狀態，見上面的「重要提醒」，一般不要直接指派這個欄位
      * - reporter_id / device_id / assigned_to：報修人／設備／維修人員的 id
-     *   （目前只是數字，還沒有真正關聯到其他表，見上面說明）
-     * - device_note：devices 表合併前，暫時讓使用者自己打字描述設備位置
-     * - assignee_note：users 表合併前，暫時讓主管自己打字記錄維修人員姓名
+     *   （對應 users、devices、users 資料表，已有外鍵約束）
+     * - device_note：沒有掃描設備條碼、手動輸入的案件，用文字描述設備位置（device_id 會是空的）
+     * - assignee_note：沒有真實維修人員帳號（例如保養 NG 轉入的舊資料）時，用文字記錄維修人員姓名
      * - scheduled_at：預計處理日期
      * - rejection_reason：驗收不通過退回時，驗收人填的退回原因
-     * - location：地點（教室），跟 device_note 一樣是暫時的文字欄位
+     * - location：地點（教室），文字欄位，看板可依它模糊篩選
      */
     protected $fillable = [
         'title',
@@ -89,6 +92,23 @@ class RepairRequest extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /**
+     * 只撈「這位用戶看得到」的報修單（規則見 App\Policies\RepairRequestPolicy）：
+     * 能看全部的人（管理員、有派工權限）不加條件；其他人只看自己報修的或指派給自己的。
+     * 使用時寫 RepairRequest::visibleTo($user)->...；看板、主控台統計、通知鈴鐺都用它，數字才會一致。
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (RepairRequestPolicy::canSeeAll($user)) {
+            return $query;
+        }
+
+        // 括號包起來：「自己報修」或「指派給自己」二選一，不會影響外面其他篩選條件。
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('reporter_id', $user->id)->orWhere('assigned_to', $user->id);
+        });
     }
 
     /** 這張報修單是報修哪一台真實設備（掃描設備條碼建立的報修單才會有值）。 */

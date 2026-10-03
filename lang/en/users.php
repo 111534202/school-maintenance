@@ -9,6 +9,7 @@ return [
     'current_user_badge' => 'You',
     'no_department' => 'Unassigned',
 
+    // 篩選列的文字：欄位名稱、輸入框提示、「全部」選項。
     'filter' => [
         'keyword' => 'Keyword',
         'keyword_placeholder' => 'Username / name / email / phone',
@@ -20,12 +21,14 @@ return [
         'status_all' => 'All',
     ],
 
+    // 狀態的顯示名稱。
     'status' => [
         'active' => 'Active',
         'inactive' => 'Inactive',
         'deleted' => 'Deleted',
     ],
 
+    // 表格欄位標題。
     'table' => [
         'username' => 'Username',
         'name' => 'Name',
@@ -38,6 +41,7 @@ return [
         'actions' => 'Actions',
     ],
 
+    // 按鈕的提示文字（滑鼠移上去時看到的說明）。
     'actions' => [
         'activate' => 'Activate account',
         'deactivate' => 'Deactivate account',
@@ -45,12 +49,14 @@ return [
         'reset_password' => 'Reset password',
     ],
 
+    // 刪除或停用前跳出的確認視窗文字（:name 之類帶冒號的字會被換成實際名稱）。
     'confirm' => [
         'deactivate' => 'Deactivate ":name"? They will no longer be able to log in and any active sessions will be signed out.',
         'delete' => 'Delete ":name"? The account is marked as deleted (it can be restored) and any active sessions are signed out.',
         'restore' => 'Restore ":name"?',
     ],
 
+    // 新增／編輯表單的標題、欄位名稱與說明文字。
     'form' => [
         'create_title' => 'Add User',
         'edit_title' => 'Edit User',
@@ -78,6 +84,7 @@ return [
         'last_login_at' => 'Last Login',
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'created' => 'User added.',
         'updated' => 'User updated.',
@@ -88,6 +95,7 @@ return [
         'restored' => 'User restored.',
     ],
 
+    // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'self_protected' => 'You cannot delete or deactivate your own account, or change your own role.',
         'last_admin' => 'The system must keep at least one active administrator; this account cannot be deleted, deactivated or demoted.',

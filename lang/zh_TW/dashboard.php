@@ -8,6 +8,7 @@ return [
     'no_role' => '尚未指派身分',
     'click_hint' => '點擊數字卡片或圖表，可以直接跳到對應的功能。',
 
+    // 主控台數字卡片的文字（標題、單位、備註）。
     'cards' => [
         'open_repairs' => '進行中工單',
         'pending_dispatch' => '待派工',
@@ -22,6 +23,7 @@ return [
         'unit_classrooms' => '間',
     ],
 
+    // 主控台圖表的標題與說明。
     'charts' => [
         'repair_status' => '工單狀態分布',
         'repair_trend' => '近 14 日新增報修',
@@ -31,6 +33,7 @@ return [
         'no_data' => '目前沒有資料',
     ],
 
+    // 設備狀態的顯示名稱（主控台圖表用）。
     'device_status' => [
         'normal' => '正常',
         'repairing' => '維修中',

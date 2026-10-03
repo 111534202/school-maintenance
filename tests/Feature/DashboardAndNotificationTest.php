@@ -15,9 +15,11 @@ use Tests\TestCase;
 /** 主控台（數字卡片 + 可點擊的圖表）、頂部通知鈴鐺、語言切換隱藏、選單的主檔分組。 */
 class DashboardAndNotificationTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
+    // 輔助方法：建立一間教室（標成設備異常）與三台設備（兩台正常、一台維修中）。
     private function makeDevices(): void
     {
         $classroom = Classroom::create([
@@ -34,11 +36,13 @@ class DashboardAndNotificationTest extends TestCase
 
     // ---------- 主控台 ----------
 
+    // 沒登入的人開主控台，會被導到登入頁。
     public function test_guest_cannot_open_the_dashboard(): void
     {
         $this->get(route('dashboard'))->assertRedirect(route('login'));
     }
 
+    // 主控台的報修數字正確，而且卡片與圖表都連到「已篩好狀態」的報修看板。
     public function test_dashboard_shows_repair_counts_and_links_to_the_matching_filtered_lists(): void
     {
         $this->loginAsAnyUser();
@@ -61,6 +65,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee('chart-repairTrend', false);
     }
 
+    // 管理員看得到設備、用戶、教室的卡片與圖表，並連到對應的主檔。
     public function test_admin_sees_device_user_and_classroom_cards_and_charts(): void
     {
         $this->makeDevices();
@@ -79,6 +84,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee(route('users.index'), false);
     }
 
+    // 沒有主檔權限的人（例如維修人員）看不到設備、用戶、教室的統計。
     public function test_dashboard_hides_numbers_for_masters_the_user_cannot_open(): void
     {
         $this->makeDevices();
@@ -95,6 +101,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertDontSee('chart-roleDistribution', false);
     }
 
+    // 資訊組主管看得到設備與教室統計，但看不到用戶數量。
     public function test_it_manager_sees_devices_and_classrooms_but_not_users(): void
     {
         $this->makeDevices();
@@ -105,6 +112,7 @@ class DashboardAndNotificationTest extends TestCase
             ->assertDontSee('用戶數量');
     }
 
+    // 圖表點擊帶去的網址，目標頁面真的有套用篩選（設備狀態、用戶身分）。
     public function test_chart_target_pages_apply_the_filters_the_dashboard_links_to(): void
     {
         $this->makeDevices();
@@ -121,6 +129,7 @@ class DashboardAndNotificationTest extends TestCase
             ->assertSee($admin->username)->assertDontSee($other->username);
     }
 
+    // 所有主檔與紀錄頁的表格都有框線（全站設計規則）。
     public function test_all_tables_have_borders(): void
     {
         $this->makeDevices();   // 部門、教室、設備類別、設備都至少有一筆（部門主檔沒資料時只顯示空狀態、不畫表格）
@@ -133,6 +142,7 @@ class DashboardAndNotificationTest extends TestCase
 
     // ---------- 頂部通知鈴鐺 ----------
 
+    // 通知鈴鐺統計「新報修待派工」與「待驗收」，並附上跳轉連結。
     public function test_bell_counts_new_repairs_and_pending_reviews_with_jump_links(): void
     {
         $this->actingAs($this->makeUserWithRole('executive', '主管'));  // 有派工 + 驗收權限
@@ -148,6 +158,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee(route('repairs.index', ['status' => 'pending_review']), false);
     }
 
+    // 維修人員的鈴鐺只計算「指派給自己、未結案」的案件。
     public function test_bell_for_a_technician_counts_only_cases_assigned_to_them(): void
     {
         $technician = $this->makeTechnician();
@@ -166,6 +177,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee(route('repairs.index', ['assignee' => $technician->name]), false);
     }
 
+    // 沒有待辦時鈴鐺不顯示紅色數字，清單顯示「目前沒有待處理的事項」。
     public function test_bell_shows_empty_state_without_a_badge_when_nothing_is_pending(): void
     {
         $this->actingAs($this->makeUserWithRole('executive', '主管'));
@@ -176,6 +188,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertDontSee('id="notificationBadge"', false);
     }
 
+    // 每個頁面頂部都有通知鈴鐺，不只主控台。
     public function test_bell_is_available_on_every_page_not_only_the_dashboard(): void
     {
         $this->actingAs($this->makeUserWithRole('executive', '主管'));
@@ -187,6 +200,7 @@ class DashboardAndNotificationTest extends TestCase
 
     // ---------- 語言切換先隱藏 ----------
 
+    // 語言切換預設隱藏，設定開啟後會再出現。
     public function test_language_switcher_is_hidden_by_default_and_can_be_turned_back_on(): void
     {
         $this->loginAsAnyUser();
@@ -199,6 +213,7 @@ class DashboardAndNotificationTest extends TestCase
 
     // ---------- 選單：主檔歸成一類 ----------
 
+    // 用戶、身分、部門、教室、設備類別、設備都收在同一個可收合的「主檔」群組裡（手機抽屜與桌面側邊欄各一份）。
     public function test_master_data_links_are_grouped_in_one_collapsible_group(): void
     {
         $this->loginAsAnyUser();
@@ -222,6 +237,7 @@ class DashboardAndNotificationTest extends TestCase
         }
     }
 
+    // 在主檔頁面時群組預設展開，其他頁面預設收合。
     public function test_master_group_starts_expanded_only_on_a_master_page(): void
     {
         $this->loginAsAnyUser();
@@ -230,6 +246,7 @@ class DashboardAndNotificationTest extends TestCase
         $this->get(route('repairs.index'))->assertSee('class="collapse " id="side-master"', false);
     }
 
+    // 完全沒有主檔權限的人看不到「主檔」群組。
     public function test_master_group_is_absent_for_users_without_any_master_permission(): void
     {
         $this->actingAs($this->makeTechnician());

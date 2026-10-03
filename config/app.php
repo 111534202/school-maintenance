@@ -65,6 +65,7 @@ return [
     |
     */
 
+    // 本專案的時區預設是台北（上面 Laravel 的英文說明寫的 UTC 是框架預設值）。要改時區改 .env 的 APP_TIMEZONE；時區會影響所有存入與顯示的時間，例如最後登入時間、操作紀錄。
     'timezone' => env('APP_TIMEZONE', 'Asia/Taipei'),
 
     /*

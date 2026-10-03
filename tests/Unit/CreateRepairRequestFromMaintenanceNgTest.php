@@ -12,8 +12,10 @@ use Tests\TestCase;
  */
 class CreateRepairRequestFromMaintenanceNgTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
 
+    // 保養檢查 NG 轉報修：會建立一張「新報修」狀態的報修單，並在描述註明來源。
     public function test_creates_a_pending_repair_request_from_an_ng_result(): void
     {
         $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(

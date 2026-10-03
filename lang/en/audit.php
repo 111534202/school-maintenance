@@ -5,6 +5,7 @@
 return [
     'index_title' => 'Audit Log',
 
+    // 事件名稱：鍵是 AuditLogger::log() 的第一個參數，值是操作紀錄頁顯示的中文／英文名稱。
     'actions' => [
         'created' => 'Created',
         'updated' => 'Updated',
@@ -21,6 +22,7 @@ return [
         'rejected' => 'Rejected',
     ],
 
+    // 對象類型名稱：鍵是 Model 的類別名稱（不含路徑），值是操作紀錄頁顯示的名稱。
     'types' => [
         'User' => 'User',
         'Role' => 'Role',
@@ -33,6 +35,7 @@ return [
         'KnowledgeBase' => 'Knowledge base article',
     ],
 
+    // 操作紀錄頁篩選列的文字。
     'filter' => [
         'user' => 'User',
         'user_all' => 'All users',
@@ -46,6 +49,7 @@ return [
         'keyword' => 'Description keyword',
     ],
 
+    // 操作紀錄表格欄位標題。
     'table' => [
         'time' => 'Time',
         'user' => 'User',
@@ -57,6 +61,7 @@ return [
     'empty' => 'No records match the current filter',
     'system_user' => 'System',
 
+    // 各功能寫入操作紀錄時使用的說明句子（帶冒號的字會被換成實際內容，例如 :title、:name）。
     'messages' => [
         'login' => ':name logged in',
         'logout' => ':name logged out',

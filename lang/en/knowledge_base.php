@@ -8,6 +8,7 @@ return [
     'add_entry' => 'Add Entry',
     'empty_list' => 'There are no knowledge base entries yet.',
 
+    // 知識庫列表表格欄位標題。
     'table' => [
         'title' => 'Title',
         'category' => 'Category',
@@ -24,6 +25,7 @@ return [
     'create_title' => 'Add Knowledge Base Entry',
     'edit_title' => 'Edit Knowledge Base Entry',
 
+    // 知識庫新增／編輯表單的欄位名稱。
     'form' => [
         'title' => 'Title',
         'category' => 'Category (optional, e.g. Projector / Computer / Network)',
@@ -32,6 +34,7 @@ return [
         'is_published' => 'Publish (visible to users)',
     ],
 
+    // 詳細頁的文字。
     'show' => [
         'category_prefix' => 'Category: ',
         'status_prefix' => 'Status: ',
@@ -42,6 +45,7 @@ return [
         'unresolved_button' => "Couldn't Fix It, Submit a Repair Request",
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'created' => 'Knowledge base entry added.',
         'updated' => 'Knowledge base entry updated.',

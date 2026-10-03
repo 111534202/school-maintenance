@@ -4,6 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// 在 repair_logs 加上 parts_used_note：維修時使用備品的文字說明。
+// （migration 的基本觀念見 0001_01_01_000000_create_users_table.php 檔頭。）
 return new class extends Migration
 {
     /**
@@ -15,6 +17,7 @@ return new class extends Migration
         // 先用自由文字記錄用了什麼、用了多少。劉家芸的 parts 表 / InventoryService 介面
         // 還沒確認前，不建立假的 parts 關聯或自己去扣庫存，只單純記錄文字說明。
         Schema::table('repair_logs', function (Blueprint $table) {
+            // 使用備品說明（文字、可空）；放在 resolution 欄位後面。
             $table->string('parts_used_note')->nullable()->after('resolution')
                 ->comment('使用備品說明，待 InventoryService 介面確認後改為正式關聯+扣庫存');
         });
@@ -26,6 +29,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('repair_logs', function (Blueprint $table) {
+            // down()：還原時刪除欄位。
             $table->dropColumn('parts_used_note');
         });
     }

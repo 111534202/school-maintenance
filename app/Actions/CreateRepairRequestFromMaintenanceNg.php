@@ -2,11 +2,14 @@
 
 namespace App\Actions;
 
-use App\Enums\RepairRequestStatus;
-use App\Models\RepairRequest;
+use App\Enums\RepairRequestStatus;   // 報修單狀態列舉
+use App\Models\RepairRequest;        // 報修單資料表模型
 
 /**
  * 【給王佑恩（保養/AI 模組）呼叫用】
+ *
+ * 【Action（動作類別）是什麼？】把「一件完整的事」包成一個只有 execute() 方法的小類別，
+ * 讓別的模組可以一行呼叫，不必知道細節。
  *
  * 這支類別的功能：當保養檢查結果是「NG（不合格）」時，自動幫使用者建立一張
  * 報修單，讓 NG 案件可以直接進到彭仕衡的報修/維修主流程，不用使用者自己
@@ -34,6 +37,10 @@ use App\Models\RepairRequest;
  */
 class CreateRepairRequestFromMaintenanceNg
 {
+    /**
+     * 建立一張「新報修」狀態的報修單並回傳。
+     * 參數後面寫 = 值 的是「預設值」，呼叫時可以省略（例如不寫 impactLevel 就是 medium）。
+     */
     public function execute(
         string $sourceLabel,
         string $title,
@@ -51,7 +58,7 @@ class CreateRepairRequestFromMaintenanceNg
             // 可以之後在呼叫時加一個參數傳進來，目前規格沒要求，先用預設值）。
             'affects_class' => false,
             'device_note' => $deviceNote,
-            'status' => RepairRequestStatus::Pending->value,
+            'status' => RepairRequestStatus::Pending->value,   // 一律從「新報修」開始，後面照一般流程派工
         ]);
     }
 }

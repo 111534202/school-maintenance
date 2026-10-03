@@ -7,6 +7,7 @@ return [
     'case_line' => '案件：:title（:location）',
     'not_filled_location' => '未填寫地點',
 
+    // 維修填單表單的欄位名稱與說明。
     'form' => [
         'cause' => '故障原因說明',
         'resolution' => '處置方式',
@@ -19,6 +20,7 @@ return [
 
     'submit' => '送出維修紀錄（送出後案件進入待驗收）',
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => '維修紀錄已送出，案件已進入待驗收。',
     ],

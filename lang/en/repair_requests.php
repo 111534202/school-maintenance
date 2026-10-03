@@ -7,6 +7,7 @@ return [
     'add_request' => 'New Repair Request',
     'empty_list' => 'No repair requests match the current filter.',
 
+    // 報修看板篩選列的文字。
     'filter' => [
         'status' => 'Status',
         'status_all' => 'All',
@@ -16,6 +17,7 @@ return [
         'assignee_placeholder' => 'e.g. John Smith',
     ],
 
+    // 報修看板表格欄位標題。
     'table' => [
         'title' => 'Title',
         'device_location' => 'Device / Location',
@@ -33,12 +35,14 @@ return [
     'yes' => 'Yes',
     'no' => 'No',
 
+    // 影響程度（輕微／中等／嚴重）的顯示名稱。
     'impact_level' => [
         'low' => 'Low',
         'medium' => 'Medium',
         'high' => 'High',
     ],
 
+    // 報修單狀態的顯示名稱；鍵必須和 App\Enums\RepairRequestStatus 的值一致。
     'status' => [
         'pending' => 'New',
         'assigned' => 'Assigned',
@@ -47,6 +51,7 @@ return [
         'completed' => 'Completed',
     ],
 
+    // 新增頁的文字。
     'create' => [
         'title' => 'New Repair Request',
         'from_kb_notice' => 'Continuing from knowledge base article ":title" — the steps above did not solve it. Please fill in the details below to submit a repair request.',
@@ -76,6 +81,7 @@ return [
         'submit' => 'Submit Repair Request',
     ],
 
+    // 詳細頁的文字。
     'show' => [
         'back_to_board' => 'Back to Board',
         'device_location_prefix' => 'Device / Location: ',
@@ -116,6 +122,7 @@ return [
         'log_attachments_prefix' => 'Before/After Photos/Videos: ',
     ],
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => 'Repair request submitted.',
         'dispatched' => 'Dispatched.',
@@ -125,6 +132,7 @@ return [
         'rejected' => 'Sent back for rework.',
     ],
 
+    // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'invalid_transition' => 'Cannot change the case from ":from" to ":to" — that is not an allowed status transition.',
         'reassign_invalid_status' => 'The case status is ":status", not "Assigned" or "In Progress" — it cannot be reassigned.',

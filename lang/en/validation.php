@@ -180,6 +180,7 @@ return [
     |
     */
 
+    // 針對特定欄位自訂的驗證錯誤訊息（目前沒有自訂）。
     'custom' => [
         'attribute-name' => [
             'rule-name' => 'custom-message',
@@ -197,6 +198,7 @@ return [
     |
     */
 
+    // 欄位名稱的中文對照：驗證錯誤訊息裡的 :attribute 會換成這裡的名稱。
     'attributes' => [
         'title' => 'title',
         'category' => 'category',

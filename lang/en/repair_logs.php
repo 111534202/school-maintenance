@@ -6,6 +6,7 @@ return [
     'case_line' => 'Case: :title (:location)',
     'not_filled_location' => 'Location not filled in',
 
+    // 維修填單表單的欄位名稱與說明。
     'form' => [
         'cause' => 'Cause Description',
         'resolution' => 'Resolution',
@@ -18,6 +19,7 @@ return [
 
     'submit' => 'Submit Repair Log (case will move to Pending Review)',
 
+    // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => 'Repair log submitted; the case has moved to pending review.',
     ],

@@ -15,11 +15,13 @@ use Tests\TestCase;
 /** 操作紀錄：各模組的操作都有寫入、說明看得懂、登入時間用台北時區。 */
 class AuditLogTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
     private User $admin;
 
+    // 每個測試開始前先登入一位系統管理員，並記在 $this->admin。
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,6 +29,7 @@ class AuditLogTest extends TestCase
         $this->admin = $this->loginAsAnyUser();
     }
 
+    // 輔助方法：取出某個事件最新的一筆操作紀錄。
     private function lastLog(string $action): ?AuditLog
     {
         return AuditLog::where('action', $action)->latest('id')->first();
@@ -34,12 +37,14 @@ class AuditLogTest extends TestCase
 
     // ---------- 時區與最後登入時間 ----------
 
+    // 系統時區是台北（+08:00），最後登入時間與操作紀錄的時間才會是當地時間。
     public function test_application_uses_the_taipei_timezone(): void
     {
         $this->assertSame('Asia/Taipei', config('app.timezone'));
         $this->assertSame('+08:00', now()->format('P'));
     }
 
+    // 登入後「最後登入時間」就是現在的台北時間，並顯示在用戶主檔列表。
     public function test_last_login_time_is_recorded_in_local_time_and_shown_in_the_user_list(): void
     {
         auth()->logout();
@@ -58,6 +63,7 @@ class AuditLogTest extends TestCase
 
     // ---------- 登入／登出 ----------
 
+    // 登入、登出、登入失敗都有記錄；失敗紀錄不會包含輸入的密碼。
     public function test_login_logout_and_failed_login_are_logged_without_the_password(): void
     {
         auth()->logout();
@@ -80,6 +86,7 @@ class AuditLogTest extends TestCase
 
     // ---------- 說明：寫入當下的快照 ----------
 
+    // 操作說明自動產生（例如「刪除 用戶「王小明」」），而且之後那個人被徹底刪掉，紀錄上仍看得到當時的名字。
     public function test_description_is_generated_automatically_and_survives_the_subject_being_deleted(): void
     {
         $victim = $this->makeTechnician();
@@ -98,6 +105,7 @@ class AuditLogTest extends TestCase
 
     // ---------- 報修流程 ----------
 
+    // 報修全流程（新增、派工、開始處理、填維修紀錄、驗收退回、結案）每一步都有留下中文說明的紀錄。
     public function test_the_whole_repair_flow_leaves_an_audit_trail(): void
     {
         Mail::fake();
@@ -138,6 +146,7 @@ class AuditLogTest extends TestCase
         $this->assertSame($this->admin->id, $rejected->user_id);
     }
 
+    // 重新指派會記下新的維修人員。
     public function test_reassigning_is_logged_with_the_new_technician(): void
     {
         Mail::fake();
@@ -152,6 +161,7 @@ class AuditLogTest extends TestCase
 
     // ---------- 知識庫 ----------
 
+    // 知識庫文章的新增、修改、刪除都有記錄。
     public function test_knowledge_base_create_update_delete_are_logged(): void
     {
         $this->post(route('knowledge-base.store'), [
@@ -171,6 +181,7 @@ class AuditLogTest extends TestCase
 
     // ---------- 操作紀錄頁 ----------
 
+    // 操作紀錄頁顯示中文事件名稱，並可依日期範圍與關鍵字篩選。
     public function test_audit_page_shows_chinese_labels_and_filters_by_date_and_keyword(): void
     {
         AuditLogger::log('created', $this->makeTechnician(), [], '新增 用戶「甲」');
@@ -190,6 +201,7 @@ class AuditLogTest extends TestCase
             ->assertSee('刪除 用戶「乙」')->assertDontSee('新增 用戶「甲」');
     }
 
+    // 程式裡用到的每個事件與對象類型都有中英文名稱（新增事件卻忘了補翻譯會失敗提醒）。
     public function test_every_audit_action_and_type_used_in_the_code_has_a_label_in_both_languages(): void
     {
         $actions = ['created', 'updated', 'deleted', 'restored', 'status_changed', 'password_reset', 'core_flag_changed',

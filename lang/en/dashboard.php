@@ -8,6 +8,7 @@ return [
     'no_role' => 'No role assigned',
     'click_hint' => 'Click a card or chart to jump straight to the matching feature.',
 
+    // 主控台數字卡片的文字（標題、單位、備註）。
     'cards' => [
         'open_repairs' => 'Open Repairs',
         'pending_dispatch' => 'Awaiting Dispatch',
@@ -22,6 +23,7 @@ return [
         'unit_classrooms' => '',
     ],
 
+    // 主控台圖表的標題與說明。
     'charts' => [
         'repair_status' => 'Repairs by Status',
         'repair_trend' => 'New Repairs, Last 14 Days',
@@ -31,6 +33,7 @@ return [
         'no_data' => 'No data yet',
     ],
 
+    // 設備狀態的顯示名稱（主控台圖表用）。
     'device_status' => [
         'normal' => 'Normal',
         'repairing' => 'Under repair',

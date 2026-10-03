@@ -1,3 +1,5 @@
+{{-- 編輯用戶頁（對應 UserController::edit），欄位在 users/_form.blade.php；另外附一個獨立的「重設密碼」表單。 --}}
+{{-- （Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 @extends('layouts.app')
 
 @section('title', __('users.form.edit_title'))
@@ -12,9 +14,12 @@
             </span>
         </div>
 
+        {{-- 表單送出到 PUT /users/{id}（UserController::update）。 --}}
         <form method="POST" action="{{ route('users.update', $user) }}">
             @csrf
+            {{-- 用隱藏欄位把 POST 偽裝成 PUT（Laravel 的更新慣例）。 --}}
             @method('PUT')
+            {{-- 引入共用的欄位表單。 --}}
             @include('users._form')
         </form>
 
@@ -27,16 +32,19 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="reset_password" class="form-label">{{ __('users.form.new_password') }}</label>
+                            {{-- 新密碼（至少 8 碼）。 --}}
                             <input type="password" class="form-control" id="reset_password" name="password" autocomplete="new-password" required>
                             <div class="form-text">{{ __('users.form.password_hint') }}</div>
                         </div>
                         <div class="col-md-6">
                             <label for="reset_password_confirmation" class="form-label">{{ __('users.form.password_confirmation') }}</label>
+                            {{-- 確認新密碼：必須和上面一致。 --}}
                             <input type="password" class="form-control" id="reset_password_confirmation" name="password_confirmation" autocomplete="new-password" required>
                         </div>
                     </div>
                     <div class="form-text mt-2">{{ __('users.form.reset_password_hint') }}</div>
                 </div>
+                {{-- 送出重設密碼的按鈕（紅色邊框提醒這是會讓對方被強制登出的動作）。 --}}
                 <div class="card-footer bg-white d-flex justify-content-end py-3">
                     <button class="btn btn-outline-danger" type="submit"><i class="bi bi-key me-1"></i>{{ __('users.actions.reset_password') }}</button>
                 </div>

@@ -6,12 +6,14 @@
 // Note: a dot in a permission code means "next level" in Laravel translations, so 'repairs.create'
 // must be written as 'repairs' => ['create' => [...]] — not as one flat key containing a dot.
 return [
+    // 權限分組的名稱（身分主檔勾選畫面上的卡片標題）。
     'groups' => [
         'master' => 'Master Data',
         'repair' => 'Repairs & Maintenance',
         'knowledge' => 'Knowledge Base',
     ],
 
+    // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
     'items' => [
         'users' => [
             'manage' => ['name' => 'User Master', 'description' => 'Add, edit, deactivate and delete users, reset passwords, assign roles and departments'],

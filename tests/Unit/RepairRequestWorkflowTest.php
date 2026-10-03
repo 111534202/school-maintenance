@@ -10,15 +10,20 @@ use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+// 報修單狀態機（App\Services\RepairRequestWorkflow）的單元測試：只測「規則」，不透過網頁。
+// 流程：新報修 → 已派工 → 處理中 → 待驗收 → 已結案；驗收不通過可退回處理中。
 class RepairRequestWorkflowTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
 
+    // 輔助方法：建立一個狀態機物件（設備狀態同步用現有的類別）。
     private function workflow(): RepairRequestWorkflow
     {
         return new RepairRequestWorkflow(new DeviceStatusSync());
     }
 
+    // 合法的完整路徑：新報修一路走到已結案都成功。
     public function test_full_legal_path_pending_to_completed(): void
     {
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
@@ -37,6 +42,7 @@ class RepairRequestWorkflowTest extends TestCase
         $this->assertSame(RepairRequestStatus::Completed, $repairRequest->fresh()->status);
     }
 
+    // 待驗收可以被退回「處理中」。
     public function test_pending_review_can_be_rejected_back_to_in_progress(): void
     {
         // Week1 決策#3：驗收不通過退回「處理中」，不是退回「已派工」。
@@ -47,6 +53,7 @@ class RepairRequestWorkflowTest extends TestCase
         $this->assertSame(RepairRequestStatus::InProgress, $repairRequest->fresh()->status);
     }
 
+    // 不能跳過狀態（例如新報修不能直接變處理中）。
     public function test_cannot_skip_states(): void
     {
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
@@ -57,6 +64,7 @@ class RepairRequestWorkflowTest extends TestCase
         $this->workflow()->transitionTo($repairRequest, RepairRequestStatus::InProgress);
     }
 
+    // 已結案是終點，不能再轉去任何狀態。
     public function test_completed_is_a_terminal_state(): void
     {
         $repairRequest = RepairRequest::factory()->create(['status' => 'completed']);
@@ -69,6 +77,7 @@ class RepairRequestWorkflowTest extends TestCase
      * 這裡不是只挑幾個例子測，而是窮舉「5 個狀態 x 5 個狀態」共 25 種組合，
      * 一一驗證合法/不合法的判斷跟規格文件寫的完全一致，不會漏掉任何一種跳法。
      */
+    // 把所有「從 A 狀態到 B 狀態」的組合都試一遍，結果必須和轉換規則表完全一致。
     public function test_every_status_pair_matches_the_documented_transition_table(): void
     {
         // key 是「目前狀態」，value 是「唯一允許轉過去」的狀態清單，
@@ -100,6 +109,7 @@ class RepairRequestWorkflowTest extends TestCase
         }
     }
 
+    // 已派工或處理中時，可以重新指派。
     public function test_reassign_works_when_assigned_or_in_progress(): void
     {
         // 依《第四週個人工作計畫》第 1 項：已派工／處理中都能重新指派，不影響狀態本身。
@@ -116,6 +126,7 @@ class RepairRequestWorkflowTest extends TestCase
         }
     }
 
+    // 新報修與已結案時，重新指派會被拒絕。
     public function test_reassign_rejects_pending_and_completed_states(): void
     {
         // 注意：expectException() 一次只能驗證「下一個」丟出的例外，丟完程式就會

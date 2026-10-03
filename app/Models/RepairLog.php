@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型關聯」的型別
 
 /**
  * 維修紀錄。一張報修單（RepairRequest）可以有很多筆維修紀錄——最常見的情況
@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  */
 class RepairLog extends Model
 {
-    use HasFactory;
+    use HasFactory;   // 可以用 RepairLog::factory() 產生測試資料
 
+    // 允許批次寫入的欄位白名單。
     protected $fillable = [
         'repair_request_id', // 屬於哪一張報修單
         'cause',             // 故障原因說明
@@ -25,6 +26,7 @@ class RepairLog extends Model
         'total_hours',       // 總共花了幾小時（由 ended_at - started_at 算出來）
     ];
 
+    // 型別轉換：時間欄位轉成日期物件（才能用 ->format()）；total_hours 固定顯示到小數第 2 位。
     protected $casts = [
         'started_at' => 'datetime',
         'ended_at' => 'datetime',

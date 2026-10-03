@@ -1,3 +1,6 @@
+{{-- 派工通知信的內容（Markdown 郵件版面，由 App\Mail\RepairDispatchedMail 使用）。 --}}
+{{-- x-mail::message / table / button 是 Laravel 內建的郵件元件；文字都來自 lang/各語言資料夾/mail.php。 --}}
+{{-- 注意：Markdown 的表格不能在中間夾空行，所以這個檔案的表格區塊不要插入任何註解或空行。 --}}
 <x-mail::message>
 # {{ __('mail.dispatched.heading') }}
 

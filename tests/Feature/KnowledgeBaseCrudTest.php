@@ -7,11 +7,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
+// 知識庫文章的新增、檢視、修改、下架、刪除流程測試（以系統管理員身分操作）。
 class KnowledgeBaseCrudTest extends TestCase
 {
+    // 每個測試開始前都重建一份乾淨的資料庫。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
+    // 每個測試開始前先登入一位系統管理員（新增、編輯、刪除需要管理權限）。
     protected function setUp(): void
     {
         parent::setUp();
@@ -20,6 +23,7 @@ class KnowledgeBaseCrudTest extends TestCase
         $this->loginAsAnyUser();
     }
 
+    // 知識庫列表頁會列出文章。
     public function test_index_page_lists_entries(): void
     {
         KnowledgeBase::factory()->create(['title' => '投影機無法開機']);
@@ -30,6 +34,7 @@ class KnowledgeBaseCrudTest extends TestCase
         $response->assertSee('投影機無法開機');
     }
 
+    // 新增文章頁可以正常開啟。
     public function test_create_page_loads(): void
     {
         $response = $this->get(route('knowledge-base.create'));
@@ -37,6 +42,7 @@ class KnowledgeBaseCrudTest extends TestCase
         $response->assertStatus(200);
     }
 
+    // 可以新增文章。
     public function test_can_store_a_new_entry(): void
     {
         $payload = [
@@ -56,6 +62,7 @@ class KnowledgeBaseCrudTest extends TestCase
         ]);
     }
 
+    // 標題、故障現象、排除步驟是必填。
     public function test_store_requires_title_symptom_and_solution(): void
     {
         $response = $this->post(route('knowledge-base.store'), [
@@ -68,6 +75,7 @@ class KnowledgeBaseCrudTest extends TestCase
         $this->assertDatabaseCount('knowledge_base', 0);
     }
 
+    // 可以開啟單篇文章頁。
     public function test_can_view_a_single_entry(): void
     {
         $entry = KnowledgeBase::factory()->create(['title' => '網路孔沒有訊號']);
@@ -78,6 +86,7 @@ class KnowledgeBaseCrudTest extends TestCase
         $response->assertSee('網路孔沒有訊號');
     }
 
+    // 可以修改文章。
     public function test_can_update_an_entry(): void
     {
         $entry = KnowledgeBase::factory()->create(['title' => '舊標題']);
@@ -97,6 +106,7 @@ class KnowledgeBaseCrudTest extends TestCase
         ]);
     }
 
+    // 可以在編輯表單把文章改成「未上架」。
     public function test_can_unpublish_an_entry_via_edit_form(): void
     {
         // 迴歸測試：checkbox 沒勾選時瀏覽器不會送出 is_published 欄位，
@@ -118,6 +128,7 @@ class KnowledgeBaseCrudTest extends TestCase
         ]);
     }
 
+    // 可以刪除文章。
     public function test_can_delete_an_entry(): void
     {
         $entry = KnowledgeBase::factory()->create();

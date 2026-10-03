@@ -5,6 +5,13 @@ namespace App\Enums;
 /**
  * 案件狀態集中定義在這裡（依《第 2 週個人工作計畫》第 5 項「狀態規則集中管理，
  * 不散落 Controller」）。轉換規則本身在 App\Services\RepairRequestWorkflow。
+ *
+ * 【Enum（列舉）是什麼？】把「只有固定幾種可能的值」列成清單，程式裡用 RepairRequestStatus::Pending
+ * 這種寫法取代容易打錯的字串 'pending'，打錯名字編輯器會立刻報錯。
+ * 冒號後面的 string 表示每個選項背後存的是文字（也就是資料庫裡實際存的值）。
+ *
+ * 【想新增狀態】在下面加一個 case，再去 RepairRequestWorkflow 的 TRANSITIONS 表加轉換規則，
+ * 並到 lang/各語言資料夾/repair_requests.php 的 status 區塊補中英文名稱。
  */
 enum RepairRequestStatus: string
 {
@@ -26,6 +33,7 @@ enum RepairRequestStatus: string
      */
     public function label(): string
     {
+        // $this->value 是這個選項背後存的文字（例如 pending），接在翻譯鍵後面就能查到對應名稱。
         return __('repair_requests.status.' . $this->value);
     }
 }

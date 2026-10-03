@@ -1,5 +1,6 @@
 <?php
 
+// Laravel 內建的登入相關訊息範本（目前登入失敗訊息由 LoginController 自己提供，這個檔案多半沒用到）。
 return [
 
     /*
