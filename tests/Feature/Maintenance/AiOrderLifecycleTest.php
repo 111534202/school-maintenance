@@ -75,9 +75,13 @@ class AiOrderLifecycleTest extends TestCase
             'executed_at' => '2026-10-08 10:00:00',
         ]);
 
+        // 報修模組（彭仕衡）已併入 → 真的轉成報修單；尚未併入 → 待轉報修。
+        $result = MaintenanceResult::where('maintenance_order_id', $order->id)->firstOrFail();
         $this->assertSame(
-            MaintenanceResult::NG_CONVERSION_PENDING,
-            MaintenanceResult::where('maintenance_order_id', $order->id)->firstOrFail()->ng_conversion_status
+            app(\App\Services\NgToRepairService::class)->repairModuleAvailable()
+                ? MaintenanceResult::NG_CONVERSION_CONVERTED
+                : MaintenanceResult::NG_CONVERSION_PENDING,
+            $result->ng_conversion_status
         );
     }
 

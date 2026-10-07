@@ -1,0 +1,144 @@
+<?php
+
+// i18n：報修單模組（看板、新增表單、詳細頁：派工/開始處理/驗收/退回/重新指派）。
+// 修改這個檔案時，記得同步修改 lang/en/repair_requests.php，兩邊的 key 必須完全一致。
+return [
+    'board_title' => '維修案件看板',
+    'add_request' => '新增報修',
+    'empty_list' => '目前沒有符合條件的報修案件。',
+
+    // 報修看板篩選列的文字。
+    'filter' => [
+        'status' => '狀態',
+        'status_all' => '全部',
+        'location' => '教室／地點',
+        'location_placeholder' => '例如：A101',
+        'assignee' => '維修人員',
+        'assignee_placeholder' => '例如：王小明',
+        'classroom' => '教室',
+        'classroom_all' => '全部教室',
+        // 從設備主檔連過來（?device_id=）時顯示的提醒；:device 會換成設備編號。
+        'only_device' => '目前只顯示設備「:device」的報修單',
+    ],
+
+    // 報修看板表格欄位標題。
+    'table' => [
+        'title' => '標題',
+        'device_location' => '設備／地點',
+        'impact_level' => '影響程度',
+        'affects_class' => '影響上課',
+        'status' => '狀態',
+        'assignee' => '維修人員',
+        'submitted_at' => '送出時間',
+        'waiting_time' => '等待多久',
+    ],
+
+    'unassigned' => '未指派',
+    'active_case_suffix' => '（未結案 :count 件）',
+    'not_filled' => '未填寫',
+    'yes' => '是',
+    'no' => '否',
+
+    // 影響程度（輕微／中等／嚴重）的顯示名稱。
+    'impact_level' => [
+        'low' => '輕微',
+        'medium' => '中等',
+        'high' => '嚴重',
+    ],
+
+    // 報修單狀態的顯示名稱；鍵必須和 App\Enums\RepairRequestStatus 的值一致。
+    'status' => [
+        'pending' => '新報修',
+        'assigned' => '已派工',
+        'in_progress' => '處理中',
+        'pending_review' => '待驗收',
+        'completed' => '已結案',
+    ],
+
+    // 新增頁的文字。
+    'create' => [
+        'title' => '新增報修案件',
+        'from_kb_notice' => '承接自知識庫「:title」，已排除步驟仍無法解決，請補充下面資訊送出報修。',
+        'section_device' => '設備',
+        'section_issue' => '問題描述',
+        'section_attachments' => '附件',
+        'title_label' => '報修標題',
+        'device_code_label' => '設備條碼／編號（可掃描或手動輸入）',
+        'device_code_placeholder' => '例如：DEV-A101-01',
+        'device_code_hint' => '可用條碼槍、相機掃描，或手動輸入設備編號、資產編號；掃描後會自動帶入設備資訊。',
+        'scan_button' => '用相機掃描',
+        'scan_title' => '掃描設備條碼／QR',
+        'scan_hint' => '把設備上的條碼或 QR 貼紙對準畫面中央，掃到後會自動帶入設備資訊。',
+        'scan_insecure' => '瀏覽器只允許在 HTTPS 或 localhost 開啟相機，請改用 HTTPS 網址，或直接在欄位輸入設備編號。',
+        'scan_camera_error' => '無法開啟相機，請確認已允許瀏覽器使用相機，或直接在欄位輸入設備編號。',
+        'scan_library_error' => '掃描元件載入失敗（可能是網路問題），請直接在欄位輸入設備編號。',
+        'device_lookup_error' => '找不到這個設備編號，請確認條碼或改用下面的文字描述。',
+        'device_display_label' => '掃描到的設備：',
+        'device_note_label' => '設備位置／描述（沒有條碼時填寫）',
+        'device_note_hint' => '已掃描設備的話，系統會自動記錄真正的設備資料，這兩欄可以留空。',
+        'location_label' => '地點（選填）',
+        'description_label' => '故障描述',
+        'description_prefill' => "已依「:title」的排除步驟嘗試過，仍無法解決：\n",
+        'impact_level_label' => '影響程度',
+        'affects_class_label' => '目前正影響上課',
+        'attachments_label' => '故障照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，單檔 20MB 以內）',
+        'submit' => '送出報修',
+    ],
+
+    // 詳細頁的文字。
+    'show' => [
+        'back_to_board' => '返回看板',
+        'device_location_prefix' => '設備／地點：',
+        'impact_level_prefix' => '影響程度：',
+        'affects_class_prefix' => '是否影響上課：',
+        'status_prefix' => '案件狀態：',
+        'assignee_prefix' => '維修人員：',
+        'scheduled_suffix' => '（預計 :datetime 處理）',
+        'submitted_prefix' => '送出時間：',
+        'last_rejection_reason_prefix' => '上次驗收退回原因：',
+        'description_heading' => '故障描述',
+        'attachments_heading' => '報修附件',
+
+        'dispatch_heading' => '派工',
+        'assignee_field_label' => '維修人員',
+        'assignee_field_placeholder' => '請選擇維修人員',
+        'scheduled_field_label' => '預計處理日期（選填）',
+        'confirm_dispatch' => '確認派工',
+        'start_processing' => '開始處理',
+        'fill_repair_log' => '填寫維修紀錄',
+
+        'reassign_summary' => '重新指派維修人員',
+        'reassign_to_label' => '改指派給（維修人員）',
+        'confirm_reassign' => '確認重新指派',
+
+        'acceptance_heading' => '驗收',
+        'accept_pass' => '驗收通過，結案',
+        'accept_fail_summary' => '驗收不通過，退回重新處理',
+        'rejection_reason_label' => '退回原因（維修人員會看到，請具體說明還有什麼問題）',
+        'confirm_reject' => '確認退回',
+
+        'repair_logs_heading' => '維修紀錄',
+        'processing_time_prefix' => '處理時間：',
+        'total_hours_suffix' => '（共 :hours 小時）',
+        'cause_prefix' => '故障原因：',
+        'resolution_prefix' => '處置方式：',
+        'parts_used_prefix' => '使用備品：',
+        'log_attachments_prefix' => '維修前後照片／影片：',
+    ],
+
+    // 操作成功後顯示的綠色訊息。
+    'flash' => [
+        'submitted' => '報修案件已送出。',
+        'dispatched' => '已派工。',
+        'reassigned' => '已重新指派。',
+        'started' => '已標記為處理中。',
+        'completed' => '已驗收結案。',
+        'rejected' => '已退回重新處理。',
+    ],
+
+    // 操作被擋下時顯示的紅色錯誤訊息。
+    'errors' => [
+        'invalid_transition' => '無法把案件從「:from」轉成「:to」，不符合合法的狀態流程。',
+        'reassign_invalid_status' => '案件狀態是「:status」，不是「已派工」或「處理中」，不能重新指派。',
+    ],
+];

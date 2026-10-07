@@ -1,11 +1,15 @@
 <?php
 
+// 這裡放「自訂的終端機指令」（php artisan xxx）與排程（Schedule）。
+// 範例指令 inspire 是 Laravel 預設附的；保養/AI 模組（王佑恩）的排程在檔案下方。
+
 use App\Console\Commands\GenerateDueMaintenanceOrders;
 use App\Console\Commands\ScanPreventiveCandidates;
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule;
+use Illuminate\Foundation\Inspiring;          // 產生勵志名言的內建工具
+use Illuminate\Support\Facades\Artisan;       // 定義終端機指令用
+use Illuminate\Support\Facades\Schedule;      // 排程用
 
+// 範例：執行 `php artisan inspire` 會在終端機印出一句名言。
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

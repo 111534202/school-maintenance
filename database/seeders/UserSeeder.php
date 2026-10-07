@@ -6,38 +6,55 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
+// 為五個內建身分各建立一個測試帳號（密碼都是 password）。
+// 登入帳號名稱：admin（系統管理員）、it_manager（資訊組主管）、repairer（維修人員）、teacher（教師）、executive（主管）。
+// 更多示範用戶（不同部門、已停用、已刪除）在 UserDemoSeeder。
 class UserSeeder extends Seeder
 {
     /**
      * 每個角色建立一個測試帳號，密碼統一為 password，供五種角色登入測試。
+     * 登入用 username（帳號名稱）；email 目前是佔位用的測試信箱，之後在使用者主檔
+     * 改成真實信箱（例如 Gmail），派工通知信會寄到那個信箱。
      *
-     * 工程實作修正：User Model 的 password 欄位已經有 'hashed' cast
-     * （assign 時會自動呼叫 Hash::make），這裡如果再手動 Hash::make('password')
-     * 一次，就會被雙重雜湊，導致密碼永遠核對不過、無法登入。
-     * 修正方式：直接指定明文密碼字串，交給 Model 的 cast 處理雜湊。
+     * 提醒：User Model 的 password 欄位已有 'hashed' cast，所以這裡直接給明文 'password'，
+     * 不要再手動 Hash::make（會雙重雜湊，導致密碼永遠核對不過）。
      */
     public function run(): void
     {
+        // 測試帳號清單：slug 對應的身分、username 登入帳號、name 姓名、email 信箱。
         $accounts = [
-            ['slug' => 'admin', 'name' => '系統管理員測試帳號', 'email' => 'admin@school.test'],
-            ['slug' => 'it_manager', 'name' => '資訊組主管測試帳號', 'email' => 'it_manager@school.test'],
-            ['slug' => 'technician', 'name' => '維修人員測試帳號', 'email' => 'technician@school.test'],
-            ['slug' => 'teacher', 'name' => '教師教室管理人測試帳號', 'email' => 'teacher@school.test'],
-            ['slug' => 'executive', 'name' => '主管行政人員測試帳號', 'email' => 'executive@school.test'],
+            ['slug' => 'admin', 'username' => 'admin', 'name' => '管理員', 'email' => 'admin@school.test'],
+            ['slug' => 'it_manager', 'username' => 'it_manager', 'name' => '資訊組主管', 'email' => 'it_manager@school.test'],
+            ['slug' => 'technician', 'username' => 'repairer', 'name' => '維修人員', 'email' => 'repairer@school.test'],
+            ['slug' => 'teacher', 'username' => 'teacher', 'name' => '教師／教室管理人', 'email' => 'teacher@school.test'],
+            ['slug' => 'executive', 'username' => 'executive', 'name' => '主管／行政人員', 'email' => 'executive@school.test'],
         ];
 
+        // 逐一建立或更新。
         foreach ($accounts as $account) {
+            // 找出這個帳號要用的身分（RoleSeeder 已先建立）。
             $role = Role::where('slug', $account['slug'])->first();
 
-            User::updateOrCreate(
-                ['email' => $account['email']],
-                [
-                    'name' => $account['name'],
-                    'role_id' => $role?->id,
-                    'password' => 'password',
-                    'email_verified_at' => now(),
-                ]
-            );
+            // 先用 username 找，找不到再用 email 找（舊資料只有 email 沒有 username），
+            // 避免重複執行 seeder 或舊資料庫補跑時撞到 email 的唯一限制。
+            // 先找看看這個帳號是否已存在（避免重複建立）。
+            $user = User::where('username', $account['username'])
+                ->orWhere('email', $account['email'])
+                ->first() ?? new User();
+
+            // 把資料放進用戶物件（fill 只會接受 User 模型 $fillable 允許的欄位）。
+            $user->fill([
+                'name' => $account['name'],
+                'username' => $account['username'],
+                'email' => $account['email'],
+                'role_id' => $role?->id,
+                // 密碼設成 password；User 模型會在存入時自動加密。
+                'password' => 'password',
+            ]);
+            // 標記 Email 已驗證（本系統不走 Email 驗證流程）。
+            $user->email_verified_at = now();
+            // 存進資料庫（新用戶會新增，既有用戶會更新）。
+            $user->save();
         }
     }
 }
