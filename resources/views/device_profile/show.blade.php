@@ -60,6 +60,7 @@
             <table class="table table-bordered mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th>來源</th>
                         <th>來源計畫</th>
                         <th>狀態</th>
                         <th>排定日期</th>
@@ -72,7 +73,8 @@
                     @forelse ($maintenanceOrders as $order)
                         @php [$statusText, $statusColor] = $order->statusLabel(); @endphp
                         <tr>
-                            <td>{{ $order->maintenancePlan?->name ?? '—' }}</td>
+                            <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
+                            <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
                             <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
                             <td>{{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}</td>
                             <td>
@@ -90,12 +92,66 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">這台設備目前沒有保養紀錄</td>
+                            <td colspan="7" class="text-center text-muted py-4">這台設備目前沒有保養紀錄</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>AI 風險評估（規則式，非機器學習）</span>
+            <span class="text-muted small">{{ $prediction['algorithm'] ?? '' }}</span>
+        </div>
+        <div class="card-body">
+            @if ($prediction['risk_score'] === null)
+                <p class="mb-0 text-muted">{{ $prediction['recommended_action'] }}</p>
+            @else
+                @php $overThreshold = $prediction['risk_score'] >= $prediction['threshold']; @endphp
+                <p class="mb-2">
+                    風險分數 <strong class="fs-5">{{ number_format($prediction['risk_score'], 3) }}</strong>
+                    <span class="text-muted">／ 門檻 {{ number_format($prediction['threshold'], 2) }}</span>
+                    <span class="badge text-bg-{{ $overThreshold ? 'danger' : 'success' }} ms-2">{{ $overThreshold ? '達門檻' : '未達門檻' }}</span>
+                </p>
+                @if ($prediction['recommended_action'])
+                    <p class="mb-2">{{ $prediction['recommended_action'] }}</p>
+                @endif
+                <div class="table-responsive">
+                    @include('preventive_candidates._explanation', ['explanation' => $prediction['explanation']])
+                </div>
+            @endif
+            @foreach ($prediction['notes'] ?? [] as $note)
+                <div class="text-muted small">※ {{ $note }}</div>
+            @endforeach
+        </div>
+        @if ($candidates->isNotEmpty())
+            <div class="table-responsive border-top">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr><th>候選提出時間</th><th class="text-end">風險分數</th><th>狀態</th><th>對應工單</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($candidates as $candidate)
+                            @php [$cText, $cColor] = $candidate->statusLabel(); @endphp
+                            <tr>
+                                <td>{{ $candidate->created_at?->format('Y-m-d H:i') }}</td>
+                                <td class="text-end">{{ number_format($candidate->risk_score, 3) }}</td>
+                                <td><span class="badge text-bg-{{ $cColor }}">{{ $cText }}</span></td>
+                                <td>
+                                    @if ($candidate->maintenanceOrder)
+                                        <a href="{{ route('maintenance-orders.show', $candidate->maintenanceOrder) }}">工單 #{{ $candidate->maintenance_order_id }}</a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     <div class="row row-cols-1 row-cols-md-3 g-3">

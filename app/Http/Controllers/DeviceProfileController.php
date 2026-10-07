@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\MaintenanceOrder;
+use App\Models\PreventiveCandidate;
+use App\Services\AI\PredictionServiceInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -16,6 +18,7 @@ use Illuminate\Http\Request;
  *   - 報修、維修、備品耗用成本：分別是彭仕衡、劉家芸主責的模組，分支尚未併入 develop，
  *     目前先用提示文字呈現「尚未串接」，等對方分支併入後改成唯讀查詢他們的 Model，
  *     不會在這裡另外建表或複製資料（對應《個人工作計畫》規則：跨模組資料只能讀，不能複製）。
+ *   - AI 預測（第 4 週）：即時呼叫 PredictionServiceInterface 取得風險分數與評分明細，並列出預防保養候選。
  *   - 附件：共用附件機制還沒建立（排在第 3 週任務 3 之後），先用提示文字呈現。
  */
 class DeviceProfileController extends Controller
@@ -47,7 +50,7 @@ class DeviceProfileController extends Controller
     /**
      * 單一設備的履歷彙總頁（唯讀）。
      */
-    public function show(Device $device): View
+    public function show(Device $device, PredictionServiceInterface $predictor): View
     {
         $device->load(['category', 'classroom']);
 
@@ -65,6 +68,15 @@ class DeviceProfileController extends Controller
             'ng' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->result?->isNg())->count(),
         ];
 
-        return view('device_profile.show', compact('device', 'maintenanceOrders', 'maintenanceStats'));
+        // 第 4 週任務 5：AI 風險評分（即時計算，不寫入資料庫）與這台設備的預防保養候選歷史。
+        $prediction = $predictor->predict($device);
+
+        $candidates = PreventiveCandidate::query()
+            ->where('device_id', $device->id)
+            ->with(['maintenanceOrder', 'decider'])
+            ->orderByDesc('id')
+            ->get();
+
+        return view('device_profile.show', compact('device', 'maintenanceOrders', 'maintenanceStats', 'prediction', 'candidates'));
     }
 }

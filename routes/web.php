@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClassroomController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\MaintenanceItemController;
 use App\Http\Controllers\MaintenanceOrderController;
 use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
+use App\Http\Controllers\PreventiveCandidateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -76,6 +78,17 @@ Route::middleware('auth')->group(function () {
     // 保養完成率資料接口（第 3 週任務 4）— 給劉家芸的 Dashboard 模組呼叫，回傳 JSON，不是使用者頁面。
     Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
         ->name('maintenance-completion-rate.index');
+
+    // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，僅開放 admin / it_manager（主管審核）。
+    Route::middleware('role:admin,it_manager')->prefix('ai-maintenance')->group(function () {
+        Route::get('candidates', [PreventiveCandidateController::class, 'index'])->name('preventive-candidates.index');
+        Route::post('candidates/scan', [PreventiveCandidateController::class, 'scan'])->name('preventive-candidates.scan');
+        Route::post('candidates/{preventiveCandidate}/approve', [PreventiveCandidateController::class, 'approve'])->name('preventive-candidates.approve');
+        Route::post('candidates/{preventiveCandidate}/reject', [PreventiveCandidateController::class, 'reject'])->name('preventive-candidates.reject');
+
+        Route::get('settings', [AiSettingController::class, 'edit'])->name('ai-settings.edit');
+        Route::put('settings', [AiSettingController::class, 'update'])->name('ai-settings.update');
+    });
 
     // 管理端入口：教室、設備類別、設備管理、audit log 查詢僅開放 admin / it_manager
     Route::middleware('role:admin,it_manager')->group(function () {

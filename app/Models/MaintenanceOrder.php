@@ -72,6 +72,14 @@ class MaintenanceOrder extends Model
     }
 
     /**
+     * 來源標籤的 Bootstrap badge 顏色：AI 辨識用醒目的 info 色，定期用灰色（第 4 週任務 5）。
+     */
+    public function sourceColor(): string
+    {
+        return $this->source === self::SOURCE_AI ? 'info' : 'secondary';
+    }
+
+    /**
      * @return array{0: string, 1: string} [中文標籤, Bootstrap badge 顏色]
      */
     public function statusLabel(): array

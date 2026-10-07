@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Device;
-use App\Services\AI\PlaceholderPredictionService;
+use App\Services\AI\PredictionServiceInterface;
 use Illuminate\Console\Command;
 
 /**
@@ -14,9 +14,9 @@ class ShowDeviceMaintenanceFeatures extends Command
 {
     protected $signature = 'ai:device-features {device_code : 設備編號，例如 DEV-0001}';
 
-    protected $description = '輸出指定設備的保養歷史統計特徵，以及佔位預測服務的結果（驗證用，非正式 AI 輸出）';
+    protected $description = '輸出指定設備的保養歷史統計特徵，以及目前綁定的預測服務（規則式風險評分）的結果';
 
-    public function handle(PlaceholderPredictionService $predictionService): int
+    public function handle(PredictionServiceInterface $predictionService): int
     {
         $device = Device::where('device_code', $this->argument('device_code'))->first();
 

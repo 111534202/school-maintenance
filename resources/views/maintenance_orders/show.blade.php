@@ -40,7 +40,7 @@
                 </dd>
 
                 <dt class="col-sm-3">來源</dt>
-                <dd class="col-sm-9"><span class="badge text-bg-secondary">{{ $maintenanceOrder->sourceLabel() }}</span></dd>
+                <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }}">{{ $maintenanceOrder->sourceLabel() }}</span></dd>
 
                 <dt class="col-sm-3">狀態</dt>
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>

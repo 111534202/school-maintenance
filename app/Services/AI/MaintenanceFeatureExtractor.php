@@ -78,6 +78,14 @@ class MaintenanceFeatureExtractor
 
         $lastResult = $resultsWithData->sortByDesc(fn ($result) => $result->executed_at)->first();
 
+        // 第 4 週：依執行時間由舊到新排列的 OK/NG 序列，給規則式風險評分算「最近 N 筆 NG 比例」
+        // 與「結尾連續 NG 次數」用。同一筆資料排序結果固定，確保評分可重現。
+        $resultSequence = $resultsWithData
+            ->sortBy(fn ($result) => $result->executed_at)
+            ->map(fn ($result) => $result->isNg() ? 'ng' : 'ok')
+            ->values()
+            ->all();
+
         return [
             'device_id' => $deviceId,
             'device_code' => $deviceCode,
@@ -88,6 +96,7 @@ class MaintenanceFeatureExtractor
             'ng_rate' => $resultsWithData->count() > 0
                 ? round($ngCount / $resultsWithData->count(), 4)
                 : null,
+            'result_sequence' => $resultSequence,
             'last_maintenance_at' => $lastResult?->executed_at?->toDateTimeString(),
             // 工程實作修正：Carbon 3 的 diffInDays() 預設改成回傳「有方向性」的 float
             // （過去的日期會是負數、還會帶一堆小數），不再是舊版 Carbon 那種無條件正數整數天。

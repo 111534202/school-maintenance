@@ -9,7 +9,8 @@ use App\Models\Device;
  *
  * 本週只定義這個介面與回傳資料格式，刻意不綁定任何實際演算法或模型——
  * 《個人工作計畫》的範圍控制明確寫「本週不把暫定 AI 公式宣稱為最終規格」。
- * 第 4 週要做風險評分/預防工單候選時，寫一個新的 class 實作這個介面即可，
+ * 第 4 週已由 RuleBasedPredictionService 實作（見 AppServiceProvider 的綁定），
+ * 之後要換演算法，寫一個新的 class 實作這個介面並改綁定即可，
  * 呼叫端（之後的 Dashboard、工單自動建立邏輯等）不用跟著改。
  */
 interface PredictionServiceInterface
@@ -21,6 +22,11 @@ interface PredictionServiceInterface
      *     recommended_action: string|null,
      *     features: array<string, mixed>,
      *     is_placeholder: bool,
+     *     algorithm?: string,
+     *     insufficient_data?: bool,
+     *     threshold?: float,
+     *     explanation?: array<int, array<string, mixed>>,
+     *     notes?: array<int, string>,
      * }
      */
     public function predict(Device $device): array;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\GenerateDueMaintenanceOrders;
+use App\Console\Commands\ScanPreventiveCandidates;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -25,5 +26,15 @@ Artisan::command('inspire', function () {
 Schedule::command(GenerateDueMaintenanceOrders::class)
     ->daily()
     ->name('maintenance:generate-due-orders')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * 第 4 週任務 2：每天掃描一次設備風險，產生 AI 預防保養候選。
+ * 掃描本身有去重（已有待審候選／即將到期工單就不重提），重複執行不會疊加。
+ */
+Schedule::command(ScanPreventiveCandidates::class)
+    ->dailyAt('02:00')
+    ->name('ai:scan-preventive')
     ->withoutOverlapping()
     ->onOneServer();

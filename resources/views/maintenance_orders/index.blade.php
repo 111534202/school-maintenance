@@ -56,7 +56,7 @@
                     <tr>
                         <td>{{ $order->maintenancePlan?->name ?? '—' }}</td>
                         <td>{{ $order->device_category ?? '—' }}</td>
-                        <td><span class="badge text-bg-secondary">{{ $order->sourceLabel() }}</span></td>
+                        <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
                         <td>{{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}</td>
                         <td>{{ $order->created_at?->format('Y-m-d H:i') }}</td>
