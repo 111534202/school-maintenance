@@ -51,7 +51,7 @@ class RuleBasedPredictionService implements PredictionServiceInterface
 
         $notes = [];
         if (! $features['repair_data_available']) {
-            $notes[] = '報修／維修歷史尚未串接，本次評分只依據保養紀錄，未納入報修次數。';
+            $notes[] = '本次評分只依據保養紀錄，未納入報修／維修次數（報修紀錄請見設備履歷的「報修與維修紀錄」）。';
         }
 
         /** @var array<int, string> $sequence */
