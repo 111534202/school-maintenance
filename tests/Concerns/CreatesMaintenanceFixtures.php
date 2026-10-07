@@ -10,6 +10,7 @@ use App\Models\MaintenancePlan;
 use App\Models\MaintenanceResult;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 
 /**
  * 保養／AI 測試共用的假資料產生器。
@@ -19,7 +20,12 @@ trait CreatesMaintenanceFixtures
 {
     protected function makeUser(string $roleSlug = 'admin'): User
     {
-        $role = Role::firstOrCreate(['slug' => $roleSlug], ['name' => $roleSlug]);
+        // 內建身分帶入跟正式環境一樣的預設權限（admin 永遠全開），這樣測試才會真的檢查權限。
+        $role = Role::firstOrCreate(['slug' => $roleSlug], [
+            'name' => $roleSlug,
+            'is_system' => in_array($roleSlug, ['admin', 'it_manager', 'technician', 'teacher', 'executive'], true),
+            'permissions' => PermissionCatalog::defaultsFor($roleSlug),
+        ]);
 
         return User::factory()->create(['role_id' => $role->id]);
     }

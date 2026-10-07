@@ -71,7 +71,9 @@
                         <td class="text-end text-nowrap">
                             <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary">詳細</a>
                             @if (! $order->result)
-                                <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success">回報結果</a>
+                                @can('maintenance.report')
+                                    <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success">回報結果</a>
+                                @endcan
                             @endif
                         </td>
                     </tr>

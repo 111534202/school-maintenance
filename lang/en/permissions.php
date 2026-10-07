@@ -10,6 +10,7 @@ return [
     'groups' => [
         'master' => 'Master Data',
         'repair' => 'Repairs & Maintenance',
+        'maintenance' => 'Maintenance & AI Predictive Maintenance',
         'knowledge' => 'Knowledge Base',
     ],
 
@@ -43,6 +44,14 @@ return [
             'accept' => ['name' => 'Accept Repairs', 'description' => 'Accept and close a repair, or reject it back for rework'],
             'assignable' => ['name' => 'Assignable as Technician', 'description' => 'Appears in the technician dropdown when dispatching'],
             'notice_cc' => ['name' => 'Receive Dispatch Notice Copy', 'description' => 'Users with this role are copied on every dispatch notification email'],
+        ],
+        'maintenance' => [
+            'view' => ['name' => 'View Maintenance Data', 'description' => 'View maintenance items, plans, orders and results, device profiles and the completion rate'],
+            'manage' => ['name' => 'Manage Maintenance Plans', 'description' => 'Add, edit and deactivate maintenance items and plans, create orders from plans'],
+            'report' => ['name' => 'Report Maintenance Results', 'description' => 'Fill in maintenance results (OK / NG); an NG is turned into a repair request'],
+        ],
+        'ai-maintenance' => [
+            'manage' => ['name' => 'AI Preventive Maintenance', 'description' => 'Scan device risk, approve or reject AI candidates, tune AI parameters'],
         ],
         'knowledge-base' => [
             'manage' => ['name' => 'Manage Knowledge Base', 'description' => 'Add, edit and delete knowledge base articles (everyone can read them)'],

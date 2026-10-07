@@ -85,55 +85,69 @@ Route::middleware(['auth', 'active'])->group(function () {
     // {device:device_code} 代表「網址上的值用 device_code 欄位去找設備」，所以網址是 /d/設備編號。
     Route::get('/d/{device:device_code}', [DeviceEntryController::class, 'show'])->name('devices.entry');
 
+    // ---- 保養與 AI 預測性維護（王佑恩）----
+    // 權限分四個（見 PermissionCatalog 的 maintenance 群組，由「身分主檔」勾選）：
+    //   maintenance.view        查看保養項目／計畫／工單／結果、設備履歷、保養完成率
+    //   maintenance.manage      新增、修改、停用保養項目與計畫，由計畫建立工單
+    //   maintenance.report      回報保養結果（OK／NG，NG 會轉報修）
+    //   ai-maintenance.manage   AI 預防保養：掃描、審核候選、調整參數
+    // 預設值（待全組確認）：設備管理員四項全有、維修人員 view+report、主管 view、教師沒有；系統管理員永遠全開。
+    // 注意：管理類路由（create / {id}/edit）要放在 view 之前註冊，網址才不會被當成 {id}。
+
     // 保養項目（maintenance_items）— 第 1 週任務 1
-    // 工程實作欄位：暫不限定角色，任何登入使用者皆可操作；
-    // 待全組確認保養模組的角色權限規則後，再視需要加上 role 中介層。
     Route::prefix('maintenance-items')->name('maintenance-items.')->group(function () {
-        Route::get('/', [MaintenanceItemController::class, 'index'])->name('index');
-        Route::get('/create', [MaintenanceItemController::class, 'create'])->name('create');
-        Route::post('/', [MaintenanceItemController::class, 'store'])->name('store');
-        Route::get('/{maintenanceItem}/edit', [MaintenanceItemController::class, 'edit'])->name('edit');
-        Route::put('/{maintenanceItem}', [MaintenanceItemController::class, 'update'])->name('update');
-        Route::patch('/{maintenanceItem}/toggle-status', [MaintenanceItemController::class, 'toggleStatus'])->name('toggle-status');
+        Route::middleware('can:maintenance.manage')->group(function () {
+            Route::get('/create', [MaintenanceItemController::class, 'create'])->name('create');
+            Route::post('/', [MaintenanceItemController::class, 'store'])->name('store');
+            Route::get('/{maintenanceItem}/edit', [MaintenanceItemController::class, 'edit'])->name('edit');
+            Route::put('/{maintenanceItem}', [MaintenanceItemController::class, 'update'])->name('update');
+            Route::patch('/{maintenanceItem}/toggle-status', [MaintenanceItemController::class, 'toggleStatus'])->name('toggle-status');
+        });
+        Route::get('/', [MaintenanceItemController::class, 'index'])->middleware('can:maintenance.view')->name('index');
     });
 
     // 保養計畫（maintenance_plans）— 第 1 週任務 2、3
     Route::prefix('maintenance-plans')->name('maintenance-plans.')->group(function () {
-        Route::get('/', [MaintenancePlanController::class, 'index'])->name('index');
-        Route::get('/create', [MaintenancePlanController::class, 'create'])->name('create');
-        Route::post('/', [MaintenancePlanController::class, 'store'])->name('store');
-        Route::get('/{maintenancePlan}/edit', [MaintenancePlanController::class, 'edit'])->name('edit');
-        Route::put('/{maintenancePlan}', [MaintenancePlanController::class, 'update'])->name('update');
-        Route::patch('/{maintenancePlan}/toggle-status', [MaintenancePlanController::class, 'toggleStatus'])->name('toggle-status');
-        Route::post('/{maintenancePlan}/create-order', [MaintenanceOrderController::class, 'storeFromPlan'])->name('create-order');
+        Route::middleware('can:maintenance.manage')->group(function () {
+            Route::get('/create', [MaintenancePlanController::class, 'create'])->name('create');
+            Route::post('/', [MaintenancePlanController::class, 'store'])->name('store');
+            Route::get('/{maintenancePlan}/edit', [MaintenancePlanController::class, 'edit'])->name('edit');
+            Route::put('/{maintenancePlan}', [MaintenancePlanController::class, 'update'])->name('update');
+            Route::patch('/{maintenancePlan}/toggle-status', [MaintenancePlanController::class, 'toggleStatus'])->name('toggle-status');
+            Route::post('/{maintenancePlan}/create-order', [MaintenanceOrderController::class, 'storeFromPlan'])->name('create-order');
+        });
+        Route::get('/', [MaintenancePlanController::class, 'index'])->middleware('can:maintenance.view')->name('index');
     });
 
     // 保養工單（maintenance_orders）— 第 1 週任務 4、5、6
     Route::prefix('maintenance-orders')->name('maintenance-orders.')->group(function () {
-        Route::get('/', [MaintenanceOrderController::class, 'index'])->name('index');
-        Route::get('/{maintenanceOrder}', [MaintenanceOrderController::class, 'show'])->name('show');
+        // 保養結果（maintenance_results）— 第 2 週任務，OK/NG 回報與 NG 轉報修：需要 maintenance.report。
+        Route::middleware('can:maintenance.report')->group(function () {
+            Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
+            Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
+        });
 
-        // 保養結果（maintenance_results）— 第 2 週任務，OK/NG 回報與 NG 轉報修
-        // 第 3 週任務 3：加一個獨立的結果詳細頁，不只嵌在工單詳細頁裡。
-        Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
-        Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
-        Route::get('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'show'])->name('results.show');
+        // 查看類：需要 maintenance.view。第 3 週任務 3：結果詳細頁獨立一頁，不只嵌在工單詳細頁裡。
+        Route::middleware('can:maintenance.view')->group(function () {
+            Route::get('/', [MaintenanceOrderController::class, 'index'])->name('index');
+            Route::get('/{maintenanceOrder}', [MaintenanceOrderController::class, 'show'])->name('show');
+            Route::get('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'show'])->name('results.show');
+        });
     });
 
     // 設備履歷（device_profile）— 第 3 週任務 2：以設備為中心的唯讀彙總頁，
-    // 不建立新資料表，報修/維修/附件直接讀彭仕衡的 RepairRequest / RepairLog / Attachment。
-    // 工程實作決定：暫不限定角色，跟保養模組其餘頁面一致。
-    Route::prefix('device-profile')->name('device-profile.')->group(function () {
+    // 不建立新資料表，報修/維修/附件直接讀彭仕衡的 RepairRequest / RepairLog / Attachment（報修單另依 visibleTo 過濾）。
+    Route::prefix('device-profile')->name('device-profile.')->middleware('can:maintenance.view')->group(function () {
         Route::get('/', [DeviceProfileController::class, 'index'])->name('index');
         Route::get('/{device:device_code}', [DeviceProfileController::class, 'show'])->name('show');
     });
 
     // 保養完成率資料接口（第 3 週任務 4）— 給劉家芸的 Dashboard 模組呼叫，回傳 JSON，不是使用者頁面。
     Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
-        ->name('maintenance-completion-rate.index');
+        ->middleware('can:maintenance.view')->name('maintenance-completion-rate.index');
 
-    // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，僅開放 admin / it_manager（主管審核）。
-    Route::middleware('role:admin,it_manager')->prefix('ai-maintenance')->group(function () {
+    // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，需要 ai-maintenance.manage（預設只有設備管理員，admin 永遠有）。
+    Route::middleware('can:ai-maintenance.manage')->prefix('ai-maintenance')->group(function () {
         Route::get('candidates', [PreventiveCandidateController::class, 'index'])->name('preventive-candidates.index');
         Route::post('candidates/scan', [PreventiveCandidateController::class, 'scan'])->name('preventive-candidates.scan');
         Route::post('candidates/{preventiveCandidate}/approve', [PreventiveCandidateController::class, 'approve'])->name('preventive-candidates.approve');

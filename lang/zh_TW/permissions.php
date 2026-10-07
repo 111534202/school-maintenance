@@ -10,6 +10,7 @@ return [
     'groups' => [
         'master' => '主檔管理',
         'repair' => '報修與維修',
+        'maintenance' => '保養與 AI 預測性維護',
         'knowledge' => '自助知識庫',
     ],
 
@@ -43,6 +44,14 @@ return [
             'accept' => ['name' => '驗收報修', 'description' => '驗收通過結案，或驗收不通過退回重修'],
             'assignable' => ['name' => '可被指派為維修人員', 'description' => '會出現在派工的維修人員下拉選單裡'],
             'notice_cc' => ['name' => '接收派工通知副本', 'description' => '每次派工時，通知信會副本一份給擁有這個身分的用戶'],
+        ],
+        'maintenance' => [
+            'view' => ['name' => '查看保養資料', 'description' => '查看保養項目、保養計畫、保養工單與結果、設備履歷、保養完成率'],
+            'manage' => ['name' => '管理保養計畫', 'description' => '新增、修改、停用保養項目與保養計畫，由計畫建立保養工單'],
+            'report' => ['name' => '回報保養結果', 'description' => '填寫保養結果（OK／NG）；NG 會自動轉成報修單'],
+        ],
+        'ai-maintenance' => [
+            'manage' => ['name' => 'AI 預防保養', 'description' => '掃描設備風險、核准或駁回 AI 預防保養候選、調整 AI 參數'],
         ],
         'knowledge-base' => [
             'manage' => ['name' => '管理知識庫', 'description' => '新增、編輯、刪除知識庫文章（所有人都能查看）'],

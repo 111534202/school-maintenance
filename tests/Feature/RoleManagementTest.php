@@ -49,7 +49,7 @@ class RoleManagementTest extends TestCase
             ->assertSee('系統管理員')
             ->assertSee('全部權限')
             ->assertSee('維修人員')
-            ->assertSee('3 項權限')
+            ->assertSee(count(PermissionCatalog::defaultsFor('technician')).' 項權限')   // 跟著預設權限數量走，之後新增權限不用改這裡
             ->assertSee('系統內建');
     }
 

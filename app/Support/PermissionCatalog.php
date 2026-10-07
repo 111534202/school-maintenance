@@ -39,6 +39,13 @@ class PermissionCatalog
             'repairs.assignable',   // 可被指派為維修人員（出現在派工下拉選單）
             'repairs.notice_cc',    // 接收派工通知信的副本
         ],
+        // 保養與 AI 預測性維護類（王佑恩的模組）
+        'maintenance' => [
+            'maintenance.view',          // 查看：保養項目／計畫／工單／結果、設備履歷、保養完成率
+            'maintenance.manage',        // 管理：新增、修改、停用保養項目與計畫，由計畫建立保養工單
+            'maintenance.report',        // 回報：填寫保養結果（OK／NG，NG 會轉報修）
+            'ai-maintenance.manage',     // AI 預防保養：掃描設備風險、審核候選、調整 AI 參數
+        ],
         // 知識庫類
         'knowledge' => [
             'knowledge-base.manage',   // 新增／編輯／刪除知識庫文章
@@ -51,10 +58,14 @@ class PermissionCatalog
         'it_manager' => [   // 設備管理員（資訊組主管）
             'classrooms.manage', 'device-categories.manage', 'devices.manage', 'audit-logs.view',
             'repairs.create', 'repairs.dispatch', 'repairs.notice_cc', 'knowledge-base.manage',
+            // 保養模組：設備管理員四項全有（工程預設，待全組確認）
+            'maintenance.view', 'maintenance.manage', 'maintenance.report', 'ai-maintenance.manage',
         ],
-        'technician' => ['repairs.create', 'repairs.process', 'repairs.assignable'],   // 維修人員
-        'teacher' => ['repairs.create', 'repairs.accept'],                              // 教師
-        'executive' => ['repairs.create', 'repairs.dispatch', 'repairs.accept'],       // 主管
+        // 維修人員：能看保養資料並回報保養結果，但不能改計畫、不能碰 AI 設定
+        'technician' => ['repairs.create', 'repairs.process', 'repairs.assignable', 'maintenance.view', 'maintenance.report'],
+        'teacher' => ['repairs.create', 'repairs.accept'],                              // 教師：不使用保養模組
+        // 主管：只看保養資料與完成率
+        'executive' => ['repairs.create', 'repairs.dispatch', 'repairs.accept', 'maintenance.view'],
     ];
 
     /** @return list<string> 全部權限代碼 */

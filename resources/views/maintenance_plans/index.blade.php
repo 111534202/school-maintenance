@@ -5,7 +5,9 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">保養計畫</h1>
-        <a href="{{ route('maintenance-plans.create') }}" class="btn btn-primary">新增保養計畫</a>
+        @can('maintenance.manage')
+            <a href="{{ route('maintenance-plans.create') }}" class="btn btn-primary">新增保養計畫</a>
+        @endcan
     </div>
 
     <div class="table-responsive">
@@ -37,20 +39,24 @@
                             @endif
                         </td>
                         <td class="text-end text-nowrap">
-                            <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary">修改</a>
-                            <form action="{{ route('maintenance-plans.toggle-status', $plan) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                    {{ $plan->is_active ? '停用' : '重新啟用' }}
-                                </button>
-                            </form>
-                            @if ($plan->is_active)
-                                <form action="{{ route('maintenance-plans.create-order', $plan) }}" method="POST" class="d-inline">
+                            @can('maintenance.manage')
+                                <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                                <form action="{{ route('maintenance-plans.toggle-status', $plan) }}" method="POST" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-success">建立工單</button>
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        {{ $plan->is_active ? '停用' : '重新啟用' }}
+                                    </button>
                                 </form>
-                            @endif
+                                @if ($plan->is_active)
+                                    <form action="{{ route('maintenance-plans.create-order', $plan) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-success">建立工單</button>
+                                    </form>
+                                @endif
+                            @else
+                                <span class="text-muted">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

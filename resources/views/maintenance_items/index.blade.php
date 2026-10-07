@@ -5,7 +5,9 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">保養項目</h1>
-        <a href="{{ route('maintenance-items.create') }}" class="btn btn-primary">新增保養項目</a>
+        @can('maintenance.manage')
+            <a href="{{ route('maintenance-items.create') }}" class="btn btn-primary">新增保養項目</a>
+        @endcan
     </div>
 
     <div class="table-responsive">
@@ -33,14 +35,18 @@
                             @endif
                         </td>
                         <td class="text-end text-nowrap">
-                            <a href="{{ route('maintenance-items.edit', $item) }}" class="btn btn-sm btn-outline-primary">修改</a>
-                            <form action="{{ route('maintenance-items.toggle-status', $item) }}" method="POST" class="d-inline">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                    {{ $item->is_active ? '停用' : '重新啟用' }}
-                                </button>
-                            </form>
+                            @can('maintenance.manage')
+                                <a href="{{ route('maintenance-items.edit', $item) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                                <form action="{{ route('maintenance-items.toggle-status', $item) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        {{ $item->is_active ? '停用' : '重新啟用' }}
+                                    </button>
+                                </form>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endcan
                         </td>
                     </tr>
                 @empty

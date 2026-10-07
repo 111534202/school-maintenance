@@ -9,7 +9,9 @@
         <h1 class="h3 mb-0">保養工單詳細</h1>
         <div>
             @if (! $maintenanceOrder->result)
-                <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
+                @can('maintenance.report')
+                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
+                @endcan
             @endif
             <a href="{{ route('maintenance-orders.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
         </div>
