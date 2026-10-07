@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;   // 「軟刪除」功能：刪除只是標記時間，資料還在，可以還原
 
@@ -35,6 +36,21 @@ class Classroom extends Model
     public function manager()
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /** 查詢範圍：只撈「有異常設備」的教室（異常的定義見 DeviceStatusService::PROBLEM_STATUSES）。 */
+    public function scopeWithAbnormalDevices(Builder $query): Builder
+    {
+        return $query->whereHas('devices', fn ($devices) => $devices->abnormal());
+    }
+
+    /**
+     * 這間教室裡所有設備的報修單（教室 → 設備 → 報修單，靠 repair_requests.device_id 串起來）。
+     * 注意：只有「報修時有綁定設備」的報修單算在內；手動輸入文字描述、沒有設備的報修單不會出現在這裡。
+     */
+    public function repairRequests()
+    {
+        return $this->hasManyThrough(RepairRequest::class, Device::class);
     }
 
     /** 這間教室裡的所有設備（一間教室有很多設備）。 */

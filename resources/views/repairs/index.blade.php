@@ -34,6 +34,16 @@
                     </select>
                 </div>
                 <div>
+                    <label for="classroom_id" class="form-label small mb-1">{{ __('repair_requests.filter.classroom') }}</label>
+                    {{-- 教室下拉選單：只看「這間教室裡的設備」的報修單（教室主檔的「進行中工單」數字會連到這裡）。 --}}
+                    <select id="classroom_id" name="classroom_id" class="form-select form-select-sm" style="width: 12rem;">
+                        <option value="">{{ __('repair_requests.filter.classroom_all') }}</option>
+                        @foreach ($classrooms as $classroom)
+                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->room_code }} - {{ $classroom->room_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
                     <label for="location" class="form-label small mb-1">{{ __('repair_requests.filter.location') }}</label>
                     <input type="text" id="location" name="location" class="form-control form-control-sm" style="width: 11rem;"
                         value="{{ request('location') }}" placeholder="{{ __('repair_requests.filter.location_placeholder') }}">
@@ -43,11 +53,15 @@
                     <input type="text" id="assignee" name="assignee" class="form-control form-control-sm" style="width: 11rem;"
                         value="{{ request('assignee') }}" placeholder="{{ __('repair_requests.filter.assignee_placeholder') }}">
                 </div>
+                {{-- 從設備主檔連過來時網址帶有 device_id；按「篩選」時要一併帶著，才不會篩一次就跑掉。 --}}
+                @if (request('device_id'))
+                    <input type="hidden" name="device_id" value="{{ request('device_id') }}">
+                @endif
                 <div class="d-inline-flex gap-1">
                     <button class="btn btn-primary btn-sm icon-btn" type="submit"
                         title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
                     {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('status') || request('location') || request('assignee'))
+                    @if (request('status') || request('location') || request('assignee') || request('classroom_id') || request('device_id'))
                         <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.index') }}"
                             title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
                     @endif
@@ -55,6 +69,14 @@
             </form>
         </div>
     </div>
+
+    {{-- 從設備主檔連過來（?device_id=）時，提醒「目前只看這台設備」，並提供清除的連結。 --}}
+    @if ($filteredDevice)
+        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.filter.only_device', ['device' => $filteredDevice->device_code]) }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['device_id', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endif
 
     {{-- 查不到任何案件時顯示提示；否則顯示表格。 --}}
     @if ($repairRequests->isEmpty())
@@ -87,7 +109,13 @@
                             <tr>
                                 <td><a href="{{ route('repairs.show', $repairRequest) }}" class="text-decoration-none">{{ $repairRequest->title }}</a></td>
                                 {{-- 設備欄的顯示順序：有綁定設備就顯示設備編號，否則顯示手填的設備描述，再沒有就顯示地點，都沒有顯示「未填寫」。 --}}
-                                <td>{{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}</td>
+                                <td>
+                                    {{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}
+                                    {{-- 報修的是真實設備時，在下面顯示它所在的教室，方便一眼看出是哪間教室的問題。 --}}
+                                    @if ($repairRequest->device?->classroom)
+                                        <div class="small text-muted">{{ $repairRequest->device->classroom->room_code }} {{ $repairRequest->device->classroom->room_name }}</div>
+                                    @endif
+                                </td>
                                 <td class="text-center">
                                     <span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span>
                                 </td>

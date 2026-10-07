@@ -29,6 +29,7 @@ return [
         'category_all' => 'All categories',
         'status' => 'Status',
         'status_all' => 'All statuses',
+        'only_abnormal' => 'Showing abnormal devices only (under repair, retired, disabled)',
     ],
 
     'table' => [
@@ -38,7 +39,13 @@ return [
         'classroom' => 'Classroom',
         'status' => 'Status',
         'core' => 'Core Device',
+        'open_repairs' => 'Open Repairs',
         'actions' => 'Actions',
+    ],
+
+    // Tooltips of the links in the list.
+    'links' => [
+        'view_repairs' => 'View the open repair requests of this device',
     ],
 
     'actions' => [

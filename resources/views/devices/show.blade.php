@@ -49,7 +49,7 @@
                         </dd>
 
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.status') }}</dt>
-                        <dd class="col-sm-8 mb-0"><span class="badge text-bg-info">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
+                        <dd class="col-sm-8 mb-0"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
 
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.is_core') }}</dt>
                         <dd class="col-sm-8 mb-0">

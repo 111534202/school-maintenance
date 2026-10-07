@@ -15,6 +15,10 @@ return [
         'location_placeholder' => '例如：A101',
         'assignee' => '維修人員',
         'assignee_placeholder' => '例如：王小明',
+        'classroom' => '教室',
+        'classroom_all' => '全部教室',
+        // 從設備主檔連過來（?device_id=）時顯示的提醒；:device 會換成設備編號。
+        'only_device' => '目前只顯示設備「:device」的報修單',
     ],
 
     // 報修看板表格欄位標題。

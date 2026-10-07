@@ -3,6 +3,7 @@
 // 命名空間：這個類別所在的位置，要跟資料夾路徑對得上。
 namespace App\Http\Controllers;
 
+use App\Enums\RepairRequestStatus;   // 報修單狀態列舉（算「進行中的報修單」時要排除已結案）
 use App\Models\Classroom;      // 教室資料表的模型
 use App\Models\Department;     // 部門資料表的模型（教室所屬部門的下拉選單來源）
 use App\Models\User;           // 用戶資料表的模型（教室「管理人」的下拉選單來源）
@@ -19,11 +20,24 @@ use Illuminate\Http\Request;   // 這一次瀏覽器送來的請求
  */
 class ClassroomController extends Controller
 {
-    /** 教室列表（GET /classrooms）：可依關鍵字（教室代碼／名稱）、部門、啟用狀態篩選，每頁 15 筆。 */
+    /** 教室列表（GET /classrooms）：可依關鍵字（教室代碼／名稱）、部門、啟用狀態、是否有異常設備篩選，每頁 15 筆。 */
     public function index(Request $request)
     {
+        $user = $request->user();
+
         // with(...)：順便查好所屬部門與管理人，畫面顯示名稱時不用每間教室再多查一次。
         $classrooms = Classroom::with(['department', 'manager'])
+            // withCount：一次算出每間教室的三個數字，列表上顯示並連到對應的設備主檔／報修看板：
+            //   devices_count          設備總數；
+            //   abnormal_devices_count 異常設備數（維修中、已淘汰、停用，定義見 DeviceStatusService::PROBLEM_STATUSES）；
+            //   open_repairs_count     進行中的報修單數（透過「設備」串到報修單，不含已結案，且只算這位用戶看得到的案件）。
+            ->withCount([
+                'devices',
+                'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
+                'repairRequests as open_repairs_count' => fn ($repairs) => $repairs
+                    ->visibleTo($user)
+                    ->where('repair_requests.status', '!=', RepairRequestStatus::Completed->value),
+            ])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');
                 // 教室代碼或名稱包含關鍵字即可；括號包起來避免「或」影響其他篩選。
@@ -38,6 +52,8 @@ class ClassroomController extends Controller
             // 注意要先 toString() 轉成純文字再比較：$request->string() 回傳的是物件，物件跟字串用 === 比較永遠是 false，
             // 以前少了這一步，選「啟用中」反而列出已停用的教室。
             ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active')->toString() === '1'))
+            // 設備狀況篩選：?abnormal=1 只列出「有異常設備」的教室（主控台與設備主檔都會連到這裡）。
+            ->when($request->boolean('abnormal'), fn ($query) => $query->withAbnormalDevices())
             ->orderBy('room_code')   // 依教室代碼排序
             ->paginate(15)
             ->withQueryString();     // 換頁時保留篩選條件

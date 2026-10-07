@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Actions\CreateRepairRequestFromMaintenanceNg;
+use App\Models\Device;
 use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -32,6 +33,11 @@ class RepairRequestSeeder extends Seeder
         // 這些示範案件的報修人都設成示範教師帳號（帳號名稱 teacher）。
         $teacherId = User::where('username', 'teacher')->value('id');
         $userId = fn (string $name) => User::where('name', $name)->value('id');
+        // 把部分示範報修單綁定到 DeviceSeeder 建立的真實設備（device_id），教室主檔、設備主檔與報修看板的連動才看得到數字：
+        //   「A101 投影機」→ DEV-0004（EE-201 教室的核心投影機，維修中，所以 EE-201 會被標成設備異常）；
+        //   「D102 教室螢幕」→ DEV-0003（IT-401 教室的螢幕，維修中）；「E201 印表機」→ DEV-0006（IN-101 教室的印表機，停用）。
+        // 示範報修單標題裡的教室代碼只是情境文字，和設備實際所在的教室不一定相同。
+        $deviceId = fn (string $code) => Device::where('device_code', $code)->value('id');
 
         $requests = [
             [
@@ -53,6 +59,7 @@ class RepairRequestSeeder extends Seeder
                 'status' => 'pending',
                 'device_note' => 'A101 教室投影機（核心設備）',
                 'location' => 'A101',
+                'device_id' => $deviceId('DEV-0004'),
                 'reporter_id' => $teacherId,
             ],
             // 情境 3：需要更換備品。備品選擇串接要等劉家芸的 InventoryService
@@ -79,6 +86,7 @@ class RepairRequestSeeder extends Seeder
                 'status' => 'assigned',
                 'device_note' => 'D102 教室投影幕',
                 'location' => 'D102',
+                'device_id' => $deviceId('DEV-0003'),
                 'reporter_id' => $teacherId,
                 'assigned_to' => $userId('王小明'),
                 'assignee_note' => '王小明',
@@ -117,6 +125,7 @@ class RepairRequestSeeder extends Seeder
                 'status' => 'pending_review',
                 'device_note' => 'E201 教室印表機',
                 'location' => 'E201',
+                'device_id' => $deviceId('DEV-0006'),
                 'reporter_id' => $teacherId,
                 'assigned_to' => $userId('劉小華'),
                 'assignee_note' => '劉小華',

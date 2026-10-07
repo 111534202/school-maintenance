@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;                      // 報修單狀態列舉（新報修／已派工／處理中／待驗收／已結案）
+use App\Models\Classroom;                               // 教室資料表的模型（看板篩選列的教室下拉選單）
 use App\Models\Device;                                  // 設備資料表的模型
 use App\Models\KnowledgeBase;                           // 知識庫文章的模型
 use App\Models\RepairRequest;                           // 報修單資料表的模型
@@ -56,7 +57,12 @@ class RepairRequestController extends Controller
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
             ->visibleTo($request->user())
             // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
-            ->with(['device', 'assignedTechnician'])
+            ->with(['device.classroom', 'assignedTechnician'])
+            // 設備／教室篩選（教室主檔與設備主檔的連結會帶這兩個參數過來）：
+            //   ?device_id=   只看這台設備的報修單；
+            //   ?classroom_id= 只看「這間教室裡的設備」的報修單（透過設備串到教室，沒有綁定設備的報修單不會出現）。
+            ->when($request->filled('device_id'), fn ($query) => $query->where('device_id', $request->integer('device_id')))
+            ->when($request->filled('classroom_id'), fn ($query) => $query->whereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id'))))
             // 狀態篩選：有帶 ?status= 才套用。
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             // 地點篩選：like %字% 是「包含這段字」，所以打 A1 也找得到 A101。
@@ -88,7 +94,11 @@ class RepairRequestController extends Controller
             ->groupBy('assigned_to')
             ->pluck('active_count', 'assigned_to');                              // 結果：[用戶編號 => 張數]
 
-        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee'));
+        // 篩選列「教室」下拉選單的選項；若網址帶了 ?device_id=，查出那台設備讓畫面顯示「目前只看這台設備」。
+        $classrooms = Classroom::orderBy('room_code')->get();
+        $filteredDevice = $request->filled('device_id') ? Device::find($request->integer('device_id')) : null;
+
+        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice'));
     }
 
     /**

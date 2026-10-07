@@ -16,6 +16,9 @@ return [
         'department_all' => '所有部門',
         'status' => '狀態',
         'status_all' => '所有狀態',
+        'devices' => '設備狀況',
+        'devices_all' => '全部',
+        'devices_abnormal' => '有異常設備',
     ],
 
     // 啟用狀態的顯示名稱。
@@ -31,9 +34,21 @@ return [
         'department' => '所屬部門',
         'location' => '位置',
         'manager' => '管理人',
+        'devices' => '設備數',
+        'abnormal_devices' => '異常設備',
+        'open_repairs' => '進行中工單',
         'status' => '狀態',
         'actions' => '操作',
     ],
+
+    // 列表上的連結提示（滑鼠移上去時看到的說明）。「異常」= 維修中、已淘汰、停用的設備。
+    'links' => [
+        'view_devices' => '到設備主檔查看這間教室的設備',
+        'view_abnormal_devices' => '到設備主檔查看這間教室的異常設備',
+        'view_repairs' => '到報修看板查看這間教室設備的進行中報修單',
+        'core_abnormal_hint' => '核心設備異常：這間教室被標示為設備異常',
+    ],
+    'core_abnormal' => '核心',
 
     // 按鈕的提示文字（滑鼠移上去時看到的說明）。
     'actions' => [

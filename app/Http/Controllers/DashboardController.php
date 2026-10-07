@@ -112,7 +112,7 @@ class DashboardController extends Controller
         if ($user->can('classrooms.manage')) {
             $data['classroomTotal'] = Classroom::count();
             // 預約狀態為 abnormal 的教室，卡片上會用紅字提示「設備異常教室 N 間」。
-            $data['classroomAbnormal'] = Classroom::where('reservation_status', 'abnormal')->count();
+            $data['classroomAbnormal'] = Classroom::withAbnormalDevices()->count();
         }
 
         // 把整理好的資料交給 resources/views/dashboard.blade.php 畫出來。

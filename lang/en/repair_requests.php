@@ -15,6 +15,10 @@ return [
         'location_placeholder' => 'e.g. A101',
         'assignee' => 'Technician',
         'assignee_placeholder' => 'e.g. John Smith',
+        'classroom' => 'Classroom',
+        'classroom_all' => 'All classrooms',
+        // Notice shown when arriving from the device list (?device_id=); :device is replaced with the device code.
+        'only_device' => 'Showing repair requests of device ":device" only',
     ],
 
     // 報修看板表格欄位標題。

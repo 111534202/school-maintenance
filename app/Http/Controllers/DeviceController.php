@@ -3,6 +3,7 @@
 // 命名空間：這個類別所在的位置，要跟資料夾路徑對得上。
 namespace App\Http\Controllers;
 
+use App\Enums\RepairRequestStatus;                // 報修單狀態列舉（算「進行中的報修單」時要排除已結案）
 use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
@@ -23,11 +24,18 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套
  */
 class DeviceController extends Controller
 {
-    /** 設備列表（GET /devices）：可依關鍵字、教室、類別、狀態篩選，每頁 15 筆。主控台的圖表點擊也會帶 status 參數過來。 */
+    /** 設備列表（GET /devices）：可依關鍵字、教室、類別、狀態、是否異常篩選，每頁 15 筆。主控台的圖表點擊與教室主檔的連結也會帶參數過來。 */
     public function index(Request $request)
     {
+        $user = $request->user();
+
         // with(...)：順便查好類別與教室，畫面顯示名稱時不用每台設備再多查一次。
         $devices = Device::with(['category', 'classroom'])
+            // withCount：算出每台設備「進行中的報修單」數（不含已結案，且只算這位用戶看得到的案件），
+            // 列表上顯示並連到報修看板（?device_id=）。
+            ->withCount(['repairRequests as open_repairs_count' => fn ($repairs) => $repairs
+                ->visibleTo($user)
+                ->where('status', '!=', RepairRequestStatus::Completed->value)])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');
                 // 設備編號、資產編號、品牌、型號任一個包含關鍵字就算符合；括號包起來避免「或」影響其他篩選。
@@ -41,6 +49,8 @@ class DeviceController extends Controller
             ->when($request->filled('classroom_id'), fn ($query) => $query->where('classroom_id', $request->integer('classroom_id')))
             ->when($request->filled('device_category_id'), fn ($query) => $query->where('device_category_id', $request->integer('device_category_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // ?abnormal=1 只列出異常設備（維修中、已淘汰、停用）；教室主檔的「異常設備」數字會連到這裡。
+            ->when($request->boolean('abnormal'), fn ($query) => $query->abnormal())
             ->orderBy('device_code')   // 依設備編號排序
             ->paginate(15)
             ->withQueryString();       // 換頁時保留篩選條件

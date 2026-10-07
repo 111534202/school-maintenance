@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\DeviceStatusService;   // 提供「哪些狀態算異常」的唯一定義
+use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;   // 軟刪除：刪除只是標記時間，資料還在
 
@@ -39,6 +41,35 @@ class Device extends Model
 
         // 回傳的還是鍵名代表沒有翻譯，這時改顯示原本的狀態代碼，不要讓畫面出現一串鍵名。
         return $label === $key ? (string) $status : $label;
+    }
+
+    /** 狀態對應的徽章顏色（Bootstrap）：正常綠、維修中黃、已淘汰灰、停用紅，和主控台的設備狀態圖同一套顏色。 */
+    public static function statusBadgeClass(?string $status): string
+    {
+        return [
+            'normal' => 'text-bg-success',
+            'repairing' => 'text-bg-warning',
+            'retired' => 'text-bg-secondary',
+            'disabled' => 'text-bg-danger',
+        ][$status] ?? 'text-bg-light';
+    }
+
+    /** 這台設備是不是「異常設備」（狀態在 DeviceStatusService::PROBLEM_STATUSES 清單裡）。 */
+    public function isAbnormal(): bool
+    {
+        return in_array($this->status, DeviceStatusService::PROBLEM_STATUSES, true);
+    }
+
+    /** 查詢範圍：只撈異常設備。使用時寫 Device::abnormal()->...。 */
+    public function scopeAbnormal(Builder $query): Builder
+    {
+        return $query->whereIn('status', DeviceStatusService::PROBLEM_STATUSES);
+    }
+
+    /** 這台設備的所有報修單（報修時有掃描或選擇設備的才會有 device_id）。 */
+    public function repairRequests()
+    {
+        return $this->hasMany(RepairRequest::class);
     }
 
     /** 這台設備的類別；外鍵欄位不是預設的 category_id，所以要特別指定 device_category_id。 */

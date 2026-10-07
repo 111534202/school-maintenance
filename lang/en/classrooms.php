@@ -14,6 +14,9 @@ return [
         'department_all' => 'All departments',
         'status' => 'Status',
         'status_all' => 'All statuses',
+        'devices' => 'Devices',
+        'devices_all' => 'All',
+        'devices_abnormal' => 'Has abnormal devices',
     ],
 
     'status' => [
@@ -27,9 +30,21 @@ return [
         'department' => 'Department',
         'location' => 'Location',
         'manager' => 'Manager',
+        'devices' => 'Devices',
+        'abnormal_devices' => 'Abnormal Devices',
+        'open_repairs' => 'Open Repairs',
         'status' => 'Status',
         'actions' => 'Actions',
     ],
+
+    // Tooltips of the links in the list. "Abnormal" = under repair, retired or disabled devices.
+    'links' => [
+        'view_devices' => 'View the devices of this classroom',
+        'view_abnormal_devices' => 'View the abnormal devices of this classroom',
+        'view_repairs' => 'View the open repair requests of devices in this classroom',
+        'core_abnormal_hint' => 'A core device is abnormal: this classroom is flagged as having a device problem',
+    ],
+    'core_abnormal' => 'Core',
 
     'actions' => [
         'activate' => 'Activate',

@@ -21,8 +21,11 @@ use InvalidArgumentException;            // 「傳入了不合理的參數」例
  */
 class DeviceStatusService
 {
-    // 核心設備處於這些狀態時，視為教室空間異常
-    private const PROBLEM_STATUSES = ['repairing', 'retired', 'disabled'];
+    // 「異常設備」的狀態清單（維修中、已淘汰、停用）：
+    // - 核心設備處於這些狀態時，所在教室被標成「設備異常」（reservation_status = abnormal）；
+    // - 教室主檔、設備主檔、主控台顯示「異常設備」時，也一律用這份清單判斷，全系統只有這一份定義。
+    // 想調整哪些狀態算異常，只要改這一行。
+    public const PROBLEM_STATUSES = ['repairing', 'retired', 'disabled'];
 
     /**
      * 改設備狀態：寫入資料庫、記操作紀錄、重新計算教室的異常標記。

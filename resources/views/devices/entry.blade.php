@@ -34,7 +34,7 @@
                         {{-- 目前狀態徽章；核心設備再加一個「核心設備」徽章。 --}}
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.entry.current_status') }}</dt>
                         <dd class="col-sm-8 mb-0">
-                            <span class="badge text-bg-info">{{ \App\Models\Device::statusLabel($device->status) }}</span>
+                            <span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span>
                             @if ($device->is_core)
                                 <span class="badge text-bg-warning">{{ __('devices.entry.core_device') }}</span>
                             @endif

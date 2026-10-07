@@ -54,11 +54,15 @@
                         @endforeach
                     </select>
                 </div>
+                {{-- 從教室主檔連過來只看異常設備時（?abnormal=1），按「篩選」要一併帶著，才不會篩一次就跑掉。 --}}
+                @if (request('abnormal'))
+                    <input type="hidden" name="abnormal" value="1">
+                @endif
                 <div class="d-inline-flex gap-1">
                     <button class="btn btn-primary btn-sm icon-btn" type="submit"
                         title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
                     {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('keyword') || request('classroom_id') || request('device_category_id') || request('status'))
+                    @if (request('keyword') || request('classroom_id') || request('device_category_id') || request('status') || request('abnormal'))
                         <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('devices.index') }}"
                             title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
                     @endif
@@ -66,6 +70,14 @@
             </form>
         </div>
     </div>
+
+    {{-- 只看異常設備時的提醒（異常 = 維修中、已淘汰、停用），並提供清除的連結。 --}}
+    @if (request('abnormal'))
+        <div class="alert alert-warning py-2 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-exclamation-triangle me-2"></i>{{ __('devices.filter.only_abnormal') }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('devices.index', request()->except(['abnormal', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endif
 
     <div class="card shadow-sm">
         <div class="table-responsive">
@@ -79,6 +91,7 @@
                         <th>{{ __('devices.table.classroom') }}</th>
                         <th class="text-center">{{ __('devices.table.status') }}</th>
                         <th class="text-center">{{ __('devices.table.core') }}</th>
+                        <th class="text-center">{{ __('devices.table.open_repairs') }}</th>
                         <th class="text-center">{{ __('devices.table.actions') }}</th>
                     </tr>
                 </thead>
@@ -90,11 +103,21 @@
                             <td>{{ $device->category->name ?? __('devices.no_value') }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
                             <td>{{ $device->classroom->room_name ?? __('devices.no_value') }}</td>
-                            <td class="text-center"><span class="badge text-bg-info">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
+                            {{-- 狀態徽章依狀態上色：正常綠、維修中黃、已淘汰灰、停用紅（和主控台的設備狀態圖同一套顏色）。 --}}
+                            <td class="text-center"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
                             <td class="text-center">
                                 {{-- 核心設備才顯示「核心」徽章。 --}}
                                 @if ($device->is_core)
                                     <span class="badge text-bg-warning">{{ __('devices.core_badge') }}</span>
+                                @endif
+                            </td>
+                            {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這台設備的報修單。 --}}
+                            <td class="text-center">
+                                @if ($device->open_repairs_count > 0)
+                                    <a class="badge text-bg-primary text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id]) }}"
+                                        title="{{ __('devices.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $device->open_repairs_count }}</a>
+                                @else
+                                    <span class="text-muted">0</span>
                                 @endif
                             </td>
                             <td class="text-center">
@@ -117,7 +140,7 @@
                         </tr>
                     {{-- 沒有任何資料時顯示的提示列。 --}}
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted py-4">{{ __('devices.empty_list') }}</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">{{ __('devices.empty_list') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
