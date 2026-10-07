@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ClassroomController extends Controller
 {
@@ -89,7 +90,18 @@ class ClassroomController extends Controller
             'room_code' => ['required', 'string', 'max:255', 'unique:classrooms,room_code' . ($ignoreId ? ",{$ignoreId}" : '')],
             'room_name' => ['required', 'string', 'max:255'],
             'room_type' => ['nullable', 'string', 'max:255'],
-            'manager_id' => ['nullable', 'exists:users,id'],
+            // 管理人不能指到已被軟刪除（帳號停用）的使用者，exists 預設不看 deleted_at
+            'manager_id' => ['nullable', Rule::exists('users', 'id')->whereNull('deleted_at')],
+        ], [
+            'department_id.exists' => '所屬部門不存在，請重新選擇。',
+            'campus.required' => '請填寫校區。',
+            'building.required' => '請填寫大樓。',
+            'floor.required' => '請填寫樓層。',
+            'room_code.required' => '請填寫教室代碼。',
+            'room_code.unique' => '這個教室代碼已經有人使用了，請換一個。',
+            'room_name.required' => '請填寫教室名稱。',
+            'manager_id.exists' => '所選的管理人帳號不存在或已停用，請重新選擇。',
+            'max' => '內容長度超過上限（255 字）。',
         ]);
     }
 }
