@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'executed_at',
     'notes',
     'ng_conversion_status',
+    'repair_request_id',
 ])]
 class MaintenanceResult extends Model
 {
@@ -28,6 +29,9 @@ class MaintenanceResult extends Model
     public const NG_CONVERSION_PENDING = 'pending_handoff';
 
     public const NG_CONVERSION_NOT_APPLICABLE = 'not_applicable';
+
+    /** 已呼叫彭仕衡的 Action 建立報修單，repair_request_id 為該報修單。 */
+    public const NG_CONVERSION_CONVERTED = 'converted';
 
     /**
      * @return array<string, string>

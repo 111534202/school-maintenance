@@ -51,9 +51,15 @@ class MaintenanceResultController extends Controller
 
         $ngToRepairService->convert($result);
 
-        $status = $result->isNg()
-            ? '保養結果已回報為 NG，已標記待轉報修（等彭仕衡的報修介面串接後會自動建立報修單）'
-            : '保養結果已回報為 OK，工單已完成';
+        $result->refresh();
+
+        if (! $result->isNg()) {
+            $status = '保養結果已回報為 OK，工單已完成';
+        } elseif ($result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_CONVERTED) {
+            $status = '保養結果已回報為 NG，已自動建立報修單（編號 #'.$result->repair_request_id.'），請至報修看板追蹤';
+        } else {
+            $status = '保養結果已回報為 NG，已標記待轉報修（報修模組併入後會自動建立報修單）';
+        }
 
         return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('success', $status);
     }

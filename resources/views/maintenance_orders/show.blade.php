@@ -81,7 +81,14 @@
                         <dt class="col-sm-3">轉報修狀態</dt>
                         <dd class="col-sm-9">
                             @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
-                                <span class="badge text-bg-warning">待轉報修（等彭仕衡介面串接）</span>
+                                <span class="badge text-bg-warning">待轉報修（報修模組併入後自動建立）</span>
+                            @elseif ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
+                                <span class="badge text-bg-success">已轉報修</span>
+                                @if (\Illuminate\Support\Facades\Route::has('repairs.show'))
+                                    <a href="{{ route('repairs.show', $maintenanceOrder->result->repair_request_id) }}">報修單 #{{ $maintenanceOrder->result->repair_request_id }}</a>
+                                @else
+                                    報修單 #{{ $maintenanceOrder->result->repair_request_id }}
+                                @endif
                             @else
                                 {{ $maintenanceOrder->result->ng_conversion_status ?? '—' }}
                             @endif

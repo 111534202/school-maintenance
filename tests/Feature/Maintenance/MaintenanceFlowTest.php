@@ -110,11 +110,16 @@ class MaintenanceFlowTest extends TestCase
 
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
 
-        // NG → 報修：彭仕衡的報修建立介面尚未併入前，NgToRepairService 只標記「待轉報修」。
-        // 報修模組併入、串接後，這裡要改成斷言真的建立了報修單。
+        // NG → 報修：報修模組（彭仕衡）尚未併入時標記「待轉報修」；併入後會真的建立報修單
+        // （詳細斷言見 NgToRepairServiceTest）。
         $result = MaintenanceResult::firstOrFail();
         $this->assertSame(MaintenanceResult::RESULT_NG, $result->result);
-        $this->assertSame(MaintenanceResult::NG_CONVERSION_PENDING, $result->ng_conversion_status);
+        $this->assertSame(
+            app(\App\Services\NgToRepairService::class)->repairModuleAvailable()
+                ? MaintenanceResult::NG_CONVERSION_CONVERTED
+                : MaintenanceResult::NG_CONVERSION_PENDING,
+            $result->ng_conversion_status
+        );
         $this->assertSame('風扇異音', $result->notes);
     }
 
