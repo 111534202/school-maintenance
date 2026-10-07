@@ -28,6 +28,10 @@ class DeviceCategoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:device_categories,name'],
+        ], [
+            'name.required' => '請填寫類別名稱。',
+            'name.unique' => '這個類別名稱已經存在了，請換一個。',
+            'name.max' => '類別名稱長度超過上限（255 字）。',
         ]);
 
         $category = DeviceCategory::create($data);
@@ -46,6 +50,10 @@ class DeviceCategoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:device_categories,name,' . $deviceCategory->id],
+        ], [
+            'name.required' => '請填寫類別名稱。',
+            'name.unique' => '這個類別名稱已經存在了，請換一個。',
+            'name.max' => '類別名稱長度超過上限（255 字）。',
         ]);
 
         $deviceCategory->update($data);

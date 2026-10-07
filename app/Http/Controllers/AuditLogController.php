@@ -14,6 +14,9 @@ class AuditLogController extends Controller
             ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->integer('user_id')))
             ->when($request->filled('action'), fn ($query) => $query->where('action', $request->string('action')))
             ->when($request->filled('loggable_type'), fn ($query) => $query->where('loggable_type', $request->string('loggable_type')))
+            // 時間區間查詢：date_from/date_to 都是純日期（yyyy-mm-dd），date_to 要含當天整天
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('created_at', '>=', $request->string('date_from')))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('created_at', '<=', $request->string('date_to')))
             ->orderByDesc('created_at')
             ->paginate(30)
             ->withQueryString();

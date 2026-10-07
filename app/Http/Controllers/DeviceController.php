@@ -8,6 +8,7 @@ use App\Models\DeviceCategory;
 use App\Services\AuditLogger;
 use App\Services\DeviceStatusService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class DeviceController extends Controller
@@ -40,7 +41,8 @@ class DeviceController extends Controller
     public function create()
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        // 新增設備只能指到啟用中的教室，停用教室不該再被分配新設備
+        $classrooms = Classroom::where('is_active', true)->orderBy('room_code')->get();
 
         return view('devices.create', compact('categories', 'classrooms'));
     }
@@ -68,7 +70,12 @@ class DeviceController extends Controller
     public function edit(Device $device)
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        // 編輯時仍要能看到設備目前所在的教室，就算那間教室後來被停用了，
+        // 否則下拉選單選不到目前值，表單一儲存就會把設備搬到別間教室
+        $classrooms = Classroom::where('is_active', true)
+            ->orWhere('id', $device->classroom_id)
+            ->orderBy('room_code')
+            ->get();
 
         return view('devices.edit', compact('device', 'categories', 'classrooms'));
     }
@@ -128,9 +135,21 @@ class DeviceController extends Controller
             'model' => ['nullable', 'string', 'max:255'],
             'serial_number' => ['nullable', 'string', 'max:255'],
             'warranty_until' => ['nullable', 'date'],
-            'classroom_id' => ['required', 'exists:classrooms,id'],
+            // 教室不能指到已被軟刪除的教室，exists 預設不看 deleted_at
+            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
             'is_core' => ['sometimes', 'boolean'],
+        ], [
+            'device_code.required' => '請填寫設備編號。',
+            'device_code.unique' => '這個設備編號已經有人使用了，請換一個。',
+            'device_category_id.required' => '請選擇設備類別。',
+            'device_category_id.exists' => '所選的設備類別不存在，請重新選擇。',
+            'warranty_until.date' => '保固期限格式不正確。',
+            'classroom_id.required' => '請選擇所在教室。',
+            'classroom_id.exists' => '所選的教室不存在或已被移除，請重新選擇。',
+            'status.required' => '請選擇設備狀態。',
+            'status.in' => '設備狀態不正確。',
+            'max' => '內容長度超過上限（255 字）。',
         ]);
     }
 }

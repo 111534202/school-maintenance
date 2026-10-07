@@ -19,6 +19,10 @@ class LoginController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
+        ], [
+            'email.required' => '請輸入帳號 Email。',
+            'email.email' => '帳號 Email 格式不正確。',
+            'password.required' => '請輸入密碼。',
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {

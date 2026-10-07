@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // 登入防暴力破解：同一組 email+IP 一分鐘最多試 5 次，超過回 429
+        RateLimiter::for('login', function ($request) {
+            $key = strtolower((string) $request->input('email')) . '|' . $request->ip();
+
+            return Limit::perMinute(5)->by($key);
+        });
     }
 }

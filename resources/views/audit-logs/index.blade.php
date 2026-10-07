@@ -31,7 +31,15 @@
             </select>
         </div>
         <div class="col-6 col-md-2">
-            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">查詢</button>
+            <label class="form-label small mb-0">起始日期</label>
+            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ request('date_from') }}">
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small mb-0">結束日期</label>
+            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ request('date_to') }}">
+        </div>
+        <div class="col-6 col-md-2">
+            <button type="submit" class="btn btn-sm btn-outline-secondary w-100 mt-md-4">查詢</button>
         </div>
     </form>
 
