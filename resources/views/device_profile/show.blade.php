@@ -40,7 +40,7 @@
                 </dd>
 
                 <dt class="col-sm-3">狀態</dt>
-                <dd class="col-sm-9"><span class="badge text-bg-secondary">{{ $device->status }}</span></dd>
+                <dd class="col-sm-9"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
 
                 <dt class="col-sm-3">核心設備</dt>
                 <dd class="col-sm-9">{{ $device->is_core ? '是' : '否' }}</dd>
@@ -154,31 +154,102 @@
         @endif
     </div>
 
-    <div class="row row-cols-1 row-cols-md-3 g-3">
-        <div class="col">
-            <div class="card h-100">
-                <div class="card-header">報修紀錄</div>
-                <div class="card-body text-muted small">
-                    報修模組（彭仕衡主責）的分支尚未併入 develop，暫時無法串接實際資料。
-                    待該分支併入後，這裡會改成唯讀查詢他的 Model 顯示這台設備的報修歷史，不會另外建表。
-                </div>
-            </div>
+    {{-- 報修與維修紀錄：唯讀顯示彭仕衡模組的資料，只列出目前使用者有權限檢視的報修單。 --}}
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>報修與維修紀錄</span>
+            <span class="text-muted small">
+                共 {{ $repairStats['total'] }} 張報修單、未結案 {{ $repairStats['open'] }} 張、維修工時合計 {{ number_format($repairStats['hours'], 2) }} 小時
+            </span>
         </div>
+        <div class="list-group list-group-flush">
+            @forelse ($repairRequests as $repair)
+                @php
+                    $statusColor = match ($repair->status->value) {
+                        'pending' => 'secondary',
+                        'assigned' => 'info',
+                        'in_progress' => 'primary',
+                        'pending_review' => 'warning',
+                        'completed' => 'success',
+                        default => 'light',
+                    };
+                    $impactText = ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'][$repair->impact_level] ?? $repair->impact_level;
+                    $ngSource = $ngSources->get($repair->id);
+                @endphp
+                <div class="list-group-item">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                        <div>
+                            <a href="{{ route('repairs.show', $repair) }}" class="fw-semibold">#{{ $repair->id }} {{ $repair->title }}</a>
+                            <span class="badge text-bg-{{ $statusColor }} ms-1">{{ $repair->status->label() }}</span>
+                            <span class="badge text-bg-light border ms-1">影響：{{ $impactText }}</span>
+                            @if ($ngSource)
+                                <span class="badge text-bg-danger ms-1">保養 NG 轉入</span>
+                            @endif
+                        </div>
+                        <span class="text-muted small">{{ $repair->created_at?->format('Y-m-d H:i') }}</span>
+                    </div>
+                    <div class="text-muted small mt-1">
+                        報修人：{{ $repair->reporter?->name ?? '系統轉入' }}
+                        ／ 維修人員：{{ $repair->assignedTechnician?->name ?? $repair->assignee_note ?? '尚未指派' }}
+                        @if ($ngSource?->maintenanceOrder)
+                            ／ 來源：<a href="{{ route('maintenance-orders.results.show', $ngSource->maintenanceOrder) }}">保養工單 #{{ $ngSource->maintenance_order_id }} 的 NG 結果</a>
+                        @endif
+                    </div>
+
+                    @forelse ($repair->repairLogs->sortBy('id')->values() as $index => $log)
+                        <div class="border-start border-3 ps-3 mt-2 small">
+                            <div class="fw-semibold">
+                                維修紀錄 {{ $index + 1 }}
+                                <span class="text-muted fw-normal">
+                                    {{ $log->started_at?->format('Y-m-d H:i') ?? '—' }} ～ {{ $log->ended_at?->format('Y-m-d H:i') ?? '—' }}
+                                    @if ($log->total_hours !== null)（{{ number_format((float) $log->total_hours, 2) }} 小時）@endif
+                                </span>
+                            </div>
+                            <div>故障原因：{{ $log->cause ?? '—' }}</div>
+                            <div>處置方式：{{ $log->resolution ?? '—' }}</div>
+                            <div>使用備品：{{ $log->parts_used_note ?: '—' }}</div>
+                            @if ($log->attachments->isNotEmpty())
+                                <div>附件：{{ $log->attachments->count() }} 個（見下方「附件」）</div>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="text-muted small mt-2">尚無維修紀錄</div>
+                    @endforelse
+                </div>
+            @empty
+                <div class="list-group-item text-center text-muted py-4">這台設備目前沒有報修紀錄</div>
+            @endforelse
+        </div>
+        @if ($hiddenRepairCount > 0)
+            <div class="card-footer text-muted small">另有 {{ $hiddenRepairCount }} 張報修單因權限限制無法在此顯示。</div>
+        @endif
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 g-3">
         <div class="col">
             <div class="card h-100">
                 <div class="card-header">備品耗用成本</div>
                 <div class="card-body text-muted small">
-                    庫存／成本模組（劉家芸主責）的分支尚未併入 develop，暫時無法串接實際資料。
-                    待該分支併入後，這裡會改成唯讀查詢他的 Model 顯示這台設備的備品耗用成本，不會另外建表。
+                    目前以維修紀錄上的「使用備品」文字說明呈現（見上方）。
+                    庫存／成本模組（劉家芸主責）尚未併入 develop，備品金額待她的介面確認後再串接唯讀查詢，不會在這裡另外建表。
                 </div>
             </div>
         </div>
         <div class="col">
             <div class="card h-100">
-                <div class="card-header">附件</div>
-                <div class="card-body text-muted small">
-                    共用附件機制尚未建立（規劃在第 3 週任務 3 之後），暫時無法顯示附件。
-                </div>
+                <div class="card-header">附件（{{ $attachments->count() }}）</div>
+                @if ($attachments->isEmpty())
+                    <div class="card-body text-muted small">這台設備的報修單與維修紀錄目前沒有附件。</div>
+                @else
+                    <ul class="list-group list-group-flush small">
+                        @foreach ($attachments as $item)
+                            <li class="list-group-item">
+                                <a href="{{ $item['file']->url() }}" target="_blank" rel="noopener">{{ $item['file']->original_name }}</a>
+                                <span class="text-muted">— {{ $item['from'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
             </div>
         </div>
     </div>

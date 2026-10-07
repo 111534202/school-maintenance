@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\MaintenanceOrder;
+use App\Models\MaintenanceResult;
 use App\Models\PreventiveCandidate;
+use App\Models\RepairRequest;
 use App\Services\AI\PredictionServiceInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -15,11 +17,11 @@ use Illuminate\Http\Request;
  * 以「設備」為中心，彙總跟這台設備有關的各模組資料做唯讀呈現：
  *   - 基本資料：devices（林政寬主責），唯讀查詢。
  *   - 保養結果：maintenance_orders / maintenance_results（本模組主責），依 device_id 篩選。
- *   - 報修、維修、備品耗用成本：分別是彭仕衡、劉家芸主責的模組，分支尚未併入 develop，
- *     目前先用提示文字呈現「尚未串接」，等對方分支併入後改成唯讀查詢他們的 Model，
- *     不會在這裡另外建表或複製資料（對應《個人工作計畫》規則：跨模組資料只能讀，不能複製）。
+ *   - 報修、維修紀錄、附件：彭仕衡主責的模組（已併入），唯讀查詢他的 RepairRequest / RepairLog / Attachment，
+ *     並沿用他的歸屬權限規則（RepairRequest::visibleTo）：使用者只看得到自己有權限檢視的報修單，
+ *     設備履歷不會變成繞過報修單權限的後門。不另外建表、不複製資料。
+ *   - 備品耗用成本：劉家芸主責的模組尚未併入，先以維修紀錄上的「使用備品說明」文字呈現，成本欄位待她的介面確認。
  *   - AI 預測（第 4 週）：即時呼叫 PredictionServiceInterface 取得風險分數與評分明細，並列出預防保養候選。
- *   - 附件：共用附件機制還沒建立（排在第 3 週任務 3 之後），先用提示文字呈現。
  */
 class DeviceProfileController extends Controller
 {
@@ -50,7 +52,7 @@ class DeviceProfileController extends Controller
     /**
      * 單一設備的履歷彙總頁（唯讀）。
      */
-    public function show(Device $device, PredictionServiceInterface $predictor): View
+    public function show(Request $request, Device $device, PredictionServiceInterface $predictor): View
     {
         $device->load(['category', 'classroom']);
 
@@ -77,6 +79,42 @@ class DeviceProfileController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('device_profile.show', compact('device', 'maintenanceOrders', 'maintenanceStats', 'prediction', 'candidates'));
+        // 第 5 週任務 3：報修／維修紀錄／附件（彭仕衡的模組，唯讀）。
+        // visibleTo：只撈「這位使用者有權限檢視」的報修單（規則見 RepairRequestPolicy），其餘只顯示被隱藏的筆數。
+        $repairRequests = RepairRequest::visibleTo($request->user())
+            ->where('device_id', $device->id)
+            ->with(['repairLogs.attachments', 'attachments', 'reporter', 'assignedTechnician'])
+            ->orderByDesc('id')
+            ->get();
+
+        $hiddenRepairCount = RepairRequest::where('device_id', $device->id)->count() - $repairRequests->count();
+
+        // 由保養 NG 轉入的報修單：保養結果 → 報修單的追溯（key 是報修單 id）。
+        $ngSources = MaintenanceResult::query()
+            ->whereIn('repair_request_id', $repairRequests->pluck('id'))
+            ->with('maintenanceOrder')
+            ->get()
+            ->keyBy('repair_request_id');
+
+        $repairStats = [
+            'total' => $repairRequests->count(),
+            'open' => $repairRequests->filter(fn (RepairRequest $r) => $r->status !== \App\Enums\RepairRequestStatus::Completed)->count(),
+            'hours' => (float) $repairRequests->flatMap->repairLogs->sum('total_hours'),
+        ];
+
+        // 這台設備所有附件（報修單照片 + 各筆維修紀錄的前後照片），每個附件只列一次。
+        $attachments = $repairRequests->flatMap(function (RepairRequest $r) {
+            $own = $r->attachments->map(fn ($a) => ['file' => $a, 'from' => "報修單 #{$r->id}", 'repair' => $r]);
+            $fromLogs = $r->repairLogs->flatMap(
+                fn ($log) => $log->attachments->map(fn ($a) => ['file' => $a, 'from' => "報修單 #{$r->id} 維修紀錄", 'repair' => $r])
+            );
+
+            return $own->concat($fromLogs);
+        })->values();
+
+        return view('device_profile.show', compact(
+            'device', 'maintenanceOrders', 'maintenanceStats', 'prediction', 'candidates',
+            'repairRequests', 'hiddenRepairCount', 'ngSources', 'repairStats', 'attachments'
+        ));
     }
 }
