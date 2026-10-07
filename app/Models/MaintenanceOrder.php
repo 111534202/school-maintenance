@@ -49,6 +49,14 @@ class MaintenanceOrder extends Model
         return $this->belongsTo(MaintenancePlan::class);
     }
 
+    /**
+     * 對應設備（唯讀引用林政寬的 Device Model，含已軟刪除的設備，避免歷史工單查不到設備）。
+     */
+    public function device(): BelongsTo
+    {
+        return $this->belongsTo(Device::class)->withTrashed();
+    }
+
     public function result(): HasOne
     {
         return $this->hasOne(MaintenanceResult::class);

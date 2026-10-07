@@ -17,7 +17,7 @@ class MaintenanceOrderController extends Controller
     public function index(Request $request): View
     {
         $orders = MaintenanceOrder::query()
-            ->with(['maintenancePlan', 'result'])
+            ->with(['maintenancePlan', 'result', 'device'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
@@ -34,7 +34,7 @@ class MaintenanceOrderController extends Controller
      */
     public function show(MaintenanceOrder $maintenanceOrder): View
     {
-        $maintenanceOrder->load('maintenancePlan.maintenanceItems', 'result');
+        $maintenanceOrder->load('maintenancePlan.maintenanceItems', 'result', 'device');
 
         return view('maintenance_orders.show', compact('maintenanceOrder'));
     }

@@ -26,6 +26,8 @@
                     @if ($maintenanceOrder->maintenancePlan)
                         {{ $maintenanceOrder->maintenancePlan->name }}
                         <span class="text-muted">（週期 {{ $maintenanceOrder->maintenancePlan->cycle_days }} 天）</span>
+                    @elseif ($maintenanceOrder->source === 'ai')
+                        AI 預防保養（無來源計畫，由 AI 風險候選核准建立）
                     @else
                         —
                     @endif
@@ -34,8 +36,8 @@
                 <dt class="col-sm-3">設備 / 類別</dt>
                 <dd class="col-sm-9">
                     {{ $maintenanceOrder->device_category ?? '—' }}
-                    @if ($maintenanceOrder->device_id)
-                        <span class="text-muted">（設備編號：{{ $maintenanceOrder->device_id }}）</span>
+                    @if ($maintenanceOrder->device)
+                        <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $maintenanceOrder->device) }}">{{ $maintenanceOrder->device->device_code }}</a>）</span>
                     @endif
                 </dd>
 

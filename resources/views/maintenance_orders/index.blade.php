@@ -41,6 +41,7 @@
         <table class="table table-bordered bg-white align-middle text-nowrap">
             <thead class="table-light">
                 <tr>
+                    <th>設備</th>
                     <th>來源計畫</th>
                     <th>設備類別</th>
                     <th>來源</th>
@@ -54,7 +55,14 @@
                 @forelse ($orders as $order)
                     @php [$statusText, $statusColor] = $order->statusLabel(); @endphp
                     <tr>
-                        <td>{{ $order->maintenancePlan?->name ?? '—' }}</td>
+                        <td>
+                            @if ($order->device)
+                                <a href="{{ route('device-profile.show', $order->device) }}">{{ $order->device->device_code }}</a>
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
                         <td>{{ $order->device_category ?? '—' }}</td>
                         <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
@@ -69,7 +77,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             目前沒有保養工單，請到「保養計畫」頁面點選「建立工單」
                         </td>
                     </tr>

@@ -117,20 +117,23 @@ class AiDemoDataSeeder extends Seeder
             $monthsAgo = $count - $index;
             $scheduledDate = Carbon::now()->subMonths($monthsAgo)->startOfMonth()->addDays(4);
 
-            $order = MaintenanceOrder::firstOrCreate(
-                [
+            // 用 whereDate 比對排定日期：不同資料庫儲存日期的格式不一樣（有的帶 00:00:00），
+            // 直接用 firstOrCreate 比對字串會漏掉既有紀錄，導致重跑 seeder 時重複建立工單。
+            $order = MaintenanceOrder::query()
+                ->where('maintenance_plan_id', $plan->id)
+                ->where('source', MaintenanceOrder::SOURCE_PERIODIC)
+                ->whereDate('scheduled_date', $scheduledDate->toDateString())
+                ->first()
+                ?? MaintenanceOrder::create([
                     'maintenance_plan_id' => $plan->id,
                     'source' => MaintenanceOrder::SOURCE_PERIODIC,
                     'scheduled_date' => $scheduledDate->toDateString(),
-                ],
-                [
                     'device_id' => $device->id,
                     'device_category' => $device->category?->name,
                     'status' => MaintenanceOrder::STATUS_COMPLETED,
-                ]
-            );
+                ]);
 
-            // firstOrCreate 命中既有紀錄時不會套用第二個陣列，這裡補確保狀態一定是已完成。
+            // 命中既有紀錄時不會套用 create 的欄位，這裡補確保狀態一定是已完成。
             if ($order->status !== MaintenanceOrder::STATUS_COMPLETED) {
                 $order->update(['status' => MaintenanceOrder::STATUS_COMPLETED]);
             }
