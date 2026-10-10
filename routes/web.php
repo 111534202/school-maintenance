@@ -6,6 +6,7 @@ use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\DeviceCategoryController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceEntryController;
+use App\Http\Controllers\PartController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,6 +27,8 @@ Route::middleware('auth')->group(function () {
 
     // 管理端入口：教室、設備類別、設備管理、audit log 查詢僅開放 admin / it_manager
     Route::middleware('role:admin,it_manager')->group(function () {
+        Route::resource('parts', PartController::class);
+    
         Route::resource('classrooms', ClassroomController::class)->except(['show', 'destroy']);
         Route::patch('classrooms/{classroom}/toggle', [ClassroomController::class, 'toggle'])->name('classrooms.toggle');
 
