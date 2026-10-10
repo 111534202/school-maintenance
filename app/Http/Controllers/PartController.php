@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 class PartController extends Controller
 {
 
-    public function index(Request $request)
+    public function index(Request $request) //顯示零件列表.搜尋
     {
         $query = Part::query();
 
@@ -21,12 +21,12 @@ class PartController extends Controller
         return view('parts.index', compact('parts'));
     }
 
-    public function create()
+    public function create() //顯示"新增"列表
     {
         return view('parts.create');
     }
 
-    public function store(Request $request)
+    public function store(Request $request) //把新增資料存入資料庫
     {
         $validated = $request->validate([
             'name' => 'required', //必填
@@ -38,15 +38,16 @@ class PartController extends Controller
 
         Part::create($validated);
 
-        return redirect('/parts');
+        return redirect()->route('parts.index')
+            ->with('success', '零件新增成功！');
     }
 
-    public function edit(Part $part)
+    public function edit(Part $part) //顯示"修改"列表
     {
         return view('parts.edit', compact('part'));
     }
 
-    public function update(Request $request, Part $part)
+    public function update(Request $request, Part $part) //更新零件資料
     {
         $validated = $request->validate([
             'name' => 'required',
@@ -58,13 +59,15 @@ class PartController extends Controller
 
         $part->update($validated);
 
-        return redirect('/parts');
+        return redirect()->route('parts.index')
+            ->with('success', '零件修改成功！');
     }   
 
-    public function destroy(Part $part)
+    public function destroy(Part $part) //刪除零件
     {
         $part->delete();
 
-        return redirect('/parts');
+        return redirect()->route('parts.index')
+            ->with('success', '零件刪除成功！');
     }
 }

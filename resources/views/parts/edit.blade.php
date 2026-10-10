@@ -1,54 +1,77 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <title>修改零件</title>
-</head>
-<body>
-    <h1>修改零件</h1>
 
-    @if ($errors->any())
-        <ul>
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+@extends('layouts.app')
 
-    <form method="POST" action="/parts/{{ $part->id }}">
-        @csrf
-        @method('PUT')
+@section('title', '修改零件')
 
-        <div>
-            <label>零件名稱：</label>
-            <input type="text" name="name" value="{{ $part->name }}">
-        </div>
+@section('content')
+    <h3 class="mb-3">修改零件</h3>
 
-        <div>
-            <label>零件規格：</label>
-            <input type="text" name="specification" value="{{ $part->specification }}">
-        </div>
+    <div class="card p-4" style="max-width: 480px;">
+        <form method="POST" action="{{ route('parts.update', $part) }}">
+            @csrf
+            @method('PUT')
 
-        <div>
-            <label>單價：</label>
-            <input type="number" name="unit_price" value="{{ $part->unit_price }}">
-        </div>
+            <div class="mb-3">
+                <label class="form-label">零件名稱</label>
+                <input
+                    type="text"
+                    name="name"
+                    class="form-control"
+                    value="{{ old('name', $part->name) }}"
+                    required
+                    autofocus
+                >
+            </div>
 
-        <div>
-            <label>目前庫存：</label>
-            <input type="number" name="current_stock" value="{{ $part->current_stock }}">
-        </div>
+            <div class="mb-3">
+                <label class="form-label">規格</label>
+                <input
+                    type="text"
+                    name="specification"
+                    class="form-control"
+                    value="{{ old('specification', $part->specification) }}"
+                >
+            </div>
 
-        <div>
-            <label>安全庫存：</label>
-            <input type="number" name="safety_stock" value="{{ $part->safety_stock }}">
-        </div>
+            <div class="mb-3">
+                <label class="form-label">單價</label>
+                <input
+                    type="number"
+                    name="unit_price"
+                    class="form-control"
+                    value="{{ old('unit_price', $part->unit_price) }}"
+                    min="0"
+                    step="1"
+                    required
+                >
+            </div>
 
-        <button type="submit">儲存修改</button>
-    </form>
+            <div class="mb-3">
+                <label class="form-label">目前庫存</label>
+                <input
+                    type="number"
+                    name="current_stock"
+                    class="form-control"
+                    value="{{ old('current_stock', $part->current_stock) }}"
+                    min="0"
+                    required
+                >
+            </div>
 
-    <p>
-        <a href="/parts">回到零件列表</a>
-    </p>
-</body>
-</html>
+            <div class="mb-3">
+                <label class="form-label">安全庫存</label>
+                <input
+                    type="number"
+                    name="safety_stock"
+                    class="form-control"
+                    value="{{ old('safety_stock', $part->safety_stock) }}"
+                    min="0"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary">儲存修改</button>
+            <a href="{{ route('parts.index') }}" class="btn btn-outline-secondary">取消</a>
+        </form>
+    </div>
+@endsection
