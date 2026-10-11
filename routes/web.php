@@ -37,6 +37,7 @@ use App\Http\Controllers\MaintenanceOrderController;
 use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
+use App\Http\Controllers\PartController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RoleController;
@@ -167,6 +168,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     // 設備類別主檔：沒有 show（類別沒有獨立檢視頁）。
     Route::middleware('can:device-categories.manage')->group(function () {
         Route::resource('device-categories', DeviceCategoryController::class)->except(['show']);
+    });
+
+    // 零件庫存
+    Route::middleware('role:admin,it_manager')->group(function () {
+        Route::resource('parts', PartController::class)
+            ->except(['show']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
