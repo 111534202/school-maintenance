@@ -3,14 +3,23 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Part extends Model
 {
     protected $fillable = [
-        'name', // 零件名稱
-        'specification', // 零件規格
-        'unit_price', // 單價
-        'current_stock', // 目前庫存
-        'safety_stock', // 安全庫存
+        'name',
+        'specification',
+        'unit_price',
+        'current_stock',
+        'safety_stock',
     ];
+
+    /**
+     * 取得這個零件所有的維修使用明細。
+     */
+    public function repairPartUsages(): HasMany
+    {
+        return $this->hasMany(RepairPartUsage::class, 'part_id');
+    }
 }
