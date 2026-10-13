@@ -4,6 +4,7 @@
          bootstrap="vendor/autoload.php"
          colors="true"
 >
+    <!-- 測試分兩組：Unit 測試單一類別的規則；Feature 模擬瀏覽器操作整個流程。執行方式：php artisan test -->
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -12,11 +13,13 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+    <!-- 計算程式碼涵蓋率時，只看 app 資料夾 -->
     <source>
         <include>
             <directory>app</directory>
         </include>
     </source>
+    <!-- 測試時用的環境設定：資料庫改用記憶體中的 SQLite（每次測試都是全新的，不會動到本機真實資料）；信件、快取、登入狀態都改用暫存或假的實作 -->
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
