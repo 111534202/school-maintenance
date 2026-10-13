@@ -50,13 +50,17 @@ class PermissionCatalog
         'knowledge' => [
             'knowledge-base.manage',   // 新增／編輯／刪除知識庫文章
         ],
+        // 空間預約類
+        'reservation' => [
+            'reservations.manage', // 查看與管理空間預約
+        ],
     ];
 
     /** 系統內建五個身分的預設權限（種子資料與舊資料補值都用這份）。admin 不用列，永遠全開。 */
     private const DEFAULTS = [
         'admin' => [],   // 系統管理員：永遠全開，不需要列
         'it_manager' => [   // 設備管理員（資訊組主管）
-            'classrooms.manage', 'device-categories.manage', 'devices.manage', 'audit-logs.view',
+            'classrooms.manage', 'reservations.manage', 'device-categories.manage', 'devices.manage', 'audit-logs.view',
             'repairs.create', 'repairs.dispatch', 'repairs.notice_cc', 'knowledge-base.manage',
             // 保養模組：設備管理員四項全有（工程預設，待全組確認）
             'maintenance.view', 'maintenance.manage', 'maintenance.report', 'ai-maintenance.manage',

@@ -12,6 +12,7 @@ return [
         'repair' => 'Repairs & Maintenance',
         'maintenance' => 'Maintenance & AI Predictive Maintenance',
         'knowledge' => 'Knowledge Base',
+        'reservation' => 'Space Reservations',
     ],
 
     // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
@@ -44,6 +45,12 @@ return [
             'accept' => ['name' => 'Accept Repairs', 'description' => 'Accept and close a repair, or reject it back for rework'],
             'assignable' => ['name' => 'Assignable as Technician', 'description' => 'Appears in the technician dropdown when dispatching'],
             'notice_cc' => ['name' => 'Receive Dispatch Notice Copy', 'description' => 'Users with this role are copied on every dispatch notification email'],
+        ],
+        'reservations' => [
+            'manage' => [
+                'name' => 'Manage Space Reservations',
+                'description' => 'View and manage space reservation records',
+            ],
         ],
         'maintenance' => [
             'view' => ['name' => 'View Maintenance Data', 'description' => 'View maintenance items, plans, orders and results, device profiles and the completion rate'],
