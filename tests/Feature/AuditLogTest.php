@@ -26,6 +26,11 @@ class AuditLogTest extends TestCase
     {
         parent::setUp();
 
+        // 這個測試類別的預設語言是繁體中文。
+        // 同時設定 config，讓 SetLocale 中介層在 session 沒指定語言時也使用中文。
+        config(['app.locale' => 'zh_TW']);
+        app()->setLocale('zh_TW');
+
         $this->admin = $this->loginAsAnyUser();
     }
 

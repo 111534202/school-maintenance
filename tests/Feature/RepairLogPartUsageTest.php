@@ -259,4 +259,130 @@ class RepairLogPartUsageTest extends TestCase
             $repairRequest->fresh()->status->value
         );
     }
+
+    /**
+     * 重複選取同一個零件時，應驗證失敗且不扣庫存。
+     */
+    public function test_duplicate_part_selection_is_rejected_without_deducting_stock(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $part = $this->makePart(10);
+
+        $response = $this->post(
+            route('repair-logs.store', $repairRequest),
+            $this->validPayload([
+                'part_usages' => [
+                    ['part_id' => $part->id, 'quantity' => 2],
+                    ['part_id' => $part->id, 'quantity' => 3],
+                ],
+            ])
+        );
+
+        $response->assertSessionHasErrors('part_usages.1.part_id');
+
+        $this->assertDatabaseMissing('repair_logs', [
+            'repair_request_id' => $repairRequest->id,
+        ]);
+
+        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertSame(10, (int) $part->fresh()->current_stock);
+        $this->assertSame(
+            'in_progress',
+            $repairRequest->fresh()->status->value
+        );
+    }
+
+    /**
+     * 使用數量為 0 時，不應建立紀錄或扣除庫存。
+     */
+    public function test_zero_part_quantity_is_rejected_without_deducting_stock(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $part = $this->makePart(10);
+
+        $response = $this->post(
+            route('repair-logs.store', $repairRequest),
+            $this->validPayload([
+                'part_usages' => [
+                    ['part_id' => $part->id, 'quantity' => 0],
+                ],
+            ])
+        );
+
+        $response->assertSessionHasErrors('part_usages.0.quantity');
+
+        $this->assertDatabaseMissing('repair_logs', [
+            'repair_request_id' => $repairRequest->id,
+        ]);
+
+        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertSame(10, (int) $part->fresh()->current_stock);
+        $this->assertSame(
+            'in_progress',
+            $repairRequest->fresh()->status->value
+        );
+    }
+
+    /**
+     * 負數使用量時，不應建立紀錄或扣除庫存。
+     */
+    public function test_negative_part_quantity_is_rejected_without_deducting_stock(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $part = $this->makePart(10);
+
+        $response = $this->post(
+            route('repair-logs.store', $repairRequest),
+            $this->validPayload([
+                'part_usages' => [
+                    ['part_id' => $part->id, 'quantity' => -1],
+                ],
+            ])
+        );
+
+        $response->assertSessionHasErrors('part_usages.0.quantity');
+
+        $this->assertDatabaseMissing('repair_logs', [
+            'repair_request_id' => $repairRequest->id,
+        ]);
+
+        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertSame(10, (int) $part->fresh()->current_stock);
+        $this->assertSame(
+            'in_progress',
+            $repairRequest->fresh()->status->value
+        );
+    }
+
+    /**
+     * 不存在的零件 ID 應被拒絕，且不得留下維修紀錄。
+     */
+    public function test_nonexistent_part_is_rejected_without_deducting_stock(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $part = $this->makePart(10);
+        $nonexistentPartId = ((int) Part::query()->max('id')) + 1000;
+
+        $response = $this->post(
+            route('repair-logs.store', $repairRequest),
+            $this->validPayload([
+                'part_usages' => [
+                    ['part_id' => $nonexistentPartId, 'quantity' => 1],
+                ],
+            ])
+        );
+
+        $response->assertSessionHasErrors('part_usages.0.part_id');
+
+        $this->assertDatabaseMissing('repair_logs', [
+            'repair_request_id' => $repairRequest->id,
+        ]);
+
+        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertSame(10, (int) $part->fresh()->current_stock);
+        $this->assertSame(
+            'in_progress',
+            $repairRequest->fresh()->status->value
+        );
+    }
 }
