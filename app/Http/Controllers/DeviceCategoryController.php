@@ -42,6 +42,10 @@ class DeviceCategoryController extends Controller
         // 名稱必填、最長 255 字、不可與其他類別重複；驗證不過會自動導回表單並顯示錯誤。
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:device_categories,name'],
+        ], [
+            'name.required' => '請填寫類別名稱。',
+            'name.unique' => '這個類別名稱已經存在了，請換一個。',
+            'name.max' => '類別名稱長度超過上限（255 字）。',
         ]);
 
         $category = DeviceCategory::create($data);
@@ -64,6 +68,10 @@ class DeviceCategoryController extends Controller
         // 規則最後面接自己的編號，代表「名稱不可重複，但可以跟自己現在的名稱一樣」。
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:device_categories,name,' . $deviceCategory->id],
+        ], [
+            'name.required' => '請填寫類別名稱。',
+            'name.unique' => '這個類別名稱已經存在了，請換一個。',
+            'name.max' => '類別名稱長度超過上限（255 字）。',
         ]);
 
         $deviceCategory->update($data);

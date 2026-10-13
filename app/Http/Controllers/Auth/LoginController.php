@@ -42,6 +42,10 @@ class LoginController extends Controller
         $input = $request->validate([
             'login' => ['required', 'string'],
             'password' => ['required'],
+        ], [
+            'email.required' => '請輸入帳號 Email。',
+            'email.email' => '帳號 Email 格式不正確。',
+            'password.required' => '請輸入密碼。',
         ]);
 
         // 次數限制的計數鍵：帳號統一轉小寫（大小寫不同不能用來繞過），再加上來源 IP。

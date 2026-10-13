@@ -10,6 +10,7 @@ use App\Models\DeviceCategory;                    // 設備類別資料表的模
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
+use Illuminate\Validation\Rule;                   // 自訂 exists 規則（排除軟刪除資料）用
 use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套件
 
 /**
@@ -66,7 +67,8 @@ class DeviceController extends Controller
     public function create()
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        // 新增設備只能指到啟用中的教室，停用教室不該再被分配新設備
+        $classrooms = Classroom::where('is_active', true)->orderBy('room_code')->get();
 
         return view('devices.create', compact('categories', 'classrooms'));
     }
@@ -100,7 +102,12 @@ class DeviceController extends Controller
     public function edit(Device $device)
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        // 編輯時仍要能看到設備目前所在的教室，就算那間教室後來被停用了，
+        // 否則下拉選單選不到目前值，表單一儲存就會把設備搬到別間教室
+        $classrooms = Classroom::where('is_active', true)
+            ->orWhere('id', $device->classroom_id)
+            ->orderBy('room_code')
+            ->get();
 
         return view('devices.edit', compact('device', 'categories', 'classrooms'));
     }
@@ -174,7 +181,8 @@ class DeviceController extends Controller
             'model' => ['nullable', 'string', 'max:255'],                             // 型號
             'serial_number' => ['nullable', 'string', 'max:255'],                     // 序號
             'warranty_until' => ['nullable', 'date'],                                 // 保固到期日
-            'classroom_id' => ['required', 'exists:classrooms,id'],                   // 所在教室：必須是真的存在的教室
+            // 教室不能指到已被軟刪除的教室，exists 預設不看 deleted_at
+            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
             'is_core' => ['sometimes', 'boolean'],                                    // 是否為核心設備；sometimes = 有送才檢查
