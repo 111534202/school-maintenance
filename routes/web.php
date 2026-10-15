@@ -197,8 +197,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('device-categories', DeviceCategoryController::class)->except(['show']);
     });
 
-    // 零件庫存
-    Route::middleware('role:admin,it_manager')->group(function () {
+    // 零件庫存：需要 parts.manage 權限（身分主檔勾選；設備管理員預設有）。
+    Route::middleware('can:parts.manage')->group(function () {
         Route::resource('parts', PartController::class)
             ->except(['show']);
     });

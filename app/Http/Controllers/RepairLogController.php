@@ -20,9 +20,19 @@ class RepairLogController extends Controller
     /**
      * 顯示維修填單表單。
      */
-    public function create(RepairRequest $repairRequest)
+    public function create(RepairRequest $repairRequest, RepairRequestWorkflow $workflow)
     {
         Gate::authorize('fillLog', $repairRequest);
+
+        // 只有「處理中」的案件才能填維修紀錄（送出後會轉成待驗收）。已結案、待驗收、還沒開始處理的案件
+        // 連表單都不開，不要等使用者填完一大張才在送出時被擋。
+        try {
+            $workflow->assertCanTransition($repairRequest, RepairRequestStatus::PendingReview);
+        } catch (DomainException $exception) {
+            return redirect()
+                ->route('repairs.show', $repairRequest)
+                ->with('error', $exception->getMessage());
+        }
 
         $parts = Part::query()
             ->where('current_stock', '>', 0)

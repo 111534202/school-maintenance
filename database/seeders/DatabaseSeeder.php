@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Database\Seeders\PartSeeder;
 
 // 【Seeder（種子資料）是什麼？】執行 php artisan db:seed（或 php artisan migrate:fresh --seed 重建整個資料庫並塞資料）時，
 // 用來放入「初始資料／示範資料」的類別，讓一個全新的資料庫一開始就有身分、帳號、教室、設備可以操作。
@@ -31,7 +30,6 @@ class DatabaseSeeder extends Seeder
             DeviceCategorySeeder::class,
             // 7. 建立設備（要在教室、類別之後）。
             DeviceSeeder::class,
-
             MaintenanceItemSeeder::class,
             MaintenancePlanSeeder::class,
             MaintenanceOrderSeeder::class,
@@ -39,7 +37,7 @@ class DatabaseSeeder extends Seeder
             AiDemoDataSeeder::class,
             // 零件庫存模組的示範資料。
             PartSeeder::class,
-                    ]);
+        ]);
 
         // feature/repair（彭仕衡）的測試資料。
         // 知識庫示範文章。

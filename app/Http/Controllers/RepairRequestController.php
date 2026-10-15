@@ -117,7 +117,7 @@ class RepairRequestController extends Controller
 
         // 網址有帶 ?from_kb=文章編號 → 找出那篇知識庫文章，畫面上會顯示「你剛剛看過這篇」的提示。
         if (request()->filled('from_kb')) {
-            $fromKnowledgeBase = KnowledgeBase::find(request()->integer('from_kb'));
+            $fromKnowledgeBase = KnowledgeBase::visibleTo(auth()->user())->find(request()->integer('from_kb'));
         }
 
         // 網址有帶 ?device=設備編號 → 找出那台設備（連同類別、教室），表單會自動帶入設備資訊。

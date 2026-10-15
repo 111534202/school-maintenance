@@ -13,6 +13,7 @@ return [
         'maintenance' => '保養與 AI 預測性維護',
         'knowledge' => '自助知識庫',
         'reservation' => '空間預約',
+        'inventory' => '零件庫存',
     ],
 
     // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
@@ -45,6 +46,9 @@ return [
             'accept' => ['name' => '驗收報修', 'description' => '驗收通過結案，或驗收不通過退回重修'],
             'assignable' => ['name' => '可被指派為維修人員', 'description' => '會出現在派工的維修人員下拉選單裡'],
             'notice_cc' => ['name' => '接收派工通知副本', 'description' => '每次派工時，通知信會副本一份給擁有這個身分的用戶'],
+        ],
+        'parts' => [
+            'manage' => ['name' => '零件庫存管理', 'description' => '新增、修改、刪除零件並查看庫存；維修人員填維修紀錄時可選用的零件來自這份清單'],
         ],
         'reservations' => [
             'manage' => [

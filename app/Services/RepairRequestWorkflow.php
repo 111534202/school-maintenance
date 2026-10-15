@@ -161,9 +161,24 @@ class RepairRequestWorkflow
 
     /**
      * 維修人員開始處理：已派工 -> 處理中。
+     *
+     * 為什麼要多檢查「現在一定是已派工」：轉換表為了讓「驗收不通過退回」可行，允許
+     * 待驗收 -> 處理中。如果這裡只靠轉換表，維修人員（或管理員）就能對「待驗收」的案件按
+     * 「開始處理」，不經報修人、不填退回原因就把案件拉回處理中。所以「待驗收退回」只能走 reject()。
+     *
+     * @throws DomainException 案件不是「已派工」狀態時
      */
     public function start(RepairRequest $repairRequest): RepairRequest
     {
+        if ($repairRequest->status !== RepairRequestStatus::Assigned) {
+            throw new DomainException(
+                __('repair_requests.errors.invalid_transition', [
+                    'from' => $repairRequest->status->label(),
+                    'to' => RepairRequestStatus::InProgress->label(),
+                ])
+            );
+        }
+
         return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
     }
 
