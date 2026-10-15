@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型關聯」的型別
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * 維修紀錄。一張報修單（RepairRequest）可以有很多筆維修紀錄——最常見的情況
@@ -43,5 +44,13 @@ class RepairLog extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /**
+    * 取得這筆維修紀錄使用的所有零件明細。
+     */
+    public function partUsages(): HasMany
+    {
+        return $this->hasMany(RepairPartUsage::class, 'repair_log_id');
     }
 }

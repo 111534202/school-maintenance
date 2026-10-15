@@ -24,6 +24,7 @@ use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClassroomController;
+use App\Http\Controllers\ClassroomReservationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DeviceCategoryController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\MaintenanceOrderController;
 use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
+use App\Http\Controllers\PartController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RoleController;
@@ -164,9 +166,41 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('classrooms/{classroom}/toggle', [ClassroomController::class, 'toggle'])->name('classrooms.toggle');   // 啟用／停用
     });
 
+    // ---- 空間預約 ----
+    // 所有登入使用者都可以申請預約及查看自己的申請；
+    // 預約管理者則可以查看所有人的申請。
+    Route::prefix('reservations')->name('reservations.')->group(function () {
+        Route::get('/', [ClassroomReservationController::class, 'index'])
+            ->name('index');
+
+        Route::get('/create', [ClassroomReservationController::class, 'create'])
+            ->name('create');
+
+        Route::post('/', [ClassroomReservationController::class, 'store'])
+            ->name('store');
+
+        // 核准預約
+        Route::post('/{reservation}/approve', [
+            ClassroomReservationController::class,
+            'approve',
+        ])->name('approve');
+
+        // 拒絕預約
+        Route::post('/{reservation}/reject', [
+            ClassroomReservationController::class,
+            'reject',
+        ])->name('reject');
+    });
+
     // 設備類別主檔：沒有 show（類別沒有獨立檢視頁）。
     Route::middleware('can:device-categories.manage')->group(function () {
         Route::resource('device-categories', DeviceCategoryController::class)->except(['show']);
+    });
+
+    // 零件庫存
+    Route::middleware('role:admin,it_manager')->group(function () {
+        Route::resource('parts', PartController::class)
+            ->except(['show']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。

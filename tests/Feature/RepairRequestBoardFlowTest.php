@@ -23,6 +23,8 @@ class RepairRequestBoardFlowTest extends TestCase
     {
         parent::setUp();
 
+        app()->setLocale('zh_TW');
+
         $this->loginAsAnyUser();
     }
 
