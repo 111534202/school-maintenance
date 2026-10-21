@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
-/** 主控台（數字卡片 + 可點擊的圖表）、頂部通知鈴鐺、語言切換隱藏、選單的主檔分組。 */
+/** 主控台（數字卡片 + 可點擊的圖表）、頂部通知鈴鐺、語言切換隱藏、洋蔥式選單的主檔分組。 */
 class DashboardAndNotificationTest extends TestCase
 {
     // 每個測試開始前都重建一份乾淨的資料庫。
@@ -211,25 +211,32 @@ class DashboardAndNotificationTest extends TestCase
         $this->get(route('dashboard'))->assertSee('id="locale-select"', false);
     }
 
-    // ---------- 選單：主檔歸成一類 ----------
+    // ---------- 選單：洋蔥式（主檔歸成一類）----------
 
-    // 用戶、身分、部門、教室、設備類別、設備都收在同一個可收合的「主檔」群組裡（手機抽屜與桌面側邊欄各一份）。
-    public function test_master_data_links_are_grouped_in_one_collapsible_group(): void
+    /** 取出某一份洋蔥式選單的 HTML：'desktop' = 桌面側邊欄、'mobile' = 手機抽屜。 */
+    private function drill(string $html, string $which): string
+    {
+        $this->assertSame(1, preg_match('#id="drill-' . $which . '".*?</script>#s', $html, $m), "找不到 $which 選單");
+
+        return $m[0];
+    }
+
+    // 用戶、身分、部門、教室、設備類別、設備都收在同一個「主檔」分類裡（往內點一層才看到；手機抽屜與桌面側邊欄各一份）。
+    public function test_master_data_links_are_grouped_in_one_drilldown_group(): void
     {
         $this->loginAsAnyUser();
 
         $html = $this->get(route('dashboard'))->getContent();
 
-        // 桌面側邊欄與手機抽屜各一個群組（id 不能重複）
-        $this->assertStringContainsString('id="side-master"', $html);
-        $this->assertStringContainsString('id="drawer-master"', $html);
-        // 主檔群組 = 從 id="…-master" 到後面「業務功能」小標題（text-uppercase）之前
-        foreach (['drawer', 'side'] as $navId) {
-            $this->assertSame(1, preg_match('#id="' . $navId . '-master".*?(?=text-uppercase)#s', $html, $m), "[$navId] 找不到主檔群組");
+        foreach (['desktop', 'mobile'] as $which) {
+            $menu = $this->drill($html, $which);
+            $this->assertStringContainsString('data-drill-open="master"', $menu, "[$which] 第一層要有「主檔」分類");
+            // 主檔面板 = 從 data-drill-panel="master" 到下一個面板之前
+            $this->assertSame(1, preg_match('#data-drill-panel="master".*?(?=<div class="drill-panel|</script>)#s', $menu, $m), "[$which] 找不到主檔面板");
             $group = $m[0];
-            // 群組裡有用戶、身分、部門、教室、設備類別、設備
+            // 面板裡有用戶、身分、部門、教室、設備類別、設備
             foreach (['users.index', 'roles.index', 'departments.index', 'classrooms.index', 'device-categories.index', 'devices.index'] as $route) {
-                $this->assertStringContainsString('href="' . route($route) . '"', $group, "[$navId] $route 應該在主檔群組裡");
+                $this->assertStringContainsString('href="' . route($route) . '"', $group, "[$which] $route 應該在主檔面板裡");
             }
             // 報修看板與操作紀錄是獨立項目，不屬於主檔
             $this->assertStringNotContainsString(route('repairs.index'), $group);
@@ -237,20 +244,22 @@ class DashboardAndNotificationTest extends TestCase
         }
     }
 
-    // 在主檔頁面時群組預設展開，其他頁面預設收合。
-    public function test_master_group_starts_expanded_only_on_a_master_page(): void
+    // 在主檔頁面時「主檔」那一層預設展開，在其他頁面預設停在第一層。
+    public function test_master_group_starts_open_only_on_a_master_page(): void
     {
         $this->loginAsAnyUser();
 
-        $this->get(route('users.index'))->assertSee('class="collapse show" id="side-master"', false);
-        $this->get(route('repairs.index'))->assertSee('class="collapse " id="side-master"', false);
+        $open = '/class="drill-panel drill-sub is-open" data-drill-panel="master"/';
+
+        $this->assertMatchesRegularExpression($open, $this->drill($this->get(route('users.index'))->getContent(), 'desktop'));
+        $this->assertDoesNotMatchRegularExpression($open, $this->drill($this->get(route('repairs.index'))->getContent(), 'desktop'));
     }
 
-    // 完全沒有主檔權限的人看不到「主檔」群組。
+    // 完全沒有主檔權限的人，第一層看不到「主檔」分類。
     public function test_master_group_is_absent_for_users_without_any_master_permission(): void
     {
         $this->actingAs($this->makeTechnician());
 
-        $this->get(route('dashboard'))->assertDontSee('id="side-master"', false);
+        $this->get(route('dashboard'))->assertDontSee('data-drill-open="master"', false);
     }
 }

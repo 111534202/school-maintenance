@@ -1,10 +1,7 @@
 {{-- 各頁面自己的內容會被放在這裡（兩處是登入後與未登入的版面）。 --}}
 {{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
 {{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
-{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
-{{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
-{{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
-{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
+{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-drilldown.blade.php。 --}}
 {{-- Blade 語法速查：雙大括號包住變數 = 輸出文字（會自動防止惡意程式碼）；@if / @foreach 是條件與迴圈；@can('權限') 有權限才顯示；大括號加兩個減號的寫法是不會輸出到網頁的註解。 --}}
 <!DOCTYPE html>
 {{-- 網頁的語言標記，依目前選的語言自動變成 zh-TW 或 en。 --}}
@@ -156,20 +153,17 @@
                 <h6 class="offcanvas-title">選單</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
             </div>
-            <div class="offcanvas-body">
-                <div class="nav flex-column">
-                    @include('layouts.partials.nav-links', ['navId' => 'drawer'])
-                </div>
+            {{-- 手機版與桌面版都用「洋蔥式」選單（一層一層往內點，見 layouts/partials/nav-drilldown.blade.php）。 --}}
+            <div class="offcanvas-body p-0">
+                @include('layouts.partials.nav-drilldown', ['drillId' => 'mobile'])
             </div>
         </div>
 
         <div class="d-flex">
             {{-- 桌面版的固定側邊欄（d-none d-lg-block：小螢幕隱藏、大螢幕顯示）。 --}}
             <div class="app-sidebar bg-white border-end d-none d-lg-block flex-shrink-0" style="width: 220px;">
-                <div class="nav flex-column p-2">
-                    {{-- 引入同一份選單內容；navId 不同是因為手機版與桌面版各有一份，展開收合用的 id 不能重複。 --}}
-                    @include('layouts.partials.nav-links', ['navId' => 'side'])
-                </div>
+                {{-- 同一份洋蔥式選單；drillId 不同是因為手機版與桌面版各有一份，id 不能重複。 --}}
+                @include('layouts.partials.nav-drilldown', ['drillId' => 'desktop'])
             </div>
 
             <div class="flex-grow-1 app-content p-3 p-md-4">
