@@ -11,7 +11,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered bg-white align-middle text-nowrap">
+        <table class="table table-bordered bg-white align-middle text-nowrap" data-onion-primary="4">
             <thead class="table-light">
                 <tr>
                     <th>計畫名稱</th>
@@ -27,7 +27,7 @@
                 @forelse ($plans as $plan)
                     <tr>
                         <td>{{ $plan->name }}</td>
-                        <td>{{ $plan->device_category ?? '—' }}</td>
+                        <td>{{ $plan->categoryName() ?? '—' }}</td>
                         <td>{{ $plan->cycle_days }}</td>
                         <td>{{ $plan->maintenance_items_count }}</td>
                         <td>{{ $plan->next_due_date?->format('Y-m-d') ?? '—' }}</td>

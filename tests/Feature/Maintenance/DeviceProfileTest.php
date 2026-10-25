@@ -94,8 +94,8 @@ class DeviceProfileTest extends TestCase
     private function attach(RepairRequest|RepairLog $owner, string $name): void
     {
         $owner->attachments()->create([
-            'disk_path' => 'attachments/'.$name,
-            'original_name' => $name,
+            'file_path' => 'attachments/'.$name,
+            'file_name' => $name,
             'mime_type' => 'image/jpeg',
             'size_bytes' => 1234,
         ]);
@@ -163,7 +163,7 @@ class DeviceProfileTest extends TestCase
         $order = MaintenanceOrder::create([
             'maintenance_plan_id' => $this->makePlan($device)->id,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->toDateString(),
@@ -171,9 +171,8 @@ class DeviceProfileTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-07 10:00:00',
-            'notes' => '風扇異音',
+            'note' => '風扇異音',
         ])->assertRedirect();
 
         $repair = RepairRequest::where('device_id', $device->id)->sole();

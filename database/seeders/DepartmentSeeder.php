@@ -13,10 +13,10 @@ class DepartmentSeeder extends Seeder
     {
         // 部門清單：name 名稱、code 代碼、description 說明。
         $departments = [
-            ['name' => '資訊工程系', 'code' => 'CSIE', 'description' => '資訊工程相關系所'],
-            ['name' => '電機工程系', 'code' => 'EE', 'description' => '電機工程相關系所'],
-            ['name' => '通識教育中心', 'code' => 'GEC', 'description' => '全校通識課程'],
-            ['name' => '總務處', 'code' => 'GA', 'description' => '校園設施與設備總務'],
+            ['name' => '資訊工程系', 'department_code' => 'CSIE', 'description' => '資訊工程相關系所'],
+            ['name' => '電機工程系', 'department_code' => 'EE', 'description' => '電機工程相關系所'],
+            ['name' => '通識教育中心', 'department_code' => 'GEC', 'description' => '全校通識課程'],
+            ['name' => '總務處', 'department_code' => 'GA', 'description' => '校園設施與設備總務'],
         ];
 
         // 逐一建立。

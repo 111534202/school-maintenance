@@ -54,7 +54,7 @@ class AuditLogTest extends TestCase
     {
         auth()->logout();
         $user = $this->makeTechnician();
-        $user->update(['username' => 'timer', 'password' => 'pass-word-1']);
+        $user->update(['account' => 'timer', 'password' => 'pass-word-1']);
 
         $this->post(route('login'), ['login' => 'timer', 'password' => 'pass-word-1'])->assertRedirect('/dashboard');
 
@@ -73,7 +73,7 @@ class AuditLogTest extends TestCase
     {
         auth()->logout();
         $user = $this->makeTechnician();
-        $user->update(['username' => 'audited', 'password' => 'right-pass-1', 'name' => '稽核對象']);
+        $user->update(['account' => 'audited', 'password' => 'right-pass-1', 'name' => '稽核對象']);
 
         $this->post(route('login'), ['login' => 'audited', 'password' => 'WRONG-secret-xyz']);
         $failed = $this->lastLog('login_failed');
@@ -82,11 +82,11 @@ class AuditLogTest extends TestCase
         $this->assertStringNotContainsString('WRONG-secret-xyz', json_encode($failed->toArray()));
 
         $this->post(route('login'), ['login' => 'audited', 'password' => 'right-pass-1']);
-        $this->assertSame('稽核對象 登入系統', $this->lastLog('login')->description);
-        $this->assertSame($user->id, $this->lastLog('login')->user_id);
+        $this->assertSame('稽核對象 登入系統', $this->lastLog('logged_in')->description);
+        $this->assertSame($user->id, $this->lastLog('logged_in')->user_id);
 
         $this->post(route('logout'));
-        $this->assertSame('稽核對象 登出系統', $this->lastLog('logout')->description);
+        $this->assertSame('稽核對象 登出系統', $this->lastLog('logged_out')->description);
     }
 
     // ---------- 說明：寫入當下的快照 ----------
@@ -95,7 +95,7 @@ class AuditLogTest extends TestCase
     public function test_description_is_generated_automatically_and_survives_the_subject_being_deleted(): void
     {
         $victim = $this->makeTechnician();
-        $victim->update(['name' => '王小明', 'username' => 'wang']);
+        $victim->update(['name' => '王小明', 'account' => 'wang']);
 
         $this->delete(route('users.destroy', $victim));
 
@@ -118,7 +118,7 @@ class AuditLogTest extends TestCase
         $technician->update(['name' => '陳大成']);
 
         $this->post(route('repairs.store'), [
-            'title' => 'A101 投影機壞了', 'description' => '開不了機', 'impact_level' => 'high', 'affects_class' => '1',
+            'title' => 'A101 投影機壞了', 'description' => '開不了機', 'impact_level' => 'high', 'is_class_affected' => '1',
         ]);
         $case = RepairRequest::firstWhere('title', 'A101 投影機壞了');
         $this->assertSame('新增報修單「A101 投影機壞了」', $this->lastLog('created')->description);
@@ -210,7 +210,7 @@ class AuditLogTest extends TestCase
     public function test_every_audit_action_and_type_used_in_the_code_has_a_label_in_both_languages(): void
     {
         $actions = ['created', 'updated', 'deleted', 'restored', 'status_changed', 'password_reset', 'core_flag_changed',
-            'login', 'logout', 'login_failed', 'assigned', 'reassigned', 'rejected'];
+            'logged_in', 'logged_out', 'login_failed', 'assigned', 'reassigned', 'rejected'];
         $types = ['User', 'Role', 'Department', 'Classroom', 'Device', 'DeviceCategory', 'RepairRequest', 'RepairLog', 'KnowledgeBase'];
 
         foreach (['zh_TW', 'en'] as $locale) {

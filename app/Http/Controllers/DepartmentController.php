@@ -34,7 +34,7 @@ class DepartmentController extends Controller
                 $keyword = $request->string('keyword')->toString();
                 $query->where(function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%")        // like %字% = 包含這段字
-                        ->orWhere('code', 'like', "%{$keyword}%")
+                        ->orWhere('department_code', 'like', "%{$keyword}%")
                         ->orWhere('description', 'like', "%{$keyword}%");
                 });
             })
@@ -62,7 +62,7 @@ class DepartmentController extends Controller
         $department = Department::create($this->validated($request));
 
         // 記錄「新增了部門」，只挑名稱、代碼、啟用狀態三個欄位放進紀錄。
-        AuditLogger::log('created', $department, $department->only(['name', 'code', 'is_active']));
+        AuditLogger::log('created', $department, $department->only(['name', 'department_code', 'is_active']));
 
         return redirect()->route('departments.index')->with('success', __('departments.flash.created'));
     }
@@ -79,7 +79,7 @@ class DepartmentController extends Controller
         // 傳入 $department 是為了讓「名稱／代碼不可重複」的檢查排除自己。
         $department->update($this->validated($request, $department));
 
-        AuditLogger::log('updated', $department, $department->only(['name', 'code', 'is_active']));
+        AuditLogger::log('updated', $department, $department->only(['name', 'department_code', 'is_active']));
 
         return redirect()->route('departments.index')->with('success', __('departments.flash.updated'));
     }
@@ -110,7 +110,7 @@ class DepartmentController extends Controller
 
         $department->delete();
 
-        AuditLogger::log('deleted', $department, $department->only(['name', 'code']));
+        AuditLogger::log('deleted', $department, $department->only(['name', 'department_code']));
 
         return redirect()->route('departments.index')->with('success', __('departments.flash.deleted'));
     }
@@ -125,7 +125,7 @@ class DepartmentController extends Controller
             // 名稱：必填、最長 255 字、不可與其他部門重複。
             'name' => ['required', 'string', 'max:255', Rule::unique('departments', 'name')->ignore($department?->id)],
             // 代碼：可以不填；有填的話只能是英數與 . _ -，而且不可重複。
-            'code' => ['nullable', 'string', 'max:30', 'regex:/^[A-Za-z0-9._-]+$/', Rule::unique('departments', 'code')->ignore($department?->id)],
+            'department_code' => ['nullable', 'string', 'max:30', 'regex:/^[A-Za-z0-9._-]+$/', Rule::unique('departments', 'department_code')->ignore($department?->id)],
             'description' => ['nullable', 'string', 'max:255'],   // 說明：可不填
             'is_active' => ['required', 'boolean'],               // 是否啟用：true / false
         ]);

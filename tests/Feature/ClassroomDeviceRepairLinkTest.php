@@ -33,7 +33,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
     private function room(string $code, array $attrs = []): Classroom
     {
-        return Classroom::create(array_merge(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => $code, 'room_name' => "$code 教室"], $attrs));
+        return Classroom::create(array_merge(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => $code, 'name' => "$code 教室"], $attrs));
     }
 
     private function device(Classroom $room, string $code, string $status = 'normal', array $attrs = []): Device
@@ -234,7 +234,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->actingAs($manager);
         $this->assertSame('0', $this->classroomRows()['A101']['cells'][7]);
 
-        $this->repair($device, 'pending', ['reporter_id' => $manager->id]);   // 自己報修的看得到
+        $this->repair($device, 'pending', ['requester_id' => $manager->id]);   // 自己報修的看得到
         $this->assertSame('1', $this->classroomRows()['A101']['cells'][7]);
 
         $this->actingAs($this->makeItManager());   // 能派工的人看全部

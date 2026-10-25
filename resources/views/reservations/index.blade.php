@@ -54,7 +54,7 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" data-onion-primary="1,3">
                         <thead class="table-light">
                             <tr>
                                 <th>預約日期</th>
@@ -75,7 +75,7 @@
                             @foreach ($reservations as $reservation)
                                 <tr>
                                     <td>{{ $reservation->reservation_date->format('Y-m-d') }}</td>
-                                    <td>{{ $reservation->classroom?->room_name ?? '教室資料不存在' }}</td>
+                                    <td>{{ $reservation->classroom?->name ?? '教室資料不存在' }}</td>
                                     <td>{{ $reservation->class_name }}</td>
                                     <td>
                                         {{ substr($reservation->start_time, 0, 5) }}
@@ -84,7 +84,7 @@
                                     </td>
 
                                     @if (auth()->user()->hasPermission('reservations.manage'))
-                                        <td>{{ $reservation->user?->name ?? '使用者資料不存在' }}</td>
+                                        <td>{{ $reservation->requester?->name ?? '使用者資料不存在' }}</td>
                                     @endif
 
                                     <td>{{ $reservation->purpose ?: '—' }}</td>

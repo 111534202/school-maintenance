@@ -9,7 +9,7 @@ class ClassroomReservation extends Model
 {
     protected $fillable = [
         'classroom_id',
-        'user_id',
+        'requester_id',
         'class_name',
         'reservation_date',
         'start_time',
@@ -34,9 +34,10 @@ class ClassroomReservation extends Model
         return $this->belongsTo(Classroom::class);
     }
 
-    public function user(): BelongsTo
+    /** 提出預約申請的人（欄位名稱和報修單一致：requester_id）。 */
+    public function requester(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'requester_id');
     }
 
     public function reviewer(): BelongsTo

@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RepairPartUsage extends Model
 {
-    protected $table = 'repair_part_usage';
+    // 資料表名稱統一用複數（舊名 repair_part_usage 由 2026_10_15_100000 migration 改名）。
+    protected $table = 'repair_part_usages';
 
     protected $fillable = [
         'repair_log_id',

@@ -127,30 +127,25 @@ class RepairRequestWorkflow
     }
 
     /**
-     * 主管派工：新報修 -> 已派工，同時記錄維修人員（assignee_note 文字備援 +
-     * assigned_to 真正的 users.id 外鍵）與預計處理日期（scheduled_at）。
-     *
-     * $assignedTo 是 devices/users 表合併後新增的參數，預設 null 是為了不動到
-     * 既有呼叫端（例如舊測試、NG 轉報修等還沒接上真實帳號的情境），只有真的
-     * 挑了一個系統使用者當維修人員時才會帶入、寫進 assigned_to 這個外鍵欄位。
+     * 主管派工：新報修 -> 已派工，同時記錄維修人員（assigned_to，users.id 外鍵）
+     * 與預計處理日期（scheduled_at）。維修人員一律是系統裡的真實帳號，不再另存姓名文字（避免同一件事存兩份）。
      *
      * 先檢查狀態合不合法，合法才寫欄位＋轉狀態，兩件事包在同一個 DB transaction
      * 裡（要嘛兩個都成功，要嘛兩個都不生效，不會有「寫一半」的情況）。
      *
-     * 這裡曾經出過一個真實的 bug：舊版本是先把 assignee_note 寫進資料庫、
+     * 這裡曾經出過一個真實的 bug：舊版本是先把維修人員寫進資料庫、
      * 最後才檢查狀態合不合法。如果使用者重複送出表單（連點兩下、按上一頁重送），
-     * 即使案件早就不是「新報修」了（例如已經是「已派工」），assignee_note 還是
+     * 即使案件早就不是「新報修」了（例如已經是「已派工」），維修人員還是
      * 會被悄悄覆蓋成新值，即使畫面顯示操作失敗——資料跟畫面對不上。現在改成
      * 「先確認狀態合法，才動手寫欄位」，就不會有這個問題。
      */
-    public function assign(RepairRequest $repairRequest, ?string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
+    public function assign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
         // 先檢查，不合法就丟例外，後面一個欄位都不會動。
         $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
 
         // DB::transaction：裡面的動作「要嘛全部成功，要嘛全部取消」。
-        return DB::transaction(function () use ($repairRequest, $assigneeNote, $scheduledAt, $assignedTo) {
-            $repairRequest->assignee_note = $assigneeNote;   // 維修人員姓名（文字備援）
+        return DB::transaction(function () use ($repairRequest, $scheduledAt, $assignedTo) {
             $repairRequest->assigned_to = $assignedTo;       // 維修人員的用戶編號（正式外鍵）
             $repairRequest->scheduled_at = $scheduledAt;     // 預計處理時間
             $repairRequest->save();
@@ -236,7 +231,7 @@ class RepairRequestWorkflow
      * 派過工，應該走 assign()；「待驗收」「已結案」代表已經在走驗收流程，
      * 這時候換人意義不大，也容易造成混亂，所以不開放。
      */
-    public function reassign(RepairRequest $repairRequest, string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
+    public function reassign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
         // 這個動作不改狀態，所以不走 TRANSITIONS 表，直接列出「允許換人的狀態」。
         $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
@@ -247,7 +242,6 @@ class RepairRequestWorkflow
             );
         }
 
-        $repairRequest->assignee_note = $assigneeNote;
         $repairRequest->assigned_to = $assignedTo;
         $repairRequest->scheduled_at = $scheduledAt;
         $repairRequest->save();

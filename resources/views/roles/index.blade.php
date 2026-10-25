@@ -44,7 +44,7 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格（有框線，全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0">
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="2">
                     <thead class="table-light">
                         <tr>
                             <th>{{ __('roles.table.name') }}</th>

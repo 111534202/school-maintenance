@@ -56,7 +56,7 @@ class CreateRepairRequestFromMaintenanceNg
             'impact_level' => $impactLevel,
             // 保養 NG 轉來的案件，先假設不影響上課（王佑恩若知道會影響上課，
             // 可以之後在呼叫時加一個參數傳進來，目前規格沒要求，先用預設值）。
-            'affects_class' => false,
+            'is_class_affected' => false,
             'device_note' => $deviceNote,
             'status' => RepairRequestStatus::Pending->value,   // 一律從「新報修」開始，後面照一般流程派工
         ]);

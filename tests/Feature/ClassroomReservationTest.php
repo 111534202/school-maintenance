@@ -30,9 +30,9 @@ class ClassroomReservationTest extends TestCase
             'campus' => '本校區',
             'building' => 'A棟',
             'floor' => '1F',
-            'room_code' => $code,
-            'room_name' => $code . ' 教室',
-            'room_type' => '一般教室',
+            'classroom_code' => $code,
+            'name' => $code . ' 教室',
+            'type' => '一般教室',
             'is_active' => true,
             'reservation_status' => 'normal',
         ], $attrs));
@@ -66,7 +66,7 @@ class ClassroomReservationTest extends TestCase
 
         $this->assertDatabaseHas('classroom_reservations', [
             'classroom_id' => $classroom->id,
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'class_name' => '一年甲班',
             'status' => 'pending',
         ]);
@@ -78,7 +78,7 @@ class ClassroomReservationTest extends TestCase
 
         $own = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -89,7 +89,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '10:00',
                 'end_time' => '11:00',
             ]),
-            'user_id' => $otherUser->id,
+            'requester_id' => $otherUser->id,
             'status' => 'pending',
         ]);
 
@@ -155,7 +155,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -187,7 +187,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -221,7 +221,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -243,7 +243,7 @@ class ClassroomReservationTest extends TestCase
 
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'approved',
             'reviewed_by' => $manager->id,
             'reviewed_at' => now(),
@@ -270,7 +270,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '09:00',
                 'end_time' => '10:00',
             ]),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'approved',
             'reviewed_by' => $manager->id,
             'reviewed_at' => now(),
@@ -282,7 +282,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '09:30',
                 'end_time' => '10:30',
             ]),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -304,7 +304,7 @@ class ClassroomReservationTest extends TestCase
 
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 

@@ -45,13 +45,13 @@ class NgToRepairService
 
         $deviceNote = $device
             ? trim($device->device_code.' '.($device->name ?? ''))
-            : ($order?->device_category);
+            : $order?->categoryName();
 
-        $title = '保養檢查 NG：'.($device?->device_code ?? $order?->device_category ?? '未指定設備');
+        $title = '保養檢查 NG：'.($device?->device_code ?? $order?->categoryName() ?? '未指定設備');
         $description = '定期保養檢查結果為 NG（異常）。'
             ."\n工單：#".($order?->id ?? '—')
-            ."\n執行人：".($result->executed_by ?? '—')
-            ."\n說明：".($result->notes ?: '（未填寫）');
+            ."\n執行人：".($result->executor?->name ?? '—')
+            ."\n說明：".($result->note ?: '（未填寫）');
 
         $repairRequest = app(\App\Actions\CreateRepairRequestFromMaintenanceNg::class)->execute(
             sourceLabel: 'maintenance_result:'.$result->id,

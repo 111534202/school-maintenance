@@ -42,11 +42,11 @@
         .page-narrow { max-width: 880px; }
         /* 表單分區標題的字型。 */
         .form-section-title { font-size: 0.95rem; font-weight: 600; color: #495057; }
-        /* 桌面側邊欄至少撐到視窗底部（扣掉頂部列 56px）。 */
-        .app-sidebar { min-height: calc(100vh - 56px); }
+        /* 選單抽屜：寬度固定 280px（Bootstrap 預設 400px 在桌面太寬）；窄螢幕時最多佔 85% 寬度。 */
+        #sidebarOffcanvas { --bs-offcanvas-width: min(280px, 85vw); }
         /* 選單連結平常是深灰色，目前所在頁面（.active）是藍底白字。 */
-        .app-sidebar .nav-link, .offcanvas .nav-link { color: #495057; }
-        .app-sidebar .nav-link.active, .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .offcanvas .nav-link { color: #495057; }
+        .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
         /* 讓內容區可以比內容窄，否則寬表格會把整個頁面撐開（水平捲動交給表格自己處理）。 */
         .app-content { min-width: 0; }
         @media (max-width: 575.98px) {
@@ -66,18 +66,20 @@
         /* 選單裡可展開的群組（主檔）：箭頭展開時翻轉，子項目縮排並用左邊線標示層級。 */
         .nav-group-toggle .nav-chevron { transition: transform .2s; }
         .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
-        .app-sidebar .nav-group-toggle, .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
+        .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
+    {{-- 「洋蔥式」響應式版面（手機上表格變卡片、篩選與區塊可收合；桌面版不受影響），說明見檔案開頭。?v= 是檔案修改時間，改了檔案瀏覽器就會重新下載。 --}}
+    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
 </head>
 {{-- 頁面主體：淺灰色背景。 --}}
-<body class="bg-light">
+<body class="bg-light" data-onion-filter="{{ __('common.buttons.filter') }}" data-onion-details="{{ __('common.buttons.details') }}" data-onion-collapse="{{ __('common.buttons.collapse') }}">
     {{-- 最上方的深色導覽列。 --}}
     <nav class="navbar navbar-dark bg-dark">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
-                {{-- 手機／平板才出現的「漢堡」按鈕：點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
-                <button class="btn btn-outline-light btn-sm d-lg-none flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
+                <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
             @endauth
@@ -149,8 +151,7 @@
     @endif
 
     @auth
-        {{-- 手機與平板的側邊選單（< lg 才會出現按鈕觸發） --}}
-        {{-- 手機版的滑出側邊選單（桌面版不顯示，改用右邊的固定側邊欄）。 --}}
+        {{-- 全站唯一的選單：預設收起來，點左上角的漢堡按鈕才從左邊滑出（所有螢幕大小都一樣，不再有固定的側邊欄）。 --}}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
             <div class="offcanvas-header">
                 <h6 class="offcanvas-title">選單</h6>
@@ -164,14 +165,6 @@
         </div>
 
         <div class="d-flex">
-            {{-- 桌面版的固定側邊欄（d-none d-lg-block：小螢幕隱藏、大螢幕顯示）。 --}}
-            <div class="app-sidebar bg-white border-end d-none d-lg-block flex-shrink-0" style="width: 220px;">
-                <div class="nav flex-column p-2">
-                    {{-- 引入同一份選單內容；navId 不同是因為手機版與桌面版各有一份，展開收合用的 id 不能重複。 --}}
-                    @include('layouts.partials.nav-links', ['navId' => 'side'])
-                </div>
-            </div>
-
             <div class="flex-grow-1 app-content p-3 p-md-4">
                 {{-- 操作成功訊息（Controller 用 ->with('success', ...) 帶過來，只顯示一次）。 --}}
                 @if (session('success'))
@@ -203,5 +196,7 @@
 
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- 洋蔥式版面的行為（表格卡片化、篩選與區塊收合），說明見 public/js/onion.js。 --}}
+    <script src="{{ asset('js/onion.js') }}?v={{ filemtime(public_path('js/onion.js')) }}"></script>
 </body>
 </html>

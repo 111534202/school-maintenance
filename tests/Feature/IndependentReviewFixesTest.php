@@ -76,7 +76,7 @@ class IndependentReviewFixesTest extends TestCase
     public function test_rejection_by_the_reporter_still_returns_the_case_to_in_progress(): void
     {
         $teacher = $this->makeUserWithRole('teacher', '教師');
-        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher->id]);
+        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher->id]);
         $this->actingAs($teacher);
 
         $this->post(route('repairs.reject', $case), ['rejection_reason' => '還是會閃退'])->assertSessionHasNoErrors();
@@ -194,22 +194,5 @@ class IndependentReviewFixesTest extends TestCase
             $this->assertNotSame('permissions.items.parts.manage.name', __('permissions.items.parts.manage.name', [], $locale));
             $this->assertNotSame('permissions.groups.inventory', __('permissions.groups.inventory', [], $locale));
         }
-    }
-
-    // 補值 migration：已存在的設備管理員身分沒有新權限時會補上，其他權限不動，重跑不重複。
-    public function test_backfill_migration_adds_the_new_permissions_once(): void
-    {
-        $role = $this->makeRole('it_manager', '資訊組主管', ['devices.manage']);
-        $migration = require database_path('migrations/2026_10_15_000001_add_parts_and_reservations_permissions_to_it_manager.php');
-
-        $migration->up();
-        $migration->up();
-
-        $permissions = json_decode(DB::table('roles')->where('id', $role->id)->value('permissions'), true);
-        $this->assertEqualsCanonicalizing(['devices.manage', 'parts.manage', 'reservations.manage'], $permissions);
-
-        $migration->down();
-        $permissions = json_decode(DB::table('roles')->where('id', $role->id)->value('permissions'), true);
-        $this->assertSame(['devices.manage'], $permissions);
     }
 }

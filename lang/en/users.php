@@ -30,7 +30,7 @@ return [
 
     // 表格欄位標題。
     'table' => [
-        'username' => 'Username',
+        'account' => 'Username',
         'name' => 'Name',
         'email' => 'Email',
         'phone' => 'Phone',
@@ -64,7 +64,7 @@ return [
         'section_contact' => 'Contact & Affiliation',
         'section_password' => 'Login Password',
         'section_reset_password' => 'Reset Password',
-        'username' => 'Username',
+        'account' => 'Username',
         'username_hint' => '3-30 characters: letters, digits, dot, underscore or hyphen. Can be changed later.',
         'name' => 'Name',
         'email' => 'Email',

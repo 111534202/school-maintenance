@@ -66,7 +66,7 @@ class UserController extends Controller
                 // 這裡再包一層 where(function...) 是為了讓「or」只在括號內生效，
                 // 不會把前面的其他篩選條件（例如停用狀態）一起「或」掉。
                 $query->where(function ($q) use ($keyword) {
-                    $q->where('username', 'like', "%{$keyword}%")    // like %字% = 「包含這段字」
+                    $q->where('account', 'like', "%{$keyword}%")    // like %字% = 「包含這段字」
                         ->orWhere('name', 'like', "%{$keyword}%")
                         ->orWhere('email', 'like', "%{$keyword}%")
                         ->orWhere('phone', 'like', "%{$keyword}%");
@@ -127,7 +127,7 @@ class UserController extends Controller
 
         // 算出「儲存之後」這個人會是什麼狀態，後面判斷要不要擋下來。
         $newRole = Role::find($data['role_id']);
-        $willBeAdmin = $newRole?->slug === 'admin';   // ?-> 表示找不到身分時不要報錯，直接當成 null
+        $willBeAdmin = $newRole?->role_code === 'admin';   // ?-> 表示找不到身分時不要報錯，直接當成 null
         $willBeActive = (bool) $data['is_active'];
 
         // 不能把自己降級或停用自己，不然會把自己鎖在系統外面。
@@ -241,9 +241,9 @@ class UserController extends Controller
     {
         return [
             // 帳號：必填、3~30 字、只能英數與 . _ -（regex 是這個字元範圍的規則）、不可與別人重複。
-            'username' => [
+            'account' => [
                 'required', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9._-]+$/',
-                Rule::unique('users', 'username')->ignore($user?->id),
+                Rule::unique('users', 'account')->ignore($user?->id),
             ],
             'name' => ['required', 'string', 'max:255'],
             // Email：必填、格式要正確、不可與別人重複。
@@ -279,7 +279,7 @@ class UserController extends Controller
         return ! User::query()
             ->where('id', '!=', $user->id)
             ->where('is_active', true)
-            ->whereHas('role', fn ($query) => $query->where('slug', 'admin'))   // 身分代碼是 admin
+            ->whereHas('role', fn ($query) => $query->where('role_code', 'admin'))   // 身分代碼是 admin
             ->exists();
     }
 

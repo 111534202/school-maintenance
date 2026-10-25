@@ -19,14 +19,14 @@ class Device extends Model
     // 允許批次寫入的欄位白名單。
     protected $fillable = [
         'device_code', 'asset_code', 'device_category_id', 'brand',
-        'model', 'serial_number', 'warranty_until', 'classroom_id',
+        'model', 'serial_number', 'warranty_end_date', 'classroom_id',
         'status', 'is_core',
     ];
 
-    // 型別轉換：is_core 資料庫存 0/1 → PHP 的 true/false；warranty_until 轉成日期物件，才能用 ->format('Y-m-d')。
+    // 型別轉換：is_core 資料庫存 0/1 → PHP 的 true/false；warranty_end_date 轉成日期物件，才能用 ->format('Y-m-d')。
     protected $casts = [
         'is_core' => 'boolean',
-        'warranty_until' => 'date',
+        'warranty_end_date' => 'date',
     ];
 
     // 設備狀態列舉：normal=正常, repairing=維修中, retired=已淘汰, disabled=停用

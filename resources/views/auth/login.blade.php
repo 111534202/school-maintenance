@@ -33,7 +33,7 @@
                     <div class="mb-3">
                         <label for="login" class="form-label">帳號</label>
                         {{-- 帳號欄位；old('login') 會在登入失敗導回時，自動帶回剛剛輸入的帳號（密碼則不會帶回）。 --}}
-                        <input type="text" class="form-control" id="login" name="login" value="{{ old('login') }}" placeholder="帳號名稱或 Email" autocomplete="username" required autofocus>
+                        <input type="text" class="form-control" id="login" name="login" value="{{ old('login') }}" placeholder="帳號名稱或 Email" autocomplete="account" required autofocus>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">密碼</label>

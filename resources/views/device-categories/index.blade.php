@@ -38,7 +38,7 @@
     <div class="card shadow-sm">
         <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('device_categories.table.name') }}</th>

@@ -83,7 +83,7 @@ class DeviceProfileController extends Controller
         // visibleTo：只撈「這位使用者有權限檢視」的報修單（規則見 RepairRequestPolicy），其餘只顯示被隱藏的筆數。
         $repairRequests = RepairRequest::visibleTo($request->user())
             ->where('device_id', $device->id)
-            ->with(['repairLogs.attachments', 'attachments', 'reporter', 'assignedTechnician'])
+            ->with(['repairLogs.attachments', 'attachments', 'requester', 'assignedTechnician'])
             ->orderByDesc('id')
             ->get();
 

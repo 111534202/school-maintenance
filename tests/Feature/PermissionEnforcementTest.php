@@ -135,7 +135,7 @@ class PermissionEnforcementTest extends TestCase
         // 教師只看得到、也只能驗收「自己報修」的案件。
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $this->actingAs($teacher);
-        $own = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher->id]);
+        $own = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher->id]);
         $this->get(route('repairs.show', $own))->assertSee('驗收通過，結案');
     }
 

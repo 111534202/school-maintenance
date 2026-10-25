@@ -193,7 +193,7 @@ class PreventiveCandidateService
         return MaintenanceOrder::create([
             'maintenance_plan_id' => null,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_AI,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => Carbon::today(),

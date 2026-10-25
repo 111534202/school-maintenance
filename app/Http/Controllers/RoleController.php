@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;        // 進階驗證規則
  * 用戶主檔的「身分權限」下拉選單就是從這張表讀。路由整組需要 roles.manage 權限。
  *
  * 規則：
- * - 系統內建的五個身分（is_system）不能刪除，代碼（slug）也不能改，但可以調整名稱、說明與權限。
+ * - 系統內建的五個身分（is_system）不能刪除，代碼（role_code）也不能改，但可以調整名稱、說明與權限。
  * - 系統管理員（admin）永遠擁有全部權限，畫面上全部勾選且不能取消，後端也會忽略送來的勾選。
  * - 還有用戶使用中的身分不能刪除，請先把那些用戶改成別的身分。
  *
@@ -58,7 +58,7 @@ class RoleController extends Controller
             'name' => $data['name'],
             'description' => $data['description'] ?? null,   // ?? null：沒填說明就存成空值
             // 自訂身分的代碼是系統自動產生的內部識別，使用者看不到也不用管；中文名稱沒辦法拿來當代碼。
-            'slug' => 'custom_' . Str::lower(Str::random(8)),
+            'role_code' => 'custom_' . Str::lower(Str::random(8)),
             'is_system' => false,   // 使用者自己建的身分一律不是「系統內建」，所以之後可以刪除
             // sanitize：只留下清單裡真的存在的權限代碼，防止有人偽造表單塞入不存在或亂寫的權限。
             'permissions' => PermissionCatalog::sanitize($data['permissions'] ?? []),

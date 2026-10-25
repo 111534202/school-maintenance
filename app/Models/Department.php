@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 class Department extends Model
 {
     // 允許批次寫入的欄位：名稱、代碼、說明、是否啟用。
-    protected $fillable = ['name', 'code', 'description', 'is_active'];
+    protected $fillable = ['name', 'department_code', 'description', 'is_active'];
 
     // 型別轉換（新寫法，用方法回傳）：is_active 自動在資料庫的 0/1 與 PHP 的 true/false 之間轉換。
     protected function casts(): array

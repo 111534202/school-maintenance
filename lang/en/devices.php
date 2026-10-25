@@ -68,7 +68,7 @@ return [
         'brand' => 'Brand',
         'model' => 'Model',
         'serial_number' => 'Serial Number',
-        'warranty_until' => 'Warranty Until',
+        'warranty_end_date' => 'Warranty Until',
         'status' => 'Status',
         'is_core' => 'Core device',
     ],

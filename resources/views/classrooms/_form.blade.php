@@ -50,19 +50,19 @@
         <input type="text" id="floor" name="floor" class="form-control @error('floor') is-invalid @enderror" value="{{ old('floor', $classroom->floor ?? '') }}" required>
     </div>
     <div class="col-md-6">
-        <label for="room_code" class="form-label">{{ __('classrooms.form.room_code') }}</label>
+        <label for="classroom_code" class="form-label">{{ __('classrooms.form.classroom_code') }}</label>
         {{-- 教室代碼：整個系統不可重複（後端驗證）。 --}}
-        <input type="text" id="room_code" name="room_code" class="form-control @error('room_code') is-invalid @enderror" value="{{ old('room_code', $classroom->room_code ?? '') }}" required>
+        <input type="text" id="classroom_code" name="classroom_code" class="form-control @error('classroom_code') is-invalid @enderror" value="{{ old('classroom_code', $classroom->classroom_code ?? '') }}" required>
     </div>
     <div class="col-md-6">
-        <label for="room_name" class="form-label">{{ __('classrooms.form.room_name') }}</label>
+        <label for="name" class="form-label">{{ __('classrooms.form.name') }}</label>
         {{-- 教室名稱（必填）。 --}}
-        <input type="text" id="room_name" name="room_name" class="form-control @error('room_name') is-invalid @enderror" value="{{ old('room_name', $classroom->room_name ?? '') }}" required>
+        <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $classroom->name ?? '') }}" required>
     </div>
     <div class="col-md-6">
-        <label for="room_type" class="form-label">{{ __('classrooms.form.room_type') }}</label>
+        <label for="type" class="form-label">{{ __('classrooms.form.type') }}</label>
         {{-- 教室類型（選填，例如電腦教室、一般教室）。 --}}
-        <input type="text" id="room_type" name="room_type" class="form-control @error('room_type') is-invalid @enderror" value="{{ old('room_type', $classroom->room_type ?? '') }}">
+        <input type="text" id="type" name="type" class="form-control @error('type') is-invalid @enderror" value="{{ old('type', $classroom->type ?? '') }}">
     </div>
 </div>
 

@@ -66,7 +66,7 @@ class RoleManagementTest extends TestCase
         $role = Role::firstWhere('name', '設備組長');
         $this->assertNotNull($role);
         $this->assertFalse($role->is_system);
-        $this->assertStringStartsWith('custom_', $role->slug);
+        $this->assertStringStartsWith('custom_', $role->role_code);
         $this->assertEqualsCanonicalizing(['devices.manage', 'classrooms.manage', 'repairs.create'], $role->permissions);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $role->id]);
     }
@@ -208,7 +208,7 @@ class RoleManagementTest extends TestCase
         $this->makeRole('technician', '維修人員');      // 預設有 repairs.assignable
         $this->makeRole('teacher', '教師');             // 沒有
 
-        $slugs = Role::withPermission('repairs.assignable')->pluck('slug')->all();
+        $slugs = Role::withPermission('repairs.assignable')->pluck('role_code')->all();
 
         $this->assertContains('technician', $slugs);
         $this->assertNotContains('teacher', $slugs);

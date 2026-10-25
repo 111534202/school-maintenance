@@ -37,7 +37,7 @@ class RepairRequestPolicy
     public function view(User $user, RepairRequest $repairRequest): bool
     {
         return self::canSeeAll($user)
-            || $repairRequest->reporter_id === $user->id
+            || $repairRequest->requester_id === $user->id
             || $repairRequest->assigned_to === $user->id;
     }
 
@@ -59,7 +59,7 @@ class RepairRequestPolicy
     {
         return $user->can('repairs.accept')
             && ($user->isAdmin()
-                || $repairRequest->reporter_id === null
-                || $repairRequest->reporter_id === $user->id);
+                || $repairRequest->requester_id === null
+                || $repairRequest->requester_id === $user->id);
     }
 }

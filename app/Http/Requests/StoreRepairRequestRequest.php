@@ -28,7 +28,7 @@ class StoreRepairRequestRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],         // 報修標題：必填
             'description' => ['required', 'string'],              // 故障描述：必填
             'impact_level' => ['required', 'string', 'in:low,medium,high'],   // 影響程度：只能是這三個值之一
-            'affects_class' => ['required', 'boolean'],           // 是否影響上課：true / false
+            'is_class_affected' => ['required', 'boolean'],           // 是否影響上課：true / false
             // devices 表已合併：掃描設備條碼建立的報修單會帶 device_id（真正外鍵）；
             // 沒有掃描、手動輸入的案件則沒有 device_id，device_note 當文字後備描述。
             'device_id' => ['nullable', 'integer', 'exists:devices,id'],

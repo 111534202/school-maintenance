@@ -57,7 +57,6 @@ class AiOrderLifecycleTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-08 10:00:00',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
@@ -71,7 +70,6 @@ class AiOrderLifecycleTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-08 10:00:00',
         ]);
 

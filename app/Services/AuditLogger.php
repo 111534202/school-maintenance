@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Auth;           // 取得目前登入的人
  * 用法：
  *   AuditLogger::log('created', $classroom);
  *   AuditLogger::log('status_changed', $device, ['from' => 'normal', 'to' => 'repairing']);
- *   AuditLogger::log('login');
+ *   AuditLogger::log('logged_in');
  *
  * 沒有自己給 $description 時，這裡會自動產生一句人看得懂的說明（例如「新增用戶「王小明」」），
  * 而且是「寫入當下」的快照：之後那筆資料被刪除或改名，操作紀錄上看到的還是當時的名字，
@@ -63,7 +63,7 @@ class AuditLogger
     public static function subjectName(Model $subject): string
     {
         // 依序找這些欄位（姓名、標題、設備編號、教室名稱、帳號），第一個有內容的就是它的名字。
-        foreach (['name', 'title', 'device_code', 'room_name', 'username'] as $field) {
+        foreach (['name', 'title', 'device_code', 'account'] as $field) {
             $value = $subject->getAttribute($field);
             if (is_string($value) && $value !== '') {
                 return $value;

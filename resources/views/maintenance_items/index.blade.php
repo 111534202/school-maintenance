@@ -25,7 +25,7 @@
                 @forelse ($items as $item)
                     <tr>
                         <td>{{ $item->name }}</td>
-                        <td>{{ $item->category ?? '—' }}</td>
+                        <td>{{ $item->deviceCategory?->name ?? '—' }}</td>
                         <td>{{ $item->default_cycle_days ?? '—' }}</td>
                         <td>
                             @if ($item->is_active)

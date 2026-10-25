@@ -97,7 +97,7 @@ class RepairLogPartUsageTest extends TestCase
             ->where('repair_request_id', $repairRequest->id)
             ->sole();
 
-        $this->assertDatabaseHas('repair_part_usage', [
+        $this->assertDatabaseHas('repair_part_usages', [
             'repair_log_id' => $repairLog->id,
             'part_id' => $part->id,
             'quantity' => 3,
@@ -177,7 +177,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             2,
@@ -210,7 +210,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             10,
@@ -247,7 +247,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             10,
@@ -284,7 +284,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -315,7 +315,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -346,7 +346,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -378,7 +378,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',

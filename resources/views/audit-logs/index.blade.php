@@ -75,7 +75,7 @@
 
     <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,2,3">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('audit.table.time') }}</th>
@@ -99,7 +99,7 @@
                             $badge = match ($log->action) {
                                 'deleted', 'login_failed', 'rejected' => 'text-bg-danger',
                                 'created', 'restored' => 'text-bg-success',
-                                'login', 'logout' => 'text-bg-light border text-dark',
+                                'logged_in', 'logged_out' => 'text-bg-light border text-dark',
                                 'password_reset', 'status_changed' => 'text-bg-warning',
                                 default => 'text-bg-primary',
                             };

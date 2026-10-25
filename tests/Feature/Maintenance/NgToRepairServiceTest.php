@@ -29,7 +29,7 @@ class NgToRepairServiceTest extends TestCase
         $order = MaintenanceOrder::create([
             'maintenance_plan_id' => $this->makePlan($device)->id,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_COMPLETED,
             'scheduled_date' => now()->toDateString(),
@@ -38,9 +38,8 @@ class NgToRepairServiceTest extends TestCase
         return MaintenanceResult::create([
             'maintenance_order_id' => $order->id,
             'result' => MaintenanceResult::RESULT_NG,
-            'executed_by' => '王小明',
             'executed_at' => now(),
-            'notes' => '風扇異音',
+            'note' => '風扇異音',
         ]);
     }
 

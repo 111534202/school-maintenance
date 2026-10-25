@@ -30,14 +30,14 @@ class ClassroomManagementTest extends TestCase
     {
         return array_merge([
             'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F',
-            'room_code' => 'A101', 'room_name' => 'A101 電腦教室', 'room_type' => '電腦教室',
+            'classroom_code' => 'A101', 'name' => 'A101 電腦教室', 'type' => '電腦教室',
         ], $overrides);
     }
 
     private function makeClassroom(string $code = 'A101', array $attrs = []): Classroom
     {
         return Classroom::create(array_merge([
-            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'room_code' => $code, 'room_name' => "$code 教室",
+            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => $code, 'name' => "$code 教室",
         ], $attrs));
     }
 
@@ -65,7 +65,7 @@ class ClassroomManagementTest extends TestCase
         $this->post(route('classrooms.store'), $this->payload(['department_id' => $department->id, 'manager_id' => $this->admin->id]))
             ->assertRedirect(route('classrooms.index'))->assertSessionHas('success');
 
-        $classroom = Classroom::firstWhere('room_code', 'A101');
+        $classroom = Classroom::firstWhere('classroom_code', 'A101');
         $this->assertSame($department->id, $classroom->department_id);
         $this->assertSame($this->admin->id, $classroom->manager_id);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $classroom->id, 'loggable_type' => Classroom::class]);
@@ -76,13 +76,13 @@ class ClassroomManagementTest extends TestCase
     {
         $this->makeClassroom('A101');
 
-        $this->post(route('classrooms.store'), $this->payload(['room_code' => 'A101']))->assertSessionHasErrors('room_code');
-        $this->post(route('classrooms.store'), $this->payload(['room_code' => 'B1', 'campus' => '']))->assertSessionHasErrors('campus');
-        $this->post(route('classrooms.store'), $this->payload(['room_code' => 'B2', 'department_id' => 99999]))->assertSessionHasErrors('department_id');
-        $this->post(route('classrooms.store'), $this->payload(['room_code' => 'B3', 'manager_id' => 99999]))->assertSessionHasErrors('manager_id');
+        $this->post(route('classrooms.store'), $this->payload(['classroom_code' => 'A101']))->assertSessionHasErrors('classroom_code');
+        $this->post(route('classrooms.store'), $this->payload(['classroom_code' => 'B1', 'campus' => '']))->assertSessionHasErrors('campus');
+        $this->post(route('classrooms.store'), $this->payload(['classroom_code' => 'B2', 'department_id' => 99999]))->assertSessionHasErrors('department_id');
+        $this->post(route('classrooms.store'), $this->payload(['classroom_code' => 'B3', 'manager_id' => 99999]))->assertSessionHasErrors('manager_id');
 
-        $this->post(route('classrooms.store'), $this->payload(['room_code' => 'OK1']))->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('classrooms', ['room_code' => 'OK1', 'department_id' => null, 'manager_id' => null]);
+        $this->post(route('classrooms.store'), $this->payload(['classroom_code' => 'OK1']))->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('classrooms', ['classroom_code' => 'OK1', 'department_id' => null, 'manager_id' => null]);
     }
 
     // 修改時，不改教室代碼不會被誤判成「與自己重複」，欄位確實被更新。
@@ -90,10 +90,10 @@ class ClassroomManagementTest extends TestCase
     {
         $classroom = $this->makeClassroom('A101');
 
-        $this->put(route('classrooms.update', $classroom), $this->payload(['room_code' => 'A101', 'room_name' => '新名稱']))
+        $this->put(route('classrooms.update', $classroom), $this->payload(['classroom_code' => 'A101', 'name' => '新名稱']))
             ->assertRedirect(route('classrooms.index'))->assertSessionHasNoErrors();
 
-        $this->assertSame('新名稱', $classroom->fresh()->room_name);
+        $this->assertSame('新名稱', $classroom->fresh()->name);
         $this->assertDatabaseHas('audit_logs', ['action' => 'updated', 'loggable_id' => $classroom->id, 'loggable_type' => Classroom::class]);
     }
 
@@ -102,8 +102,8 @@ class ClassroomManagementTest extends TestCase
         $this->makeClassroom('A101');
         $other = $this->makeClassroom('A102');
 
-        $this->put(route('classrooms.update', $other), $this->payload(['room_code' => 'A101']))->assertSessionHasErrors('room_code');
-        $this->assertSame('A102', $other->fresh()->room_code);
+        $this->put(route('classrooms.update', $other), $this->payload(['classroom_code' => 'A101']))->assertSessionHasErrors('classroom_code');
+        $this->assertSame('A102', $other->fresh()->classroom_code);
     }
 
     // 啟用／停用切換有效並寫進操作紀錄。
@@ -122,8 +122,8 @@ class ClassroomManagementTest extends TestCase
     public function test_index_can_filter_by_keyword_department_and_status(): void
     {
         $dept = Department::create(['name' => '電機系']);
-        $this->makeClassroom('EE-201', ['room_name' => '電機實習教室', 'department_id' => $dept->id]);
-        $this->makeClassroom('IT-301', ['room_name' => '資訊教室', 'is_active' => false]);
+        $this->makeClassroom('EE-201', ['name' => '電機實習教室', 'department_id' => $dept->id]);
+        $this->makeClassroom('IT-301', ['name' => '資訊教室', 'is_active' => false]);
 
         $this->get(route('classrooms.index', ['keyword' => '電機']))->assertSee('EE-201')->assertDontSee('IT-301');
         $this->get(route('classrooms.index', ['keyword' => 'IT-3']))->assertSee('IT-301')->assertDontSee('EE-201');

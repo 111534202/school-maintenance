@@ -39,7 +39,7 @@
     </form>
 
     <div class="table-responsive">
-        <table class="table table-bordered bg-white align-middle">
+        <table class="table table-bordered bg-white align-middle" data-onion-primary="1">
             <thead class="table-light">
                 <tr>
                     <th>設備</th>

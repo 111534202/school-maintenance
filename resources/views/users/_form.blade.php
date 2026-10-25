@@ -10,10 +10,10 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
-                <label for="username" class="form-label">{{ __('users.form.username') }}</label>
-                {{-- @error('欄位')：這個欄位驗證失敗時，加上 is-invalid 讓框變紅。old('username', 預設值)：驗證失敗導回時帶回剛剛輸入的內容，否則顯示目前資料。 --}}
-                <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username"
-                    value="{{ old('username', $user->username ?? '') }}" autocomplete="off" required>
+                <label for="account" class="form-label">{{ __('users.form.account') }}</label>
+                {{-- @error('欄位')：這個欄位驗證失敗時，加上 is-invalid 讓框變紅。old('account', 預設值)：驗證失敗導回時帶回剛剛輸入的內容，否則顯示目前資料。 --}}
+                <input type="text" class="form-control @error('account') is-invalid @enderror" id="account" name="account"
+                    value="{{ old('account', $user->account ?? '') }}" autocomplete="off" required>
                 <div class="form-text">{{ __('users.form.username_hint') }}</div>
             </div>
             <div class="col-md-6">

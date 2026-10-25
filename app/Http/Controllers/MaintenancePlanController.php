@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMaintenancePlanRequest;
 use App\Http\Requests\UpdateMaintenancePlanRequest;
+use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
 use App\Models\MaintenancePlan;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,7 @@ class MaintenancePlanController extends Controller
     public function index(): View
     {
         $plans = MaintenancePlan::query()
+            ->with(['deviceCategory', 'device.category'])
             ->withCount('maintenanceItems')
             ->orderByDesc('is_active')
             ->orderBy('next_due_date')
@@ -35,6 +37,7 @@ class MaintenancePlanController extends Controller
             'plan' => new MaintenancePlan(['is_active' => true]),
             'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
             'selectedItemIds' => [],
+            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
         ]);
     }
 
@@ -57,6 +60,7 @@ class MaintenancePlanController extends Controller
             'plan' => $maintenancePlan,
             'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
             'selectedItemIds' => $maintenancePlan->maintenanceItems()->pluck('maintenance_items.id')->all(),
+            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
         ]);
     }
 

@@ -34,7 +34,7 @@ class AttachmentAccessTest extends TestCase
         Storage::disk($disk)->put('attachments/photo.jpg', 'FAKE-JPEG-BYTES');
 
         return $owner->attachments()->create([
-            'disk_path' => 'attachments/photo.jpg', 'original_name' => '故障照片.jpg',
+            'file_path' => 'attachments/photo.jpg', 'file_name' => '故障照片.jpg',
             'mime_type' => 'image/jpeg', 'size_bytes' => 15,
         ]);
     }
@@ -52,7 +52,7 @@ class AttachmentAccessTest extends TestCase
     {
         $reporter = $this->makeUserWithRole('teacher', '教師');
         $technician = $this->makeTechnician();
-        $case = RepairRequest::factory()->create(['reporter_id' => $reporter->id, 'assigned_to' => $technician->id]);
+        $case = RepairRequest::factory()->create(['requester_id' => $reporter->id, 'assigned_to' => $technician->id]);
         $attachment = $this->attach($case);
 
         foreach ([$reporter, $technician, $this->makeUserWithRole('executive', '主管'), $this->makeUserWithRole('admin', '系統管理員')] as $user) {
@@ -66,7 +66,7 @@ class AttachmentAccessTest extends TestCase
     public function test_people_unrelated_to_the_case_cannot_open_its_attachment(): void
     {
         $reporter = $this->makeUserWithRole('teacher', '教師');
-        $case = RepairRequest::factory()->create(['reporter_id' => $reporter->id]);
+        $case = RepairRequest::factory()->create(['requester_id' => $reporter->id]);
         $attachment = $this->attach($case);
 
         $this->actingAs($this->makeUserWithRole('teacher', '教師'))->get(route('attachments.show', $attachment))->assertForbidden();
@@ -102,7 +102,7 @@ class AttachmentAccessTest extends TestCase
     {
         $this->loginAsAnyUser();
         $attachment = RepairRequest::factory()->create()->attachments()->create([
-            'disk_path' => 'attachments/gone.jpg', 'original_name' => 'gone.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1,
+            'file_path' => 'attachments/gone.jpg', 'file_name' => 'gone.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1,
         ]);
 
         $this->get(route('attachments.show', $attachment))->assertNotFound();
@@ -123,11 +123,11 @@ class AttachmentAccessTest extends TestCase
         $this->loginAsAnyUser();
 
         $this->post(route('repairs.store'), [
-            'title' => '附件測試', 'description' => '描述', 'impact_level' => 'low', 'affects_class' => '0',
+            'title' => '附件測試', 'description' => '描述', 'impact_level' => 'low', 'is_class_affected' => '0',
             'attachments' => [UploadedFile::fake()->image('broken.jpg')],
         ])->assertRedirect();
 
-        $path = RepairRequest::firstWhere('title', '附件測試')->attachments->first()->disk_path;
+        $path = RepairRequest::firstWhere('title', '附件測試')->attachments->first()->file_path;
         Storage::disk('local')->assertExists($path);
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
@@ -139,14 +139,14 @@ class AttachmentAccessTest extends TestCase
         $migration = require base_path('database/migrations/2026_10_04_000001_move_attachments_to_private_disk.php');
 
         $migration->up();
-        Storage::disk('local')->assertExists($attachment->disk_path);
-        Storage::disk('public')->assertMissing($attachment->disk_path);
+        Storage::disk('local')->assertExists($attachment->file_path);
+        Storage::disk('public')->assertMissing($attachment->file_path);
 
         $migration->up();   // 再執行一次：已經搬過，什麼都不會發生
-        Storage::disk('local')->assertExists($attachment->disk_path);
+        Storage::disk('local')->assertExists($attachment->file_path);
 
         $migration->down();
-        Storage::disk('public')->assertExists($attachment->disk_path);
-        Storage::disk('local')->assertMissing($attachment->disk_path);
+        Storage::disk('public')->assertExists($attachment->file_path);
+        Storage::disk('local')->assertMissing($attachment->file_path);
     }
 }

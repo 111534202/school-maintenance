@@ -40,7 +40,7 @@ class AttachmentController extends Controller
 
         // response()：把檔案內容輸出給瀏覽器，並帶上原本的檔名與類型。
         // nosniff：禁止瀏覽器自己猜檔案類型，避免把上傳的檔案當成網頁執行。
-        return Storage::disk($disk)->response($attachment->disk_path, $attachment->original_name, [
+        return Storage::disk($disk)->response($attachment->file_path, $attachment->file_name, [
             'Content-Type' => $attachment->mime_type,
             'X-Content-Type-Options' => 'nosniff',
         ]);

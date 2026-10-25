@@ -33,7 +33,7 @@ class DeviceManagementTest extends TestCase
 
     private function makeClassroom(string $code): Classroom
     {
-        return Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => $code, 'room_name' => "$code 教室"]);
+        return Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => $code, 'name' => "$code 教室"]);
     }
 
     private function makeDevice(array $attrs = []): Device
@@ -66,12 +66,12 @@ class DeviceManagementTest extends TestCase
 
     public function test_admin_can_create_a_device_and_it_is_logged(): void
     {
-        $this->post(route('devices.store'), $this->payload(['asset_code' => 'AS-1', 'warranty_until' => '2030-01-31']))
+        $this->post(route('devices.store'), $this->payload(['asset_code' => 'AS-1', 'warranty_end_date' => '2030-01-31']))
             ->assertRedirect(route('devices.index'))->assertSessionHas('success');
 
         $device = Device::firstWhere('device_code', 'DEV-NEW');
         $this->assertSame('AS-1', $device->asset_code);
-        $this->assertSame('2030-01-31', $device->warranty_until->toDateString());
+        $this->assertSame('2030-01-31', $device->warranty_end_date->toDateString());
         $this->assertFalse($device->is_core);   // 核取方塊沒勾 = 不是核心設備
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $device->id, 'loggable_type' => Device::class]);
     }
@@ -86,7 +86,7 @@ class DeviceManagementTest extends TestCase
         $this->post(route('devices.store'), $this->payload(['device_category_id' => 99999]))->assertSessionHasErrors('device_category_id');
         $this->post(route('devices.store'), $this->payload(['classroom_id' => 99999]))->assertSessionHasErrors('classroom_id');
         $this->post(route('devices.store'), $this->payload(['status' => 'exploded']))->assertSessionHasErrors('status');
-        $this->post(route('devices.store'), $this->payload(['warranty_until' => 'not-a-date']))->assertSessionHasErrors('warranty_until');
+        $this->post(route('devices.store'), $this->payload(['warranty_end_date' => 'not-a-date']))->assertSessionHasErrors('warranty_end_date');
 
         $this->assertSame(1, Device::count());
     }

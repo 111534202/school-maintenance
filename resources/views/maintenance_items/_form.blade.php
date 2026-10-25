@@ -10,10 +10,14 @@
 </div>
 
 <div class="mb-3">
-    <label for="category" class="form-label">分類</label>
-    <input type="text" name="category" id="category" class="form-control @error('category') is-invalid @enderror"
-        value="{{ old('category', $item->category) }}" maxlength="100" placeholder="例如：空調、電力設備（選填）">
-    @error('category')
+    <label for="device_category_id" class="form-label">適用設備類別</label>
+    <select name="device_category_id" id="device_category_id" class="form-select @error('device_category_id') is-invalid @enderror">
+        <option value="">— 不指定 —</option>
+        @foreach ($deviceCategories as $deviceCategory)
+            <option value="{{ $deviceCategory->id }}" @selected((string) old('device_category_id', $item->device_category_id) === (string) $deviceCategory->id)>{{ $deviceCategory->name }}</option>
+        @endforeach
+    </select>
+    @error('device_category_id')
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror
 </div>

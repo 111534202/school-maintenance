@@ -1,0 +1,100 @@
+/*
+ * 「洋蔥式」響應式版面（只在手機／窄螢幕 < 768px 生效，桌面版完全不受影響）。
+ *
+ * 概念：像剝洋蔥一樣一層一層看。第一層只放最重要的資訊（標題、狀態、操作），
+ * 其餘細節收在下一層，點一下才展開；這樣手機上不用一直左右拖曳表格、也不用一直往下滑長長的頁面。
+ *   1. 表格 → 卡片：每一列變成一張卡片，次要欄位收在「詳情」裡。
+ *   2. 篩選列 → 一顆「篩選」按鈕，點開才出現（展開後欄位上下排列，不用左右捲動）。
+ *   3. 有標題的區塊（詳細頁、長表單的各個分區）→ 可收合，標題列點一下展開或收起。
+ * 哪些元素要收合是由 public/js/onion.js 依頁面結構自動判斷；這個檔案只負責「長相」。
+ * 想改哪個窄螢幕的斷點：下面所有 @media 的 767.98px 一起改。
+ */
+
+/* 這些按鈕與箭頭只給窄螢幕用；桌面版看不到。 */
+.onion-toggle, .onion-filter-toggle, .onion-chevron { display: none; }
+
+@media (max-width: 767.98px) {
+    /* ---------- 1. 表格 → 卡片 ---------- */
+    /* 不需要橫向捲動了：外框不再設捲動。 */
+    .table-responsive:has(> .onion-table) { overflow-x: visible; }
+    .onion-table, .onion-table tbody { display: block; width: 100%; }
+    .onion-table thead { display: none; }                         /* 欄位標題改由每格的 data-label 顯示 */
+    .onion-table tr {
+        display: block;
+        margin-bottom: .75rem;
+        border: 1px solid var(--bs-border-color);
+        border-radius: .5rem;
+        background: var(--bs-body-bg);
+        overflow: hidden;
+    }
+    /* 狀態底色（例如異常教室整列標紅）保留在卡片上。 */
+    .onion-table tr.table-danger { background: var(--bs-danger-bg-subtle); border-color: var(--bs-danger-border-subtle); }
+    .onion-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: .45rem .75rem;
+        border: 0;
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+        background: transparent;
+        white-space: normal !important;                           /* 全站表格預設不換行，卡片裡要能換行 */
+        text-align: right;
+        word-break: break-word;
+    }
+    .onion-table td:last-child { border-bottom: 0; }
+    /* 欄位名稱放左邊（小字灰色），內容放右邊。 */
+    .onion-table td[data-label]::before {
+        content: attr(data-label);
+        flex: 0 0 auto;
+        max-width: 40%;
+        font-size: .8rem;
+        color: var(--bs-secondary-color);
+        text-align: left;
+    }
+    /* 第一欄是這張卡片的「標題」：整列、粗體、靠左，不顯示欄位名稱。 */
+    .onion-table td.onion-title {
+        display: block;
+        text-align: left;
+        font-weight: 600;
+        background: var(--bs-tertiary-bg);
+    }
+    .onion-table td.onion-title::before { display: none; }
+    /* 操作欄（按鈕）靠左排開，可換行。 */
+    .onion-table td.onion-actions { justify-content: flex-start; flex-wrap: wrap; text-align: left; }
+    .onion-table td.onion-actions::before { display: none; }
+    /* 沒有資料列（colspan 的「尚無資料」）維持置中。 */
+    .onion-table tr.onion-single td { display: block; text-align: center; }
+    .onion-table tr.onion-single td::before { display: none; }
+
+    /* 第二層：預設收起，點「詳情」才展開。 */
+    .onion-table tr:not(.onion-open) td.onion-secondary { display: none; }
+    .onion-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        margin-left: .5rem;
+        padding: .1rem .5rem;
+        font-size: .8rem;
+        font-weight: 400;
+        vertical-align: middle;
+    }
+    .onion-toggle .bi { transition: transform .2s; }
+    tr.onion-open .onion-toggle .bi { transform: rotate(180deg); }
+
+    /* ---------- 2. 篩選列 → 一顆「篩選」按鈕 ---------- */
+    .onion-filter-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: .5rem; }
+    .onion-filter-toggle .bi-chevron-down { transition: transform .2s; }
+    .onion-filter-toggle[aria-expanded="true"] .bi-chevron-down { transform: rotate(180deg); }
+    .filter-bar.onion-collapsed { display: none; }
+    /* 展開後：欄位上下排列、各佔一整列，不再左右捲動。 */
+    .filter-bar:not(.onion-collapsed) { flex-wrap: wrap; overflow-x: visible; margin-bottom: 0; padding-bottom: 0; }
+    .filter-bar > * { flex: 1 1 100%; }
+    .filter-bar input, .filter-bar select { width: 100% !important; }
+
+    /* ---------- 3. 有標題的區塊 → 可收合 ---------- */
+    .card.onion-card > .card-header { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+    .onion-chevron { display: inline-block; margin-left: auto; transition: transform .2s; }
+    .card.onion-card:not(.onion-collapsed) > .card-header .onion-chevron { transform: rotate(180deg); }
+    .card.onion-card.onion-collapsed > :not(.card-header) { display: none; }
+}

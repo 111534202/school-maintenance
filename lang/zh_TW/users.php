@@ -30,7 +30,7 @@ return [
 
     // 表格欄位標題。
     'table' => [
-        'username' => '帳號',
+        'account' => '帳號',
         'name' => '姓名',
         'email' => '電子郵件',
         'phone' => '電話',
@@ -64,7 +64,7 @@ return [
         'section_contact' => '聯絡與所屬',
         'section_password' => '登入密碼',
         'section_reset_password' => '重設密碼',
-        'username' => '帳號',
+        'account' => '帳號',
         'username_hint' => '3～30 個字元，限英文、數字、點、底線、連字號，建立後仍可修改。',
         'name' => '姓名',
         'email' => '電子郵件',

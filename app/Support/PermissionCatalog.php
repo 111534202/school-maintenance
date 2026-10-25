@@ -6,12 +6,12 @@ namespace App\Support;
  * 全系統「權限選項」的清單（像 Discord 身分組裡可以勾選的權限）。
  *
  * 身分主檔（roles）新增身分後，在畫面上從這份清單勾選要開放哪些權限，勾選結果存在
- * roles.permissions（JSON 陣列）。程式裡判斷權限一律用 Laravel 的 Gate：
+ * role_permissions 資料表（一列一個權限；程式裡用 $role->permissions 讀寫權限代碼的陣列）。程式裡判斷權限一律用 Laravel 的 Gate：
  *   @can('users.manage')、Route::...->middleware('can:users.manage')、$user->can('...')
  * （Gate 的註冊在 AppServiceProvider，會逐一對應這份清單裡的每個權限）。
  *
  * 要新增一個權限：1. 在下面 GROUPS 加上代碼　2. 在 lang 資料夾底下各語言的 permissions.php 補上名稱
- * 3. 在需要保護的路由加上 can:xxx。系統管理員（slug = admin）永遠擁有全部權限，不需要勾選。
+ * 3. 在需要保護的路由加上 can:xxx。系統管理員（role_code = admin）永遠擁有全部權限，不需要勾選。
  *
  * 權限代碼的命名習慣：「功能.動作」，例如 users.manage（管理用戶）、repairs.dispatch（派工）。
  * 這裡的方法都是 static，不用先建立物件，直接寫 PermissionCatalog::all() 即可。

@@ -38,7 +38,7 @@
     </form>
 
     <div class="table-responsive">
-        <table class="table table-bordered bg-white align-middle text-nowrap">
+        <table class="table table-bordered bg-white align-middle text-nowrap" data-onion-primary="5">
             <thead class="table-light">
                 <tr>
                     <th>設備</th>
@@ -63,7 +63,7 @@
                             @endif
                         </td>
                         <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
-                        <td>{{ $order->device_category ?? '—' }}</td>
+                        <td>{{ $order->categoryName() ?? '—' }}</td>
                         <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
                         <td>{{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}</td>

@@ -67,7 +67,7 @@
     <div class="card shadow-sm">
         <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,6,7">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('classrooms.table.code') }}</th>
@@ -87,8 +87,8 @@
                     @forelse ($classrooms as $classroom)
                         {{-- 有異常設備的教室整列用淡紅色標示，一眼就能看出是哪間教室。 --}}
                         <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}">
-                            <td>{{ $classroom->room_code }}</td>
-                            <td>{{ $classroom->room_name }}</td>
+                            <td>{{ $classroom->classroom_code }}</td>
+                            <td>{{ $classroom->name }}</td>
                             <td>{{ $classroom->department->name ?? __('classrooms.no_value') }}</td>
                             <td>{{ $classroom->campus }} / {{ $classroom->building }} / {{ $classroom->floor }}</td>
                             <td>{{ $classroom->manager->name ?? __('classrooms.no_value') }}</td>

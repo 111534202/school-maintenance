@@ -17,8 +17,8 @@ class Classroom extends Model
 
     // 允許批次寫入的欄位白名單。
     protected $fillable = [
-        'department_id', 'campus', 'building', 'floor', 'room_code', 'room_name',
-        'room_type', 'manager_id', 'is_active', 'reservation_status',
+        'department_id', 'campus', 'building', 'floor', 'classroom_code', 'name',
+        'type', 'manager_id', 'is_active', 'reservation_status',
     ];
 
     // 型別轉換：資料庫存 0/1，這裡自動轉成 PHP 的 true/false。

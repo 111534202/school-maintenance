@@ -33,7 +33,7 @@
     @else
         <div class="card">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle mb-0">
+                <table class="table table-striped table-hover align-middle mb-0" data-onion-primary="1,4">
                     <thead class="table-light">
                         <tr>
                             <th>編號</th>

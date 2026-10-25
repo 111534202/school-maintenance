@@ -37,8 +37,8 @@ class AttachmentUploader
 
             // 在 attachments 資料表新增一筆紀錄，並自動綁到這個 $attachable 底下。
             $attachable->attachments()->create([
-                'disk_path' => $path,
-                'original_name' => $file->getClientOriginalName(), // 使用者電腦上原本的檔名
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(), // 使用者電腦上原本的檔名
                 'mime_type' => $file->getMimeType(),                // 檔案類型，例如 image/jpeg
                 'size_bytes' => $file->getSize(),                   // 檔案大小（位元組）
             ]);

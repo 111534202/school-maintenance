@@ -26,7 +26,7 @@ return [
         'title' => 'Title',
         'device_location' => 'Device / Location',
         'impact_level' => 'Impact Level',
-        'affects_class' => 'Affects Class',
+        'is_class_affected' => 'Affects Class',
         'status' => 'Status',
         'assignee' => 'Technician',
         'submitted_at' => 'Submitted At',

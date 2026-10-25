@@ -40,8 +40,8 @@
                                         value="{{ $classroom->id }}"
                                         @selected((string) old('classroom_id') === (string) $classroom->id)
                                     >
-                                        {{ $classroom->room_name }}
-                                        （{{ $classroom->room_code }}）
+                                        {{ $classroom->name }}
+                                        （{{ $classroom->classroom_code }}）
                                     </option>
                                 @endforeach
                             </select>

@@ -57,7 +57,7 @@ class DeviceController extends Controller
             ->withQueryString();       // 換頁時保留篩選條件
 
         // 篩選列的下拉選單：所有教室、所有設備類別。
-        $classrooms = Classroom::orderBy('room_code')->get();
+        $classrooms = Classroom::orderBy('classroom_code')->get();
         $categories = DeviceCategory::orderBy('name')->get();
 
         return view('devices.index', compact('devices', 'classrooms', 'categories'));
@@ -68,7 +68,7 @@ class DeviceController extends Controller
     {
         $categories = DeviceCategory::orderBy('name')->get();
         // 新增設備只能指到啟用中的教室，停用教室不該再被分配新設備
-        $classrooms = Classroom::where('is_active', true)->orderBy('room_code')->get();
+        $classrooms = Classroom::where('is_active', true)->orderBy('classroom_code')->get();
 
         return view('devices.create', compact('categories', 'classrooms'));
     }
@@ -106,7 +106,7 @@ class DeviceController extends Controller
         // 否則下拉選單選不到目前值，表單一儲存就會把設備搬到別間教室
         $classrooms = Classroom::where('is_active', true)
             ->orWhere('id', $device->classroom_id)
-            ->orderBy('room_code')
+            ->orderBy('classroom_code')
             ->get();
 
         return view('devices.edit', compact('device', 'categories', 'classrooms'));
@@ -180,7 +180,7 @@ class DeviceController extends Controller
             'brand' => ['nullable', 'string', 'max:255'],                             // 品牌
             'model' => ['nullable', 'string', 'max:255'],                             // 型號
             'serial_number' => ['nullable', 'string', 'max:255'],                     // 序號
-            'warranty_until' => ['nullable', 'date'],                                 // 保固到期日
+            'warranty_end_date' => ['nullable', 'date'],                                 // 保固到期日
             // 教室不能指到已被軟刪除的教室，exists 預設不看 deleted_at
             'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。

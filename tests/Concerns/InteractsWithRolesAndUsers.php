@@ -17,7 +17,7 @@ trait InteractsWithRolesAndUsers
     protected function makeRole(string $slug, string $name, ?array $permissions = null): Role
     {
         // firstOrCreate：同一個身分代碼已經建立過就直接拿來用，不重複建立。
-        return Role::firstOrCreate(['slug' => $slug], [
+        return Role::firstOrCreate(['role_code' => $slug], [
             'name' => $name,
             'is_system' => in_array($slug, ['admin', 'it_manager', 'technician', 'teacher', 'executive'], true),
             'permissions' => $permissions ?? PermissionCatalog::defaultsFor($slug),
@@ -37,7 +37,7 @@ trait InteractsWithRolesAndUsers
         // 建立一個「只有指定權限」的自訂身分（代碼用 uniqid 產生，確保每次都不重複）。
         $role = Role::create([
             'name' => 'custom ' . uniqid(),
-            'slug' => 'custom_' . uniqid(),
+            'role_code' => 'custom_' . uniqid(),
             'is_system' => false,
             'permissions' => $permissions,
         ]);

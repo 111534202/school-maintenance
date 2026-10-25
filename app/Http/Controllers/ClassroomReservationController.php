@@ -17,12 +17,12 @@ class ClassroomReservationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ClassroomReservation::with(['classroom', 'user'])
+        $query = ClassroomReservation::with(['classroom', 'requester'])
             ->orderByDesc('reservation_date')
             ->orderBy('start_time');
 
         if (! $request->user()->hasPermission('reservations.manage')) {
-            $query->where('user_id', $request->user()->id);
+            $query->where('requester_id', $request->user()->id);
         }
 
         $reservations = $query->paginate(15);
@@ -39,7 +39,7 @@ class ClassroomReservationController extends Controller
         $classrooms = Classroom::query()
             ->where('is_active', true)
             ->where('reservation_status', 'normal')
-            ->orderBy('room_name')
+            ->orderBy('name')
             ->get();
 
         return view('reservations.create', compact('classrooms'));
@@ -123,7 +123,7 @@ class ClassroomReservationController extends Controller
 
             $reservation = ClassroomReservation::create([
                 'classroom_id' => $classroom->id,
-                'user_id' => $request->user()->id,
+                'requester_id' => $request->user()->id,
                 'class_name' => $validated['class_name'],
                 'reservation_date' => $validated['reservation_date'],
                 'start_time' => $validated['start_time'],

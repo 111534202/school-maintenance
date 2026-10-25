@@ -29,7 +29,7 @@ class CreateRepairRequestFromMaintenanceNgTest extends TestCase
         $this->assertSame('投影機保養檢查 NG：燈泡亮度不足', $repairRequest->title);
         $this->assertStringContainsString('maintenance_result:123', $repairRequest->description);
         $this->assertSame('medium', $repairRequest->impact_level);
-        $this->assertFalse($repairRequest->affects_class);
+        $this->assertFalse($repairRequest->is_class_affected);
         $this->assertSame('pending', $repairRequest->status->value);
 
         // 建出來的案件要能在一般的報修看板上看到，走一般報修單完全一樣的流程。

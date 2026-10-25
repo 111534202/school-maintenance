@@ -24,7 +24,7 @@ class DashboardAndNotificationTest extends TestCase
     {
         $classroom = Classroom::create([
             'department_id' => Department::create(['name' => '資訊組'])->id, 'campus' => '本校區', 'building' => 'A棟',
-            'floor' => '1', 'room_code' => 'A101', 'room_name' => 'A101 教室', 'reservation_status' => 'abnormal',
+            'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'reservation_status' => 'abnormal',
         ]);
         $category = DeviceCategory::create(['name' => '投影機']);
         foreach (['normal', 'normal', 'repairing'] as $i => $status) {
@@ -126,7 +126,7 @@ class DashboardAndNotificationTest extends TestCase
         // 用戶身分圖表點某個身分 → 用戶主檔只列該身分
         $other = $this->makeTechnician();
         $this->get(route('users.index', ['role_id' => $admin->role_id]))
-            ->assertSee($admin->username)->assertDontSee($other->username);
+            ->assertSee($admin->account)->assertDontSee($other->account);
     }
 
     // 所有主檔與紀錄頁的表格都有框線（全站設計規則）。
@@ -213,18 +213,18 @@ class DashboardAndNotificationTest extends TestCase
 
     // ---------- 選單：主檔歸成一類 ----------
 
-    // 用戶、身分、部門、教室、設備類別、設備都收在同一個可收合的「主檔」群組裡（手機抽屜與桌面側邊欄各一份）。
+    // 用戶、身分、部門、教室、設備類別、設備都收在同一個可收合的「主檔」群組裡（收在漢堡按鈕打開的抽屜裡）。
     public function test_master_data_links_are_grouped_in_one_collapsible_group(): void
     {
         $this->loginAsAnyUser();
 
         $html = $this->get(route('dashboard'))->getContent();
 
-        // 桌面側邊欄與手機抽屜各一個群組（id 不能重複）
-        $this->assertStringContainsString('id="side-master"', $html);
+        // 選單只有漢堡抽屜一份，不再有桌面固定側邊欄
         $this->assertStringContainsString('id="drawer-master"', $html);
-        // 主檔群組 = 從 id="…-master" 到後面「業務功能」小標題（text-uppercase）之前
-        foreach (['drawer', 'side'] as $navId) {
+        $this->assertStringNotContainsString('id="side-master"', $html);
+        // 主檔群組 = 從 id="…-master" 到後面「系統」小標題（text-uppercase）之前
+        foreach (['drawer'] as $navId) {
             $this->assertSame(1, preg_match('#id="' . $navId . '-master".*?(?=text-uppercase)#s', $html, $m), "[$navId] 找不到主檔群組");
             $group = $m[0];
             // 群組裡有用戶、身分、部門、教室、設備類別、設備
@@ -242,8 +242,8 @@ class DashboardAndNotificationTest extends TestCase
     {
         $this->loginAsAnyUser();
 
-        $this->get(route('users.index'))->assertSee('class="collapse show" id="side-master"', false);
-        $this->get(route('repairs.index'))->assertSee('class="collapse " id="side-master"', false);
+        $this->get(route('users.index'))->assertSee('class="collapse show" id="drawer-master"', false);
+        $this->get(route('repairs.index'))->assertSee('class="collapse " id="drawer-master"', false);
     }
 
     // 完全沒有主檔權限的人看不到「主檔」群組。
@@ -251,6 +251,6 @@ class DashboardAndNotificationTest extends TestCase
     {
         $this->actingAs($this->makeTechnician());
 
-        $this->get(route('dashboard'))->assertDontSee('id="side-master"', false);
+        $this->get(route('dashboard'))->assertDontSee('id="drawer-master"', false);
     }
 }

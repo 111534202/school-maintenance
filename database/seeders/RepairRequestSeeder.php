@@ -31,7 +31,7 @@ class RepairRequestSeeder extends Seeder
         // 報修人與維修人員：用真實的用戶帳號（UserDemoSeeder 已建立），這樣才符合報修單的歸屬規則——
         // 只有被指派的維修人員能處理、只有報修人能驗收（見 RepairRequestPolicy）。
         // 這些示範案件的報修人都設成示範教師帳號（帳號名稱 teacher）。
-        $teacherId = User::where('username', 'teacher')->value('id');
+        $teacherId = User::where('account', 'teacher')->value('id');
         $userId = fn (string $name) => User::where('name', $name)->value('id');
         // 把部分示範報修單綁定到 DeviceSeeder 建立的真實設備（device_id），教室主檔、設備主檔與報修看板的連動才看得到數字：
         //   「A101 投影機」→ DEV-0004（EE-201 教室的核心投影機，維修中，所以 EE-201 會被標成設備異常）；
@@ -44,23 +44,23 @@ class RepairRequestSeeder extends Seeder
                 'title' => 'B203 電腦教室其中一台電腦無法連網',
                 'description' => "第 3 號機網路孔已換過仍無法連上網路，其他電腦正常。",
                 'impact_level' => 'medium',
-                'affects_class' => false,
+                'is_class_affected' => false,
                 'status' => 'pending',
                 'device_note' => 'B203 電腦教室 3 號機',
                 'location' => 'B203',
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
             ],
             // 情境 2：核心設備故障，正在影響上課。
             [
                 'title' => 'A101 投影機完全無法開機',
                 'description' => "已依知識庫步驟檢查電源線與插座，仍無反應，指示燈不亮。\n上課中無法投影，需要盡快處理。",
                 'impact_level' => 'high',
-                'affects_class' => true,
+                'is_class_affected' => true,
                 'status' => 'pending',
                 'device_note' => 'A101 教室投影機（核心設備）',
                 'location' => 'A101',
                 'device_id' => $deviceId('DEV-0004'),
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
             ],
             // 情境 3：需要更換備品。備品選擇串接要等劉家芸的 InventoryService
             // 確定介面後才能真正扣庫存（見 docs/待確認/Week3_劉家芸.md），
@@ -69,27 +69,25 @@ class RepairRequestSeeder extends Seeder
                 'title' => 'C305 無線 AP 訊號微弱',
                 'description' => "現場檢查疑似天線老化，可能需要更換無線 AP 的天線或整台更換。",
                 'impact_level' => 'medium',
-                'affects_class' => false,
+                'is_class_affected' => false,
                 'status' => 'in_progress',
                 'device_note' => 'C305 無線 AP',
                 'location' => 'C305',
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
                 'assigned_to' => $userId('陳大成'),
-                'assignee_note' => '陳大成',
             ],
             // 情境 5：已派工但還沒開始處理，示範「重新指派」跟依維修人員篩選看板。
             [
                 'title' => 'D102 教室螢幕不顯示筆電畫面',
                 'description' => "接上 HDMI 線後投影幕沒有反應，筆電本身螢幕正常。",
                 'impact_level' => 'low',
-                'affects_class' => false,
+                'is_class_affected' => false,
                 'status' => 'assigned',
                 'device_note' => 'D102 教室投影幕',
                 'location' => 'D102',
                 'device_id' => $deviceId('DEV-0003'),
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
                 'assigned_to' => $userId('王小明'),
-                'assignee_note' => '王小明',
                 'scheduled_at' => now()->addDay(),
             ],
         ];
@@ -121,14 +119,13 @@ class RepairRequestSeeder extends Seeder
             [
                 'description' => "印表機列印到一半就卡紙，取出卡住的紙後仍持續發生。",
                 'impact_level' => 'low',
-                'affects_class' => false,
+                'is_class_affected' => false,
                 'status' => 'pending_review',
                 'device_note' => 'E201 教室印表機',
                 'location' => 'E201',
                 'device_id' => $deviceId('DEV-0006'),
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
                 'assigned_to' => $userId('劉小華'),
-                'assignee_note' => '劉小華',
             ]
         );
         // 還沒有維修紀錄才新增（doesntExist = 不存在），避免重跑時重複。
@@ -150,13 +147,12 @@ class RepairRequestSeeder extends Seeder
             [
                 'description' => "日光燈管閃爍不穩定，懷疑是老化或安定器問題。",
                 'impact_level' => 'medium',
-                'affects_class' => false,
+                'is_class_affected' => false,
                 'status' => 'completed',
                 'device_note' => 'F103 教室日光燈',
                 'location' => 'F103',
-                'reporter_id' => $teacherId,
+                'requester_id' => $teacherId,
                 'assigned_to' => $userId('陳大成'),
-                'assignee_note' => '陳大成',
             ]
         );
         // 還沒有維修紀錄才新增，避免重複。

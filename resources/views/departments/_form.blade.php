@@ -8,10 +8,10 @@
     <div class="card-body p-4">
         <div class="row g-3">
             <div class="col-md-4">
-                <label for="code" class="form-label">{{ __('departments.form.code') }}</label>
-                {{-- @error('欄位')：驗證失敗時讓框變紅；old('code', 預設值)：驗證失敗導回時帶回剛輸入的內容，否則顯示目前資料。 --}}
-                <input type="text" class="form-control @error('code') is-invalid @enderror" id="code" name="code"
-                    value="{{ old('code', $department->code ?? '') }}" autocomplete="off">
+                <label for="department_code" class="form-label">{{ __('departments.form.code') }}</label>
+                {{-- @error('欄位')：驗證失敗時讓框變紅；old('department_code', 預設值)：驗證失敗導回時帶回剛輸入的內容，否則顯示目前資料。 --}}
+                <input type="text" class="form-control @error('department_code') is-invalid @enderror" id="department_code" name="department_code"
+                    value="{{ old('department_code', $department->department_code ?? '') }}" autocomplete="off">
                 <div class="form-text">{{ __('departments.form.code_hint') }}</div>
             </div>
             <div class="col-md-8">

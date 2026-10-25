@@ -51,7 +51,7 @@ class MaintenanceOrderController extends Controller
         MaintenanceOrder::create([
             'maintenance_plan_id' => $maintenancePlan->id,
             'device_id' => $maintenancePlan->device_id,
-            'device_category' => $maintenancePlan->device_category,
+            'device_category_id' => $maintenancePlan->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => $maintenancePlan->next_due_date,

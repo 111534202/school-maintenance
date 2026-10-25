@@ -64,8 +64,8 @@ class LoginController extends Controller
         }
 
         // 同一個欄位同時支援「帳號名稱」與「Email」：長得像 Email 就用 email 欄位比對，
-        // 否則用 username 欄位比對。
-        $field = filter_var($input['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        // 否則用 account 欄位比對。
+        $field = filter_var($input['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'account';
         // is_active => true：用戶主檔裡被停用的帳號不能登入（被刪除的帳號本來就查不到）。
         // Laravel 會自動把輸入的密碼加密後與資料庫比對，所以這裡直接放使用者輸入的密碼即可。
         $credentials = [$field => $input['login'], 'password' => $input['password'], 'is_active' => true];
@@ -77,7 +77,7 @@ class LoginController extends Controller
             RateLimiter::clear($throttleKey);   // 登入成功：清掉這個「帳號 + IP」累積的失敗次數
             // forceFill：略過 $fillable 保護直接寫入欄位，因為最後登入時間是系統寫的，不是使用者填的。
             Auth::user()->forceFill(['last_login_at' => now()])->save();
-            AuditLogger::log('login', Auth::user(), [], __('audit.messages.login', ['name' => Auth::user()->name]));
+            AuditLogger::log('logged_in', Auth::user(), [], __('audit.messages.login', ['name' => Auth::user()->name]));
             // intended：如果使用者原本想去某個頁面但被擋下來要求登入，登入後就送他回去那一頁；沒有就去主控台。
             return redirect()->intended('/dashboard');
         }
@@ -89,7 +89,7 @@ class LoginController extends Controller
         // 登入失敗也要留紀錄（稽核常看的項目），絕對不記密碼。
         // 帳號欄位的內容只有在「真的是某個用戶的帳號或 Email」時才記下原文；
         // 不存在的就記成「（不存在的帳號）」，避免有人把密碼誤打進帳號欄位時，密碼被原文寫進操作紀錄。
-        $accountKnown = User::withTrashed()->where('username', $input['login'])->orWhere('email', $input['login'])->exists();
+        $accountKnown = User::withTrashed()->where('account', $input['login'])->orWhere('email', $input['login'])->exists();
         $account = $accountKnown ? $input['login'] : __('audit.messages.unknown_account');
         AuditLogger::log('login_failed', null, ['ip' => $request->ip()], __('audit.messages.login_failed', ['account' => $account]));
 
@@ -104,7 +104,7 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
         // 先寫紀錄再登出：登出之後就不知道是誰了。?-> 是「如果沒有登入就不要報錯」。
-        AuditLogger::log('logout', Auth::user(), [], __('audit.messages.logout', ['name' => Auth::user()?->name]));
+        AuditLogger::log('logged_out', Auth::user(), [], __('audit.messages.logout', ['name' => Auth::user()?->name]));
         Auth::logout();                              // 登出
         $request->session()->invalidate();           // 讓這組 session 作廢
         $request->session()->regenerateToken();      // 換新的表單防偽 token（CSRF），舊頁面的表單從此失效

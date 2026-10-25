@@ -10,12 +10,14 @@
 </div>
 
 <div class="mb-3">
-    <label for="device_category" class="form-label">設備類別</label>
-    <input type="text" name="device_category" id="device_category"
-        class="form-control @error('device_category') is-invalid @enderror"
-        value="{{ old('device_category', $plan->device_category) }}" maxlength="100"
-        placeholder="例如：空調、電力設備（選填，工程實作欄位，待與林政寬確認 devices 關聯後可能調整）">
-    @error('device_category')
+    <label for="device_category_id" class="form-label">設備類別</label>
+    <select name="device_category_id" id="device_category_id" class="form-select @error('device_category_id') is-invalid @enderror">
+        <option value="">— 不指定 —</option>
+        @foreach ($deviceCategories as $deviceCategory)
+            <option value="{{ $deviceCategory->id }}" @selected((string) old('device_category_id', $plan->device_category_id) === (string) $deviceCategory->id)>{{ $deviceCategory->name }}</option>
+        @endforeach
+    </select>
+    @error('device_category_id')
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror
 </div>
@@ -52,8 +54,8 @@
                     {{ in_array($availableItem->id, old('item_ids', $selectedItemIds)) ? 'checked' : '' }}>
                 <label for="item_{{ $availableItem->id }}" class="form-check-label">
                     {{ $availableItem->name }}
-                    @if ($availableItem->category)
-                        <span class="text-muted small">（{{ $availableItem->category }}）</span>
+                    @if ($availableItem->deviceCategory)
+                        <span class="text-muted small">（{{ $availableItem->deviceCategory->name }}）</span>
                     @endif
                 </label>
             </div>

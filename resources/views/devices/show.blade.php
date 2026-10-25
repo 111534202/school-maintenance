@@ -38,13 +38,13 @@
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.serial_number') }}</dt>
                         <dd class="col-sm-8 mb-0">{{ $device->serial_number ?? __('devices.no_value') }}</dd>
 
-                        <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.warranty_until') }}</dt>
+                        <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.warranty_end_date') }}</dt>
                         {{-- 保固期限格式化成「年-月-日」；optional() 讓沒填保固期限時不會報錯。 --}}
-                        <dd class="col-sm-8 mb-0">{{ optional($device->warranty_until)->format('Y-m-d') ?? __('devices.no_value') }}</dd>
+                        <dd class="col-sm-8 mb-0">{{ optional($device->warranty_end_date)->format('Y-m-d') ?? __('devices.no_value') }}</dd>
 
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.classroom') }}</dt>
                         <dd class="col-sm-8 mb-0">
-                            {{ $device->classroom->room_code ?? __('devices.no_value') }} - {{ $device->classroom->room_name ?? '' }}
+                            {{ $device->classroom->classroom_code ?? __('devices.no_value') }} - {{ $device->classroom->name ?? '' }}
                             （{{ $device->classroom->department->name ?? __('devices.no_department') }}）
                         </dd>
 
