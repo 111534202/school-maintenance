@@ -197,5 +197,11 @@
 
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
+    @include('layouts.partials.form-stepper')
+    {{-- 篩選列的洋蔥式：一長排篩選欄位收成「篩選條件」摘要列，點開從右邊滑入、直向排列。 --}}
+    @include('layouts.partials.filter-onion')
+    {{-- 清單的洋蔥式檢視：列表頁的寬表格變成一列一列的簡短清單，點進去詳細內容從右邊滑入。 --}}
+    @include('layouts.partials.list-onion')
 </body>
 </html>

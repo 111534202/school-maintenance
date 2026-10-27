@@ -1,4 +1,4 @@
-{{-- 主控台（登入後的首頁，對應 DashboardController）：上半部是數字卡片，下半部是四張圖表。 --}}
+{{-- 主控台（登入後的首頁，對應 DashboardController）：最上面是洋蔥式的「功能入口」，接著是數字卡片，下半部是圖表。 --}}
 {{-- 每張卡片、每一塊圖表點下去都會跳到對應的功能區（並帶好篩選條件）；沒有權限的人看不到對應的統計。 --}}
 {{-- 畫圖使用 Chart.js 這個外部函式庫（從網路 CDN 載入，離線時圖表不會顯示，但數字卡片仍正常）。 --}}
 {{-- 【想新增一張卡片】在下面 PHP 區塊的 $cards 陣列加一筆；【想新增一張圖表】在 $charts 加一筆（需要的資料先在 DashboardController 算好傳進來）。 --}}
@@ -89,6 +89,93 @@
             {{ __('dashboard.role_line', ['role' => Auth::user()->role->name ?? __('dashboard.no_role')]) }}　·　{{ __('dashboard.click_hint') }}
         </div>
     </div>
+
+    {{-- 功能入口（洋蔥式）：第一層是幾張大卡片，點「分類」往內一層看到裡面的功能，點「返回」退回；點單一功能直接前往。 --}}
+    {{-- 項目與權限跟側邊選單同一份資料（app/Support/NavMenu.php），沒有權限的人看不到。 --}}
+    @php
+        ['menu' => $entryMenu, 'groups' => $entryGroups] = \App\Support\NavMenu::build(auth()->user());
+        // 第一層入口：不放「主控台」自己（已經在這一頁了）。
+        $entryRoot = array_values(array_filter($entryMenu, fn ($e) => ($e['show'] ?? false) && ! (($e['type'] === 'link') && ($e['active'] ?? false) && $e['href'] === route('dashboard'))));
+    @endphp
+    <section class="mb-4" id="home-entry" data-home-entry aria-label="功能入口">
+        <div class="d-flex align-items-center gap-2 mb-2" style="min-height: 2rem;">
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none" data-entry-back><i class="bi bi-chevron-left me-1"></i>返回</button>
+            <h2 class="h6 mb-0 text-muted" data-entry-title data-root-title="功能入口">功能入口</h2>
+        </div>
+
+        {{-- 第一層 --}}
+        <div class="row g-3" data-entry-panel="root">
+            @foreach ($entryRoot as $entry)
+                <div class="col-6 col-md-4 col-xl-3">
+                    @if ($entry['type'] === 'link')
+                        <a href="{{ $entry['href'] }}" class="card shadow-sm h-100 text-decoration-none text-body entry-tile">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <span class="entry-icon"><i class="bi {{ $entry['icon'] }}"></i></span>
+                                <span class="fw-semibold">{{ $entry['label'] }}</span>
+                            </div>
+                        </a>
+                    @else
+                        <button type="button" class="card shadow-sm h-100 w-100 text-start text-body entry-tile" data-entry-open="{{ $entry['id'] }}">
+                            <div class="card-body d-flex align-items-center gap-3 w-100">
+                                <span class="entry-icon"><i class="bi {{ $entry['icon'] }}"></i></span>
+                                <span class="flex-grow-1">
+                                    <span class="fw-semibold d-block">{{ $entry['label'] }}</span>
+                                    <span class="text-muted small">{{ count($entry['children']) }} 項功能</span>
+                                </span>
+                                <i class="bi bi-chevron-right text-muted"></i>
+                            </div>
+                        </button>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+
+        {{-- 第二層：每個分類一組。 --}}
+        @foreach ($entryGroups as $group)
+            <div class="row g-3 d-none" data-entry-panel="{{ $group['id'] }}" data-entry-label="{{ $group['label'] }}">
+                @foreach ($group['children'] as $child)
+                    <div class="col-6 col-md-4 col-xl-3">
+                        <a href="{{ $child['href'] }}" class="card shadow-sm h-100 text-decoration-none text-body entry-tile">
+                            <div class="card-body d-flex align-items-center gap-3">
+                                <span class="entry-icon"><i class="bi {{ $child['icon'] }}"></i></span>
+                                <span class="fw-semibold">{{ $child['label'] }}</span>
+                            </div>
+                        </a>
+                    </div>
+                @endforeach
+            </div>
+        @endforeach
+    </section>
+
+    <style>
+        .entry-tile { border: 0; min-height: 4.5rem; transition: transform .15s ease, box-shadow .15s ease; }
+        .entry-tile:hover, .entry-tile:focus-visible { transform: translateY(-2px); box-shadow: 0 .4rem .9rem rgba(0,0,0,.12) !important; color: inherit; }
+        .entry-icon { width: 2.5rem; height: 2.5rem; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border-radius: .6rem; background: #e7f1ff; color: #0d6efd; font-size: 1.25rem; }
+        @media (prefers-reduced-motion: reduce) { .entry-tile { transition: none; } }
+    </style>
+    <script>
+        // 功能入口的切換：往內點 → 顯示該分類的功能；返回 → 回到第一層。
+        (function () {
+            var box = document.getElementById('home-entry');
+            if (!box) return;
+            var back = box.querySelector('[data-entry-back]');
+            var title = box.querySelector('[data-entry-title]');
+            function show(id) {
+                box.querySelectorAll('[data-entry-panel]').forEach(function (p) {
+                    p.classList.toggle('d-none', p.getAttribute('data-entry-panel') !== id);
+                });
+                var panel = box.querySelector('[data-entry-panel="' + id + '"]');
+                var label = panel && panel.getAttribute('data-entry-label');
+                title.textContent = label || title.getAttribute('data-root-title');
+                back.classList.toggle('d-none', id === 'root');
+            }
+            box.addEventListener('click', function (e) {
+                var opener = e.target.closest('[data-entry-open]');
+                if (opener) { show(opener.getAttribute('data-entry-open')); return; }
+                if (e.target.closest('[data-entry-back]')) show('root');
+            });
+        })();
+    </script>
 
     {{-- 數字卡片：整張卡片就是連結，點了跳到對應的功能。 --}}
     <div class="row g-3 mb-4">

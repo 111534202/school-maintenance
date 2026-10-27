@@ -8,7 +8,7 @@
     @method('PUT')
 @endisset
 
-<div class="row g-3">
+<div class="row g-3" data-step="基本資料">
     <div class="col-md-6">
         <label for="device_code" class="form-label">{{ __('devices.form.code') }}</label>
         {{-- 設備編號：整個系統不可重複，QR Code 網址就是用它。old(欄位, 預設值) 會在驗證失敗導回時帶回剛輸入的內容。 --}}
@@ -43,6 +43,8 @@
             @endforeach
         </select>
     </div>
+</div>
+<div class="row g-3" data-step="規格與保固">
     <div class="col-md-4">
         <label for="brand" class="form-label">{{ __('devices.form.brand') }}</label>
         {{-- 品牌（選填）。 --}}
@@ -63,6 +65,8 @@
         {{-- 保固期限（日期選擇器）；optional(...) 是「沒有資料也不要報錯」。 --}}
         <input type="date" id="warranty_until" name="warranty_until" class="form-control @error('warranty_until') is-invalid @enderror" value="{{ old('warranty_until', optional($device->warranty_until ?? null)->format('Y-m-d')) }}">
     </div>
+</div>
+<div class="row g-3" data-step="狀態">
     <div class="col-md-4">
         <label for="status" class="form-label">{{ __('devices.form.status') }}</label>
         {{-- 狀態下拉選單：選項來自 Device::STATUSES，顯示名稱用 Device::statusLabel() 轉成中文。 --}}
