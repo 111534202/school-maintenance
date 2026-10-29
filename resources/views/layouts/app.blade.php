@@ -178,7 +178,7 @@
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
                 {{-- 操作失敗訊息（Controller 用 ->with('error', ...) 帶過來）。 --}}
-                @if (session('error'))
+                @if (session('error') && !request()->routeIs('reservations.index'))
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
                 {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡。 --}}

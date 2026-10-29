@@ -179,6 +179,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [ClassroomReservationController::class, 'index'])
             ->name('index');
 
+        Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'day'])
+            ->name('timetable');
+        Route::get('/timetable/week', [\App\Http\Controllers\TimetableController::class, 'week'])
+            ->name('timetable.week');
+
         Route::get('/create', [ClassroomReservationController::class, 'create'])
             ->name('create');
 

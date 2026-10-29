@@ -30,9 +30,9 @@ class ClassroomReservationTest extends TestCase
             'campus' => '本校區',
             'building' => 'A棟',
             'floor' => '1F',
-            'room_code' => $code,
-            'room_name' => $code . ' 教室',
-            'room_type' => '一般教室',
+            'classroom_code' => $code,
+            'name' => $code . ' 教室',
+            'type' => '一般教室',
             'is_active' => true,
             'reservation_status' => 'normal',
         ], $attrs));
@@ -56,6 +56,27 @@ class ClassroomReservationTest extends TestCase
         $this->get(route('reservations.create'))->assertOk();
     }
 
+
+    public function test_create_form_only_shows_active_normal_classrooms(): void
+    {
+        $normal = $this->makeClassroom('A101');
+
+        $abnormal = $this->makeClassroom('A102', [
+            'reservation_status' => 'abnormal',
+        ]);
+
+        $inactive = $this->makeClassroom('A103', [
+            'is_active' => false,
+        ]);
+
+        $this->get(route('reservations.create'))
+            ->assertOk()
+            ->assertSee($normal->name)
+            ->assertDontSee($abnormal->name)
+            ->assertDontSee($inactive->name);
+    }
+
+
     public function test_user_can_create_a_pending_reservation(): void
     {
         $classroom = $this->makeClassroom();
@@ -66,7 +87,7 @@ class ClassroomReservationTest extends TestCase
 
         $this->assertDatabaseHas('classroom_reservations', [
             'classroom_id' => $classroom->id,
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'class_name' => '一年甲班',
             'status' => 'pending',
         ]);
@@ -78,7 +99,7 @@ class ClassroomReservationTest extends TestCase
 
         $own = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -89,7 +110,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '10:00',
                 'end_time' => '11:00',
             ]),
-            'user_id' => $otherUser->id,
+            'requester_id' => $otherUser->id,
             'status' => 'pending',
         ]);
 
@@ -99,17 +120,52 @@ class ClassroomReservationTest extends TestCase
             ->assertDontSee('二年乙班');
     }
 
-    public function test_overlapping_reservation_is_rejected(): void
+    public function test_overlapping_pending_reservations_are_allowed_after_confirmation(): void
     {
         $classroom = $this->makeClassroom();
 
         $this->post(route('reservations.store'), $this->payload($classroom))
             ->assertSessionHas('success');
 
+        $overlappingPayload = $this->payload($classroom, [
+            'class_name' => '二年乙班',
+            'start_time' => '09:30',
+            'end_time' => '10:30',
+            'confirm_pending_conflict' => '1',
+        ]);
+
+        // 使用者完成原本的確認流程後，可提交重疊的待審核申請。
+        $this->post(route('reservations.store'), $overlappingPayload)
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('classroom_reservations', 2);
+        $this->assertDatabaseHas('classroom_reservations', [
+            'classroom_id' => $classroom->id,
+            'class_name' => '二年乙班',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_approved_reservation_overlap_cannot_be_bypassed_by_confirmation(): void
+    {
+        $classroom = $this->makeClassroom();
+
+        ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'class_name' => '已核准班級',
+                'start_time' => '09:00',
+                'end_time' => '10:00',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'approved',
+        ]);
+
+        // 即使傳入確認欄位，仍不得與已核准預約重疊。
         $this->post(route('reservations.store'), $this->payload($classroom, [
             'class_name' => '二年乙班',
             'start_time' => '09:30',
             'end_time' => '10:30',
+            'confirm_pending_conflict' => '1',
         ]))
             ->assertRedirect()
             ->assertSessionHas('error');
@@ -155,7 +211,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -187,7 +243,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -221,7 +277,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -243,7 +299,7 @@ class ClassroomReservationTest extends TestCase
 
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'approved',
             'reviewed_by' => $manager->id,
             'reviewed_at' => now(),
@@ -270,7 +326,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '09:00',
                 'end_time' => '10:00',
             ]),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'approved',
             'reviewed_by' => $manager->id,
             'reviewed_at' => now(),
@@ -282,7 +338,7 @@ class ClassroomReservationTest extends TestCase
                 'start_time' => '09:30',
                 'end_time' => '10:30',
             ]),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -297,6 +353,104 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
+    public function test_approval_is_rejected_when_a_later_date_slot_overlaps(): void
+    {
+        $classroom = $this->makeClassroom();
+        $manager = $this->loginAsAnyUser();
+
+        $firstDate = now()->addDays(5)->toDateString();
+        $secondDate = now()->addDays(6)->toDateString();
+
+        // 第二個日期已有一筆核准預約。
+        $approved = ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $secondDate,
+                'class_name' => '已核准班級',
+                'start_time' => '09:00',
+                'end_time' => '10:00',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'approved',
+            'reviewed_by' => $manager->id,
+            'reviewed_at' => now(),
+        ]);
+
+        $approved->slots()->create([
+            'reservation_date' => $secondDate,
+            'start_time' => '09:00',
+            'end_time' => '10:00',
+            'period_no' => null,
+        ]);
+
+        // 待核准預約有兩個日期：第一天沒有衝突，第二天才有衝突。
+        $pending = ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $firstDate,
+                'class_name' => '跨日期待審核班級',
+                'start_time' => '09:00',
+                'end_time' => '10:00',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'pending',
+        ]);
+
+        $pending->slots()->createMany([
+            [
+                'reservation_date' => $firstDate,
+                'start_time' => '09:00',
+                'end_time' => '10:00',
+                'period_no' => 1,
+            ],
+            [
+                'reservation_date' => $secondDate,
+                'start_time' => '09:00',
+                'end_time' => '10:00',
+                'period_no' => 1,
+            ],
+        ]);
+
+        $this->post(route('reservations.approve', $pending))
+            ->assertRedirect(route('reservations.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('classroom_reservations', [
+            'id' => $pending->id,
+            'status' => 'pending',
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+        ]);
+    }
+    public function test_approval_is_rejected_when_classroom_becomes_abnormal(): void
+    {
+        $classroom = $this->makeClassroom();
+
+        // 教室正常時，先建立待審核預約。
+        $reservation = ClassroomReservation::create([
+            ...$this->payload($classroom),
+            'requester_id' => $this->applicant->id,
+            'status' => 'pending',
+        ]);
+
+        // 模擬預約建立後，教室因設備異常而暫停外借。
+        $classroom->update([
+            'reservation_status' => 'abnormal',
+        ]);
+
+        // 管理人員嘗試核准，應該被拒絕。
+        $this->loginAsAnyUser();
+
+        $this->post(route('reservations.approve', $reservation))
+            ->assertRedirect(route('reservations.index'))
+            ->assertSessionHas('error');
+
+        // 預約仍須維持待審核，不得被核准。
+        $this->assertDatabaseHas('classroom_reservations', [
+            'id' => $reservation->id,
+            'status' => 'pending',
+            'reviewed_by' => null,
+        ]);
+    }
+
     public function test_rejection_reason_is_required(): void
     {
         $classroom = $this->makeClassroom();
@@ -304,7 +458,7 @@ class ClassroomReservationTest extends TestCase
 
         $reservation = ClassroomReservation::create([
             ...$this->payload($classroom),
-            'user_id' => $this->applicant->id,
+            'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
@@ -321,4 +475,84 @@ class ClassroomReservationTest extends TestCase
             'reviewed_by' => null,
         ]);
     }
+
+    public function test_timetable_endpoint_returns_demo_periods_and_courses(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+        $date = now()->next('Monday')->toDateString();
+
+        $this->getJson(route('reservations.timetable', [
+            'classroom_id' => $classroom->id,
+            'date' => $date,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('classroom.id', $classroom->id)
+            ->assertJsonPath('date', $date)
+            ->assertJsonPath('periods.0.period_no', 1)
+            ->assertJsonPath('periods.0.start_time', '08:10')
+            ->assertJsonPath('periods.0.end_time', '09:00')
+            ->assertJsonPath('periods.0.is_class', true)
+            ->assertJsonPath('periods.0.class_name', '資一忠')
+            ->assertJsonPath('periods.0.course_name', '資訊科技');
+    }
+
+    public function test_timetable_endpoint_includes_pending_reservations(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+        $date = now()->next('Monday')->toDateString();
+
+        ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $date,
+                'class_name' => '測試預約班級',
+                'start_time' => '08:20',
+                'end_time' => '08:40',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'pending',
+        ]);
+
+        $this->getJson(route('reservations.timetable', [
+            'classroom_id' => $classroom->id,
+            'date' => $date,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('periods.0.reservations.0.class_name', '測試預約班級')
+            ->assertJsonPath('periods.0.reservations.0.status', 'pending')
+            ->assertJsonPath('periods.0.reservations.0.start_time', '08:20')
+            ->assertJsonPath('periods.0.reservations.0.end_time', '08:40');
+    }
+
+    public function test_timetable_endpoint_rejects_inactive_or_abnormal_classrooms(): void
+    {
+        $inactive = $this->makeClassroom('A102', [
+            'is_active' => false,
+        ]);
+
+        $abnormal = $this->makeClassroom('A103', [
+            'reservation_status' => 'abnormal',
+        ]);
+
+        $date = now()->addDays(3)->toDateString();
+
+        foreach ([$inactive, $abnormal] as $classroom) {
+            $this->getJson(route('reservations.timetable', [
+                'classroom_id' => $classroom->id,
+                'date' => $date,
+            ]))
+                ->assertStatus(422);
+        }
+    }
+
+    public function test_timetable_endpoint_rejects_past_dates(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+
+        $this->getJson(route('reservations.timetable', [
+            'classroom_id' => $classroom->id,
+            'date' => now()->subDay()->toDateString(),
+        ]))
+            ->assertStatus(422);
+    }
+
 }

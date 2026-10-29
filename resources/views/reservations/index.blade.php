@@ -16,13 +16,6 @@
         </a>
     </div>
 
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
-        </div>
-    @endif
-
     @if (session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             {{ session('error') }}
@@ -58,9 +51,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th>預約日期</th>
+<th>使用時段</th>
                                 <th>教室</th>
                                 <th>班級</th>
-                                <th>使用時段</th>
                                 @if (auth()->user()->hasPermission('reservations.manage'))
                                     <th>申請人</th>
                                 @endif
@@ -74,17 +67,38 @@
                         <tbody>
                             @foreach ($reservations as $reservation)
                                 <tr>
-                                    <td>{{ $reservation->reservation_date->format('Y-m-d') }}</td>
-                                    <td>{{ $reservation->classroom?->room_name ?? '教室資料不存在' }}</td>
-                                    <td>{{ $reservation->class_name }}</td>
                                     <td>
-                                        {{ substr($reservation->start_time, 0, 5) }}
-                                        –
-                                        {{ substr($reservation->end_time, 0, 5) }}
-                                    </td>
+    @if ($reservation->slots->isNotEmpty())
+        @foreach ($reservation->slots as $slot)
+            <div>{{ $slot->reservation_date->format('Y-m-d') }}</div>
+        @endforeach
+    @else
+        {{ $reservation->reservation_date->format('Y-m-d') }}
+    @endif
+</td>
+                                    <td>
+    @if ($reservation->slots->isNotEmpty())
+        @foreach ($reservation->slots as $slot)
+            <div>
+                {{ substr($slot->start_time, 0, 5) }}
+                –
+                {{ substr($slot->end_time, 0, 5) }}
+                @if ($slot->period_no)
+                    （第 {{ $slot->period_no }} 節）
+                @endif
+            </div>
+        @endforeach
+    @else
+        {{ substr($reservation->start_time, 0, 5) }}
+        –
+        {{ substr($reservation->end_time, 0, 5) }}
+    @endif
+</td>
+                                    <td>{{ $reservation->classroom?->name ?? '教室資料不存在' }}</td>
+                                    <td>{{ $reservation->class_name }}</td>
 
                                     @if (auth()->user()->hasPermission('reservations.manage'))
-                                        <td>{{ $reservation->user?->name ?? '使用者資料不存在' }}</td>
+                                        <td>{{ $reservation->requester?->name ?? '使用者資料不存在' }}</td>
                                     @endif
 
                                     <td>{{ $reservation->purpose ?: '—' }}</td>
