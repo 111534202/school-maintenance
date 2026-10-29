@@ -33,7 +33,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
     private function room(string $code, array $attrs = []): Classroom
     {
-        return Classroom::create(array_merge(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => $code, 'room_name' => "$code 教室"], $attrs));
+        return Classroom::create(array_merge(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => $code, 'name' => "$code 教室"], $attrs));
     }
 
     private function device(Classroom $room, string $code, string $status = 'normal', array $attrs = []): Device

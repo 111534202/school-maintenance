@@ -42,8 +42,8 @@ class ClassroomController extends Controller
                 $keyword = $request->string('keyword');
                 // 教室代碼或名稱包含關鍵字即可；括號包起來避免「或」影響其他篩選。
                 $query->where(function ($q) use ($keyword) {
-                    $q->where('room_code', 'like', "%{$keyword}%")
-                      ->orWhere('room_name', 'like', "%{$keyword}%");
+                    $q->where('classroom_code', 'like', "%{$keyword}%")
+                      ->orWhere('name', 'like', "%{$keyword}%");
                 });
             })
             // 部門篩選：下拉選單送來的是部門編號。
@@ -54,7 +54,7 @@ class ClassroomController extends Controller
             ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->string('is_active')->toString() === '1'))
             // 設備狀況篩選：?abnormal=1 只列出「有異常設備」的教室（主控台與設備主檔都會連到這裡）。
             ->when($request->boolean('abnormal'), fn ($query) => $query->withAbnormalDevices())
-            ->orderBy('room_code')   // 依教室代碼排序
+            ->orderBy('classroom_code')  // 依教室代碼排序
             ->paginate(15)
             ->withQueryString();     // 換頁時保留篩選條件
 
@@ -134,9 +134,14 @@ class ClassroomController extends Controller
             'building' => ['required', 'string', 'max:255'],            // 大樓
             'floor' => ['required', 'string', 'max:255'],               // 樓層
             // 教室代碼：必填且不可重複。'unique:資料表,欄位,要排除的編號' 是 Laravel 的簡寫寫法。
-            'room_code' => ['required', 'string', 'max:255', 'unique:classrooms,room_code' . ($ignoreId ? ",{$ignoreId}" : '')],
-            'room_name' => ['required', 'string', 'max:255'],           // 教室名稱
-            'room_type' => ['nullable', 'string', 'max:255'],           // 教室類型，可不填
+            'classroom_code' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('classrooms', 'classroom_code')->ignore($ignoreId),
+            ],
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'max:255'],
             'manager_id' => ['nullable', 'exists:users,id'],            // 管理人可不選；有選就必須是真的存在的用戶
         ]);
     }

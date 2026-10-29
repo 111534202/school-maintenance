@@ -66,9 +66,10 @@ return [
         'campus' => '校區',
         'building' => '大樓',
         'floor' => '樓層',
-        'room_code' => '教室代碼',
-        'room_name' => '教室名稱',
-        'room_type' => '教室類型',
+        'classroom_code' => '教室代碼',
+        'name' => '教室名稱',
+        'type' => '教室類型',
+
     ],
 
     // 操作成功後顯示的綠色訊息。
