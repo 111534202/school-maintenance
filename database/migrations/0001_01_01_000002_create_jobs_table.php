@@ -4,6 +4,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Laravel 內建的 migration：建立「背景工作佇列」用的資料表（jobs、job_batches、failed_jobs）。
+// 本系統目前沒有使用背景佇列（寄信是直接寫進日誌），所以這幾張表是空的；一般開發不需要修改這個檔案。
+// （migration 的基本觀念見 0001_01_01_000000_create_users_table.php 檔頭。）
 return new class extends Migration
 {
     /**

@@ -1,3 +1,5 @@
+/* Tailwind CSS 的設定入口（由 Vite 編譯）。目前網站實際使用的是 Bootstrap（版面從 CDN 載入），所以這個檔案目前沒有被頁面使用，見 resources/js/app.js 的說明。 */
+/* @source 告訴 Tailwind 要掃描哪些檔案裡用到的 class；@theme 定義預設字型。 */
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

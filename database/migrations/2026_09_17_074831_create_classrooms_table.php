@@ -4,11 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// 建立 classrooms（教室）資料表。
+// （migration 的基本觀念見 0001_01_01_000000_create_users_table.php 檔頭。）
 return new class extends Migration
 {
+    // 套用變更：建立 classrooms 資料表。
     public function up(): void
     {
         Schema::create('classrooms', function (Blueprint $table) {
+            // 主鍵 id（自動遞增）。
             $table->id();
             $table->string('campus');          // 校區
             $table->string('building');        // 大樓
@@ -22,12 +26,15 @@ return new class extends Migration
             // 空間借用狀態：normal=正常開放, abnormal=設備異常暫停外借
             // 這個欄位是跟劉家芸的空間預約模組的串接點，命名跟型別已先定案，異動要先告知她
             $table->enum('reservation_status', ['normal', 'abnormal'])->default('normal');
+            // 自動維護的建立時間與更新時間。
             $table->timestamps();
         });
     }
 
+    // 還原變更：刪除 classrooms 資料表。
     public function down(): void
     {
+        // down()：還原時刪除這張表。
         Schema::dropIfExists('classrooms');
     }
 };
