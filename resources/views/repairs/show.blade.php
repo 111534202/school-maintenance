@@ -1,4 +1,4 @@
-{{-- 報修單詳細頁（對應 RepairRequestController::show）：左欄是設備資料；右欄上方是故障描述與附件、下方是「依目前狀態、依你的權限」才出現的派工與處理；最下面是維修紀錄與材料費明細。 --}}
+{{-- 報修單詳細頁（對應 RepairRequestController::show）：左欄是設備資料、故障描述與附件；右欄是「依目前狀態、依你的權限」才出現的派工與處理；最下面是維修紀錄與材料費明細。 --}}
 {{-- 案件狀態流程：新報修 → 已派工 → 處理中 → 待驗收 → 已結案（驗收不通過會退回處理中），規則在 App\Services\RepairRequestWorkflow。 --}}
 {{-- （Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 {{-- 套用主版面。 --}}
@@ -54,11 +54,12 @@
             title="{{ __('repair_requests.show.back_to_board') }}" aria-label="{{ __('repair_requests.show.back_to_board') }}"><i class="bi bi-arrow-left"></i></a>
     </div>
 
-    {{-- 版面：寬螢幕（992px 以上）左欄是設備資料，右欄上面是故障描述、下面是派工與處理；
+    {{-- 版面：寬螢幕（992px 以上）左欄是設備資料與故障描述，右欄是派工與處理；
          窄螢幕改成直式，依序是設備資料 → 故障描述 → 派工與處理。維修紀錄與材料費明細放在最下面、佔滿整列。 --}}
     <div class="row g-3 mb-3 align-items-start">
-        {{-- 左欄：設備資料（設備、地點、影響程度、維修人員、送出時間），以及最近一次驗收退回原因。 --}}
-        <div class="col-12 col-lg-5">
+        {{-- 左欄：設備資料（設備、地點、影響程度、維修人員、送出時間）、最近一次驗收退回原因、故障描述與附件。
+             沒有可做的操作時（例如已結案、或你沒有權限）不顯示右欄，左欄佔滿整列。 --}}
+        <div class="col-12 {{ $hasActions ? 'col-lg-7' : '' }}">
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     {{-- dl / dt / dd 是 HTML 的「名稱／內容」清單：dt 欄位名稱、dd 內容，Bootstrap 排成左右兩欄。 --}}
@@ -103,10 +104,7 @@
                     <div><strong>{{ __('repair_requests.show.last_rejection_reason_prefix') }}</strong>{{ $repairRequest->rejection_reason }}</div>
                 </div>
             @endif
-        </div>
 
-        {{-- 右欄：上方故障描述（含附件），下方派工與處理（依目前狀態、依你的權限才出現）。 --}}
-        <div class="col-12 col-lg-7">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white"><i class="bi bi-chat-left-text me-2"></i>{{ __('repair_requests.show.description_heading') }}</div>
                 <div class="card-body" style="white-space: pre-line;">{{ $repairRequest->description }}</div>
@@ -123,9 +121,11 @@
                     </ul>
                 </div>
             @endif
+        </div>
 
-            {{-- 沒有任何可做的操作時（例如已結案、或你沒有權限），不顯示派工與處理區塊。 --}}
-            @if ($hasActions)
+        {{-- 右欄：派工與處理（依目前狀態、依你的權限才出現）。 --}}
+        @if ($hasActions)
+        <div class="col-12 col-lg-5">
                 <div class="card shadow-sm">
                     <div class="card-header bg-white"><i class="bi bi-person-gear me-2"></i>派工與處理</div>
                     <div class="card-body">
@@ -222,8 +222,8 @@
                         @endif
                     </div>
                 </div>
-            @endif
         </div>
+        @endif
     </div>
 
         {{-- 有維修紀錄才顯示；驗收退回重修後會有多筆，這裡逐筆列出完整的處理過程。 --}}
