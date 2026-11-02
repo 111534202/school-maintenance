@@ -34,18 +34,18 @@
         <div class="table-responsive">
             {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
             {{-- 點這一行的任何地方都會進入零件履歷（也可以用 Tab 移到該行後按 Enter）。 --}}
-            {{-- 欄寬依內容自動調整（table-fit），不拉滿整個畫面。 --}}
+            {{-- 欄寬：標了 fit 的欄位只佔內容需要的寬度，剩下的空間都給「品牌／型號」。 --}}
             <table class="table table-bordered table-hover bg-white align-middle part-rows table-fit" data-onion-primary="1,2">
                 <thead class="table-light">
                     <tr>
-                        <th class="text-nowrap">零件編號</th>
-                        <th>名稱</th>
-                        <th>規格</th>
+                        <th class="fit">零件編號</th>
+                        <th class="fit">名稱</th>
+                        <th class="fit">規格</th>
                         <th>品牌／型號</th>
-                        <th class="text-end text-nowrap">平均單價</th>
-                        <th class="text-end text-nowrap">目前庫存</th>
-                        <th class="text-end text-nowrap">安全庫存</th>
-                        <th class="text-center">其他</th>
+                        <th class="fit text-end">平均單價</th>
+                        <th class="fit text-end">目前庫存</th>
+                        <th class="fit text-end">安全庫存</th>
+                        <th class="fit text-center">其他</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -129,8 +129,8 @@
 
     <style>
         .part-row { cursor: pointer; }
-        /* 桌面寬度：表格寬度跟著內容，每欄只佔需要的寬度；手機版仍由 onion 版面改成卡片式。 */
-        @media (min-width: 768px) { .table-fit { width: auto; } }
+        /* 桌面寬度：fit 欄位縮到剛好放得下內容，表格仍拉滿畫面，多出的寬度由「品牌／型號」吃掉；手機版仍由 onion 版面改成卡片式。 */
+        @media (min-width: 768px) { .table-fit th.fit { width: 1%; white-space: nowrap; } }
         .part-row:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
     </style>
     <script>
