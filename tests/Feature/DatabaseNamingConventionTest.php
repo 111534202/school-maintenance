@@ -35,7 +35,8 @@ class DatabaseNamingConventionTest extends TestCase
 
     // 例外：<名詞>_name 只能用在「沒有自己資料表的另一個東西」的名稱，目前只有預約的班級名稱。其他地方的稱呼一律叫 name。
     // attachments.file_name：附件記錄的就是一個檔案，檔名和 file_path（路徑）成對，沿用規格書名稱。
-    private const NAMED_THING_EXCEPTIONS = ['classroom_reservations.class_name', 'attachments.file_name'];
+    // part_purchases.vendor_name：廠商沒有自己的資料表，名稱直接存在採購紀錄上（和 class_name 同一種情況）。
+    private const NAMED_THING_EXCEPTIONS = ['classroom_reservations.class_name', 'attachments.file_name', 'part_purchases.vendor_name'];
 
     // 例外：<名詞>_code 的名詞不是自己這張表的實體，而是這個實體身上「另一種編號」所屬的東西（資產編號 asset_code）。
     private const OTHER_CODE_EXCEPTIONS = ['devices.asset_code'];

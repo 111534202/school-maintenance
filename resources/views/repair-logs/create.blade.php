@@ -138,7 +138,7 @@
                                             <option
                                                 value="{{ $part->id }}"
                                                 @selected((string) data_get($usage, 'part_id') === (string) $part->id)>
-                                                {{ $part->name }}
+                                                {{ $part->part_code }} {{ $part->name }}
                                                 @if ($part->specification)
                                                     （{{ $part->specification }}）
                                                 @endif

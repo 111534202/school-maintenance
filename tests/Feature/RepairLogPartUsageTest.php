@@ -122,8 +122,7 @@ class RepairLogPartUsageTest extends TestCase
         $repairRequest = $this->makeInProgressRequest();
         $part = $this->makePart(10);
 
-        // 記錄維修時，零件單價為 150 元。
-        $part->update(['unit_price' => 150]);
+        // 記錄維修時，零件只有一批期初庫存，單價 150 元（makePart 建立）。
 
         $response = $this->post(
             route('repair-logs.store', $repairRequest),
@@ -147,10 +146,12 @@ class RepairLogPartUsageTest extends TestCase
         // 明細應保存使用當下的單價，而不是只依賴零件目前的價格。
         $this->assertSame(150, (int) $usage->unit_price);
 
-        // 即使零件目前價格變成 200 元，舊維修用料明細仍應是 150 元。
-        $part->update(['unit_price' => 200]);
+        // 之後用 200 元進貨新的一批，舊維修用料明細仍應是 150 元。
+        app(\App\Services\PartStockService::class)->receive($part, [
+            'purchase_date' => now()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 5, 'unit_price' => 200, 'note' => null,
+        ]);
 
-        $this->assertSame(200, (int) $part->fresh()->unit_price);
+        $this->assertSame(200, (int) $part->purchases()->latest('id')->value('unit_price'));
         $this->assertSame(150, (int) $usage->fresh()->unit_price);
     }
 

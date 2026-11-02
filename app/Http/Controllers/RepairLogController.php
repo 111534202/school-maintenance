@@ -8,6 +8,7 @@ use App\Models\Part;
 use App\Models\RepairRequest;
 use App\Services\AttachmentUploader;
 use App\Services\AuditLogger;
+use App\Services\PartStockService;
 use App\Services\RepairRequestWorkflow;
 use Carbon\Carbon;
 use DomainException;
@@ -142,23 +143,21 @@ class RepairLogController extends Controller
                         ]);
                     }
 
-                    if ($part->current_stock < $quantity) {
+                    // 依先進先出扣庫存：先用最早買進的批次，跨批次時一批建立一列用料明細。
+                    try {
+                        $allocations = app(PartStockService::class)->consume($part, $quantity);
+                    } catch (DomainException $exception) {
                         throw ValidationException::withMessages([
-                            "part_usages.{$index}.quantity" =>
-                                "零件「{$part->name}」庫存不足，目前庫存 {$part->current_stock}，需要 {$quantity}。",
+                            "part_usages.{$index}.quantity" => $exception->getMessage(),
                         ]);
                     }
 
-                    // 建立使用明細。
-                    $repairLog->partUsages()->create([
-                        'part_id' => $part->id,
-                        'quantity' => $quantity,
-                        'unit_price' => $part->unit_price,
-                    ]);
-
-                    // 扣除庫存。
-                    $part->current_stock -= $quantity;
-                    $part->save();
+                    foreach ($allocations as $allocation) {
+                        $repairLog->partUsages()->create([
+                            'part_id' => $part->id,
+                            ...$allocation,
+                        ]);
+                    }
                 }
 
                 // 附件仍交由既有服務處理。

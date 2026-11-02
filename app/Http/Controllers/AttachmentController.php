@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attachment;                   // 附件資料表模型
+use App\Models\PartPurchase;                 // 零件採購紀錄（發票附件）
 use App\Models\RepairLog;                    // 維修紀錄資料表模型
 use App\Models\RepairRequest;                // 報修單資料表模型
 use Illuminate\Support\Facades\Gate;         // 權限判斷：Gate::authorize 不通過就直接回 403
@@ -26,6 +27,14 @@ class AttachmentController extends Controller
     {
         // 找出這個附件最終屬於哪一張報修單：直接掛在報修單上的就是它；掛在維修紀錄上的，看維修紀錄所屬的報修單。
         $owner = $attachment->attachable;
+
+        // 零件採購的發票：和零件庫存同一個權限（parts.manage），不屬於任何報修單。
+        if ($owner instanceof PartPurchase) {
+            Gate::authorize('parts.manage');
+
+            return $this->output($attachment);
+        }
+
         $repairRequest = $owner instanceof RepairLog ? $owner->repairRequest : $owner;
 
         // 找不到所屬的報修單（資料異常）就當作不存在，不要冒險輸出。
@@ -34,6 +43,12 @@ class AttachmentController extends Controller
         // 沒有權限看這張報修單 → 403。
         Gate::authorize('view', $repairRequest);
 
+        return $this->output($attachment);
+    }
+
+    /** 把附件檔案輸出給瀏覽器（報修附件與零件發票共用）。 */
+    private function output(Attachment $attachment)
+    {
         // 檔案在哪個磁碟；兩個磁碟都找不到（檔案被移走或遺失）→ 404。
         $disk = $attachment->storageDisk();
         abort_if($disk === null, 404);

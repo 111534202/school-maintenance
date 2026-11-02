@@ -1,90 +1,70 @@
-
 @extends('layouts.app')
 
-@section('title', '零件列表')
+@section('title', '零件庫存列表')
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="mb-0">零件列表</h3>
-        <a href="{{ route('parts.create') }}" class="btn btn-primary">
-            新增零件
-        </a>
+        <h1 class="h3 mb-0">零件庫存列表</h1>
+        <a href="{{ route('parts.create') }}" class="btn btn-primary">新增零件</a>
     </div>
 
-    <div class="card p-3 mb-3">
-        <form method="GET" action="{{ route('parts.index') }}" class="d-flex flex-wrap gap-2">
-            <input
-                type="text"
-                name="search"
-                class="form-control"
-                style="max-width: 360px;"
-                value="{{ request('search') }}"
-                placeholder="搜尋零件名稱"
-            >
-            <button type="submit" class="btn btn-outline-primary">搜尋</button>
-            <a href="{{ route('parts.index') }}" class="btn btn-outline-secondary">清除</a>
-        </form>
-    </div>
+    <form method="GET" action="{{ route('parts.index') }}" class="row row-cols-1 row-cols-sm-2 row-cols-md-auto g-2 align-items-end bg-white p-3 rounded shadow-sm mb-3">
+        <div class="col">
+            <label for="keyword" class="form-label small mb-1">搜尋（零件編號／名稱／規格／品牌／型號）</label>
+            <input type="text" name="keyword" id="keyword" class="form-control form-control-sm" style="min-width: 280px;"
+                value="{{ request('keyword') }}" placeholder="例如 PART-1 或 HDMI">
+        </div>
+        <div class="col">
+            <button type="submit" class="btn btn-sm btn-primary">搜尋</button>
+            <a href="{{ route('parts.index') }}" class="btn btn-sm btn-outline-secondary">清除</a>
+        </div>
+    </form>
 
     @if ($parts->isEmpty())
         <div class="alert alert-info">
-            目前沒有零件資料。
+            {{ request()->filled('keyword') ? '找不到符合的零件。' : '目前沒有零件資料。' }}
         </div>
     @else
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle mb-0" data-onion-primary="1,4">
-                    <thead class="table-light">
+        <div class="table-responsive">
+            {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
+            <table class="table table-bordered table-hover bg-white align-middle" data-onion-primary="1,2">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-nowrap">零件編號</th>
+                        <th>名稱</th>
+                        <th>規格</th>
+                        <th>品牌／型號</th>
+                        <th class="text-end text-nowrap">平均單價</th>
+                        <th class="text-end text-nowrap">目前庫存</th>
+                        <th class="text-end text-nowrap">安全庫存</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($parts as $part)
+                        @php($average = $part->averageUnitPrice())
                         <tr>
-                            <th>編號</th>
-                            <th>零件名稱</th>
-                            <th>規格</th>
-                            <th>單價</th>
-                            <th>目前庫存</th>
-                            <th>安全庫存</th>
-                            <th>操作</th>
+                            <td class="text-nowrap"><a href="{{ route('parts.show', $part) }}">{{ $part->part_code }}</a></td>
+                            <td><a href="{{ route('parts.show', $part) }}" class="text-decoration-none">{{ $part->name }}</a></td>
+                            <td>{{ $part->specification ?? '—' }}</td>
+                            <td>{{ $part->brandModel() ?? '—' }}</td>
+                            <td class="text-end text-nowrap">{{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}</td>
+                            <td class="text-end text-nowrap">
+                                {{ $part->current_stock }}
+                                @if ($part->isLowStock())
+                                    <span class="badge text-bg-danger">⚠ 低庫存</span>
+                                @endif
+                            </td>
+                            <td class="text-end">{{ $part->safety_stock }}</td>
+                            <td class="text-end text-nowrap">
+                                <a href="{{ route('parts.show', $part) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($parts as $part)
-                            <tr>
-                                <td>{{ $part->id }}</td>
-                                <td>{{ $part->name }}</td>
-                                <td>{{ $part->specification ?? '—' }}</td>
-                                <td>{{ $part->unit_price }}</td>
-                                <td>
-                                    {{ $part->current_stock }}
-
-                                    @if ($part->current_stock < $part->safety_stock)
-                                        <span class="badge text-bg-danger">⚠ 低庫存</span>
-                                    @endif
-                                </td>
-                                <td>{{ $part->safety_stock }}</td>
-                                <td>
-                                    <div class="d-flex gap-2">
-                                        <a
-                                            href="{{ route('parts.edit', $part) }}"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >修改</a>
-
-                                        <form
-                                            method="POST"
-                                            action="{{ route('parts.destroy', $part) }}"
-                                            onsubmit="return confirm('確定要刪除這個零件嗎？');"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                刪除
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
+
+        {{ $parts->links() }}
     @endif
 @endsection

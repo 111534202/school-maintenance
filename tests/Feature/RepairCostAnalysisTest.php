@@ -80,8 +80,10 @@ class RepairCostAnalysisTest extends TestCase
             150
         );
 
-        // 模擬備品目前單價已變更，但歷史用料明細不得跟著改變。
-        $usage->part->update(['unit_price' => 200]);
+        // 模擬之後用 200 元進貨新的一批，但歷史用料明細不得跟著改變。
+        app(\App\Services\PartStockService::class)->receive($usage->part, [
+            'purchase_date' => now()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 5, 'unit_price' => 200, 'note' => null,
+        ]);
 
         $response = $this->get(route('repair-cost-analysis.index'));
 

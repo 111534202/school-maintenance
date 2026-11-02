@@ -39,6 +39,7 @@ use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
 use App\Http\Controllers\PartController;
+use App\Http\Controllers\PartPurchaseController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RepairCostAnalysisController;
@@ -223,9 +224,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // 零件庫存：需要 parts.manage 權限（身分主檔勾選；設備管理員預設有）。
+    // parts.show 是零件履歷；採購紀錄掛在零件底下（新增採購會增加庫存），權限相同。
     Route::middleware('can:parts.manage')->group(function () {
-        Route::resource('parts', PartController::class)
-            ->except(['show']);
+        Route::resource('parts', PartController::class);
+        Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
