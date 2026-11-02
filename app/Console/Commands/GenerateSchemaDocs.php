@@ -51,6 +51,7 @@ class GenerateSchemaDocs extends Command
         'knowledge_base' => ['自助知識庫文章', '規格書未列（工作計畫指定模組）', '符合 3NF。category 是自由文字（沒有獨立的分類表）；值很少、也沒有跨表查詢需求，若日後分類變多再拆成獨立資料表。'],
         'parts' => ['零件庫存', '規格書未列（備品庫存模組）', '符合 3NF。'],
         'classroom_reservations' => ['教室預約申請', '規格書未列（空間預約模組）', '符合 3NF。'],
+        'classroom_reservation_slots' => ['教室預約時段明細', '規格書未列（教室預約課表與多時段預約功能）', '一對多關聯明細表：每筆明細透過 classroom_reservation_id 關聯一筆預約申請；刪除預約申請時，外鍵會級聯刪除所屬時段。'],
         'ai_settings' => ['AI 預防保養參數', '規格書未列（AI 預測性維護）', '「參數名稱＋參數值」的設定表（key-value），參數會隨功能增減，所以刻意不為每個參數開一個欄位。'],
         'preventive_candidates' => ['預防保養候選', '規格書未列（AI 預測性維護）', '符合 3NF。explanation／features 是 JSON：當時評分的快照（日後改規則也要能重現當時結果），有意不拆。'],
     ];
@@ -82,6 +83,7 @@ class GenerateSchemaDocs extends Command
         'knowledge_base' => ['主檔（例外）', '', 'knowledge_base'],
         'parts' => ['主檔', '', 'parts'],
         'classroom_reservations' => ['單據', 'classroom', 'reservations'],
+        'classroom_reservation_slots' => ['關聯明細', 'classroom', 'reservation_slots'],
         'ai_settings' => ['設定', 'ai', 'settings'],
         'preventive_candidates' => ['單據', 'preventive', 'candidates'],
     ];
@@ -113,6 +115,7 @@ class GenerateSchemaDocs extends Command
         'maintenance_order_id' => '所屬保養工單', 'result' => '結果', 'executed_by' => '執行人（users.id，由登入帳號帶入）', 'executed_at' => '執行時間', 'note' => '備註（操作人員填寫）', 'ng_conversion_status' => 'NG 轉報修狀態',
         'repair_request_id' => '報修單（repair_requests.id）', 'impact_level' => '影響程度', 'is_class_affected' => '是否影響上課', 'rejection_reason' => '驗收退回原因',
         'requester_id' => '提出者（users.id）：報修人／預約申請人', 'device_note' => '設備說明（手動輸入、沒有綁設備時用）', 'assigned_to' => '指派的維修人員（users.id）', 'scheduled_at' => '預計處理時間', 'location' => '地點（文字）',
+        'classroom_reservation_id' => '所屬預約申請（classroom_reservations.id）', 'period_no' => '課表節次（可為空）',
         'cause' => '故障原因', 'resolution' => '處置方式', 'parts_used_note' => '使用備品說明（文字備註）', 'started_at' => '起始時間', 'ended_at' => '結束時間', 'total_hours' => '總工時（系統計算）',
         'attachable_type' => '附件所屬資料類型（多型）', 'attachable_id' => '附件所屬資料編號（多型）', 'file_path' => '檔案儲存路徑（私有磁碟）', 'file_name' => '原始檔名（使用者上傳時的檔名）', 'mime_type' => '檔案類型', 'size_bytes' => '檔案大小（位元組）',
         'user_id' => '操作人（users.id）', 'action' => '操作動作', 'loggable_type' => '被操作資料類型（多型）', 'loggable_id' => '被操作資料編號（多型）', 'changes' => '變更內容（JSON 快照）',

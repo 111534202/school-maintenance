@@ -18,6 +18,15 @@ class PermissionEnforcementTest extends TestCase
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
+    // 每個測試都使用繁體中文，讓畫面文字驗證與預期一致。
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['app.locale' => 'zh_TW']);
+        app()->setLocale('zh_TW');
+    }
+
     // 輔助方法：建立一張指定狀態的報修單。
     private function repair(string $status): RepairRequest
     {

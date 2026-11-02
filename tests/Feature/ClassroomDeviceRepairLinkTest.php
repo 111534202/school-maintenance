@@ -27,6 +27,9 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.locale' => 'zh_TW']);
+        app()->setLocale('zh_TW');
+
         $this->loginAsAnyUser();
         $this->category = DeviceCategory::create(['name' => '投影機']);
     }

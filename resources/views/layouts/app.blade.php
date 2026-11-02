@@ -19,6 +19,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {{-- Bootstrap Icons：全站按鈕統一用圖示（筆=編輯、垃圾桶=刪除…），不使用 emoji。 --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
     {{-- 以下是本站自訂的樣式，補強 Bootstrap 不足的地方。 --}}
     <style>
         /* 頁面至少和視窗一樣高。 */
@@ -171,7 +172,7 @@
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
                 {{-- 操作失敗訊息（Controller 用 ->with('error', ...) 帶過來）。 --}}
-                @if (session('error'))
+                @if (session('error') && !request()->routeIs('reservations.index'))
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
                 {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡。 --}}

@@ -138,4 +138,54 @@ class KnowledgeBaseCrudTest extends TestCase
         $response->assertRedirect(route('knowledge-base.index'));
         $this->assertDatabaseMissing('knowledge_base', ['id' => $entry->id]);
     }
+
+/**
+     * 一般使用者在知識庫列表中不應看到未發布文章。
+     */
+    public function test_regular_user_cannot_see_unpublished_entries_in_index(): void
+    {
+        $entry = KnowledgeBase::factory()->unpublished()->create([
+            'title' => '一般使用者不應看到的草稿文章',
+        ]);
+
+        $user = $this->makeUserWithPermissions([]);
+        $this->actingAs($user);
+
+        $response = $this->get(route('knowledge-base.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('一般使用者不應看到的草稿文章');
+    }
+
+    /**
+     * 一般使用者直接開啟未發布文章時應得到 404。
+     */
+    public function test_regular_user_cannot_open_unpublished_entry_directly(): void
+    {
+        $entry = KnowledgeBase::factory()->unpublished()->create([
+            'title' => '不應直接開啟的草稿文章',
+        ]);
+
+        $user = $this->makeUserWithPermissions([]);
+        $this->actingAs($user);
+
+        $response = $this->get(route('knowledge-base.show', $entry));
+
+        $response->assertNotFound();
+    }
+
+    /**
+     * 知識庫管理員仍然可以直接檢視未發布文章。
+     */
+    public function test_manager_can_view_unpublished_entry(): void
+    {
+        $entry = KnowledgeBase::factory()->unpublished()->create([
+            'title' => '管理員可檢視的草稿文章',
+        ]);
+
+        $response = $this->get(route('knowledge-base.show', $entry));
+
+        $response->assertOk();
+        $response->assertSee('管理員可檢視的草稿文章');
+    }
 }

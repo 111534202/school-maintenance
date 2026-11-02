@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class ClassroomReservation extends Model
@@ -34,7 +35,6 @@ class ClassroomReservation extends Model
         return $this->belongsTo(Classroom::class);
     }
 
-    /** 提出預約申請的人（欄位名稱和報修單一致：requester_id）。 */
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
@@ -43,5 +43,13 @@ class ClassroomReservation extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function slots(): HasMany
+    {
+        return $this->hasMany(
+            ClassroomReservationSlot::class,
+            'classroom_reservation_id'
+        )->orderBy('reservation_date')->orderBy('start_time');
     }
 }

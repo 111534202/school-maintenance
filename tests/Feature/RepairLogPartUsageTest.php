@@ -385,4 +385,35 @@ class RepairLogPartUsageTest extends TestCase
             $repairRequest->fresh()->status->value
         );
     }
+
+/**
+     * 尚未開始處理的案件，不應開放填寫維修紀錄。
+     */
+    public function test_repair_log_form_is_not_available_before_work_starts(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'assigned',
+        ]);
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertRedirect(route('repairs.show', $repairRequest));
+        $response->assertSessionHas('error');
+    }
+
+    /**
+     * 案件進入處理中後，應可以開啟維修紀錄表單。
+     */
+    public function test_repair_log_form_is_available_while_in_progress(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertOk();
+    }
 }

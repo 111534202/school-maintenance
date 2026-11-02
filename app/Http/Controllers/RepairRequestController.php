@@ -212,7 +212,14 @@ class RepairRequestController extends Controller
         Gate::authorize('view', $repairRequest);
 
         // 補查畫面要用到的關聯資料（附件、維修紀錄與其附件、設備與其類別／教室、維修人員）。
-        $repairRequest->load(['attachments', 'repairLogs.attachments', 'device.category', 'device.classroom', 'assignedTechnician']);
+        $repairRequest->load([
+            'attachments',
+            'repairLogs.attachments',
+            'repairLogs.partUsages.part',
+            'device.category',
+            'device.classroom',
+            'assignedTechnician',
+        ]);
 
         // 派工／重新指派表單要挑選真正的維修人員，不再讓主管自己打字輸入姓名。
         // 誰能被指派由身分主檔決定：身分有勾選「可被指派為維修人員」權限、且帳號啟用中的用戶。
@@ -221,7 +228,27 @@ class RepairRequestController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('repairs.show', compact('repairRequest', 'technicians'));
+        // 計算這張報修單目前已記錄的材料費。
+        $partUsages = $repairRequest->repairLogs
+            ->flatMap(fn ($log) => $log->partUsages);
+
+        $hasIncompletePrice = $partUsages->contains(
+            fn ($usage) => $usage->unit_price === null
+        );
+
+        $materialCost = $hasIncompletePrice
+            ? null
+            : $partUsages->sum(
+                fn ($usage) => $usage->quantity * $usage->unit_price
+            );
+
+        return view('repairs.show', compact(
+            'repairRequest',
+            'technicians',
+            'partUsages',
+            'materialCost',
+            'hasIncompletePrice'
+        ));
     }
 
     /**

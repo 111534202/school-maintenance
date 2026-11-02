@@ -11,7 +11,6 @@
     // 目前所在頁面是不是主檔頁面（routeIs 比對路由名稱）；是的話群組預設展開。
     $masterOpen = request()->routeIs('users.*', 'roles.*', 'departments.*', 'classrooms.*', 'device-categories.*', 'devices.*');
 @endphp
-
 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>{{ __('common.nav.dashboard') }}</a>
 
 {{-- 以下三個區塊是日常使用的功能，各有一個小標題；沒有任何可見連結的區塊整個不顯示。 --}}
@@ -30,6 +29,9 @@
         <a class="nav-link {{ request()->routeIs('maintenance-plans.*') ? 'active' : '' }}" href="{{ route('maintenance-plans.index') }}"><i class="bi bi-calendar-event me-2"></i>{{ __('common.nav.maintenance_plans') }}</a>
         <a class="nav-link {{ request()->routeIs('maintenance-orders.*') ? 'active' : '' }}" href="{{ route('maintenance-orders.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>{{ __('common.nav.maintenance_orders') }}</a>
         <a class="nav-link {{ request()->routeIs('device-profile.*') ? 'active' : '' }}" href="{{ route('device-profile.index') }}"><i class="bi bi-journal-text me-2"></i>{{ __('common.nav.device_profile') }}</a>
+        @if (Route::has('repair-cost-analysis.index'))
+            <a class="nav-link {{ request()->routeIs('repair-cost-analysis.*') ? 'active' : '' }}" href="{{ route('repair-cost-analysis.index') }}"><i class="bi bi-cash-stack me-2"></i>第一版成本分析</a>
+        @endif
     @endcan
     @can('ai-maintenance.manage')
         <a class="nav-link {{ request()->routeIs('preventive-candidates.*', 'ai-settings.*') ? 'active' : '' }}" href="{{ route('preventive-candidates.index') }}"><i class="bi bi-robot me-2"></i>{{ __('common.nav.preventive_ai') }}</a>
@@ -45,8 +47,6 @@
 
 {{-- 以下連結都依「身分主檔」勾選的權限顯示，沒有權限的人看不到，直接輸入網址也進不去（路由有 can: 保護）。 --}}
 
-{{-- 主檔：用戶、身分、部門、教室、設備類別、設備全部收進同一個可展開的群組。 --}}
-{{-- @canany：只要有其中任何一個權限就顯示（整個「主檔」群組）。 --}}
 @canany($masterPermissions)
     <a class="nav-link nav-group-toggle d-flex justify-content-between align-items-center {{ $masterOpen ? '' : 'collapsed' }}"
         {{-- 點這個連結會展開／收合 href 指向的區塊（Bootstrap 的 collapse 功能）。 --}}

@@ -24,6 +24,10 @@ class RoleManagementTest extends TestCase
     {
         parent::setUp();
 
+        // 每個測試都使用繁體中文，確保畫面文字驗證一致。
+        config(['app.locale' => 'zh_TW']);
+        app()->setLocale('zh_TW');
+
         $this->admin = $this->loginAsAnyUser();
     }
 

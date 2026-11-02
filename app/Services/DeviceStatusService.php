@@ -13,9 +13,9 @@ use InvalidArgumentException;            // 「傳入了不合理的參數」例
  * - 設備狀態只能是 Device::STATUSES 列出的四種值，其他模組（報修/保養）
  *   要改狀態一律呼叫 updateStatus()，不要自己組字串寫欄位。
  * - 核心設備（is_core）故障時，會自動把所在教室的 classrooms.reservation_status
- *   設為 abnormal（警示用途，本身不會阻擋預約），故障排除後自動改回 normal。
- *   這只更新 classrooms 自己的欄位，不會去動 reservations 資料，實際要不要因此
- *   擋預約是劉家芸模組的邏輯，這裡只保證她讀得到正確、即時的異常旗標。
+ *   設為 abnormal，故障排除後依目前核心設備狀態重新計算，必要時改回 normal。
+ * - 教室異常旗標由本服務維護；預約模組會阻擋異常教室的新增預約及待審核預約核准。
+ *   本服務只更新教室的異常旗標，不直接修改 reservations 資料。
  *
  * 方法前面的 static 代表「不用先建立物件，直接寫 DeviceStatusService::updateStatus(...) 就能呼叫」。
  */

@@ -15,8 +15,8 @@
         ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->name ?? $repairRequest->device->classroom->classroom_code ?? '') . '）')
         : ($repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled'));
 
-    // 維修人員欄要顯示的文字：優先用真實用戶姓名，其次文字備註，最後顯示「未指派」。
-    $assigneeDisplay = $repairRequest->assignedTechnician->name ?? __('repair_requests.unassigned');
+    // 維修人員欄只顯示 assigned_to 關聯的真實使用者姓名。
+    $assigneeDisplay = $repairRequest->assignedTechnician?->name ?? __('repair_requests.unassigned');
 
     // 目前的案件狀態（RepairRequestStatus 列舉）。
     $status = $repairRequest->status;
@@ -119,9 +119,13 @@
                 @foreach ($repairRequest->repairLogs as $log)
                     <div class="card shadow-sm mb-3">
                         <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
-                            <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                            <div>
+                                <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
+                                <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                            </div>
                             <span class="text-muted">{{ __('repair_requests.show.total_hours_suffix', ['hours' => $log->total_hours]) }}</span>
                         </div>
+
                         <div class="card-body">
                             <dl class="row mb-0 gy-2">
                                 {{-- 每筆維修紀錄依序顯示：故障原因、處置方式，有填才顯示的使用備品與附件。 --}}
@@ -153,6 +157,68 @@
                     </div>
                 @endforeach
             @endif
+        </div>
+
+        {{-- 材料費明細：彙總這張報修單所有維修紀錄的零件使用情況。 --}}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">材料費明細</h5>
+            </div>
+            <div class="card-body">
+                @if ($partUsages->isEmpty())
+                    <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle mb-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>零件名稱</th>
+                                    <th>維修紀錄</th>
+                                    <th class="text-end">數量</th>
+                                    <th class="text-end">單價</th>
+                                    <th class="text-end">小計</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($repairRequest->repairLogs as $log)
+                                    @foreach ($log->partUsages as $usage)
+                                        <tr>
+                                            <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
+                                            <td>#{{ $log->id }}</td>
+                                            <td class="text-end">{{ $usage->quantity }}</td>
+                                            <td class="text-end">
+                                                @if ($usage->unit_price === null)
+                                                    <span class="text-danger">缺少單價</span>
+                                                @else
+                                                    NT$ {{ number_format($usage->unit_price) }}
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                @if ($usage->unit_price === null)
+                                                    —
+                                                @else
+                                                    NT$ {{ number_format($usage->quantity * $usage->unit_price) }}
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if ($hasIncompletePrice)
+                        <div class="alert alert-warning mb-0">
+                            部分零件缺少歷史單價，目前無法提供完整的材料費總額。
+                        </div>
+                    @else
+                        <div class="text-end">
+                            <span class="text-muted me-2">目前記錄的材料費總額</span>
+                            <strong class="fs-5">NT$ {{ number_format($materialCost) }}</strong>
+                        </div>
+                    @endif
+                @endif
+            </div>
         </div>
 
         {{-- 右欄：依目前狀態顯示可以做的操作 --}}
