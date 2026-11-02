@@ -84,12 +84,16 @@
         <div class="container-fluid flex-nowrap gap-2">
             @auth
                 {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
-                <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                {{-- 寬螢幕（1200px 以上）選單直接放在上方列（top-nav），漢堡按鈕只在比較窄的螢幕出現。 --}}
+                <button class="btn btn-outline-light btn-sm flex-shrink-0 d-xl-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
-            <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            @auth
+                @include('layouts.partials.top-nav')
+            @endauth
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
                      .env 的 APP_LOCALE_SWITCHER 設成 true 就好，翻譯與切換功能都還在）。 --}}

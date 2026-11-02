@@ -48,6 +48,15 @@ body.tb-body {
 .tb-navbar { background-color: var(--tb-accent); }
 .tb-navbar .navbar-brand { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.04em; }
 
+/* 上方列的選單（寬螢幕）：淡綠白字，目前所在的區塊半透明白底。 */
+.tb-topnav .nav-link { color: #DDEBE3; padding: 0.5rem 0.85rem !important; border-radius: 10px; font-size: 0.95rem; white-space: nowrap; }
+.tb-topnav .nav-link:hover, .tb-topnav .nav-link:focus-visible, .tb-topnav .nav-link.show { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.1); }
+.tb-topnav .nav-link.active { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.18); font-weight: 700; }
+/* 導覽列沒有用 navbar-expand，Bootstrap 預設會讓下拉選單撐開導覽列（position: static），這裡改回浮在下方。 */
+.tb-topnav .dropdown-menu { position: absolute; margin-top: 6px; border: 1px solid var(--tb-border); padding: 6px; }
+.tb-topnav .dropdown-item { border-radius: 8px; padding: 8px 12px; }
+.tb-navbar { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+
 /* 側邊選單：目前所在頁面改成墨綠底。 */
 .tb-body .offcanvas .nav-link.active { background-color: var(--tb-accent); color: #FFFFFF; }
 .tb-body .offcanvas .nav-link:not(.active):hover { background-color: var(--tb-accent-faint); color: var(--tb-accent-dark); }
@@ -97,7 +106,7 @@ body.tb-body {
 /* 其他會用到主色的 Bootstrap 元件。 */
 .tb-body .pagination { --bs-pagination-color: #2F6B4F; --bs-pagination-hover-color: #214D39; --bs-pagination-active-bg: #2F6B4F; --bs-pagination-active-border-color: #2F6B4F; --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(47, 107, 79, 0.2); }
 .tb-body .nav-pills { --bs-nav-pills-link-active-bg: #2F6B4F; }
-.tb-body .nav-link { --bs-nav-link-color: #2F6B4F; --bs-nav-link-hover-color: #214D39; }
+.tb-body .app-content .nav-link { --bs-nav-link-color: #2F6B4F; --bs-nav-link-hover-color: #214D39; }
 .tb-body .list-group { --bs-list-group-active-bg: #2F6B4F; --bs-list-group-active-border-color: #2F6B4F; }
 .tb-body .dropdown-menu { --bs-dropdown-link-active-bg: #2F6B4F; --bs-dropdown-border-radius: 12px; }
 .tb-body .progress, .tb-body .progress-stacked { --bs-progress-bar-bg: #2F6B4F; }
