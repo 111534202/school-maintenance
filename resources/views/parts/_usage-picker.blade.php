@@ -13,6 +13,7 @@
         'label' => $part->part_code . ' ' . $part->name . ($part->specification ? '（' . $part->specification . '）' : ''),
         'search' => mb_strtolower(implode(' ', array_filter([$part->part_code, $part->name, $part->specification, $part->brand, $part->model]))),
         'stock' => (int) $part->current_stock,
+        'unit' => (string) $part->unit,
     ])->values();
 
     // 送出失敗時，把剛才填的列與錯誤訊息帶回畫面（索引要和錯誤訊息的 key 對得上）。
@@ -146,10 +147,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     note.textContent = '已在其他列選擇';
                 } else if (part.stock <= 0) {
                     item.disabled = true;
-                    note.textContent = '庫存：0';
+                    note.textContent = '庫存：0 ' + part.unit;
                 } else {
                     note.className += ' text-muted';
-                    note.textContent = '庫存：' + part.stock;
+                    note.textContent = '庫存：' + part.stock + ' ' + part.unit;
                 }
 
                 item.append(name, note);

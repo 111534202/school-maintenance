@@ -204,6 +204,7 @@ class PartController extends Controller
             'specification' => ['nullable', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],
+            'unit' => ['required', 'string', 'max:10'],
             'safety_stock' => ['required', 'integer', 'min:0'],
         ];
     }

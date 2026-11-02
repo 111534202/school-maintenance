@@ -28,10 +28,24 @@
     </div>
 </div>
 
-<div class="mb-3">
-    <label for="safety_stock" class="form-label">安全庫存 <span class="text-danger">*</span></label>
-    <input type="number" id="safety_stock" name="safety_stock" min="0" required
-        class="form-control @error('safety_stock') is-invalid @enderror" value="{{ old('safety_stock', $part?->safety_stock ?? 0) }}">
-    <div class="form-text">目前庫存低於這個數字時，列表會顯示「低庫存」。</div>
-    @error('safety_stock')<div class="invalid-feedback">{{ $message }}</div>@enderror
+<div class="row g-3 mb-3">
+    <div class="col-sm-6">
+        <label for="unit" class="form-label">單位 <span class="text-danger">*</span></label>
+        {{-- 可以直接從常用單位選，也可以自己輸入。 --}}
+        <input type="text" id="unit" name="unit" maxlength="10" required list="unitOptions" placeholder="例如 條、個"
+            class="form-control @error('unit') is-invalid @enderror" value="{{ old('unit', $part?->unit) }}">
+        <datalist id="unitOptions">
+            @foreach (['個', '條', '片', '顆', '組', '台', '支', '捲', '盒', '包'] as $unitOption)
+                <option value="{{ $unitOption }}">
+            @endforeach
+        </datalist>
+        @error('unit')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-sm-6">
+        <label for="safety_stock" class="form-label">安全庫存 <span class="text-danger">*</span></label>
+        <input type="number" id="safety_stock" name="safety_stock" min="0" required
+            class="form-control @error('safety_stock') is-invalid @enderror" value="{{ old('safety_stock', $part?->safety_stock ?? 0) }}">
+        @error('safety_stock')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
 </div>
+<div class="form-text mt-n2 mb-3">目前庫存低於安全庫存時，列表會顯示「低庫存」。</div>

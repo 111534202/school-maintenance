@@ -27,6 +27,7 @@ class Part extends Model
         'specification',
         'brand',
         'model',
+        'unit',            // 單位：條、個、片…
         'current_stock',
         'safety_stock',
         'unit_price',
@@ -105,6 +106,12 @@ class Part extends Model
         $text = implode('／', array_filter([$this->brand, $this->model]));
 
         return $text === '' ? null : $text;
+    }
+
+    /** 數量加上單位，例如「14 條」；沒有單位時只顯示數字。 */
+    public function withUnit(int|float $quantity): string
+    {
+        return trim($quantity . ' ' . ($this->unit ?? ''));
     }
 
     public function isLowStock(): bool

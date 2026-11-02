@@ -50,12 +50,12 @@
                             <td>{{ $part->brandModel() ?? '—' }}</td>
                             <td class="text-end text-nowrap">{{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}</td>
                             <td class="text-end text-nowrap">
-                                {{ $part->current_stock }}
+                                {{ $part->withUnit($part->current_stock) }}
                                 @if ($part->isLowStock())
                                     <span class="badge text-bg-danger">⚠ 低庫存</span>
                                 @endif
                             </td>
-                            <td class="text-end">{{ $part->safety_stock }}</td>
+                            <td class="text-end text-nowrap">{{ $part->withUnit($part->safety_stock) }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('parts.show', $part) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>
                             </td>

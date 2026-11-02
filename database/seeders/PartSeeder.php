@@ -19,6 +19,7 @@ class PartSeeder extends Seeder
             'specification' => '2公尺',
             'brand' => 'Cable Master',
             'model' => 'HD-2M',
+            'unit' => '條',
             'current_stock' => 0,   // 庫存由下面三筆採購建立
             'safety_stock' => 3,
         ]);
@@ -28,6 +29,7 @@ class PartSeeder extends Seeder
             'specification' => '5公尺',
             'brand' => 'Cable Master',
             'model' => 'HD-5M',
+            'unit' => '條',
             'unit_price' => 280,
             'current_stock' => 4,
             'safety_stock' => 2,
@@ -38,6 +40,7 @@ class PartSeeder extends Seeder
             'specification' => '1公尺',
             'brand' => 'Anker',
             'model' => 'A8552',
+            'unit' => '條',
             'unit_price' => 120,
             'current_stock' => 20,
             'safety_stock' => 5,
@@ -48,6 +51,7 @@ class PartSeeder extends Seeder
             'specification' => 'Cat6 3公尺',
             'brand' => 'D-Link',
             'model' => 'NCB-C6UGRYR-3',
+            'unit' => '條',
             'unit_price' => 100,
             'current_stock' => 2,
             'safety_stock' => 5,

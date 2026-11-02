@@ -36,16 +36,19 @@
                 <dt class="col-sm-3">品牌／型號</dt>
                 <dd class="col-sm-9">{{ $part->brandModel() ?? '—' }}</dd>
 
+                <dt class="col-sm-3">單位</dt>
+                <dd class="col-sm-9">{{ $part->unit }}</dd>
+
                 <dt class="col-sm-3">目前庫存</dt>
                 <dd class="col-sm-9">
-                    {{ $part->current_stock }}
+                    {{ $part->withUnit($part->current_stock) }}
                     @if ($part->isLowStock())
                         <span class="badge text-bg-danger">⚠ 低庫存</span>
                     @endif
                 </dd>
 
                 <dt class="col-sm-3">安全庫存</dt>
-                <dd class="col-sm-9">{{ $part->safety_stock }}</dd>
+                <dd class="col-sm-9">{{ $part->withUnit($part->safety_stock) }}</dd>
 
                 <dt class="col-sm-3">平均單價</dt>
                 <dd class="col-sm-9">
@@ -175,7 +178,7 @@
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>使用紀錄</span>
-            <span class="text-muted small">共使用 {{ $usages->sum('quantity') }} 個</span>
+            <span class="text-muted small">共使用 {{ $part->withUnit($usages->sum('quantity')) }}</span>
         </div>
         @if ($usages->isEmpty())
             <div class="card-body text-muted small">目前沒有使用紀錄。</div>

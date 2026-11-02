@@ -65,9 +65,9 @@ class PartProfileAndStockTest extends TestCase
     {
         $this->loginAsAnyUser();
 
-        $this->post(route('parts.store'), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線', 'safety_stock' => 1, 'current_stock' => 0])
+        $this->post(route('parts.store'), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
             ->assertSessionHasNoErrors();
-        $this->post(route('parts.store'), ['part_code' => '', 'name' => '網路線', 'safety_stock' => 1, 'current_stock' => 0])
+        $this->post(route('parts.store'), ['part_code' => '', 'name' => '網路線', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
             ->assertSessionHasNoErrors();
 
         $this->assertTrue(Part::where('part_code', 'HDMI-2M')->exists());
@@ -89,16 +89,16 @@ class PartProfileAndStockTest extends TestCase
         $first = $this->makePart(['part_code' => 'HDMI-2M']);
         $second = $this->makePart(['part_code' => 'NET-3M']);
 
-        $this->post(route('parts.store'), ['part_code' => 'hdmi-2m', 'name' => '重複', 'safety_stock' => 1, 'current_stock' => 0])
+        $this->post(route('parts.store'), ['part_code' => 'hdmi-2m', 'name' => '重複', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
             ->assertSessionHasErrors('part_code');
         $this->assertSame(2, Part::count());
 
-        $this->put(route('parts.update', $second), ['part_code' => 'HDMI-2M', 'name' => '網路線', 'safety_stock' => 1])
+        $this->put(route('parts.update', $second), ['part_code' => 'HDMI-2M', 'name' => '網路線', 'unit' => '條', 'safety_stock' => 1])
             ->assertSessionHasErrors('part_code');
         $this->assertSame('NET-3M', $second->fresh()->part_code);
 
         // 保留自己原本的編號不算重複。
-        $this->put(route('parts.update', $first), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線（新名稱）', 'safety_stock' => 1])
+        $this->put(route('parts.update', $first), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線（新名稱）', 'unit' => '條', 'safety_stock' => 1])
             ->assertSessionHasNoErrors();
     }
 
@@ -108,7 +108,7 @@ class PartProfileAndStockTest extends TestCase
         $part = $this->makePart();
         $this->buy($part, '2026-10-10', 2, 20);
 
-        $this->put(route('parts.update', $part), ['part_code' => 'HDMI-1M', 'name' => 'HDMI 線', 'safety_stock' => 1])
+        $this->put(route('parts.update', $part), ['part_code' => 'HDMI-1M', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
             ->assertRedirect(route('parts.show', $part));
 
         $this->assertSame('HDMI-1M', $part->fresh()->part_code);
@@ -121,9 +121,9 @@ class PartProfileAndStockTest extends TestCase
         $this->loginAsAnyUser();
         $part = $this->makePart();
 
-        $this->post(route('parts.store'), ['part_code' => 'HDMI 2M', 'name' => '空白', 'safety_stock' => 1, 'current_stock' => 0])
+        $this->post(route('parts.store'), ['part_code' => 'HDMI 2M', 'name' => '空白', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
             ->assertSessionHasErrors('part_code');
-        $this->put(route('parts.update', $part), ['part_code' => '', 'name' => 'HDMI 線', 'safety_stock' => 1])
+        $this->put(route('parts.update', $part), ['part_code' => '', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
             ->assertSessionHasErrors('part_code');
     }
 
@@ -137,6 +137,21 @@ class PartProfileAndStockTest extends TestCase
         $this->getJson(route('parts.check-code', ['code' => 'NEW-1']))->assertJson(['available' => true]);
         $this->getJson(route('parts.check-code', ['code' => 'bad code']))->assertJson(['available' => false]);
         $this->getJson(route('parts.check-code', ['code' => '']))->assertJson(['available' => true]);
+    }
+
+    public function test_unit_is_required_and_shown_with_stock_quantities(): void
+    {
+        $this->loginAsAnyUser();
+
+        $this->post(route('parts.store'), ['name' => '無單位', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasErrors('unit');
+
+        $this->post(route('parts.store'), ['name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 2, 'current_stock' => 3, 'unit_price' => 20])
+            ->assertSessionHasNoErrors();
+        $part = Part::where('name', 'HDMI 線')->firstOrFail();
+
+        $this->get(route('parts.index'))->assertSee('3 條')->assertSee('2 條');
+        $this->get(route('parts.show', $part))->assertSee('3 條');
     }
 
     // ---------- 列表與搜尋 ----------

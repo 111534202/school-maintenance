@@ -6,7 +6,7 @@
 
 @section('content')
     <h1 class="h3 mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
-    <p class="text-muted mb-3">{{ $part->displayName() }}　目前庫存 {{ $part->current_stock }}</p>
+    <p class="text-muted mb-3">{{ $part->displayName() }}　目前庫存 {{ $part->withUnit($part->current_stock) }}</p>
 
     @if ($editing && $purchase->isUsed())
         <div class="alert alert-warning">
