@@ -53,7 +53,7 @@ class GenerateSchemaDocs extends Command
         'part_purchases' => ['零件採購紀錄', '規格書未列（備品庫存模組：採購與先進先出成本）', '符合 3NF。每一筆是一個進貨批次；總價＝數量×單價，不另存。remaining_quantity 是這一批還沒被用掉的數量，先進先出扣料時遞減。發票以 attachments 多型關聯保存。'],
         'maintenance_part_usages' => ['保養零件使用明細', '規格書未列（保養用料，與維修用料同結構）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），一次用料跨兩批時拆成兩列。'],
         'classroom_reservations' => ['教室預約申請', '規格書未列（空間預約模組）', '符合 3NF。'],
-        'classroom_reservation_slots' => ['教室預約時段明細', '規格書未列（教室預約課表與多時段預約功能）', '一對多關聯明細表：每筆明細透過 classroom_reservation_id 關聯一筆預約申請；刪除預約申請時，外鍵會級聯刪除所屬時段。'],
+        'classroom_reservation_slots' => ['教室預約時段明細', '規格書未列（教室預約課表與多時段預約功能）', '一對多關聯明細表：每筆明細透過 classroom_reservation_id 關聯一筆預約申請；刪除預約申請時，外鍵會級聯刪除所屬時段。每個時段分別審核：status 為這個時段的結果（空白代表跟著整筆申請，供舊資料與未審核的申請使用），被拒絕時 rejection_reason 記錄原因。'],
         'ai_settings' => ['AI 預防保養參數', '規格書未列（AI 預測性維護）', '「參數名稱＋參數值」的設定表（key-value），參數會隨功能增減，所以刻意不為每個參數開一個欄位。'],
         'preventive_candidates' => ['預防保養候選', '規格書未列（AI 預測性維護）', '符合 3NF。explanation／features 是 JSON：當時評分的快照（日後改規則也要能重現當時結果），有意不拆。'],
     ];
@@ -145,7 +145,8 @@ class GenerateSchemaDocs extends Command
         'repair_requests.impact_level' => ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'],
         'devices.status' => ['normal' => '正常', 'repairing' => '維修中', 'retired' => '已淘汰', 'disabled' => '停用'],
         'classrooms.reservation_status' => ['normal' => '正常（可預約）', 'abnormal' => '有核心設備異常（不開放預約）'],
-        'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准', 'rejected' => '已駁回'],
+        'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准（全部時段同意）', 'rejected' => '已駁回（全部時段拒絕）', 'partially_approved' => '部分核准（有同意也有拒絕的時段）'],
+        'classroom_reservation_slots.status' => ['approved' => '同意', 'rejected' => '拒絕'],
         'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中', 'completed' => '已完成'],
         'maintenance_orders.source' => ['periodic' => '定期', 'ai' => 'AI 預防'],
         'maintenance_results.result' => ['ok' => '正常', 'ng' => '異常'],

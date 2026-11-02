@@ -237,21 +237,24 @@ class TimetableController extends Controller
      */
     private function reservationsForDate(int $classroomId, string $dateString)
     {
+        // 各時段的實際狀態：時段有自己的審核結果就用它，沒有就跟著整筆申請（見 ClassroomReservationSlot::effectiveStatus）。
+        // 被拒絕的時段不顯示；部分核准的申請只顯示被同意的時段。
         $slotReservations = ClassroomReservationSlot::query()
             ->whereDate('reservation_date', $dateString)
             ->whereHas('reservation', function ($query) use ($classroomId) {
                 $query->where('classroom_id', $classroomId)
-                    ->whereIn('status', ['pending', 'approved']);
+                    ->whereIn('status', ['pending', 'approved', 'partially_approved']);
             })
             ->with('reservation:id,classroom_id,class_name,status')
             ->orderBy('start_time')
             ->get()
+            ->filter(fn ($slot) => in_array($slot->effectiveStatus(), ['pending', 'approved'], true))
             ->map(function ($slot) {
                 return (object) [
                     'class_name' => $slot->reservation->class_name,
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
-                    'status' => $slot->reservation->status,
+                    'status' => $slot->effectiveStatus(),
                 ];
             });
 

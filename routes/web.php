@@ -216,6 +216,14 @@ Route::middleware(['auth', 'active'])->group(function () {
             ClassroomReservationController::class,
             'reject',
         ])->name('reject');
+
+        // 分時段審核（每個時段同意或拒絕）
+        Route::post('/{reservation}/review', [ClassroomReservationController::class, 'review'])->name('review');
+
+        // 預約詳細頁（放最後，避免 /timetable、/create 被當成預約編號）
+        Route::get('/{reservation}', [ClassroomReservationController::class, 'show'])
+            ->whereNumber('reservation')
+            ->name('show');
     });
 
     // 設備類別主檔：沒有 show（類別沒有獨立檢視頁）。

@@ -46,149 +46,31 @@
                     </a>
                 </div>
             @else
+                {{-- 點這一行的任何地方都會進入預約詳細頁（預約日期、時段、用途、審核結果都在詳細頁）。 --}}
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-onion-primary="1,3">
+                    <table class="table table-hover align-middle mb-0 reservation-rows" data-onion-primary="3,4">
                         <thead class="table-light">
                             <tr>
-                                <th>預約日期</th>
-<th>使用時段</th>
-                                <th>教室</th>
-                                <th>班級</th>
-                                @if (auth()->user()->hasPermission('reservations.manage'))
-                                    <th>申請人</th>
-                                @endif
-                                <th>用途</th>
-                                <th>申請狀態</th>
-                                @if (auth()->user()->hasPermission('reservations.manage'))
-                                    <th>審核操作</th>
-                                @endif
+                                <th class="text-nowrap">申請時間</th>
+                                <th>申請人</th>
+                                <th>申請班級</th>
+                                <th class="text-nowrap">申請狀態</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($reservations as $reservation)
-                                <tr>
-                                    <td>
-    @if ($reservation->slots->isNotEmpty())
-        @foreach ($reservation->slots as $slot)
-            <div>{{ $slot->reservation_date->format('Y-m-d') }}</div>
-        @endforeach
-    @else
-        {{ $reservation->reservation_date->format('Y-m-d') }}
-    @endif
-</td>
-                                    <td>
-    @if ($reservation->slots->isNotEmpty())
-        @foreach ($reservation->slots as $slot)
-            <div>
-                {{ substr($slot->start_time, 0, 5) }}
-                –
-                {{ substr($slot->end_time, 0, 5) }}
-                @if ($slot->period_no)
-                    （第 {{ $slot->period_no }} 節）
-                @endif
-            </div>
-        @endforeach
-    @else
-        {{ substr($reservation->start_time, 0, 5) }}
-        –
-        {{ substr($reservation->end_time, 0, 5) }}
-    @endif
-</td>
-                                    <td>{{ $reservation->classroom?->name ?? '教室資料不存在' }}</td>
+                                <tr class="reservation-row" data-href="{{ route('reservations.show', $reservation) }}" tabindex="0" role="link"
+                                    aria-label="查看 {{ $reservation->class_name }} 的預約申請">
+                                    <td class="text-nowrap">{{ $reservation->created_at?->format('Y-m-d H:i') }}</td>
+                                    <td>{{ $reservation->requester?->name ?? '使用者資料不存在' }}</td>
                                     <td>{{ $reservation->class_name }}</td>
-
-                                    @if (auth()->user()->hasPermission('reservations.manage'))
-                                        <td>{{ $reservation->requester?->name ?? '使用者資料不存在' }}</td>
-                                    @endif
-
-                                    <td>{{ $reservation->purpose ?: '—' }}</td>
-
                                     <td>
-                                        @switch($reservation->status)
-                                            @case('pending')
-                                                <span class="badge text-bg-warning">待審核</span>
-                                                @break
-                                            @case('approved')
-                                                <span class="badge text-bg-success">已核准</span>
-                                                @break
-                                            @case('rejected')
-                                                <span class="badge text-bg-danger">已駁回</span>
-                                                @break
-                                            @case('cancelled')
-                                                <span class="badge text-bg-secondary">已取消</span>
-                                                @break
-                                            @default
-                                                <span class="badge text-bg-secondary">
-                                                    {{ $reservation->status }}
-                                                </span>
-                                        @endswitch
-
-                                        @if ($reservation->status === 'rejected' && $reservation->rejection_reason)
-                                            <div class="small text-danger mt-1">
-                                                拒絕原因：{{ $reservation->rejection_reason }}
-                                            </div>
-                                        @endif
-
-                                        @if ($reservation->reviewed_at)
-                                            <div class="small text-muted mt-1">
-                                                審核時間：{{ $reservation->reviewed_at->format('Y-m-d H:i') }}
-                                            </div>
+                                        @if ($reservation->isReviewed())
+                                            <span class="badge text-bg-success">已審核</span>
+                                        @else
+                                            <span class="badge text-bg-warning">未審核</span>
                                         @endif
                                     </td>
-
-                                    @if (auth()->user()->hasPermission('reservations.manage'))
-                                        <td>
-                                            @if ($reservation->status === 'pending')
-                                                <div class="d-flex flex-column gap-2" style="min-width: 180px;">
-                                                    <form
-                                                        method="POST"
-                                                        action="{{ route('reservations.approve', $reservation) }}"
-                                                        onsubmit="return confirm('確定要核准這筆預約嗎？');"
-                                                    >
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-sm btn-success w-100">
-                                                            <i class="bi bi-check-circle me-1"></i>
-                                                            核准
-                                                        </button>
-                                                    </form>
-
-                                                    <form
-                                                        method="POST"
-                                                        action="{{ route('reservations.reject', $reservation) }}"
-                                                        onsubmit="return confirm('確定要拒絕這筆預約嗎？');"
-                                                    >
-                                                        @csrf
-                                                        <label
-                                                            for="rejection_reason_{{ $reservation->id }}"
-                                                            class="form-label small mb-1"
-                                                        >
-                                                            拒絕原因（必填）
-                                                        </label>
-                                                        <textarea
-                                                            id="rejection_reason_{{ $reservation->id }}"
-                                                            name="rejection_reason"
-                                                            class="form-control form-control-sm mb-2"
-                                                            rows="2"
-                                                            maxlength="500"
-                                                            required
-                                                            placeholder="請說明拒絕原因"
-                                                        ></textarea>
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">
-                                                            <i class="bi bi-x-circle me-1"></i>
-                                                            拒絕
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            @else
-                                                <span class="text-muted small">已完成審核</span>
-                                                @if ($reservation->reviewer)
-                                                    <div class="small text-muted mt-1">
-                                                        審核人：{{ $reservation->reviewer->name }}
-                                                    </div>
-                                                @endif
-                                            @endif
-                                        </td>
-                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>
@@ -202,4 +84,23 @@
         </div>
     </div>
 </div>
+<style>
+    .reservation-row { cursor: pointer; }
+    .reservation-row:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+</style>
+<script>
+// 整行可點：點任何一格（或按 Enter）都進入預約詳細頁。
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.reservation-row').forEach(function (row) {
+        row.addEventListener('click', function (event) {
+            if (event.target.closest('a, button, input, select, textarea')) { return; }
+            if (window.getSelection().toString()) { return; }
+            window.location.href = row.dataset.href;
+        });
+        row.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') { window.location.href = row.dataset.href; }
+        });
+    });
+});
+</script>
 @endsection
