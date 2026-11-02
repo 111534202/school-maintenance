@@ -55,6 +55,13 @@ body.tb-body {
 /* 導覽列沒有用 navbar-expand，Bootstrap 預設會讓下拉選單撐開導覽列（position: static），這裡改回浮在下方。 */
 .tb-topnav .dropdown-menu { position: absolute; margin-top: 6px; border: 1px solid var(--tb-border); padding: 6px; }
 .tb-topnav .dropdown-item { border-radius: 8px; padding: 8px 12px; }
+/* 滑鼠停在區塊上就展開下拉選單（有滑鼠的寬螢幕；觸控與鍵盤仍可點擊開啟）。
+   ::before 在選單上方補一塊透明區域，滑鼠從標題移到選單時不會因為中間的空隙而收起來。 */
+@media (hover: hover) and (min-width: 1200px) {
+    .tb-topnav .dropdown:hover > .dropdown-menu { display: block; top: 100%; left: 0; }
+    .tb-topnav .dropdown:hover > .nav-link { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.1); }
+    .tb-topnav .dropdown-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+}
 .tb-navbar { padding-top: 0.6rem; padding-bottom: 0.6rem; }
 
 /* 側邊選單：目前所在頁面改成墨綠底。 */
@@ -97,6 +104,18 @@ body.tb-body {
 .tb-body .table-light { --bs-table-bg: #F3EFE6; --bs-table-color: #2B2A26; --bs-table-border-color: #E7E1D6; }
 .tb-body .table > thead th { font-weight: 700; }
 
+/* 列表表格的外框改成圓角（桌面寬度；手機版由 onion 轉成卡片，不套用）。
+   - 表格直接放在卡片裡（.card > .table-responsive）：沿用卡片圓角，把表格最外圈的框線拿掉，避免和卡片框線疊成兩條。
+   - 表格沒有包卡片（只有 .table-responsive）：外面補一個白底圓角框。 */
+@media (min-width: 768px) {
+    .tb-body .app-content .card > .table-responsive { border-radius: var(--bs-card-inner-border-radius); }
+    .tb-body .app-content .table-responsive:not(.card .table-responsive):not(.modal .table-responsive):not(.tb .table-responsive) {
+        background: #FFFFFF; border: 1px solid #E7E1D6; border-radius: 16px; margin-bottom: 1rem;
+    }
+    .tb-body .app-content .table-responsive:not(.modal .table-responsive) > .table { margin-bottom: 0; }
+    .tb-body .app-content .table-responsive:not(.modal .table-responsive) > .table-bordered { border-style: hidden; }
+}
+
 /* 表單：聚焦時墨綠框。 */
 .tb-body .form-control:focus, .tb-body .form-select:focus {
     border-color: #2F6B4F; box-shadow: 0 0 0 0.25rem rgba(47, 107, 79, 0.2);
@@ -118,7 +137,6 @@ body.tb-body {
 .tb {
     font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
     color: var(--tb-text);
-    max-width: 1180px;
     display: flex;
     flex-direction: column;
     gap: 22px;
