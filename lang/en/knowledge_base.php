@@ -7,6 +7,17 @@ return [
     'index_heading' => 'Self-Help Troubleshooting Knowledge Base',
     'add_entry' => 'Add Entry',
     'empty_list' => 'There are no knowledge base entries yet.',
+    // Search bar on the list page.
+    'search' => [
+        'keyword' => 'Search',
+        'placeholder' => 'Keyword, e.g. projector, no display, network',
+        'category' => 'Category',
+        'all_categories' => 'All categories',
+        'submit' => 'Search',
+        'clear' => 'Clear',
+        'result_count' => ':count result(s) found.',
+        'no_results' => 'No matching entries. Try another keyword, or submit a repair request.',
+    ],
 
     // 知識庫列表表格欄位標題。
     'table' => [

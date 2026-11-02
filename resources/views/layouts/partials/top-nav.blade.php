@@ -99,3 +99,17 @@
         </li>
     @endcan
 </ul>
+<script>
+// 滑鼠停到另一個區塊時，先把「用點擊打開」的下拉選單收起來，避免兩個選單同時出現、疊在一起。
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.tb-topnav .dropdown').forEach(function (dropdown) {
+        dropdown.addEventListener('mouseenter', function () {
+            document.querySelectorAll('.tb-topnav .dropdown-toggle.show').forEach(function (toggle) {
+                if (!dropdown.contains(toggle) && window.bootstrap) {
+                    window.bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+                }
+            });
+        });
+    });
+});
+</script>

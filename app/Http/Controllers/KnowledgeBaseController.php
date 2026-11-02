@@ -7,6 +7,7 @@ use App\Models\KnowledgeBase;                        // 知識庫文章資料表
 use App\Http\Requests\StoreKnowledgeBaseRequest;     // 「新增文章」表單的驗證規則
 use App\Http\Requests\UpdateKnowledgeBaseRequest;    // 「編輯文章」表單的驗證規則
 use App\Services\AuditLogger;                        // 共用的操作紀錄寫入工具
+use Illuminate\Http\Request;                         // 這一次瀏覽器送來的請求（讀取搜尋條件）
 
 /**
  * 自助排除知識庫的網頁功能：列表、查看、新增、修改、刪除（標準 CRUD），
@@ -18,14 +19,37 @@ use App\Services\AuditLogger;                        // 共用的操作紀錄寫
  */
 class KnowledgeBaseController extends Controller
 {
-    /** 知識庫文章列表頁，最新的排前面，每頁 10 筆。 */
-    public function index()
+    /**
+     * 知識庫文章列表頁，最新的排前面，每頁 10 筆。
+     * 可用關鍵字搜尋（標題、分類、故障現象、排除步驟都會比對），也可以只看某一個分類。
+     */
+    public function index(Request $request)
     {
-        // latest()：依建立時間由新到舊；paginate(10)：分頁，每頁 10 筆。
-        // visibleTo：未上架的文章只有知識庫管理者看得到。
-        $knowledgeBaseEntries = KnowledgeBase::visibleTo(auth()->user())->latest()->paginate(10);
+        $keyword = trim((string) $request->query('keyword', ''));
+        $category = trim((string) $request->query('category', ''));
 
-        return view('knowledge-base.index', compact('knowledgeBaseEntries'));
+        // visibleTo：未上架的文章只有知識庫管理者看得到（搜尋結果也一樣）。
+        $visible = KnowledgeBase::visibleTo(auth()->user());
+
+        // 分類下拉選單的選項：目前看得到的文章裡出現過的分類。
+        $categories = (clone $visible)->whereNotNull('category')->where('category', '<>', '')
+            ->distinct()->orderBy('category')->pluck('category');
+
+        // latest()：依建立時間由新到舊；paginate(10)：分頁，每頁 10 筆；withQueryString：換頁時保留搜尋條件。
+        $knowledgeBaseEntries = $visible
+            ->when($keyword !== '', function ($query) use ($keyword) {
+                $like = '%' . $keyword . '%';
+                $query->where(fn ($q) => $q->where('title', 'like', $like)
+                    ->orWhere('category', 'like', $like)
+                    ->orWhere('symptom', 'like', $like)
+                    ->orWhere('solution', 'like', $like));
+            })
+            ->when($category !== '', fn ($query) => $query->where('category', $category))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('knowledge-base.index', compact('knowledgeBaseEntries', 'categories', 'keyword', 'category'));
     }
 
     /** 顯示「新增知識庫項目」的空白表單。 */

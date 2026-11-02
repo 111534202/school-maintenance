@@ -17,9 +17,43 @@
         @endcan
     </div>
 
+    {{-- 搜尋：關鍵字比對標題、分類、故障現象與排除步驟；也可以只看某一個分類。 --}}
+    @php
+        $searching = $keyword !== '' || $category !== '';
+    @endphp
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            <form method="GET" action="{{ route('knowledge-base.index') }}" class="row g-2 align-items-end" role="search">
+                <div class="col-12 col-md">
+                    <label for="kb-keyword" class="form-label small mb-1">{{ __('knowledge_base.search.keyword') }}</label>
+                    <input type="search" id="kb-keyword" name="keyword" class="form-control" value="{{ $keyword }}"
+                        placeholder="{{ __('knowledge_base.search.placeholder') }}">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="kb-category" class="form-label small mb-1">{{ __('knowledge_base.search.category') }}</label>
+                    <select id="kb-category" name="category" class="form-select">
+                        <option value="">{{ __('knowledge_base.search.all_categories') }}</option>
+                        @foreach ($categories as $option)
+                            <option value="{{ $option }}" @selected($category === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>{{ __('knowledge_base.search.submit') }}</button>
+                    @if ($searching)
+                        <a href="{{ route('knowledge-base.index') }}" class="btn btn-outline-secondary">{{ __('knowledge_base.search.clear') }}</a>
+                    @endif
+                </div>
+            </form>
+            @if ($searching)
+                <div class="small text-muted mt-2">{{ __('knowledge_base.search.result_count', ['count' => $knowledgeBaseEntries->total()]) }}</div>
+            @endif
+        </div>
+    </div>
+
     {{-- 沒有任何文章時顯示提示；否則顯示表格。 --}}
     @if ($knowledgeBaseEntries->isEmpty())
-        <div class="alert alert-info mb-0">{{ __('knowledge_base.empty_list') }}</div>
+        <div class="alert alert-info mb-0">{{ $searching ? __('knowledge_base.search.no_results') : __('knowledge_base.empty_list') }}</div>
     @else
         <div class="card shadow-sm">
             <div class="table-responsive">
