@@ -46,6 +46,9 @@ body.tb-body {
 
 /* 上方導覽列：墨綠底、網站名稱用宋體。 */
 .tb-navbar { background-color: var(--tb-accent); }
+/* 導覽列固定在畫面最上方：往下捲動時仍然看得到（sticky：跟著頁面排版，捲到頂端才固定，不會蓋住頁面開頭的內容）。
+   z-index 1030 與 Bootstrap 的 sticky-top 相同：比一般內容高，但比側邊抽屜（1045）與彈出視窗（1055）低。 */
+.tb-navbar { position: sticky; top: 0; z-index: 1030; box-shadow: 0 2px 6px rgba(20, 40, 30, 0.12); }
 .tb-navbar .navbar-brand { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.04em; }
 
 /* 上方列的選單（寬螢幕）：淡綠白字，目前所在的區塊半透明白底。 */
