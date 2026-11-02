@@ -305,6 +305,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:repairs.dispatch')->group(function () {
         Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])->name('repairs.assign');
         Route::post('repairs/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])->name('repairs.reassign');
+        // 派工時查詢報修地點那間教室的一週課表，挑空堂當建議處理時間。
+        Route::get('repairs/{repair_request}/timetable', [\App\Http\Controllers\TimetableController::class, 'repairWeek'])->name('repairs.timetable');
     });
 
     // 維修人員處理：開始處理、填維修紀錄（送出後自動推進到待驗收）：需要 repairs.process。

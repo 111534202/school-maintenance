@@ -31,8 +31,7 @@ class RepairRequestFactory extends Factory
             'status' => 'pending',
             // 設備位置描述：從清單隨機挑一個。
             'device_note' => $this->faker->randomElement(['A101 投影機', 'B203 電腦教室 3 號機', 'C305 無線 AP']),
-            // 地點：從清單隨機挑一個。
-            'location' => $this->faker->randomElement(['A101', 'B203', 'C305']),
+            'classroom_id' => null,   // 設備地點（教室）；需要時在測試裡指定
         ];
     }
 }

@@ -44,11 +44,6 @@
                     </select>
                 </div>
                 <div>
-                    <label for="location" class="form-label small mb-1">{{ __('repair_requests.filter.location') }}</label>
-                    <input type="text" id="location" name="location" class="form-control form-control-sm" style="width: 11rem;"
-                        value="{{ request('location') }}" placeholder="{{ __('repair_requests.filter.location_placeholder') }}">
-                </div>
-                <div>
                     <label for="assignee" class="form-label small mb-1">{{ __('repair_requests.filter.assignee') }}</label>
                     <input type="text" id="assignee" name="assignee" class="form-control form-control-sm" style="width: 11rem;"
                         value="{{ request('assignee') }}" placeholder="{{ __('repair_requests.filter.assignee_placeholder') }}">
@@ -61,7 +56,7 @@
                     <button class="btn btn-primary btn-sm icon-btn" type="submit"
                         title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
                     {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('status') || request('location') || request('assignee') || request('classroom_id') || request('device_id'))
+                    @if (request('status') || request('assignee') || request('classroom_id') || request('device_id'))
                         <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.index') }}"
                             title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
                     @endif
@@ -108,12 +103,12 @@
                             @endphp
                             <tr>
                                 <td><a href="{{ route('repairs.show', $repairRequest) }}" class="text-decoration-none">{{ $repairRequest->title }}</a></td>
-                                {{-- 設備欄的顯示順序：有綁定設備就顯示設備編號，否則顯示手填的設備描述，再沒有就顯示地點，都沒有顯示「未填寫」。 --}}
+                                {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的設備地點，沒有就用設備所在教室）。 --}}
+                                @php($rowClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom)
                                 <td>
-                                    {{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}
-                                    {{-- 報修的是真實設備時，在下面顯示它所在的教室，方便一眼看出是哪間教室的問題。 --}}
-                                    @if ($repairRequest->device?->classroom)
-                                        <div class="small text-muted">{{ $repairRequest->device->classroom->classroom_code }} {{ $repairRequest->device->classroom->name }}</div>
+                                    {{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? ($rowClassroom ? '' : __('repair_requests.not_filled')) }}
+                                    @if ($rowClassroom)
+                                        <div class="small text-muted">{{ $rowClassroom->classroom_code }} {{ $rowClassroom->name }}</div>
                                     @endif
                                 </td>
                                 <td class="text-center">

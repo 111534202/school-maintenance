@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Classroom;
 use App\Models\ClassroomReservation;
 use App\Models\ClassroomReservationSlot;
+use App\Models\RepairRequest;
+use App\Enums\RepairRequestStatus;
 use App\Services\Timetable\TimetableProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -156,6 +158,76 @@ class TimetableController extends Controller
             'selected_date' => $selectedDate->toDateString(),
             'week_start' => $monday->toDateString(),
             'week_end' => $monday->copy()->addDays(4)->toDateString(),
+            'days' => $days,
+        ]);
+    }
+
+    /**
+     * 派工用：回傳這張報修單「設備地點」那間教室一週（星期一至五）的課表，讓主管挑空堂當建議處理時間。
+     *
+     * 和預約用的 week() 不同：
+     * - 教室是報修單的地點（沒有就用設備所在的教室），不用另外選；
+     * - 「設備異常」的教室也要能看（需要維修的通常就是這種教室），停用的教室也照樣顯示；
+     * - 每一節另外列出同一間教室已經排定的其他維修（避免兩張單排在同一節）。
+     */
+    public function repairWeek(Request $request, RepairRequest $repairRequest, TimetableProvider $provider): JsonResponse
+    {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $repairRequest->loadMissing('classroom', 'device.classroom');
+        $classroom = $repairRequest->classroom ?? $repairRequest->device?->classroom;
+
+        if (! $classroom) {
+            return response()->json(['message' => '這張報修單沒有設備地點，無法查詢教室課表；請直接填寫建議處理時間。'], 422);
+        }
+
+        $selectedDate = Carbon::createFromFormat('!Y-m-d', $validated['date'] ?? now()->toDateString());
+        $monday = $selectedDate->copy()->startOfWeek(Carbon::MONDAY);
+        $days = [];
+
+        for ($offset = 0; $offset < 5; $offset++) {
+            $date = $monday->copy()->addDays($offset);
+            $dateString = $date->toDateString();
+            $reservations = $this->reservationsForDate($classroom->id, $dateString);
+
+            // 同一間教室、同一天已經排定處理時間、還沒結案的其他報修單。
+            $otherRepairs = RepairRequest::query()
+                ->whereKeyNot($repairRequest->id)
+                ->whereDate('scheduled_at', $dateString)
+                ->whereIn('status', [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress])
+                ->where(fn ($q) => $q->where('classroom_id', $classroom->id)
+                    ->orWhereHas('device', fn ($d) => $d->where('classroom_id', $classroom->id)))
+                ->get(['id', 'title', 'scheduled_at']);
+
+            $schedule = $provider->getDaySchedule($classroom, $date);
+
+            foreach ($schedule as &$period) {
+                $start = $period['start_time'];
+                $end = $period['end_time'];
+
+                $period['reservations'] = $reservations
+                    ->filter(fn ($r) => substr((string) $r->start_time, 0, 5) < $end && substr((string) $r->end_time, 0, 5) > $start)
+                    ->map(fn ($r) => ['class_name' => $r->class_name, 'status' => $r->status])
+                    ->values()->all();
+
+                $period['repairs'] = $otherRepairs
+                    ->filter(fn ($r) => $r->scheduled_at->format('H:i') >= $start && $r->scheduled_at->format('H:i') < $end)
+                    ->map(fn ($r) => ['id' => $r->id, 'title' => $r->title])
+                    ->values()->all();
+            }
+            unset($period);
+
+            $days[] = ['date' => $dateString, 'weekday' => $date->isoFormat('dddd'), 'periods' => $schedule];
+        }
+
+        return response()->json([
+            'classroom' => ['id' => $classroom->id, 'name' => $classroom->name, 'classroom_code' => $classroom->classroom_code],
+            'selected_date' => $selectedDate->toDateString(),
+            'week_start' => $monday->toDateString(),
+            'week_end' => $monday->copy()->addDays(4)->toDateString(),
+            'today' => now()->toDateString(),
             'days' => $days,
         ]);
     }

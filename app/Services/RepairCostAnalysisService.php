@@ -33,7 +33,8 @@ class RepairCostAnalysisService
             ->with([
                 'part:id,name',
                 'repairLog:id,repair_request_id,created_at',
-                'repairLog.repairRequest:id,title,status,device_id,device_note,location',
+                'repairLog.repairRequest:id,title,status,device_id,device_note,classroom_id',
+                'repairLog.repairRequest.classroom:id,classroom_code,name',
                 'repairLog.repairRequest.device:id,device_code,asset_code,classroom_id',
                 'repairLog.repairRequest.device.classroom:id,classroom_code,name',
             ])

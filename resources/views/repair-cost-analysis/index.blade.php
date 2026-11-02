@@ -244,7 +244,7 @@
                                 @php
                                     $repairRequest = $usage->repairLog?->repairRequest;
                                     $device = $repairRequest?->device;
-                                    $classroom = $device?->classroom;
+                                    $classroom = $repairRequest?->classroom ?? $device?->classroom;   // 報修單填的地點優先，沒有才用設備所在教室
 
                                     $deviceLabel = $device
                                         ? ($device->device_code ?: $device->asset_code ?: '設備未編碼')
@@ -252,7 +252,7 @@
 
                                     $locationLabel = $classroom
                                         ? trim(($classroom->name ?? '') . ' ' . ($classroom->classroom_code ?? ''))
-                                        : ($repairRequest?->location ?: '未記錄地點');
+                                        : '未記錄地點';
                                 @endphp
 
                                 <tr>

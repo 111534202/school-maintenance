@@ -43,7 +43,7 @@ class GenerateSchemaDocs extends Command
         'maintenance_plan_items' => ['保養計畫明細', '第 7 章 maintenance_plan_items', '純關聯表（多對多），符合 2NF／3NF。'],
         'maintenance_orders' => ['保養工單', '第 7 章 maintenance_orders', '符合 3NF（設備與類別二選一，理由同保養計畫）。'],
         'maintenance_results' => ['保養結果', '第 7 章 maintenance_results', '符合 3NF。執行人以 executed_by（users.id）關聯，不再存姓名文字。ng_conversion_status 與 repair_request_id 有部分重疊（converted 代表已有報修單），因為還需要區分「待轉」與「不需轉」兩種沒有報修單的情況，所以保留。'],
-        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note／location 是「沒有綁定設備」時的後備文字，有綁設備時可由設備與教室推得（保留為歷史與手動輸入用）。'],
+        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note 是「沒有綁定設備」時的後備文字。設備地點以 classroom_id 關聯教室（原本自由輸入的 location 文字已移除，舊資料依教室代碼或名稱轉換）；它記的是「報修當時」的地點，設備之後搬到別的教室也不會改變，所以不是由設備推得的重複資料。'],
         'repair_logs' => ['維修紀錄', '第 7 章 repair_logs', '大致符合 3NF。total_hours 是由起訖時間推得的值，規格書要求存起來所以保留；parts_used_note 是自由文字備註，結構化的備品使用已改存 repair_part_usages（舊資料與額外說明仍可寫在這裡）。'],
         'repair_part_usages' => ['維修零件使用明細', '規格書未列（備品使用的結構化）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），part_purchase_id 記錄扣的是哪一批；一次用料跨兩批時拆成兩列。舊資料沒有批次時 part_purchase_id 為空。'],
         'attachments' => ['附件資料', '第 7 章 attachments', '符合 3NF。用 Laravel 多型關聯（attachable_type + attachable_id）指向報修單、維修紀錄等，不加外鍵。'],
@@ -118,7 +118,7 @@ class GenerateSchemaDocs extends Command
         'maintenance_plan_id' => '來源保養計畫', 'maintenance_item_id' => '保養項目', 'device_id' => '設備（devices.id）', 'source' => '來源', 'scheduled_date' => '預定保養日',
         'maintenance_order_id' => '所屬保養工單', 'result' => '結果', 'executed_by' => '執行人（users.id，由登入帳號帶入）', 'executed_at' => '執行時間', 'note' => '備註（操作人員填寫）', 'ng_conversion_status' => 'NG 轉報修狀態',
         'repair_request_id' => '報修單（repair_requests.id）', 'impact_level' => '影響程度', 'is_class_affected' => '是否影響上課', 'rejection_reason' => '驗收退回原因',
-        'requester_id' => '提出者（users.id）：報修人／預約申請人', 'device_note' => '設備說明（手動輸入、沒有綁設備時用）', 'assigned_to' => '指派的維修人員（users.id）', 'scheduled_at' => '預計處理時間', 'location' => '地點（文字）',
+        'requester_id' => '提出者（users.id）：報修人／預約申請人', 'device_note' => '設備說明（手動輸入、沒有綁設備時用）', 'assigned_to' => '指派的維修人員（users.id）', 'scheduled_at' => '預計處理時間',
         'classroom_reservation_id' => '所屬預約申請（classroom_reservations.id）', 'period_no' => '課表節次（可為空）',
         'cause' => '故障原因', 'resolution' => '處置方式', 'parts_used_note' => '使用備品說明（文字備註）', 'started_at' => '起始時間', 'ended_at' => '結束時間', 'total_hours' => '總工時（系統計算）',
         'attachable_type' => '附件所屬資料類型（多型）', 'attachable_id' => '附件所屬資料編號（多型）', 'file_path' => '檔案儲存路徑（私有磁碟）', 'file_name' => '原始檔名（使用者上傳時的檔名）', 'mime_type' => '檔案類型', 'size_bytes' => '檔案大小（位元組）',
@@ -132,7 +132,7 @@ class GenerateSchemaDocs extends Command
     /** @var array<string, string> 個別資料表裡意思不同的欄位 */
     private array $columnTextSpecific = [
         'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
-        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'maintenance_items.description' => '說明',
+        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
     ];
 
     /**

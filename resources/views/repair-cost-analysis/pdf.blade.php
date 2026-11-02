@@ -253,7 +253,7 @@
                     $log = $usage->repairLog;
                     $request = $log?->repairRequest;
                     $device = $request?->device;
-                    $classroom = $device?->classroom;
+                    $classroom = $request?->classroom ?? $device?->classroom;   // 報修單填的地點優先，沒有才用設備所在教室
 
                     $deviceLabel = $device
                         ? ($device->device_code ?: $device->asset_code ?: '設備資料')
@@ -261,7 +261,7 @@
 
                     $locationLabel = $classroom
                         ? trim(($classroom->classroom_code ?? '') . ' ' . ($classroom->name ?? ''))
-                        : ($request?->location ?: '未指定地點');
+                        : '未指定地點';
 
                     $priceMissing = $usage->unit_price === null;
 

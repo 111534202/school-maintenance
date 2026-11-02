@@ -17,7 +17,7 @@
                 'title' => $repairRequest->title,
                 'location' => $repairRequest->device->device_code
                     ?? $repairRequest->device_note
-                    ?? $repairRequest->location
+                    ?? $repairRequest->locationLabel()
                     ?? __('repair_logs.not_filled_location')
             ]) }}
         </p>

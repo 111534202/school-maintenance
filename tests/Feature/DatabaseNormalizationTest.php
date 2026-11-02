@@ -92,6 +92,7 @@ class DatabaseNormalizationTest extends TestCase
             'repair_requests.requester_id' => 'users',
             'repair_requests.assigned_to' => 'users',
             'repair_requests.device_id' => 'devices',
+            'repair_requests.classroom_id' => 'classrooms',
             'classroom_reservations.requester_id' => 'users',
             'classroom_reservations.reviewed_by' => 'users',
             'maintenance_results.executed_by' => 'users',

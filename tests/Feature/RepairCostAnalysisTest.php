@@ -476,7 +476,7 @@ class RepairCostAnalysisTest extends TestCase
             'status' => 'pending',
             'device_id' => null,
             'device_note' => '手動填寫的老舊冷氣',
-            'location' => 'B棟二樓走廊',
+            'classroom_id' => \App\Models\Classroom::create(['campus' => '本', 'building' => 'B', 'floor' => '2', 'classroom_code' => 'B-2F', 'name' => 'B棟二樓走廊'])->id,
         ]);
 
         $this->actingAs($user)

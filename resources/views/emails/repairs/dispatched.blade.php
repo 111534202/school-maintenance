@@ -10,7 +10,7 @@
 | | |
 |:---|:---|
 | **{{ __('repair_requests.table.title') }}** | {{ $repairRequest->title }} |
-| **{{ __('repair_requests.table.device_location') }}** | {{ $repairRequest->device?->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }} |
+| **{{ __('repair_requests.table.device_location') }}** | {{ trim(($repairRequest->device?->device_code ?? $repairRequest->device_note ?? '') . ' ' . ($repairRequest->locationLabel() ?? '')) ?: __('repair_requests.not_filled') }} |
 | **{{ __('repair_requests.show.assignee_field_label') }}** | {{ $technician->name }} |
 @if ($repairRequest->scheduled_at)
 | **{{ __('repair_requests.show.scheduled_field_label') }}** | {{ $repairRequest->scheduled_at->format('Y-m-d H:i') }} |
