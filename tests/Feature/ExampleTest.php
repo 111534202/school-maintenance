@@ -2,19 +2,25 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
-// Laravel 預設附的範例測試：確認網站首頁能正常回應；可以保留或刪除。
+// 網站首頁：沒登入導到登入頁，已登入導到主控台（不再顯示 Laravel 預設的歡迎頁）。
 class ExampleTest extends TestCase
 {
-    /**
-     * A basic test example.
-     */
-    public function test_the_application_returns_a_successful_response(): void
-    {
-        $response = $this->get('/');
+    use RefreshDatabase;
+    use InteractsWithRolesAndUsers;
 
-        $response->assertStatus(200);
+    public function test_home_page_sends_guests_to_the_login_page(): void
+    {
+        $this->get('/')->assertRedirect(route('login'));
+    }
+
+    public function test_home_page_sends_signed_in_users_to_the_dashboard(): void
+    {
+        $this->loginAsAnyUser();
+
+        $this->get('/')->assertRedirect(route('dashboard'));
     }
 }
