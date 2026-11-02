@@ -156,6 +156,35 @@ class RepairLogPartUsageTest extends TestCase
     }
 
     /**
+     * 一次用料跨兩個採購批次（先進先出）時，同一筆維修紀錄會有兩列同零件的明細，不能被唯一鍵擋掉。
+     * 重現：期初 10 條（150 元）＋進貨 10 條（10 元），先用 2 條，第二次再用 15 條 → 8 條 150 元＋7 條 10 元。
+     */
+    public function test_usage_spanning_two_batches_is_split_into_two_rows(): void
+    {
+        $part = $this->makePart(10);
+        app(\App\Services\PartStockService::class)->receive($part, [
+            'purchase_date' => now()->addDay()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 10, 'unit_price' => 10, 'note' => null,
+        ]);
+
+        $first = $this->makeInProgressRequest();
+        $this->post(route('repair-logs.store', $first), $this->validPayload([
+            'part_usages' => [['part_id' => $part->id, 'quantity' => 2]],
+        ]))->assertRedirect(route('repairs.show', $first));
+
+        $second = $this->makeInProgressRequest();
+        $this->post(route('repair-logs.store', $second), $this->validPayload([
+            'part_usages' => [['part_id' => $part->id, 'quantity' => 15]],
+        ]))->assertRedirect(route('repairs.show', $second));
+
+        $log = RepairLog::query()->where('repair_request_id', $second->id)->sole();
+        $rows = RepairPartUsage::query()->where('repair_log_id', $log->id)->orderBy('id')->get();
+
+        $this->assertSame([8, 7], $rows->pluck('quantity')->map(fn ($q) => (int) $q)->all());
+        $this->assertSame([150, 10], $rows->pluck('unit_price')->map(fn ($p) => (int) $p)->all());
+        $this->assertSame(3, (int) $part->fresh()->current_stock);
+    }
+
+    /**
      * 庫存不足時，整筆交易都應回滾。
      */
     public function test_insufficient_stock_rolls_back_repair_log_usage_and_status_change(): void
