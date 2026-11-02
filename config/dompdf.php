@@ -110,7 +110,7 @@ return [
         /**
          * Whether to enable font subsetting or not.
          */
-        'enable_font_subsetting' => false,
+        'enable_font_subsetting' => true,   // 只嵌入用到的字：完整的 Noto Sans TC 有 7MB，整個嵌入會讓 PDF 匯出超過 PHP 記憶體上限
 
         /**
          * The PDF rendering backend to use
