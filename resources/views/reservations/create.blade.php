@@ -55,15 +55,16 @@
                                 </button>
                                 <span id="timetable_status" class="small text-muted" role="status" aria-live="polite"></span>
                             </div>
-                            {{-- 選好教室後，若該教室有設備在報修，這裡會顯示提醒（內容由下方程式依 repairNotices 填入）。 --}}
-                            <div id="classroom_repair_notice" class="alert alert-warning small mt-3 mb-0" role="status" hidden></div>
+                            {{-- 選好教室後，若該教室有設備在等待維修，這裡會顯示提醒（內容由下方程式依 repairNotices 填入）：
+                                 一般設備黃色；核心設備紅色，且暫停預約（可查課表、不能送出）。 --}}
+                            <div id="classroom_repair_notice" class="alert small mt-3 mb-0" role="status" hidden></div>
                             <div id="timetable_result" class="mt-3" hidden></div>
                         </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
                             <label for="classroom_search" class="form-label">
-                                預約教室 <span class="text-danger">*</span>
+                                選擇教室 <span class="text-danger">*</span>
                             </label>
 
                             @php
@@ -107,30 +108,6 @@
                                         data-label="{{ $classroom->name }}（{{ $classroom->classroom_code }}）"
                                     >
                                         {{ $classroom->name }}（{{ $classroom->classroom_code }}）
-                                        @if (! empty($repairNotices[$classroom->id]))
-                                            <span class="d-block small text-warning-emphasis">
-                                                <i class="bi bi-exclamation-triangle me-1"></i>{{ collect($repairNotices[$classroom->id])->pluck('text')->join('；') }}
-                                            </span>
-                                        @endif
-                                    </button>
-                                @endforeach
-
-                                {{-- 核心設備故障、暫停預約的教室：列出來但不能選，說明原因。 --}}
-                                @foreach ($suspendedClassrooms as $classroom)
-                                    <button
-                                        type="button"
-                                        class="list-group-item list-group-item-action text-start suspended-classroom"
-                                        role="option"
-                                        aria-disabled="true"
-                                        disabled
-                                        data-search="{{ $classroom->name }} {{ $classroom->classroom_code }}"
-                                        data-label="{{ $classroom->name }}（{{ $classroom->classroom_code }}）"
-                                    >
-                                        {{ $classroom->name }}（{{ $classroom->classroom_code }}）
-                                        <span class="badge text-bg-danger ms-1">暫停預約</span>
-                                        <span class="d-block small text-danger">
-                                            {{ collect($repairNotices[$classroom->id] ?? [])->pluck('text')->join('；') ?: '教室設備異常' }}
-                                        </span>
                                     </button>
                                 @endforeach
 
@@ -257,29 +234,65 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    // 包含暫停預約的教室（disabled），一起參與搜尋篩選；但不能被選取。
     const options = Array.from(
-        optionsList.querySelectorAll('button[data-label]')
+        optionsList.querySelectorAll('button[data-id]')
     );
 
-    // 教室目前在報修的設備：{ 教室編號: [{ text, core }] }
-    const repairNotices = @json($repairNotices);
+    // 教室目前在等待維修的設備：{ 教室編號: [{ text, core }] }；暫停預約的教室編號清單。
+    const repairNotices = @json((object) $repairNotices);
+    const suspendedIds = @json($suspendedIds).map(String);
     const repairNotice = document.getElementById('classroom_repair_notice');
 
+    function isSuspended() {
+        return suspendedIds.includes(String(classroomInput.value));
+    }
+
+    // 暫停預約時，第二步的送出按鈕停用並說明原因（後端也會再擋一次）。
+    function updateSubmitState() {
+        const submit = searchInput.closest('form').querySelector('button[type="submit"]');
+        if (!submit) {
+            return;
+        }
+        let note = document.getElementById('suspended_submit_note');
+        if (!note) {
+            note = document.createElement('div');
+            note.id = 'suspended_submit_note';
+            note.className = 'alert alert-danger small mb-2 w-100';
+            note.textContent = '這間教室的核心設備正在等待維修，目前暫停預約，無法送出申請。請改選其他教室。';
+            submit.parentElement.insertBefore(note, submit.parentElement.firstChild);
+        }
+        const suspended = isSuspended();
+        submit.disabled = suspended;
+        note.hidden = !suspended;
+    }
+
     function updateRepairNotice() {
+        updateSubmitState();
         if (!repairNotice) {
             return;
         }
         const items = repairNotices[classroomInput.value] || [];
-        repairNotice.hidden = items.length === 0;
+        const suspended = isSuspended();
+        repairNotice.hidden = items.length === 0 && !suspended;
+        repairNotice.classList.toggle('alert-warning', !suspended);
+        repairNotice.classList.toggle('alert-danger', suspended);
         repairNotice.replaceChildren();
-        if (items.length === 0) {
+        if (repairNotice.hidden) {
             return;
         }
         const title = document.createElement('div');
         title.className = 'fw-semibold mb-1';
         title.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>';
-        title.append('這間教室目前有設備在報修，使用時可能受影響：');
+        title.append(suspended
+            ? '這間教室的核心設備正在等待維修，目前暫停預約（可以查詢課表，但無法送出申請）：'
+            : '這間教室目前有設備在報修，使用時可能受影響：');
+        repairNotice.appendChild(title);
+        if (items.length === 0) {
+            const p = document.createElement('div');
+            p.textContent = '教室設備異常。';
+            repairNotice.appendChild(p);
+            return;
+        }
         const list = document.createElement('ul');
         list.className = 'mb-0 ps-3';
         items.forEach(function (item) {
@@ -287,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
             li.textContent = item.text + (item.core ? '（核心設備）' : '');
             list.appendChild(li);
         });
-        repairNotice.append(title, list);
+        repairNotice.appendChild(list);
     }
     const noResults = document.getElementById('classroom_no_results');
     const form = searchInput.closest('form');
@@ -392,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
             event.preventDefault();
 
             const firstVisible = options.find(function (option) {
-                return option.style.display !== 'none' && !option.disabled;
+                return option.style.display !== 'none';
             });
 
             if (firstVisible) {

@@ -57,8 +57,8 @@ class ClassroomReservationTest extends TestCase
     }
 
 
-    /** 只有啟用且正常的教室可以選；核心設備故障而暫停預約的教室會列出但不能選，停用的教室不出現。 */
-    public function test_create_form_only_shows_active_normal_classrooms(): void
+    /** 啟用中的教室都可以選（暫停預約的教室也能選來查課表，送出時才擋）；停用的教室不出現。 */
+    public function test_create_form_shows_every_active_classroom(): void
     {
         $normal = $this->makeClassroom('A101');
 
@@ -74,8 +74,7 @@ class ClassroomReservationTest extends TestCase
             ->assertOk()
             ->assertSee($normal->name)
             ->assertSee('data-id="' . $normal->id . '"', false)
-            ->assertDontSee('data-id="' . $abnormal->id . '"', false)
-            ->assertSee('暫停預約')
+            ->assertSee('data-id="' . $abnormal->id . '"', false)
             ->assertDontSee($inactive->name);
     }
 
@@ -526,7 +525,8 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonPath('periods.0.reservations.0.end_time', '08:40');
     }
 
-    public function test_timetable_endpoint_rejects_inactive_or_abnormal_classrooms(): void
+    /** 停用的教室查不到課表；暫停預約（設備異常）的教室仍可查詢課表。 */
+    public function test_timetable_endpoint_rejects_inactive_but_allows_abnormal_classrooms(): void
     {
         $inactive = $this->makeClassroom('A102', [
             'is_active' => false,
@@ -538,13 +538,17 @@ class ClassroomReservationTest extends TestCase
 
         $date = now()->addDays(3)->toDateString();
 
-        foreach ([$inactive, $abnormal] as $classroom) {
-            $this->getJson(route('reservations.timetable', [
-                'classroom_id' => $classroom->id,
-                'date' => $date,
-            ]))
-                ->assertStatus(422);
-        }
+        $this->getJson(route('reservations.timetable', [
+            'classroom_id' => $inactive->id,
+            'date' => $date,
+        ]))
+            ->assertStatus(422);
+
+        $this->getJson(route('reservations.timetable', [
+            'classroom_id' => $abnormal->id,
+            'date' => $date,
+        ]))
+            ->assertOk();
     }
 
     public function test_timetable_endpoint_rejects_past_dates(): void
@@ -701,7 +705,7 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonValidationErrors(['date']);
     }
 
-    public function test_timetable_week_endpoint_rejects_inactive_or_abnormal_classrooms(): void
+    public function test_timetable_week_endpoint_rejects_inactive_but_allows_abnormal_classrooms(): void
     {
         $inactive = $this->makeClassroom('W101', [
             'is_active' => false,
@@ -713,11 +717,14 @@ class ClassroomReservationTest extends TestCase
 
         $date = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY)->toDateString();
 
-        foreach ([$inactive, $abnormal] as $classroom) {
-            $this->getJson(route('reservations.timetable.week', [
-                'classroom_id' => $classroom->id,
-                'date' => $date,
-            ]))->assertStatus(422);
-        }
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $inactive->id,
+            'date' => $date,
+        ]))->assertStatus(422);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $abnormal->id,
+            'date' => $date,
+        ]))->assertOk();
     }
 }

@@ -52,10 +52,11 @@ class ClassroomReservationController extends Controller
 
         $reservation->load(['classroom', 'requester', 'reviewer', 'slots']);
 
-        // 教室目前在報修／故障的設備（審核時參考）。
+        // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
         $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id])[$reservation->classroom_id] ?? [];
+        $classroomSuspended = ClassroomRepairNotices::isSuspended((int) $reservation->classroom_id);
 
-        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices'));
+        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices', 'classroomSuspended'));
     }
 
     /**
@@ -83,27 +84,20 @@ class ClassroomReservationController extends Controller
 
     /**
      * 顯示新增預約表單。
-     * 只有啟用且正常開放外借的教室可以選擇。
+     * 所有啟用中的教室都可以選、可以查詢課表；暫停預約的教室（核心設備等待維修）不能送出申請。
      */
     public function create()
     {
         $classrooms = Classroom::query()
             ->where('is_active', true)
-            ->where('reservation_status', 'normal')
             ->orderBy('name')
             ->get();
 
-        // 核心設備故障而暫停預約的教室：仍列在選單裡（不能選），讓申請人知道為什麼借不到。
-        $suspendedClassrooms = Classroom::query()
-            ->where('is_active', true)
-            ->where('reservation_status', '<>', 'normal')
-            ->orderBy('name')
-            ->get();
+        // 每間教室目前在等待維修的設備，以及哪些教室暫停預約；選好教室後在畫面上提醒。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
+        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'), $repairNotices);
 
-        // 每間教室目前在報修／故障的設備，選教室時顯示提醒。
-        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id')->merge($suspendedClassrooms->pluck('id')));
-
-        return view('reservations.create', compact('classrooms', 'suspendedClassrooms', 'repairNotices'));
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds'));
     }
 
     /**
@@ -195,12 +189,13 @@ class ClassroomReservationController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (
-                ! $classroom ||
-                ! $classroom->is_active ||
-                $classroom->reservation_status !== 'normal'
-            ) {
+            if (! $classroom || ! $classroom->is_active) {
                 return ['type' => 'unavailable'];
+            }
+
+            // 核心設備等待維修（或教室被標成設備異常）：暫停預約，不能送出。
+            if (ClassroomRepairNotices::isSuspended($classroom->id)) {
+                return ['type' => 'suspended'];
             }
 
 
@@ -264,6 +259,12 @@ class ClassroomReservationController extends Controller
                 ->with('error', 'The classroom is unavailable or is not accepting reservations.');
         }
 
+        if ($result['type'] === 'suspended') {
+            return back()
+                ->withInput()
+                ->with('error', '這間教室的核心設備正在等待維修，目前暫停預約，無法送出申請。');
+        }
+
         if ($result['type'] === 'conflict') {
             $conflict = $result['reservation'];
 
@@ -318,7 +319,7 @@ class ClassroomReservationController extends Controller
 
         return match ($result['type']) {
             'already_reviewed' => $redirect->with('error', '這筆預約已經審核過，無法重複操作。'),
-            'unavailable' => $redirect->with('error', '教室目前已停用或暫停外借，無法核准此預約。'),
+            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在等待維修而暫停預約，無法核准此預約（仍可拒絕）。'),
             'conflict' => $redirect->with('error', '核准失敗：下列時段已有其他已核准的預約，請改為拒絕或調整後再送出：' . implode('、', $result['slots'])),
             'incomplete' => $redirect->with('error', ($result['missing_reason'] ?? false)
                 ? "時段 {$result['slot']} 選擇拒絕，請填寫原因。"

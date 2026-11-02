@@ -111,9 +111,9 @@ class ReservationReviewService
             $approvedSlots = array_filter($plan, fn ($item) => $item[1] === ClassroomReservation::STATUS_APPROVED);
 
             if ($approvedSlots) {
-                // 有要核准的時段：教室必須仍然啟用、沒有設備異常。
+                // 有要核准的時段：教室必須仍然啟用、沒有暫停預約（設備異常或核心設備等待維修）。
                 $classroom = Classroom::query()->whereKey($locked->classroom_id)->lockForUpdate()->first();
-                if (! $classroom || ! $classroom->is_active || $classroom->reservation_status !== 'normal') {
+                if (! $classroom || ! $classroom->is_active || ClassroomRepairNotices::isSuspended($classroom->id)) {
                     return ['type' => 'unavailable'];
                 }
 

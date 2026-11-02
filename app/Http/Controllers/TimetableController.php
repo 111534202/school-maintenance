@@ -27,13 +27,12 @@ class TimetableController extends Controller
 
         $classroom = Classroom::query()
             ->whereKey($validated['classroom_id'])
-            ->where('is_active', true)
-            ->where('reservation_status', 'normal')
+            ->where('is_active', true)   // 暫停預約（設備異常）的教室仍可查詢課表，只是不能送出申請
             ->first();
 
         if (! $classroom) {
             return response()->json([
-                'message' => "\u{9019}\u{9593}\u{6559}\u{5BA4}\u{76EE}\u{524D}\u{5DF2}\u{505C}\u{7528}\u{6216}\u{66AB}\u{505C}\u{5916}\u{501F}\u{3002}",
+                'message' => '這間教室目前已停用。',
             ], 422);
         }
 
@@ -95,13 +94,12 @@ class TimetableController extends Controller
 
         $classroom = Classroom::query()
             ->whereKey($validated['classroom_id'])
-            ->where('is_active', true)
-            ->where('reservation_status', 'normal')
+            ->where('is_active', true)   // 暫停預約（設備異常）的教室仍可查詢課表，只是不能送出申請
             ->first();
 
         if (! $classroom) {
             return response()->json([
-                'message' => '這間教室目前已停用或暫停外借。',
+                'message' => '這間教室目前已停用。',
             ], 422);
         }
 
