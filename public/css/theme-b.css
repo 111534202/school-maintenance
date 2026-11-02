@@ -1,0 +1,153 @@
+/*
+ * 風格 B「校園溫和」：暖白底、墨綠主色、標題用思源宋體、大圓角卡片與膠囊按鈕。
+ * 目前只套用在「空間預約」「零件庫存列表」「成本分析報表」三頁：
+ * 頁面內容外層包 <div class="tb">，並載入這個檔案（各頁 @section('content') 裡的 <link>）。
+ * 所有規則都限定在 .tb 底下，不影響其他組員的頁面；共用版型（上方列、側邊選單）沒有改。
+ */
+:root {
+    --tb-bg: #F7F5F0;
+    --tb-surface: #FFFFFF;
+    --tb-border: #E7E1D6;
+    --tb-border-strong: #E0D9CC;
+    --tb-text: #2B2A26;
+    --tb-muted: #6B675E;
+    --tb-accent: #2F6B4F;
+    --tb-accent-dark: #214D39;
+    --tb-accent-soft: #E5EFE8;
+    --tb-accent-faint: #EEF4F0;
+    --tb-warn-bg: #FBEFD5;
+    --tb-warn-text: #7A4F00;
+    --tb-danger: #A3301F;
+    --tb-danger-bg: #FDF1EF;
+    --tb-danger-border: #F1CFC9;
+    --tb-zebra: #FBFAF6;
+}
+
+/* 有 .tb 的頁面整頁換成暖白底。 */
+body:has(.tb) { background-color: var(--tb-bg) !important; }
+
+.tb {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    color: var(--tb-text);
+    max-width: 1180px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: 24px;
+}
+.tb a { color: var(--tb-accent); }
+.tb a:hover { color: var(--tb-accent-dark); }
+
+/* ---- 頁首 ---- */
+.tb-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; }
+.tb-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
+.tb-subtitle { margin: 6px 0 0; color: var(--tb-muted); font-size: 1rem; line-height: 1.7; }
+.tb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---- 按鈕（膠囊形） ---- */
+.tb .tb-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 46px; padding: 0 22px; border-radius: 999px;
+    font-size: 1rem; font-weight: 500; text-decoration: none; cursor: pointer;
+    border: 1px solid transparent; line-height: 1.2; white-space: nowrap;
+}
+.tb .tb-btn-primary { background: var(--tb-accent); color: #FFFFFF; }
+.tb .tb-btn-primary:hover { background: var(--tb-accent-dark); color: #FFFFFF; }
+.tb .tb-btn-outline { background: var(--tb-surface); color: var(--tb-text); border-color: #CFC7B8; }
+.tb .tb-btn-outline:hover { background: var(--tb-accent-faint); color: var(--tb-text); }
+.tb .tb-btn-dark { background: var(--tb-text); color: #FFFFFF; }
+.tb .tb-btn-dark:hover { background: #000000; color: #FFFFFF; }
+.tb .tb-btn-danger-outline { background: var(--tb-surface); color: var(--tb-danger); border-color: var(--tb-danger); }
+.tb .tb-btn-danger-outline:hover { background: var(--tb-danger-bg); color: var(--tb-danger); }
+.tb .tb-btn-sm { min-height: 36px; padding: 0 14px; font-size: 0.875rem; }
+
+/* ---- 卡片 ---- */
+.tb-card { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; }
+.tb-card-pad { padding: 20px 24px; }
+.tb-section-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 1.3rem; font-weight: 700; }
+.tb-note { color: var(--tb-muted); font-size: 0.875rem; margin: 0; }
+
+/* 統計卡（可點的用 <a>；選取中的加 .is-active） */
+.tb-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.tb-stat { display: block; text-decoration: none; color: inherit; background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; padding: 18px 22px; }
+.tb a.tb-stat { color: inherit; }
+.tb a.tb-stat:hover { border-color: #B9CFC2; color: inherit; }
+.tb .tb-stat.is-active { border: 2px solid var(--tb-accent); padding: 17px 21px; }
+.tb-stat-label { font-size: 0.875rem; color: var(--tb-muted); }
+.tb-stat-value { font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+.tb-stat-note { font-size: 0.8125rem; color: var(--tb-muted); margin-top: 4px; }
+.tb-c-accent { color: var(--tb-accent); }
+.tb-c-warn { color: #8A5A00; }
+.tb-c-danger { color: var(--tb-danger); }
+
+/* 一張卡片裡分三格的統計列 */
+.tb-stat-band { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tb-stat-band > div { padding: 22px 26px; }
+.tb-stat-band > div + div { border-left: 1px solid #EFEAE0; }
+
+/* ---- 表單 ---- */
+.tb .tb-input, .tb .tb-select {
+    min-height: 46px; border: 1px solid var(--tb-border-strong); border-radius: 12px;
+    padding: 0 14px; font: inherit; font-size: 0.95rem; background: var(--tb-surface); color: var(--tb-text);
+}
+.tb .tb-input:focus, .tb .tb-select:focus { outline: 2px solid var(--tb-accent); outline-offset: 1px; border-color: var(--tb-accent); }
+.tb .tb-input-pill { border-radius: 999px; padding: 0 22px; }
+.tb-label { font-size: 0.875rem; color: var(--tb-muted); }
+.tb-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 180px; }
+.tb-form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+
+/* ---- 標籤 ---- */
+.tb-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8125rem; font-weight: 500; white-space: nowrap; }
+.tb-pill-warn { background: var(--tb-warn-bg); color: var(--tb-warn-text); }
+.tb-pill-ok { background: var(--tb-accent-soft); color: #24553E; }
+.tb-pill-danger { background: var(--tb-danger-bg); color: var(--tb-danger); font-weight: 700; }
+
+/* ---- 表格 ---- */
+.tb-table-wrap { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; overflow: hidden; }
+.tb .tb-table { width: 100%; margin: 0; border-collapse: collapse; font-size: 0.95rem; color: var(--tb-text); }
+.tb .tb-table > thead > tr > th {
+    padding: 15px 20px; font-weight: 700; text-align: left; white-space: nowrap;
+    border-bottom: 2px solid var(--tb-border); background: var(--tb-surface);
+}
+.tb .tb-table > tbody > tr > td { padding: 14px 20px; vertical-align: middle; border: 0; }
+.tb .tb-table > tbody > tr:nth-child(even) > td { background: var(--tb-zebra); }
+.tb .tb-table.tb-table-hover > tbody > tr:hover > td { background: var(--tb-accent-faint); }
+.tb .tb-table .text-end { text-align: right; }
+.tb .tb-table .text-center { text-align: center; }
+.tb-num { font-variant-numeric: tabular-nums; }
+.tb-code { font-weight: 700; color: var(--tb-accent); white-space: nowrap; }
+.tb-muted { color: var(--tb-muted); }
+
+/* 申請人頭像（名字第一個字） */
+.tb-avatar {
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    width: 36px; height: 36px; border-radius: 10px; background: var(--tb-accent-faint);
+    color: var(--tb-accent); font-weight: 700;
+}
+
+/* 低庫存提示列 */
+.tb-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; background: var(--tb-danger-bg); border: 1px solid var(--tb-danger-border); border-radius: 18px; padding: 16px 22px; }
+.tb-alert-icon { width: 40px; height: 40px; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--tb-danger); font-size: 1.2rem; }
+.tb-alert-title { font-weight: 700; color: #8E2A1B; }
+
+/* 橫條圖（備品使用彙總） */
+.tb-bars { display: flex; flex-direction: column; gap: 14px; }
+.tb-bar-row { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr) 130px 120px; align-items: center; gap: 16px; }
+.tb-bar-track { height: 12px; background: #F1EDE4; border-radius: 999px; overflow: hidden; }
+.tb-bar-fill { height: 100%; border-radius: 999px; background: var(--tb-accent); }
+
+/* 空狀態 */
+.tb-empty { text-align: center; padding: 48px 16px; color: var(--tb-muted); }
+.tb-empty i { font-size: 2.2rem; }
+
+/* 分頁連結跟著換主色 */
+.tb .pagination { --bs-pagination-active-bg: var(--tb-accent); --bs-pagination-active-border-color: var(--tb-accent); --bs-pagination-color: var(--tb-accent); }
+
+/* 手機寬度：統計卡改成單欄、橫條圖每列換行。 */
+@media (max-width: 767.98px) {
+    .tb-title { font-size: 1.6rem; }
+    .tb-stats, .tb-stat-band { grid-template-columns: minmax(0, 1fr); }
+    .tb-stat-band > div + div { border-left: 0; border-top: 1px solid #EFEAE0; }
+    .tb-bar-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .tb-bar-row .tb-bar-track { grid-column: 1 / -1; grid-row: 2; }
+}

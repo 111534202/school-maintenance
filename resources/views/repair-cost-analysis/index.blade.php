@@ -3,174 +3,115 @@
 @section('title', __('common.nav.cost_analysis'))
 
 @section('content')
-<div class="container-fluid">
-    <div class="page-header mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+@include('partials.theme-b-assets')
+<div class="tb">
+    <div class="tb-header">
         <div>
-            <h1 class="h3 mb-1">{{ __('common.nav.cost_analysis') }}</h1>
-            <p class="text-muted mb-0">
-                依維修紀錄建立時間統計備品材料成本。
-            </p>
+            <h1 class="tb-title">{{ __('common.nav.cost_analysis') }}</h1>
+            <p class="tb-subtitle">依維修紀錄建立時間統計備品材料成本；單價為扣料當下該批採購的單價。</p>
         </div>
 
-        <div class="d-flex flex-wrap gap-2">
-            <a
-                href="{{ route('repair-cost-analysis.export.excel', request()->only(['start_date', 'end_date', 'status'])) }}"
-                class="btn btn-success"
-            >
-                <i class="bi bi-file-earmark-excel me-1"></i>
-                匯出 Excel
+        <div class="tb-actions">
+            <a href="{{ route('repair-cost-analysis.export.excel', request()->only(['start_date', 'end_date', 'status'])) }}" class="tb-btn tb-btn-outline">
+                <i class="bi bi-file-earmark-excel" style="color: #1D6B3F" aria-hidden="true"></i>匯出 Excel
             </a>
-
-            <a
-                href="{{ route('repair-cost-analysis.export.pdf', request()->only(['start_date', 'end_date', 'status'])) }}"
-                class="btn btn-danger"
-            >
-                <i class="bi bi-file-earmark-pdf me-1"></i>
-                匯出 PDF
+            <a href="{{ route('repair-cost-analysis.export.pdf', request()->only(['start_date', 'end_date', 'status'])) }}" class="tb-btn tb-btn-outline">
+                <i class="bi bi-file-earmark-pdf" style="color: #A3301F" aria-hidden="true"></i>匯出 PDF
             </a>
         </div>
     </div>
 
     {{-- 日期篩選：兩個日期都不填時，檢視全部日期。 --}}
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form method="GET"
-                  action="{{ route('repair-cost-analysis.index') }}"
-                  class="row g-3 align-items-end">
-
-                <div class="col-12 col-md-4">
-                    <label for="start_date" class="form-label">開始日期</label>
-                    <input
-                        type="date"
-                        id="start_date"
-                        name="start_date"
-                        class="form-control"
-                        value="{{ $startDate ?? '' }}"
-                    >
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <label for="end_date" class="form-label">結束日期</label>
-                    <input
-                        type="date"
-                        id="end_date"
-                        name="end_date"
-                        class="form-control"
-                        value="{{ $endDate ?? '' }}"
-                    >
-                </div>
-
-                <div class="col-12 col-md-4">
-                    <label for="status" class="form-label">案件狀態</label>
-                    <select
-                        id="status"
-                        name="status"
-                        class="form-select"
-                    >
-                        <option value="" @selected(($status ?? '') === '')>全部狀態</option>
-                        <option value="pending" @selected(($status ?? '') === 'pending')>待處理</option>
-                        <option value="assigned" @selected(($status ?? '') === 'assigned')>已指派</option>
-                        <option value="in_progress" @selected(($status ?? '') === 'in_progress')>處理中</option>
-                        <option value="pending_review" @selected(($status ?? '') === 'pending_review')>待驗收</option>
-                        <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-md-4 d-flex flex-wrap gap-2">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search me-1"></i>查詢
-                    </button>
-
-                    <a
-                        href="{{ route('repair-cost-analysis.index') }}"
-                        class="btn btn-outline-secondary"
-                    >
-                        清除篩選
-                    </a>
-                </div>
-            </form>
-
-            @if ($errors->any())
-                <div class="alert alert-danger mt-3 mb-0" role="alert">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="tb-card tb-card-pad tb-form-row">
+        <div class="tb-field">
+            <label for="start_date" class="tb-label">開始日期</label>
+            <input type="date" id="start_date" name="start_date" class="tb-input" value="{{ $startDate ?? '' }}">
         </div>
-    </div>
+        <div class="tb-field">
+            <label for="end_date" class="tb-label">結束日期</label>
+            <input type="date" id="end_date" name="end_date" class="tb-input" value="{{ $endDate ?? '' }}">
+        </div>
+        <div class="tb-field">
+            <label for="status" class="tb-label">案件狀態</label>
+            <select id="status" name="status" class="tb-select">
+                <option value="" @selected(($status ?? '') === '')>全部狀態</option>
+                <option value="pending" @selected(($status ?? '') === 'pending')>待處理</option>
+                <option value="assigned" @selected(($status ?? '') === 'assigned')>已指派</option>
+                <option value="in_progress" @selected(($status ?? '') === 'in_progress')>處理中</option>
+                <option value="pending_review" @selected(($status ?? '') === 'pending_review')>待驗收</option>
+                <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
+            </select>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="tb-btn tb-btn-primary"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
+            <a href="{{ route('repair-cost-analysis.index') }}" class="tb-btn tb-btn-outline">清除篩選</a>
+        </div>
+
+        @if ($errors->any())
+            <div class="alert alert-danger w-100 mb-0" role="alert">
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+    </form>
 
     {{-- 成本摘要：缺少單價時，只呈現已知成本，不把缺價當成零元。 --}}
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small mb-2">已知材料費小計</div>
-                    <div class="fs-3 fw-semibold">
-                        NT$ {{ number_format($knownSubtotal) }}
-                    </div>
-                    <div class="text-muted small mt-2">
-                        依零件使用當下的歷史單價計算。
-                    </div>
-                </div>
-            </div>
+    <div class="tb-card tb-stat-band">
+        <div>
+            <div class="tb-stat-label">已知材料費小計</div>
+            <div class="tb-stat-value tb-c-accent tb-num">NT$ {{ number_format($knownSubtotal) }}</div>
+            <div class="tb-stat-note">依零件使用當下的歷史單價計算。</div>
         </div>
-
-        <div class="col-12 col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small mb-2">缺少單價的明細數</div>
-                    <div class="fs-3 fw-semibold">
-                        {{ number_format($missingPriceCount) }} 筆
-                    </div>
-
-                    @if ($hasIncompleteCost)
-                        <div class="text-danger small mt-2">
-                            <i class="bi bi-exclamation-triangle me-1"></i>
-                            部分明細缺少歷史單價，材料費總額尚不完整。
-                        </div>
-                    @else
-                        <div class="text-success small mt-2">
-                            <i class="bi bi-check-circle me-1"></i>
-                            目前篩選範圍內沒有缺少單價的明細。
-                        </div>
-                    @endif
-                </div>
-            </div>
+        <div>
+            <div class="tb-stat-label">缺少單價的明細數</div>
+            <div class="tb-stat-value tb-num {{ $hasIncompleteCost ? 'tb-c-warn' : '' }}">{{ number_format($missingPriceCount) }} 筆</div>
+            @if ($hasIncompleteCost)
+                <div class="tb-stat-note tb-c-danger"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>部分明細缺少歷史單價，材料費總額尚不完整。</div>
+            @else
+                <div class="tb-stat-note tb-c-accent"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>目前篩選範圍內沒有缺少單價的明細。</div>
+            @endif
         </div>
-
-        <div class="col-12 col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small mb-2">涉及維修案件數</div>
-                    <div class="fs-3 fw-semibold">
-                        {{ number_format($repairRequestCount) }} 件
-                    </div>
-                    <div class="text-muted small mt-2">
-                        同一案件即使有多筆維修紀錄，也只計算一次。
-                    </div>
-                </div>
-            </div>
+        <div>
+            <div class="tb-stat-label">涉及維修案件數</div>
+            <div class="tb-stat-value tb-num">{{ number_format($repairRequestCount) }} 件</div>
+            <div class="tb-stat-note">同一案件即使有多筆維修紀錄，也只計算一次。</div>
         </div>
     </div>
 
-    {{-- 備品使用彙總：依備品分組，缺價明細仍納入使用數量。 --}}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white py-3">
-            <h2 class="h5 mb-0">備品使用彙總</h2>
-        </div>
+    {{-- 備品使用彙總：依備品分組，以橫條比較各備品的已知材料費；缺價明細仍納入使用數量。 --}}
+    <section class="tb-card tb-card-pad d-flex flex-column gap-3" aria-labelledby="summaryTitle">
+        <h2 id="summaryTitle" class="tb-section-title">備品使用彙總</h2>
 
-        <div class="card-body">
-            @if ($partUsageSummary->isEmpty())
-                <p class="text-muted mb-0">
-                    此篩選範圍內沒有備品使用紀錄。
-                </p>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle mb-0">
-                        <thead class="table-light">
+        @if ($partUsageSummary->isEmpty())
+            <p class="tb-note">此篩選範圍內沒有備品使用紀錄。</p>
+        @else
+            @php($maxSubtotal = max(1, (int) $partUsageSummary->max('known_subtotal')))
+            <div class="tb-bars">
+                @foreach ($partUsageSummary as $item)
+                    @php($barWidth = max(2, (int) round(((int) $item->known_subtotal) / $maxSubtotal * 100)))
+                    <div class="tb-bar-row">
+                        <div class="fw-medium">{{ $item->part?->name ?? '零件資料不存在' }}</div>
+                        <div class="tb-bar-track" aria-hidden="true"><div class="tb-bar-fill" style="width: {{ $barWidth }}%"></div></div>
+                        <div class="text-end fw-bold tb-num">NT$ {{ number_format($item->known_subtotal) }}</div>
+                        <div class="text-end tb-note tb-num">
+                            共 {{ number_format($item->total_quantity) }}
+                            @if ((int) $item->missing_price_count > 0)
+                                <span class="tb-c-danger d-block">缺少單價 {{ number_format($item->missing_price_count) }} 筆</span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- 同樣的數字也用表格列出，方便對照與螢幕報讀。 --}}
+            <details>
+                <summary class="tb-note" style="cursor: pointer">以表格檢視</summary>
+                <div class="table-responsive mt-2">
+                    <table class="tb-table">
+                        <thead>
                             <tr>
                                 <th>備品名稱</th>
                                 <th class="text-end">使用總數量</th>
@@ -182,17 +123,11 @@
                             @foreach ($partUsageSummary as $item)
                                 <tr>
                                     <td>{{ $item->part?->name ?? '零件資料不存在' }}</td>
-                                    <td class="text-end">
-                                        {{ number_format($item->total_quantity) }}
-                                    </td>
-                                    <td class="text-end">
-                                        NT$ {{ number_format($item->known_subtotal) }}
-                                    </td>
-                                    <td class="text-end">
+                                    <td class="text-end tb-num">{{ number_format($item->total_quantity) }}</td>
+                                    <td class="text-end tb-num">NT$ {{ number_format($item->known_subtotal) }}</td>
+                                    <td class="text-end tb-num">
                                         @if ((int) $item->missing_price_count > 0)
-                                            <span class="text-danger">
-                                                {{ number_format($item->missing_price_count) }} 筆
-                                            </span>
+                                            <span class="tb-c-danger">{{ number_format($item->missing_price_count) }} 筆</span>
                                         @else
                                             0 筆
                                         @endif
@@ -202,30 +137,23 @@
                         </tbody>
                     </table>
                 </div>
+            </details>
 
-                <p class="text-muted small mt-3 mb-0">
-                    使用總數量包含缺少歷史單價的明細；
-                    已知材料費小計只計算有歷史單價的明細。
-                </p>
-            @endif
-        </div>
-    </div>
+            <p class="tb-note">使用總數量包含缺少歷史單價的明細；已知材料費小計只計算有歷史單價的明細。</p>
+        @endif
+    </section>
 
     {{-- 零件使用明細。 --}}
-    <div class="card shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h2 class="h5 mb-0">材料費明細</h2>
-        </div>
+    <section class="tb-table-wrap" aria-labelledby="detailTitle">
+        <h2 id="detailTitle" class="tb-section-title" style="padding: 20px 24px 12px">材料費明細</h2>
 
-        <div class="card-body">
+        <div>
             @if ($partUsages->isEmpty())
-                <p class="text-muted mb-0">
-                    此日期範圍內沒有可檢視的零件使用紀錄。
-                </p>
+                <p class="tb-note" style="padding: 0 24px 20px">此日期範圍內沒有可檢視的零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle mb-0">
-                        <thead class="table-light">
+                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem">
+                        <thead>
                             <tr>
                                 <th>維修紀錄日期</th>
                                 <th>維修案件</th>
@@ -256,13 +184,13 @@
                                 @endphp
 
                                 <tr>
-                                    <td>
+                                    <td class="tb-num text-nowrap">
                                         {{ $usage->repairLog?->created_at?->format('Y-m-d H:i') ?? '—' }}
                                     </td>
                                     <td>
                                         @if ($repairRequest)
-                                            <div>{{ $repairRequest->title }}</div>
-                                            <small class="text-muted">
+                                            <div class="fw-bold">{{ $repairRequest->title }}</div>
+                                            <small class="tb-muted">
                                                 案件 #{{ $repairRequest->id }}
                                                 · 維修紀錄 #{{ $usage->repair_log_id }}
                                             </small>
@@ -294,7 +222,7 @@
                                         @if ($usage->unit_price === null)
                                             —
                                         @else
-                                            NT$ {{ number_format($usage->quantity * $usage->unit_price) }}
+                                            <span class="fw-bold">NT$ {{ number_format($usage->quantity * $usage->unit_price) }}</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -304,6 +232,6 @@
                 </div>
             @endif
         </div>
-    </div>
+    </section>
 </div>
 @endsection

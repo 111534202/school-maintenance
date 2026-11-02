@@ -26,6 +26,13 @@ class ClassroomReservationController extends Controller
             $query->where('requester_id', $request->user()->id);
         }
 
+        // 列表上方三張統計卡：全部／未審核／已審核（範圍和列表相同，篩選前計算）。
+        $counts = [
+            'all' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', ClassroomReservation::STATUS_PENDING)->count(),
+        ];
+        $counts['reviewed'] = $counts['all'] - $counts['pending'];
+
         // 申請狀態篩選：pending＝未審核（主控台「空間預約待審核」卡片連過來）；reviewed＝已審核。
         $status = $request->query('status');
         if ($status === 'pending') {
@@ -36,7 +43,7 @@ class ClassroomReservationController extends Controller
 
         $reservations = $query->paginate(15)->withQueryString();
 
-        return view('reservations.index', compact('reservations'));
+        return view('reservations.index', compact('reservations', 'counts'));
     }
 
     /**
