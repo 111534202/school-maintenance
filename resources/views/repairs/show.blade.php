@@ -1,4 +1,4 @@
-{{-- 報修單詳細頁（對應 RepairRequestController::show）：左欄是案件資訊、描述、附件、維修紀錄；右欄是「依目前狀態、依你的權限」才出現的操作按鈕。 --}}
+{{-- 報修單詳細頁（對應 RepairRequestController::show）：左欄是設備資料；右欄上方是故障描述與附件、下方是「依目前狀態、依你的權限」才出現的派工與處理；最下面是維修紀錄與材料費明細。 --}}
 {{-- 案件狀態流程：新報修 → 已派工 → 處理中 → 待驗收 → 已結案（驗收不通過會退回處理中），規則在 App\Services\RepairRequestWorkflow。 --}}
 {{-- （Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 {{-- 套用主版面。 --}}
@@ -54,24 +54,26 @@
             title="{{ __('repair_requests.show.back_to_board') }}" aria-label="{{ __('repair_requests.show.back_to_board') }}"><i class="bi bi-arrow-left"></i></a>
     </div>
 
-    <div class="row g-3">
-        {{-- 左欄：案件資訊、描述、附件、維修紀錄 --}}
-        <div class="col-lg-8">
+    {{-- 版面：寬螢幕（992px 以上）左欄是設備資料，右欄上面是故障描述、下面是派工與處理；
+         窄螢幕改成直式，依序是設備資料 → 故障描述 → 派工與處理。維修紀錄與材料費明細放在最下面、佔滿整列。 --}}
+    <div class="row g-3 mb-3 align-items-start">
+        {{-- 左欄：設備資料（設備、地點、影響程度、維修人員、送出時間），以及最近一次驗收退回原因。 --}}
+        <div class="col-12 col-lg-5">
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     {{-- dl / dt / dd 是 HTML 的「名稱／內容」清單：dt 欄位名稱、dd 內容，Bootstrap 排成左右兩欄。 --}}
                     <dl class="row mb-0 gy-2">
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.show.device_location_prefix') }}</dt>
-                        <dd class="col-6 col-sm-8 mb-0">{{ $deviceDisplay }}</dd>
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.show.device_location_prefix') }}</dt>
+                        <dd class="col-6 col-sm-7 mb-0">{{ $deviceDisplay }}</dd>
 
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-geo-alt me-2"></i>設備地點：</dt>
-                        <dd class="col-6 col-sm-8 mb-0">{{ $locationDisplay }}</dd>
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-geo-alt me-2"></i>設備地點：</dt>
+                        <dd class="col-6 col-sm-7 mb-0">{{ $locationDisplay }}</dd>
 
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-speedometer me-2"></i>{{ __('repair_requests.show.impact_level_prefix') }}</dt>
-                        <dd class="col-6 col-sm-8 mb-0"><span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span></dd>
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-speedometer me-2"></i>{{ __('repair_requests.show.impact_level_prefix') }}</dt>
+                        <dd class="col-6 col-sm-7 mb-0"><span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span></dd>
 
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-mortarboard me-2"></i>{{ __('repair_requests.show.affects_class_prefix') }}</dt>
-                        <dd class="col-6 col-sm-8 mb-0">
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-mortarboard me-2"></i>{{ __('repair_requests.show.affects_class_prefix') }}</dt>
+                        <dd class="col-6 col-sm-7 mb-0">
                             @if ($repairRequest->is_class_affected)
                                 <span class="badge text-bg-danger">{{ __('repair_requests.yes') }}</span>
                             @else
@@ -79,8 +81,8 @@
                             @endif
                         </dd>
 
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-person-gear me-2"></i>{{ __('repair_requests.show.assignee_prefix') }}</dt>
-                        <dd class="col-6 col-sm-8 mb-0">
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-person-gear me-2"></i>{{ __('repair_requests.show.assignee_prefix') }}</dt>
+                        <dd class="col-6 col-sm-7 mb-0">
                             {{ $assigneeDisplay }}
                             {{-- 有預計處理時間才顯示。 --}}
                             @if ($repairRequest->scheduled_at)
@@ -88,8 +90,8 @@
                             @endif
                         </dd>
 
-                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-clock me-2"></i>{{ __('repair_requests.show.submitted_prefix') }}</dt>
-                        <dd class="col-6 col-sm-8 mb-0">{{ $repairRequest->created_at->format('Y-m-d H:i') }}</dd>
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-clock me-2"></i>{{ __('repair_requests.show.submitted_prefix') }}</dt>
+                        <dd class="col-6 col-sm-7 mb-0">{{ $repairRequest->created_at->format('Y-m-d H:i') }}</dd>
                     </dl>
                 </div>
             </div>
@@ -101,7 +103,10 @@
                     <div><strong>{{ __('repair_requests.show.last_rejection_reason_prefix') }}</strong>{{ $repairRequest->rejection_reason }}</div>
                 </div>
             @endif
+        </div>
 
+        {{-- 右欄：上方故障描述（含附件），下方派工與處理（依目前狀態、依你的權限才出現）。 --}}
+        <div class="col-12 col-lg-7">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white"><i class="bi bi-chat-left-text me-2"></i>{{ __('repair_requests.show.description_heading') }}</div>
                 <div class="card-body" style="white-space: pre-line;">{{ $repairRequest->description }}</div>
@@ -119,120 +124,10 @@
                 </div>
             @endif
 
-            {{-- 有維修紀錄才顯示；驗收退回重修後會有多筆，這裡逐筆列出完整的處理過程。 --}}
-            @if ($repairRequest->repairLogs->isNotEmpty())
-                <h2 class="h6 text-muted mt-4 mb-2"><i class="bi bi-journal-text me-2"></i>{{ __('repair_requests.show.repair_logs_heading') }}</h2>
-                {{-- 逐筆列出維修紀錄（時間、工時、原因、處置、備品、照片）。 --}}
-                @foreach ($repairRequest->repairLogs as $log)
-                    <div class="card shadow-sm mb-3">
-                        <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
-                            <div>
-                                <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
-                                <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
-                            </div>
-                            <span class="text-muted">{{ __('repair_requests.show.total_hours_suffix', ['hours' => $log->total_hours]) }}</span>
-                        </div>
-
-                        <div class="card-body">
-                            <dl class="row mb-0 gy-2">
-                                {{-- 每筆維修紀錄依序顯示：故障原因、處置方式，有填才顯示的使用備品與附件。 --}}
-                                <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.cause_prefix') }}</dt>
-                                <dd class="col-8 col-sm-9 mb-0">{{ $log->cause }}</dd>
-
-                                <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.resolution_prefix') }}</dt>
-                                <dd class="col-8 col-sm-9 mb-0">{{ $log->resolution }}</dd>
-
-                                {{-- 使用備品說明有填才顯示。 --}}
-                                @if ($log->parts_used_note)
-                                    <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.parts_used_prefix') }}</dt>
-                                    <dd class="col-8 col-sm-9 mb-0">{{ $log->parts_used_note }}</dd>
-                                @endif
-
-                                {{-- 這筆維修紀錄有附件（維修前後照片／影片）才顯示，點檔名在新分頁開啟。 --}}
-                                @if ($log->attachments->isNotEmpty())
-                                    <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.log_attachments_prefix') }}</dt>
-                                    <dd class="col-8 col-sm-9 mb-0">
-                                        <ul class="list-unstyled mb-0">
-                                            @foreach ($log->attachments as $attachment)
-                                                <li><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-1"></i>{{ $attachment->file_name }}</a></li>
-                                            @endforeach
-                                        </ul>
-                                    </dd>
-                                @endif
-                            </dl>
-                        </div>
-                    </div>
-                @endforeach
-            @endif
-        </div>
-
-        {{-- 材料費明細：彙總這張報修單所有維修紀錄的零件使用情況。 --}}
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">材料費明細</h5>
-            </div>
-            <div class="card-body">
-                @if ($partUsages->isEmpty())
-                    <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
-                @else
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered align-middle mb-3">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>零件名稱</th>
-                                    <th>維修紀錄</th>
-                                    <th class="text-end">數量</th>
-                                    <th class="text-end">單價</th>
-                                    <th class="text-end">小計</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($repairRequest->repairLogs as $log)
-                                    @foreach ($log->partUsages as $usage)
-                                        <tr>
-                                            <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
-                                            <td>#{{ $log->id }}</td>
-                                            <td class="text-end">{{ $usage->quantity }}</td>
-                                            <td class="text-end">
-                                                @if ($usage->unit_price === null)
-                                                    <span class="text-danger">缺少單價</span>
-                                                @else
-                                                    NT$ {{ number_format($usage->unit_price) }}
-                                                @endif
-                                            </td>
-                                            <td class="text-end">
-                                                @if ($usage->unit_price === null)
-                                                    —
-                                                @else
-                                                    NT$ {{ number_format($usage->quantity * $usage->unit_price) }}
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    @if ($hasIncompletePrice)
-                        <div class="alert alert-warning mb-0">
-                            部分零件缺少歷史單價，目前無法提供完整的材料費總額。
-                        </div>
-                    @else
-                        <div class="text-end">
-                            <span class="text-muted me-2">目前記錄的材料費總額</span>
-                            <strong class="fs-5">NT$ {{ number_format($materialCost) }}</strong>
-                        </div>
-                    @endif
-                @endif
-            </div>
-        </div>
-
-        {{-- 右欄：依目前狀態顯示可以做的操作 --}}
-        {{-- 沒有任何可做的操作時（例如已結案、或你沒有權限），整個右欄不顯示。 --}}
-        @if ($hasActions)
-            <div class="col-lg-4">
+            {{-- 沒有任何可做的操作時（例如已結案、或你沒有權限），不顯示派工與處理區塊。 --}}
+            @if ($hasActions)
                 <div class="card shadow-sm">
+                    <div class="card-header bg-white"><i class="bi bi-person-gear me-2"></i>派工與處理</div>
                     <div class="card-body">
                         {{-- 狀態一：新報修 → 顯示派工表單（挑維修人員 + 預計處理時間）。 --}}
                         @if ($showDispatch)
@@ -327,8 +222,116 @@
                         @endif
                     </div>
                 </div>
-            </div>
+            @endif
+        </div>
+    </div>
+
+        {{-- 有維修紀錄才顯示；驗收退回重修後會有多筆，這裡逐筆列出完整的處理過程。 --}}
+        @if ($repairRequest->repairLogs->isNotEmpty())
+            <h2 class="h6 text-muted mt-4 mb-2"><i class="bi bi-journal-text me-2"></i>{{ __('repair_requests.show.repair_logs_heading') }}</h2>
+            {{-- 逐筆列出維修紀錄（時間、工時、原因、處置、備品、照片）。 --}}
+            @foreach ($repairRequest->repairLogs as $log)
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
+                        <div>
+                            <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
+                            <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                        </div>
+                        <span class="text-muted">{{ __('repair_requests.show.total_hours_suffix', ['hours' => $log->total_hours]) }}</span>
+                    </div>
+
+                    <div class="card-body">
+                        <dl class="row mb-0 gy-2">
+                            {{-- 每筆維修紀錄依序顯示：故障原因、處置方式，有填才顯示的使用備品與附件。 --}}
+                            <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.cause_prefix') }}</dt>
+                            <dd class="col-8 col-sm-9 mb-0">{{ $log->cause }}</dd>
+
+                            <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.resolution_prefix') }}</dt>
+                            <dd class="col-8 col-sm-9 mb-0">{{ $log->resolution }}</dd>
+
+                            {{-- 使用備品說明有填才顯示。 --}}
+                            @if ($log->parts_used_note)
+                                <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.parts_used_prefix') }}</dt>
+                                <dd class="col-8 col-sm-9 mb-0">{{ $log->parts_used_note }}</dd>
+                            @endif
+
+                            {{-- 這筆維修紀錄有附件（維修前後照片／影片）才顯示，點檔名在新分頁開啟。 --}}
+                            @if ($log->attachments->isNotEmpty())
+                                <dt class="col-4 col-sm-3 text-muted fw-normal text-nowrap">{{ __('repair_requests.show.log_attachments_prefix') }}</dt>
+                                <dd class="col-8 col-sm-9 mb-0">
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($log->attachments as $attachment)
+                                            <li><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-1"></i>{{ $attachment->file_name }}</a></li>
+                                        @endforeach
+                                    </ul>
+                                </dd>
+                            @endif
+                        </dl>
+                    </div>
+                </div>
+            @endforeach
         @endif
+
+    {{-- 材料費明細：彙總這張報修單所有維修紀錄的零件使用情況。 --}}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">材料費明細</h5>
+        </div>
+        <div class="card-body">
+            @if ($partUsages->isEmpty())
+                <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle mb-3">
+                        <thead class="table-light">
+                            <tr>
+                                <th>零件名稱</th>
+                                <th>維修紀錄</th>
+                                <th class="text-end">數量</th>
+                                <th class="text-end">單價</th>
+                                <th class="text-end">小計</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($repairRequest->repairLogs as $log)
+                                @foreach ($log->partUsages as $usage)
+                                    <tr>
+                                        <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
+                                        <td>#{{ $log->id }}</td>
+                                        <td class="text-end">{{ $usage->quantity }}</td>
+                                        <td class="text-end">
+                                            @if ($usage->unit_price === null)
+                                                <span class="text-danger">缺少單價</span>
+                                            @else
+                                                NT$ {{ number_format($usage->unit_price) }}
+                                            @endif
+                                        </td>
+                                        <td class="text-end">
+                                            @if ($usage->unit_price === null)
+                                                —
+                                            @else
+                                                NT$ {{ number_format($usage->quantity * $usage->unit_price) }}
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @if ($hasIncompletePrice)
+                    <div class="alert alert-warning mb-0">
+                        部分零件缺少歷史單價，目前無法提供完整的材料費總額。
+                    </div>
+                @else
+                    <div class="text-end">
+                        <span class="text-muted me-2">目前記錄的材料費總額</span>
+                        <strong class="fs-5">NT$ {{ number_format($materialCost) }}</strong>
+                    </div>
+                @endif
+            @endif
+        </div>
     </div>
     {{-- 教室課表視窗（派工、重新指派共用）：顯示設備地點那間教室一週的課表，點空堂就把時間填進「建議處理時間」。 --}}
     @if ($timetableClassroom && ($showDispatch || $canReassign))
