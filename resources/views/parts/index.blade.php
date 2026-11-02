@@ -34,7 +34,8 @@
         <div class="table-responsive">
             {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
             {{-- 點這一行的任何地方都會進入零件履歷（也可以用 Tab 移到該行後按 Enter）。 --}}
-            <table class="table table-bordered table-hover bg-white align-middle part-rows" data-onion-primary="1,2">
+            {{-- 欄寬依內容自動調整（table-fit），不拉滿整個畫面。 --}}
+            <table class="table table-bordered table-hover bg-white align-middle part-rows table-fit" data-onion-primary="1,2">
                 <thead class="table-light">
                     <tr>
                         <th class="text-nowrap">零件編號</th>
@@ -44,7 +45,7 @@
                         <th class="text-end text-nowrap">平均單價</th>
                         <th class="text-end text-nowrap">目前庫存</th>
                         <th class="text-end text-nowrap">安全庫存</th>
-                        <th class="text-end">操作</th>
+                        <th class="text-center">其他</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,7 +64,7 @@
                                 {{ $part->withUnit($part->current_stock) }}
                             </td>
                             <td class="text-end text-nowrap">{{ $part->withUnit($part->safety_stock) }}</td>
-                            <td class="text-end text-nowrap">
+                            <td class="text-center text-nowrap">
                                 <a href="{{ route('parts.show', $part) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>
                             </td>
                         </tr>
@@ -128,6 +129,8 @@
 
     <style>
         .part-row { cursor: pointer; }
+        /* 桌面寬度：表格寬度跟著內容，每欄只佔需要的寬度；手機版仍由 onion 版面改成卡片式。 */
+        @media (min-width: 768px) { .table-fit { width: auto; } }
         .part-row:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
     </style>
     <script>
