@@ -203,6 +203,31 @@ class PartProfileAndStockTest extends TestCase
         $this->assertMatchesRegularExpression('/低庫存<\/span>\s*2/u', $html);
     }
 
+    public function test_low_stock_parts_can_be_exported_to_excel(): void
+    {
+        \Maatwebsite\Excel\Facades\Excel::fake();
+        $this->loginAsAnyUser();
+        $low = $this->makePart(['part_code' => 'LOW-1', 'unit' => '條', 'safety_stock' => 5]);
+        $this->buy($low, '2026-10-10', 2, 20);
+        $enough = $this->makePart(['part_code' => 'OK-1', 'safety_stock' => 1]);
+        $this->buy($enough, '2026-10-10', 9, 20);
+
+        $this->get(route('parts.index'))->assertSee(route('parts.low-stock.export'), false);
+        $this->get(route('parts.low-stock.export'))->assertOk();
+
+        \Maatwebsite\Excel\Facades\Excel::matchByRegex();
+        \Maatwebsite\Excel\Facades\Excel::assertDownloaded('/^low-stock-parts-.*\\.xlsx$/', function ($export): bool {
+            $rows = $export->array();
+
+            return $export instanceof \App\Exports\LowStockPartsExport
+                && count($rows) === 1
+                && $rows[0][0] === 'LOW-1'
+                && $rows[0][4] === 2
+                && $rows[0][6] === '條'
+                && $rows[0][7] === 3;
+        });
+    }
+
     // ---------- 零件履歷 ----------
 
     public function test_profile_shows_title_basic_data_purchases_and_usages(): void

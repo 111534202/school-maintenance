@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\LowStockPartsExport;
 use App\Models\Part;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * 零件庫存：列表（零件庫存列表）、零件履歷、新增／修改／刪除零件。
@@ -34,12 +36,27 @@ class PartController extends Controller
             ->withQueryString();
 
         // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
-        $lowStockParts = Part::query()
+        $lowStockParts = $this->lowStockParts();
+
+        return view('parts.index', compact('parts', 'lowStockParts'));
+    }
+
+    /** 匯出目前低庫存品項的 Excel（內容與低庫存視窗相同）。 */
+    public function exportLowStock()
+    {
+        return Excel::download(
+            new LowStockPartsExport($this->lowStockParts()),
+            'low-stock-parts-' . now()->format('Y-m-d-His') . '.xlsx'
+        );
+    }
+
+    /** 目前庫存低於安全庫存的零件，依零件新增順序排列。 */
+    private function lowStockParts()
+    {
+        return Part::query()
             ->whereColumn('current_stock', '<', 'safety_stock')
             ->orderBy('id')
             ->get();
-
-        return view('parts.index', compact('parts', 'lowStockParts'));
     }
 
     public function create()

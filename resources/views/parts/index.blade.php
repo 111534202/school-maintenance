@@ -116,7 +116,11 @@
                     @endif
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
+                    @if ($lowStockParts->isNotEmpty())
+                        <a href="{{ route('parts.low-stock.export') }}" class="btn btn-sm btn-success">
+                            <i class="bi bi-file-earmark-excel me-1"></i>匯出 Excel
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>
