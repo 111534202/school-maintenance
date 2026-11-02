@@ -159,8 +159,9 @@ class PartProfileAndStockTest extends TestCase
     public function test_list_title_and_search_by_code_name_brand_or_model(): void
     {
         $this->loginAsAnyUser();
-        $this->makePart(['name' => 'HDMI 線', 'brand' => 'Cable Master', 'model' => 'HD-1M']);
-        $this->makePart(['name' => '網路線', 'brand' => 'D-Link', 'model' => 'CAT6']);
+        // 庫存充足，避免出現在「低庫存品項」彈窗（彈窗不受搜尋條件影響，永遠列出全部低庫存零件）。
+        $this->makePart(['name' => 'HDMI 線', 'brand' => 'Cable Master', 'model' => 'HD-1M', 'current_stock' => 5, 'unit_price' => 20]);
+        $this->makePart(['name' => '網路線', 'brand' => 'D-Link', 'model' => 'CAT6', 'current_stock' => 5, 'unit_price' => 20]);
 
         $this->get(route('parts.index'))->assertOk()->assertSee('零件庫存列表')->assertSee('PART-1')->assertSee('PART-2');
 

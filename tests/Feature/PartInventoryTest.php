@@ -36,7 +36,8 @@ class PartInventoryTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
-            ->assertSee('低庫存');
+            ->assertSee('⚠ 低庫存')
+            ->assertSee('目前低庫存品項（1）');
     }
 
     public function test_parts_index_does_not_show_low_stock_warning_at_safety_stock(): void
@@ -45,7 +46,9 @@ class PartInventoryTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
-            ->assertDontSee('低庫存');
+            // 「查看目前低庫存品項」按鈕一定會出現；這裡檢查的是列表裡的低庫存標籤與彈窗筆數。
+            ->assertDontSee('⚠ 低庫存')
+            ->assertSee('目前低庫存品項（0）');
     }
 
     public function test_parts_index_does_not_show_low_stock_warning_above_safety_stock(): void
@@ -54,6 +57,8 @@ class PartInventoryTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
-            ->assertDontSee('低庫存');
+            // 「查看目前低庫存品項」按鈕一定會出現；這裡檢查的是列表裡的低庫存標籤與彈窗筆數。
+            ->assertDontSee('⚠ 低庫存')
+            ->assertSee('目前低庫存品項（0）');
     }
 }
