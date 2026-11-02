@@ -179,6 +179,30 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('parts.index'))->assertSee('NT$ 25');
     }
 
+    public function test_low_stock_window_lists_only_parts_below_their_safety_stock(): void
+    {
+        $this->loginAsAnyUser();
+        $low = $this->makePart(['name' => '快用完的線', 'part_code' => 'LOW-1', 'safety_stock' => 5]);
+        $this->buy($low, '2026-10-10', 2, 20);
+        $enough = $this->makePart(['name' => '庫存充足的線', 'part_code' => 'OK-1', 'safety_stock' => 1]);
+        $this->buy($enough, '2026-10-10', 9, 20);
+
+        $html = $this->get(route('parts.index'))
+            ->assertOk()
+            ->assertSee('查看目前低庫存品項')
+            ->assertSee('目前低庫存品項（1）')
+            ->assertSee('data-href="' . route('parts.show', $low) . '"', false)
+            ->getContent();
+
+        // 低庫存視窗裡只有 LOW-1。
+        $modal = substr($html, strpos($html, 'id="lowStockModal"'));
+        $this->assertStringContainsString('LOW-1', $modal);
+        $this->assertStringNotContainsString('OK-1', $modal);
+
+        // 列表上「低庫存」標籤在數量前面。
+        $this->assertMatchesRegularExpression('/低庫存<\/span>\s*2/u', $html);
+    }
+
     // ---------- 零件履歷 ----------
 
     public function test_profile_shows_title_basic_data_purchases_and_usages(): void

@@ -33,7 +33,13 @@ class PartController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('parts.index', compact('parts'));
+        // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
+        $lowStockParts = Part::query()
+            ->whereColumn('current_stock', '<', 'safety_stock')
+            ->orderBy('id')
+            ->get();
+
+        return view('parts.index', compact('parts', 'lowStockParts'));
     }
 
     public function create()
