@@ -735,7 +735,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         dateInput.value = first.date;
         startInput.value = first.period.start_time;
-        endInput.value = last.period.end_time;
+        // 代表時段＝最早的那一節（同一天內的開始與結束）；實際每個時段另外放在 slots[] 送出。
+        endInput.value = first.period.end_time;
 
         selectedSlotsContainer.replaceChildren();
         ordered.forEach(function (item, index) {

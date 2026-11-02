@@ -727,4 +727,35 @@ class ClassroomReservationTest extends TestCase
             'date' => $date,
         ]))->assertOk();
     }
+
+    /**
+     * 跨日一次申請多個時段：第一天選下午、第二天選第一節。
+     * 申請本身的開始／結束取最早的那一節，不能拿第一天下午的開始配第二天早上的結束（以前會被誤判成結束早於開始）。
+     */
+    public function test_slots_across_two_days_can_be_submitted_together(): void
+    {
+        $classroom = $this->makeClassroom();
+        $day1 = now()->addDays(15)->toDateString();
+        $day2 = now()->addDays(16)->toDateString();
+
+        $this->post(route('reservations.store'), [
+            'classroom_id' => $classroom->id,
+            'class_name' => '一年甲班',
+            'purpose' => '跨日活動',
+            // 畫面舊版送出的代表時間：第一天的開始＋第二天的結束
+            'reservation_date' => $day1,
+            'start_time' => '13:10',
+            'end_time' => '09:00',
+            'slots' => [
+                ['reservation_date' => $day1, 'start_time' => '13:10', 'end_time' => '14:00', 'period_no' => 5],
+                ['reservation_date' => $day2, 'start_time' => '08:10', 'end_time' => '09:00', 'period_no' => 1],
+            ],
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $reservation = ClassroomReservation::query()->sole();
+        $this->assertSame($day1, $reservation->reservation_date->toDateString());
+        $this->assertSame('13:10', substr((string) $reservation->start_time, 0, 5));
+        $this->assertSame('14:00', substr((string) $reservation->end_time, 0, 5));
+        $this->assertSame(2, $reservation->slots()->count());
+    }
 }
