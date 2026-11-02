@@ -75,7 +75,6 @@
                             <th class="text-end text-nowrap">單價</th>
                             <th class="text-end text-nowrap">總價</th>
                             <th class="text-end text-nowrap">剩餘數量</th>
-                            <th>發票</th>
                             <th>備註</th>
                             <th class="text-end">操作</th>
                         </tr>
@@ -89,15 +88,16 @@
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->unit_price) }}</td>
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->totalPrice()) }}</td>
                                 <td class="text-end">{{ $purchase->remaining_quantity }}</td>
-                                <td>
-                                    @forelse ($purchase->attachments as $attachment)
-                                        <a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i>{{ $attachment->file_name }}</a>
-                                    @empty
-                                        <span class="text-muted">—</span>
-                                    @endforelse
-                                </td>
                                 <td>{{ $purchase->note ?? '—' }}</td>
                                 <td class="text-end text-nowrap">
+                                    {{-- 附件：在目前畫面用視窗預覽（圖片、PDF），不會另開分頁。 --}}
+                                    @if ($attachment = $purchase->attachments->first())
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                            data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}"
+                                            data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
+                                            <i class="bi bi-paperclip"></i> 附件
+                                        </button>
+                                    @endif
                                     <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
@@ -115,6 +115,61 @@
             </div>
         @endif
     </div>
+
+    {{-- 附件預覽視窗：圖片直接顯示、PDF 用內嵌檢視器；其他格式提供下載連結。 --}}
+    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="attachmentModalTitle">附件</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                </div>
+                <div class="modal-body text-center bg-light" id="attachmentModalBody"></div>
+                <div class="modal-footer">
+                    <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟／下載</a>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('attachmentModal');
+        const body = document.getElementById('attachmentModalBody');
+
+        modal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const url = button.dataset.url;
+            const mime = button.dataset.mime || '';
+            document.getElementById('attachmentModalTitle').textContent = button.dataset.title;
+            document.getElementById('attachmentModalOpen').href = url;
+            body.innerHTML = '';
+
+            if (mime.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = button.dataset.title;
+                img.className = 'img-fluid rounded';
+                img.style.maxHeight = '75vh';
+                body.appendChild(img);
+            } else if (mime === 'application/pdf') {
+                const frame = document.createElement('iframe');
+                frame.src = url;
+                frame.title = button.dataset.title;
+                frame.style.width = '100%';
+                frame.style.height = '75vh';
+                frame.style.border = '0';
+                body.appendChild(frame);
+            } else {
+                body.innerHTML = '<p class="text-muted my-4">這個檔案格式無法在這裡預覽，請按下方「在新分頁開啟／下載」。</p>';
+            }
+        });
+
+        // 關閉時清空，避免下次打開先閃過上一個附件。
+        modal.addEventListener('hidden.bs.modal', function () { body.innerHTML = ''; });
+    });
+    </script>
 
     {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
     <div class="card mb-3">

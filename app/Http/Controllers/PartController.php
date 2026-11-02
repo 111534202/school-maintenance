@@ -135,7 +135,7 @@ class PartController extends Controller
 
         DB::transaction(function () use ($part) {
             foreach ($part->purchases as $purchase) {
-                $purchase->attachments()->delete();
+                $purchase->deleteAttachments();
             }
             $part->delete();   // 採購紀錄會跟著刪除（外鍵 cascade）
         });

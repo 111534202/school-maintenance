@@ -58,11 +58,21 @@
             </div>
             <div class="form-text mb-3" id="totalHint">總價＝數量×單價，系統自動計算。</div>
 
+            @php($currentAttachment = $editing ? $purchase->attachments->first() : null)
             <div class="mb-3">
-                <label for="invoice" class="form-label">發票／收據</label>
+                <label for="invoice" class="form-label">附件</label>
+                @if ($currentAttachment)
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-2 small">
+                        <span>目前已有附件：<a href="{{ route('attachments.show', $currentAttachment) }}" target="_blank" rel="noopener">查看</a></span>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" value="1" id="remove_invoice" name="remove_invoice" @checked(old('remove_invoice'))>
+                            <label class="form-check-label text-danger" for="remove_invoice">刪除目前的附件</label>
+                        </div>
+                    </div>
+                @endif
                 <input type="file" id="invoice" name="invoice" accept=".pdf,.jpg,.jpeg,.png"
                     class="form-control @error('invoice') is-invalid @enderror">
-                <div class="form-text">PDF 或圖片，最多 10 MB。@if ($editing && $purchase->attachments->isNotEmpty())上傳新檔案會取代目前的「{{ $purchase->attachments->first()->file_name }}」。@endif</div>
+                <div class="form-text">發票、收據等，PDF 或圖片，最多 10 MB。@if ($currentAttachment)上傳新檔案會取代目前的附件。@endif</div>
                 @error('invoice')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 

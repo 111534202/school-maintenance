@@ -218,6 +218,35 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('attachments.show', $purchase->attachments->first()))->assertOk();
     }
 
+    public function test_the_attachment_shows_as_a_button_and_can_be_removed_without_uploading_a_new_one(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+
+        $this->post(route('parts.purchases.store', $part), [
+            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20,
+            'invoice' => UploadedFile::fake()->image('receipt-2026.jpg'),
+        ]);
+        $purchase = PartPurchase::firstOrFail();
+        $path = $purchase->attachments->first()->file_path;
+        Storage::disk('local')->assertExists($path);
+
+        // 履歷頁只顯示「附件」按鈕，不顯示檔名；按鈕帶著預覽用的網址與檔案類型。
+        $this->get(route('parts.show', $part))
+            ->assertSee('data-bs-target="#attachmentModal"', false)
+            ->assertSee('data-mime="image/jpeg"', false)
+            ->assertDontSee('receipt-2026.jpg');
+
+        $this->put(route('parts.purchases.update', [$part, $purchase]), [
+            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20, 'remove_invoice' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertCount(0, $purchase->fresh()->attachments);
+        Storage::disk('local')->assertMissing($path);
+        $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
+    }
+
     public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void
     {
         $this->loginAsAnyUser();

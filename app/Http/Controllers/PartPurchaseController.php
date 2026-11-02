@@ -60,7 +60,12 @@ class PartPurchaseController extends Controller
         try {
             DB::transaction(function () use ($request, $purchase, $validated) {
                 $this->stock->update($purchase, $this->purchaseData($validated));
-                $this->storeInvoice($request, $purchase, replace: true);
+
+                if ($request->hasFile('invoice')) {
+                    $this->storeInvoice($request, $purchase, replace: true);   // 上傳新檔案：取代原本的附件
+                } elseif ($request->boolean('remove_invoice')) {
+                    $purchase->deleteAttachments();                             // 勾選「刪除目前的附件」
+                }
             });
         } catch (DomainException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -96,8 +101,9 @@ class PartPurchaseController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['required', 'integer', 'min:0'],
             'note' => ['nullable', 'string', 'max:255'],
-            // 發票或收據：一個檔案，PDF 或圖片，最多 10 MB。
+            // 附件（發票、收據等）：一個檔案，PDF 或圖片，最多 10 MB。
             'invoice' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'remove_invoice' => ['nullable', 'boolean'],
         ], [
             'purchase_date.before_or_equal' => '採購日期不能晚於今天。',
         ]);
@@ -114,7 +120,7 @@ class PartPurchaseController extends Controller
         ];
     }
 
-    /** 儲存發票；修改時上傳新檔案會取代舊的發票。 */
+    /** 儲存附件；修改時上傳新檔案會取代舊的附件。 */
     private function storeInvoice(Request $request, PartPurchase $purchase, bool $replace = false): void
     {
         if (! $request->hasFile('invoice')) {
@@ -122,7 +128,7 @@ class PartPurchaseController extends Controller
         }
 
         if ($replace) {
-            $purchase->attachments()->delete();
+            $purchase->deleteAttachments();
         }
 
         $this->uploader->storeMany($purchase, [$request->file('invoice')]);

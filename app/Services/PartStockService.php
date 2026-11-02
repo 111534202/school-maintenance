@@ -89,7 +89,7 @@ class PartStockService
             }
 
             Part::query()->whereKey($locked->part_id)->decrement('current_stock', $locked->quantity);
-            $locked->attachments()->delete();
+            $locked->deleteAttachments();
             $locked->delete();
         });
     }

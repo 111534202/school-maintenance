@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * 零件採購紀錄（進貨批次）。
@@ -60,6 +61,17 @@ class PartPurchase extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /** 刪除這筆採購的附件：資料列和硬碟上的檔案一起刪掉，不留下沒人用的檔案。 */
+    public function deleteAttachments(): void
+    {
+        foreach ($this->attachments()->get() as $attachment) {
+            if ($disk = $attachment->storageDisk()) {
+                Storage::disk($disk)->delete($attachment->file_path);
+            }
+            $attachment->delete();
+        }
     }
 
     public function repairPartUsages(): HasMany
