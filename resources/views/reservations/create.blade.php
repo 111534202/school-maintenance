@@ -99,9 +99,16 @@
                                 style="display: none; max-height: 240px; overflow-y: auto;"
                             >
                                 @foreach ($classrooms as $classroom)
+                                    @php
+                                        // 選項文字顏色：紅＝暫停預約（核心設備維修中）；黃＝有設備在報修；黑＝正常。
+                                        $roomTone = in_array($classroom->id, $suspendedIds, true)
+                                            ? 'text-danger fw-semibold'
+                                            : (! empty($repairNotices[$classroom->id]) ? 'room-has-repair fw-semibold' : '');
+                                    @endphp
                                     <button
                                         type="button"
-                                        class="list-group-item list-group-item-action text-start"
+                                        class="list-group-item list-group-item-action text-start {{ $roomTone }}"
+                                        data-tone="{{ $roomTone }}"
                                         role="option"
                                         data-id="{{ $classroom->id }}"
                                         data-search="{{ $classroom->name }} {{ $classroom->classroom_code }}"
@@ -224,6 +231,10 @@
     </div>
 </div>
 
+<style>
+    /* 有設備在報修的教室：深黃色字（Bootstrap 的亮黃色在白底上看不清楚）。 */
+    .room-has-repair { color: #b07800 !important; }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('classroom_search');
@@ -268,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateRepairNotice() {
         updateSubmitState();
+        applyRoomTone();
         if (!repairNotice) {
             return;
         }
@@ -348,6 +360,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         changingClassroom = false;
         previousClassroom = null;
+    }
+
+    // 輸入框顯示的教室名稱也跟選項同色（紅／黃／黑）。
+    function applyRoomTone() {
+        const selected = options.find(function (option) {
+            return option.dataset.id === classroomInput.value;
+        });
+        searchInput.classList.remove('text-danger', 'room-has-repair', 'fw-semibold');
+        if (selected && selected.dataset.tone) {
+            searchInput.classList.add.apply(searchInput.classList, selected.dataset.tone.split(' '));
+        }
     }
 
     function selectClassroom(option) {
