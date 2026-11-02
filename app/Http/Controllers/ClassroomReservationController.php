@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Classroom;
 use App\Models\ClassroomReservation;
 use App\Services\AuditLogger;
+use App\Services\ClassroomRepairNotices;
 use App\Services\ReservationReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,10 @@ class ClassroomReservationController extends Controller
 
         $reservation->load(['classroom', 'requester', 'reviewer', 'slots']);
 
-        return view('reservations.show', compact('reservation', 'canManage'));
+        // 教室目前在報修／故障的設備（審核時參考）。
+        $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id])[$reservation->classroom_id] ?? [];
+
+        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices'));
     }
 
     /**
@@ -89,7 +93,17 @@ class ClassroomReservationController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('reservations.create', compact('classrooms'));
+        // 核心設備故障而暫停預約的教室：仍列在選單裡（不能選），讓申請人知道為什麼借不到。
+        $suspendedClassrooms = Classroom::query()
+            ->where('is_active', true)
+            ->where('reservation_status', '<>', 'normal')
+            ->orderBy('name')
+            ->get();
+
+        // 每間教室目前在報修／故障的設備，選教室時顯示提醒。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id')->merge($suspendedClassrooms->pluck('id')));
+
+        return view('reservations.create', compact('classrooms', 'suspendedClassrooms', 'repairNotices'));
     }
 
     /**

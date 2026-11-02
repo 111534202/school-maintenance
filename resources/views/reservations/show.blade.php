@@ -50,6 +50,28 @@
     </div>
 </div>
 
+{{-- 教室設備狀況：教室裡有設備在報修／故障時提醒申請人與審核人（核心設備故障時教室會暫停預約，無法核准）。 --}}
+<div class="card mb-3 {{ $repairNotices ? 'border-warning' : '' }}">
+    <div class="card-header">教室設備狀況</div>
+    <div class="card-body">
+        @if ($repairNotices)
+            <ul class="mb-0 ps-3">
+                @foreach ($repairNotices as $notice)
+                    <li class="text-warning-emphasis">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ $notice['text'] }}
+                        @if ($notice['core'])<span class="badge text-bg-danger ms-1">核心設備</span>@endif
+                    </li>
+                @endforeach
+            </ul>
+            @if ($reservation->classroom && $reservation->classroom->reservation_status !== 'normal')
+                <p class="small text-danger mt-2 mb-0">核心設備異常，這間教室目前暫停預約，無法核准任何時段。</p>
+            @endif
+        @else
+            <span class="text-success"><i class="bi bi-check-circle me-1"></i>目前沒有設備在報修。</span>
+        @endif
+    </div>
+</div>
+
 {{-- 預約時段：每個時段分別審核。未審核時，有預約管理權限的人可以在這裡逐一選擇同意或拒絕。 --}}
 <div class="card mb-3">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">

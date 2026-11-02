@@ -57,6 +57,7 @@ class ClassroomReservationTest extends TestCase
     }
 
 
+    /** 只有啟用且正常的教室可以選；核心設備故障而暫停預約的教室會列出但不能選，停用的教室不出現。 */
     public function test_create_form_only_shows_active_normal_classrooms(): void
     {
         $normal = $this->makeClassroom('A101');
@@ -72,7 +73,9 @@ class ClassroomReservationTest extends TestCase
         $this->get(route('reservations.create'))
             ->assertOk()
             ->assertSee($normal->name)
-            ->assertDontSee($abnormal->name)
+            ->assertSee('data-id="' . $normal->id . '"', false)
+            ->assertDontSee('data-id="' . $abnormal->id . '"', false)
+            ->assertSee('暫停預約')
             ->assertDontSee($inactive->name);
     }
 
