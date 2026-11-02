@@ -62,12 +62,12 @@ class ReservationSlotReviewTest extends TestCase
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))
             ->get(route('reservations.index'))
             ->assertOk()
-            ->assertSeeInOrder(['申請時間', '申請人', '申請班級', '申請狀態'])
+            ->assertSeeInOrder(['申請班級', '申請人', '申請時間', '申請狀態'])
             ->assertSee('林老師')
             ->assertSee('一年甲班')
             ->assertSee('未審核')
             ->assertSee('已審核')
-            ->assertSee('data-href="' . route('reservations.show', $pending) . '"', false)
+            ->assertSee('href="' . route('reservations.show', $pending) . '" class="tb-list-card"', false)
             ->assertDontSee('審核時間');
     }
 

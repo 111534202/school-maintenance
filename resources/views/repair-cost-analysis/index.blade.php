@@ -3,7 +3,6 @@
 @section('title', __('common.nav.cost_analysis'))
 
 @section('content')
-@include('partials.theme-b-assets')
 <div class="tb">
     <div class="tb-header">
         <div>
@@ -88,10 +87,14 @@
         @if ($partUsageSummary->isEmpty())
             <p class="tb-note">此篩選範圍內沒有備品使用紀錄。</p>
         @else
-            @php($maxSubtotal = max(1, (int) $partUsageSummary->max('known_subtotal')))
+            @php
+                $maxSubtotal = max(1, (int) $partUsageSummary->max('known_subtotal'));
+            @endphp
             <div class="tb-bars">
                 @foreach ($partUsageSummary as $item)
-                    @php($barWidth = max(2, (int) round(((int) $item->known_subtotal) / $maxSubtotal * 100)))
+                    @php
+                        $barWidth = max(2, (int) round(((int) $item->known_subtotal) / $maxSubtotal * 100));
+                    @endphp
                     <div class="tb-bar-row">
                         <div class="fw-medium">{{ $item->part?->name ?? '零件資料不存在' }}</div>
                         <div class="tb-bar-track" aria-hidden="true"><div class="tb-bar-fill" style="width: {{ $barWidth }}%"></div></div>

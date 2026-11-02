@@ -44,10 +44,10 @@ class OnionResponsiveLayoutTest extends TestCase
             ->assertSee('data-onion-collapse="Collapse"', false);
     }
 
-    // 列表頁的表格都帶著「哪些欄位放第一層」的提示。直接檢查畫面檔（列表沒有資料時不會畫出表格，用 HTTP 測不到）。
+    // 列表頁的表格都帶著「哪些欄位放第一層」的提示（空間預約改成卡片式列表，不用表格，所以不在清單內）。直接檢查畫面檔（列表沒有資料時不會畫出表格，用 HTTP 測不到）。
     public function test_list_tables_declare_which_columns_stay_on_the_first_layer(): void
     {
-        foreach (['repairs', 'classrooms', 'devices', 'users', 'audit-logs', 'departments', 'roles', 'parts', 'maintenance_orders', 'maintenance_plans', 'preventive_candidates', 'device_profile', 'device-categories', 'reservations'] as $folder) {
+        foreach (['repairs', 'classrooms', 'devices', 'users', 'audit-logs', 'departments', 'roles', 'parts', 'maintenance_orders', 'maintenance_plans', 'preventive_candidates', 'device_profile', 'device-categories'] as $folder) {
             $view = file_get_contents(resource_path("views/{$folder}/index.blade.php"));
             $this->assertMatchesRegularExpression('/<table[^>]*data-onion-primary="[\d,]+"/', $view, "{$folder}/index 的表格缺少 data-onion-primary");
         }

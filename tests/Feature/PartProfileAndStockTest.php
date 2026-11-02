@@ -201,7 +201,7 @@ class PartProfileAndStockTest extends TestCase
         $this->assertStringNotContainsString('OK-1', $modal);
 
         // 列表上「低庫存」標籤在數量前面。
-        $this->assertMatchesRegularExpression('/低庫存<\/span>\s*2/u', $html);
+        $this->assertMatchesRegularExpression('/低庫存<\/span>\s*(<span[^>]*>)?\s*2/u', $html);
     }
 
     public function test_low_stock_parts_can_be_exported_to_excel(): void

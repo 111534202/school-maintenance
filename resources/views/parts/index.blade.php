@@ -3,7 +3,6 @@
 @section('title', '零件庫存列表')
 
 @section('content')
-@include('partials.theme-b-assets')
 <div class="tb">
     <div class="tb-header">
         <div>

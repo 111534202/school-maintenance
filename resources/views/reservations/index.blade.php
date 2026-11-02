@@ -3,8 +3,9 @@
 @section('title', '空間預約')
 
 @section('content')
-@include('partials.theme-b-assets')
-@php($currentStatus = request('status'))
+@php
+    $currentStatus = request('status');
+@endphp
 <div class="tb">
     <div class="tb-header">
         <div>
@@ -65,65 +66,42 @@
             <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-outline">新增預約</a>
         </div>
     @else
-        {{-- 點這一行的任何地方都會進入預約詳細頁（預約日期、時段、用途、審核結果都在詳細頁）。 --}}
-        <div class="tb-table-wrap">
-            <div class="table-responsive">
-                <table class="tb-table tb-table-hover reservation-rows" data-onion-primary="3,4">
-                    <thead>
-                        <tr>
-                            <th>申請時間</th>
-                            <th>申請人</th>
-                            <th>申請班級</th>
-                            <th>申請狀態</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($reservations as $reservation)
-                            @php($requesterName = $reservation->requester?->name ?? '使用者資料不存在')
-                            <tr class="reservation-row" data-href="{{ route('reservations.show', $reservation) }}" tabindex="0" role="link"
-                                aria-label="查看 {{ $reservation->class_name }} 的預約申請">
-                                <td class="tb-num tb-muted text-nowrap">{{ $reservation->created_at?->format('Y-m-d H:i') }}</td>
-                                <td>
-                                    <span class="d-inline-flex align-items-center gap-2">
-                                        <span class="tb-avatar" aria-hidden="true">{{ mb_substr($requesterName, 0, 1) }}</span>
-                                        {{ $requesterName }}
-                                    </span>
-                                </td>
-                                <td class="fw-bold">{{ $reservation->class_name }}</td>
-                                <td>
-                                    @if ($reservation->isReviewed())
-                                        <span class="tb-pill tb-pill-ok">已審核</span>
-                                    @else
-                                        <span class="tb-pill tb-pill-warn">未審核</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        {{-- 每筆申請一張卡片，點整張卡片進入預約詳細頁（預約日期、時段、用途、審核結果都在詳細頁）。
+             卡片在窄螢幕會自動換行排列，不需要表格的手機版轉換。 --}}
+        <section class="tb-list" aria-label="預約申請列表">
+            @foreach ($reservations as $reservation)
+                @php
+                    $requesterName = $reservation->requester?->name ?? '使用者資料不存在';
+                @endphp
+                <a href="{{ route('reservations.show', $reservation) }}" class="tb-list-card"
+                    aria-label="查看 {{ $reservation->class_name }} 的預約申請（{{ $reservation->isReviewed() ? '已審核' : '未審核' }}）">
+                    <span class="tb-avatar tb-avatar-lg" aria-hidden="true">{{ mb_substr($requesterName, 0, 1) }}</span>
+                    <span class="tb-list-main">
+                        <span class="tb-list-label">申請班級</span>
+                        <span class="tb-list-title">{{ $reservation->class_name }}</span>
+                    </span>
+                    <span class="tb-list-meta">
+                        <span class="tb-list-label">申請人</span>
+                        <span>{{ $requesterName }}</span>
+                    </span>
+                    <span class="tb-list-meta">
+                        <span class="tb-list-label">申請時間</span>
+                        <span class="tb-num">{{ $reservation->created_at?->format('Y-m-d H:i') }}</span>
+                    </span>
+                    <span class="tb-list-status">
+                        <span class="tb-list-label">申請狀態</span>
+                        @if ($reservation->isReviewed())
+                            <span class="tb-pill tb-pill-ok">已審核</span>
+                        @else
+                            <span class="tb-pill tb-pill-warn">未審核</span>
+                        @endif
+                    </span>
+                    <i class="bi bi-chevron-right tb-list-arrow" aria-hidden="true"></i>
+                </a>
+            @endforeach
+        </section>
 
         <div>{{ $reservations->links() }}</div>
     @endif
 </div>
-<style>
-    .reservation-row { cursor: pointer; }
-    .reservation-row:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
-</style>
-<script>
-// 整行可點：點任何一格（或按 Enter）都進入預約詳細頁。
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.reservation-row').forEach(function (row) {
-        row.addEventListener('click', function (event) {
-            if (event.target.closest('a, button, input, select, textarea')) { return; }
-            if (window.getSelection().toString()) { return; }
-            window.location.href = row.dataset.href;
-        });
-        row.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter') { window.location.href = row.dataset.href; }
-        });
-    });
-});
-</script>
 @endsection

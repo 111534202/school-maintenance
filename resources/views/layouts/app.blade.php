@@ -69,13 +69,17 @@
         .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
         .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
+    {{-- 全站風格 B「校園溫和」：墨綠導覽列、暖白底、思源黑體／宋體、Bootstrap 主色換成墨綠（說明見 public/css/theme-b.css 開頭）。 --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+    <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
     {{-- 「洋蔥式」響應式版面（手機上表格變卡片、篩選與區塊可收合；桌面版不受影響），說明見檔案開頭。?v= 是檔案修改時間，改了檔案瀏覽器就會重新下載。 --}}
     <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
 </head>
-{{-- 頁面主體：淺灰色背景。 --}}
-<body class="bg-light" data-onion-filter="{{ __('common.buttons.filter') }}" data-onion-details="{{ __('common.buttons.details') }}" data-onion-collapse="{{ __('common.buttons.collapse') }}">
-    {{-- 最上方的深色導覽列。 --}}
-    <nav class="navbar navbar-dark bg-dark">
+{{-- 頁面主體：暖白色背景（tb-body，見 theme-b.css）。 --}}
+<body class="tb-body" data-onion-filter="{{ __('common.buttons.filter') }}" data-onion-details="{{ __('common.buttons.details') }}" data-onion-collapse="{{ __('common.buttons.collapse') }}">
+    {{-- 最上方的墨綠導覽列（tb-navbar，見 theme-b.css）。 --}}
+    <nav class="navbar navbar-dark tb-navbar">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
