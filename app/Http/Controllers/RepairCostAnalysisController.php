@@ -66,6 +66,10 @@ class RepairCostAnalysisController extends Controller
             $filters
         );
 
+        // 中文字型 Noto Sans TC 收錄六萬多個字，dompdf 讀取字型對照表（cmap）時會用掉超過
+        // PHP 預設的 128MB，所以只在產生 PDF 這一次把記憶體上限提高到 512MB。
+        ini_set('memory_limit', '512M');
+
         $pdf = Pdf::loadView('repair-cost-analysis.pdf', $data)
             ->setPaper('a4', 'landscape');
 
