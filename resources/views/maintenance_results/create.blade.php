@@ -62,40 +62,11 @@
             @enderror
         </div>
 
-        {{-- 保養用料（可不填）：送出時依先進先出扣庫存，庫存不足會擋下。 --}}
+        {{-- 保養用料（可不填）：和維修紀錄共用同一個零件選擇器；送出時依先進先出扣庫存，庫存不足會擋下。 --}}
         <div class="mb-4">
-            <label class="form-label">使用零件</label>
-            <div class="form-text mb-2">保養時有更換零件才需要填；送出後會自動扣除零件庫存。</div>
-            @php($usageRows = old('part_usages', [[], []]))
-            @foreach ($usageRows as $index => $usage)
-                <div class="row g-2 mb-2">
-                    <div class="col-md-8">
-                        <select name="part_usages[{{ $index }}][part_id]" aria-label="零件 {{ $index + 1 }}"
-                            class="form-select @error("part_usages.$index.part_id") is-invalid @enderror">
-                            <option value="">不選擇零件</option>
-                            @foreach ($parts as $part)
-                                <option value="{{ $part->id }}" @selected((string) data_get($usage, 'part_id') === (string) $part->id)>
-                                    {{ $part->part_code }} {{ $part->name }}@if ($part->specification)（{{ $part->specification }}）@endif — 庫存：{{ $part->current_stock }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error("part_usages.$index.part_id")
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-4">
-                        <input type="number" min="1" name="part_usages[{{ $index }}][quantity]" aria-label="零件 {{ $index + 1 }} 數量"
-                            placeholder="數量" value="{{ data_get($usage, 'quantity') }}"
-                            class="form-control @error("part_usages.$index.quantity") is-invalid @enderror">
-                        @error("part_usages.$index.quantity")
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            @endforeach
-            @if ($parts->isEmpty())
-                <div class="form-text">目前沒有可用庫存的零件。</div>
-            @endif
+            <label class="form-label">使用零件明細</label>
+            <div class="form-text mb-2">如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。</div>
+            @include('parts._usage-picker', ['parts' => $parts])
         </div>
 
         <button type="submit" class="btn btn-primary">送出</button>

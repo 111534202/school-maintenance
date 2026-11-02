@@ -23,8 +23,8 @@ class MaintenanceResultController extends Controller
     {
         abort_if($maintenanceOrder->result()->exists(), 422, '這張工單已經回報過保養結果了');
 
-        // 保養用料下拉選單：只列出還有庫存的零件。
-        $parts = Part::query()->where('current_stock', '>', 0)->orderBy('name')->get();
+        // 保養用料選單：列出全部零件（沒有庫存的顯示庫存 0、不能選），和維修紀錄的選法相同。
+        $parts = Part::query()->orderBy('id')->get();
 
         return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts]);
     }

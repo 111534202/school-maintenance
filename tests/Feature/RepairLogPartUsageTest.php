@@ -417,4 +417,23 @@ class RepairLogPartUsageTest extends TestCase
 
         $response->assertOk();
     }
+
+    /**
+     * 維修紀錄表單：標題改為「使用零件明細」；零件選單列出全部零件，沒有庫存的也會出現（庫存 0、不能選）。
+     */
+    public function test_repair_log_form_lists_every_part_including_out_of_stock_ones(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $inStock = $this->makePart(5);
+        $empty = $this->makePart(0);
+
+        $this->get(route('repair-logs.create', $repairRequest))
+            ->assertOk()
+            ->assertSee('使用零件明細')
+            ->assertSee('如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。')
+            ->assertSee('新增使用紀錄')
+            ->assertSee($inStock->part_code)
+            ->assertSee($empty->part_code)
+            ->assertSee('"stock":0', false);
+    }
 }

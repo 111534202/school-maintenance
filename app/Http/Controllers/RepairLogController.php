@@ -35,9 +35,9 @@ class RepairLogController extends Controller
                 ->with('error', $exception->getMessage());
         }
 
+        // 零件選單列出全部零件（依零件編號順序）；沒有庫存的也會顯示，但標示庫存 0、不能選。
         $parts = Part::query()
-            ->where('current_stock', '>', 0)
-            ->orderBy('name')
+            ->orderBy('id')
             ->get();
 
         return view(

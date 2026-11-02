@@ -7,10 +7,6 @@
 @section('title', __('repair_logs.create_title'))
 
 @section('content')
-    @php
-        $usageRows = old('part_usages', [[], [], []]);
-    @endphp
-
     <div class="page-narrow">
         <h1 class="h4 mb-1">
             <i class="bi bi-journal-plus me-2"></i>{{ __('repair_logs.create_title') }}
@@ -101,96 +97,18 @@
                 </div>
             </div>
 
-            {{-- 正式零件使用明細 --}}
+            {{-- 正式零件使用明細：預設沒有任何一列，按「新增使用紀錄」才加一列（選擇器見 parts/_usage-picker）。 --}}
             <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     <h2 class="h6 mb-2">
-                        <i class="bi bi-box-seam me-2"></i>使用備品明細
+                        <i class="bi bi-box-seam me-2"></i>使用零件明細
                     </h2>
 
                     <p class="text-muted small">
-                        如有使用備品，請選擇零件並輸入數量。
-                        送出成功後，系統會建立使用明細並扣除庫存。
-                        不使用備品時可以留白。
+                        如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。
                     </p>
 
-                    @if ($parts->isEmpty())
-                        <div class="alert alert-info mb-0">
-                            目前沒有庫存大於零的零件可供選擇。
-                        </div>
-                    @else
-                        @foreach ($usageRows as $index => $usage)
-                            <div class="row g-2 mb-3">
-                                <div class="col-md-8">
-                                    <label
-                                        for="part_id_{{ $index }}"
-                                        class="form-label">
-                                        零件 {{ $index + 1 }}
-                                    </label>
-
-                                    <select
-                                        class="form-select @error("part_usages.$index.part_id") is-invalid @enderror"
-                                        id="part_id_{{ $index }}"
-                                        name="part_usages[{{ $index }}][part_id]">
-                                        <option value="">不選擇零件</option>
-
-                                        @foreach ($parts as $part)
-                                            <option
-                                                value="{{ $part->id }}"
-                                                @selected((string) data_get($usage, 'part_id') === (string) $part->id)>
-                                                {{ $part->part_code }} {{ $part->name }}
-                                                @if ($part->specification)
-                                                    （{{ $part->specification }}）
-                                                @endif
-                                                — 庫存：{{ $part->current_stock }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-
-                                    @error("part_usages.$index.part_id")
-                                        <div class="text-danger small mt-1">
-                                            {{ $message }}
-                                        </div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label
-                                        for="quantity_{{ $index }}"
-                                        class="form-label">
-                                        使用數量
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        class="form-control @error("part_usages.$index.quantity") is-invalid @enderror"
-                                        id="quantity_{{ $index }}"
-                                        name="part_usages[{{ $index }}][quantity]"
-                                        value="{{ data_get($usage, 'quantity') }}"
-                                        min="1"
-                                        step="1"
-                                        placeholder="例如：2">
-
-                                    @error("part_usages.$index.quantity")
-                                        <div class="text-danger small mt-1">
-                                            {{ $message }}
-                                        </div>
-                                    @enderror
-                                </div>
-                            </div>
-                        @endforeach
-
-                        <div class="form-text">
-                            目前提供 {{ count($usageRows) }} 列。
-                            同一種零件請勿重複選取；庫存不足時系統會拒絕送出。
-                        </div>
-                    @endif
-
-                    @error('part_usages')
-                        <div class="alert alert-danger mt-2 mb-0">
-                            {{ $message }}
-                        </div>
-                    @enderror
+                    @include('parts._usage-picker', ['parts' => $parts])
                 </div>
             </div>
 
