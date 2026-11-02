@@ -56,7 +56,7 @@
                                 <span id="timetable_status" class="small text-muted" role="status" aria-live="polite"></span>
                             </div>
                             {{-- 選好教室後，若該教室有設備在等待維修，這裡會顯示提醒（內容由下方程式依 repairNotices 填入）：
-                                 一般設備黃色；核心設備紅色，且暫停預約（可查課表、不能送出）。 --}}
+                                 一般情況黃色；教室因核心設備維修而暫停預約時紅色（可查課表、不能送出）。 --}}
                             <div id="classroom_repair_notice" class="alert small mt-3 mb-0" role="status" hidden></div>
                             <div id="timetable_result" class="mt-3" hidden></div>
                         </div>
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             note = document.createElement('div');
             note.id = 'suspended_submit_note';
             note.className = 'alert alert-danger small mb-2 w-100';
-            note.textContent = '這間教室的核心設備正在等待維修，目前暫停預約，無法送出申請。請改選其他教室。';
+            note.textContent = '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。請改選其他教室。';
             submit.parentElement.insertBefore(note, submit.parentElement.firstChild);
         }
         const suspended = isSuspended();
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
         title.className = 'fw-semibold mb-1';
         title.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>';
         title.append(suspended
-            ? '這間教室的核心設備正在等待維修，目前暫停預約（可以查詢課表，但無法送出申請）：'
+            ? '這間教室的核心設備正在維修，目前暫停預約（可以查詢課表，但無法送出申請）：'
             : '這間教室目前有設備在報修，使用時可能受影響：');
         repairNotice.appendChild(title);
         if (items.length === 0) {

@@ -16,8 +16,9 @@ use App\Models\RepairRequest;
  * - 核心設備被停用／淘汰 → 「投影機已停用」（教室因此暫停預約）
  * - 報修案件沒有指定設備、只填了教室 → 「報修案件「冷氣不冷」正在等待維修」
  *
- * 暫停預約：教室被標成設備異常（核心設備維修中／停用，見 DeviceStatusService），
- * 或有核心設備的報修還沒結案（報修剛送出、尚未開始處理時也算）。
+ * 暫停預約：沿用系統原本的規則，教室被標成設備異常才暫停（核心設備的報修進入「處理中」、
+ * 或核心設備被停用／淘汰時，DeviceStatusService 會自動標記；結案後自動恢復）。
+ * 核心設備的報修還在「新報修／已派工」時只提醒，不暫停。
  * 暫停預約的教室仍可以查詢課表，但不能送出預約、也不能核准。
  */
 class ClassroomRepairNotices
@@ -74,25 +75,20 @@ class ClassroomRepairNotices
     }
 
     /**
-     * 哪些教室目前暫停預約（設備異常旗標，或有核心設備在等待維修）。
+     * 哪些教室目前暫停預約（教室被標成設備異常）。
      *
      * @param  iterable<int>  $classroomIds
-     * @param  array<int, list<array{text: string, core: bool}>>|null  $notices  已經查過 for() 時可以直接傳入，省一次查詢
      * @return list<int>
      */
-    public static function suspendedIds(iterable $classroomIds, ?array $notices = null): array
+    public static function suspendedIds(iterable $classroomIds): array
     {
         $ids = collect($classroomIds)->filter()->map(fn ($id) => (int) $id)->unique()->values();
         if ($ids->isEmpty()) {
             return [];
         }
 
-        $notices ??= self::for($ids);
-
-        $abnormal = Classroom::query()->whereIn('id', $ids)->where('reservation_status', '<>', 'normal')->pluck('id')->all();
-        $coreIssue = collect($notices)->filter(fn ($items) => collect($items)->contains('core', true))->keys()->all();
-
-        return collect($abnormal)->merge($coreIssue)->map(fn ($id) => (int) $id)->unique()->values()->all();
+        return Classroom::query()->whereIn('id', $ids)->where('reservation_status', '<>', 'normal')
+            ->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
     }
 
     /** 這間教室目前是否暫停預約。 */

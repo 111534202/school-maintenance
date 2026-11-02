@@ -16,6 +16,7 @@ return [
         'pending_repairs' => 'Pending Repairs',
         'in_progress' => 'In Progress',
         'pending_review' => 'Awaiting Acceptance',
+        'pending_reservations' => 'Reservations Awaiting Review',
         'devices' => 'Total Devices',
         'users' => 'Total Users',
         'classrooms' => 'Total Classrooms',
@@ -27,6 +28,7 @@ return [
         'unit_devices' => '',
         'unit_users' => '',
         'unit_classrooms' => '',
+        'unit_reservations' => '',
     ],
 
     // 主控台圖表的標題與說明。

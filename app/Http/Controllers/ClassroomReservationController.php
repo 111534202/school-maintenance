@@ -26,7 +26,15 @@ class ClassroomReservationController extends Controller
             $query->where('requester_id', $request->user()->id);
         }
 
-        $reservations = $query->paginate(15);
+        // 申請狀態篩選：pending＝未審核（主控台「空間預約待審核」卡片連過來）；reviewed＝已審核。
+        $status = $request->query('status');
+        if ($status === 'pending') {
+            $query->where('status', ClassroomReservation::STATUS_PENDING);
+        } elseif ($status === 'reviewed') {
+            $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
+        }
+
+        $reservations = $query->paginate(15)->withQueryString();
 
         return view('reservations.index', compact('reservations'));
     }
@@ -95,7 +103,7 @@ class ClassroomReservationController extends Controller
 
         // 每間教室目前在等待維修的設備，以及哪些教室暫停預約；選好教室後在畫面上提醒。
         $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
-        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'), $repairNotices);
+        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
         return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds'));
     }
@@ -193,7 +201,7 @@ class ClassroomReservationController extends Controller
                 return ['type' => 'unavailable'];
             }
 
-            // 核心設備等待維修（或教室被標成設備異常）：暫停預約，不能送出。
+            // 教室被標成設備異常（核心設備維修處理中／停用）：暫停預約，不能送出。
             if (ClassroomRepairNotices::isSuspended($classroom->id)) {
                 return ['type' => 'suspended'];
             }
@@ -262,7 +270,7 @@ class ClassroomReservationController extends Controller
         if ($result['type'] === 'suspended') {
             return back()
                 ->withInput()
-                ->with('error', '這間教室的核心設備正在等待維修，目前暫停預約，無法送出申請。');
+                ->with('error', '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。');
         }
 
         if ($result['type'] === 'conflict') {
@@ -319,7 +327,7 @@ class ClassroomReservationController extends Controller
 
         return match ($result['type']) {
             'already_reviewed' => $redirect->with('error', '這筆預約已經審核過，無法重複操作。'),
-            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在等待維修而暫停預約，無法核准此預約（仍可拒絕）。'),
+            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在維修而暫停預約，無法核准此預約（仍可拒絕）。'),
             'conflict' => $redirect->with('error', '核准失敗：下列時段已有其他已核准的預約，請改為拒絕或調整後再送出：' . implode('、', $result['slots'])),
             'incomplete' => $redirect->with('error', ($result['missing_reason'] ?? false)
                 ? "時段 {$result['slot']} 選擇拒絕，請填寫原因。"

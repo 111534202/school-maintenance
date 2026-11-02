@@ -14,6 +14,7 @@ return [
         'monthly_repairs' => '本月新增報修',
         'pending_dispatch' => '待派工',
         'pending_review' => '待驗收',
+        'pending_reservations' => '空間預約待審核',
         'pending_repairs' => '待修數',
         'in_progress' => '維修中',
         'devices' => '設備總數',
@@ -27,6 +28,7 @@ return [
         'unit_devices' => '台',
         'unit_users' => '人',
         'unit_classrooms' => '間',
+        'unit_reservations' => '筆',
     ],
 
     // 主控台圖表的標題與說明。

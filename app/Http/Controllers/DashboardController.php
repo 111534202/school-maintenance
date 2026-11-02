@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;   // 報修單狀態的列舉（新報修、已派工、處理中、待驗收、已結案）
 use App\Models\Classroom;            // 教室資料表模型
+use App\Models\ClassroomReservation; // 空間預約申請資料表模型
 use App\Models\Device;               // 設備資料表模型
 use App\Models\RepairRequest;        // 報修單資料表模型
 use App\Models\Role;                 // 身分資料表模型
@@ -100,6 +101,11 @@ class DashboardController extends Controller
             'averageRepairHours' => $repairDurationStats['average_hours'],
             'repairDurationMissingCount' => $repairDurationStats['missing_hours_request_count'],
             'trend' => $trend,
+            // 空間預約待審核：有預約管理權限的人算全部，其他人只算自己提出的（和預約列表看到的一致）。
+            'pendingReservationCount' => ClassroomReservation::query()
+                ->where('status', ClassroomReservation::STATUS_PENDING)
+                ->when(! $user->hasPermission('reservations.manage'), fn ($q) => $q->where('requester_id', $user->id))
+                ->count(),
             'deviceStatuses' => null,
             'deviceTotal' => null,
             'roleDistribution' => null,

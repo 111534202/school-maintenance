@@ -57,7 +57,7 @@
         @if ($repairNotices)
             <ul class="mb-0 ps-3">
                 @foreach ($repairNotices as $notice)
-                    <li class="{{ $notice['core'] ? 'text-danger' : 'text-warning-emphasis' }}">
+                    <li class="{{ $classroomSuspended && $notice['core'] ? 'text-danger' : 'text-warning-emphasis' }}">
                         <i class="bi bi-exclamation-triangle me-1"></i>{{ $notice['text'] }}
                         @if ($notice['core'])<span class="badge text-bg-danger ms-1">核心設備</span>@endif
                     </li>
@@ -67,7 +67,7 @@
             <span class="text-success"><i class="bi bi-check-circle me-1"></i>目前沒有設備在報修。</span>
         @endif
         @if ($classroomSuspended)
-            <p class="small text-danger mt-2 mb-0">核心設備正在等待維修，這間教室目前暫停預約，無法核准任何時段（仍可拒絕）。</p>
+            <p class="small text-danger mt-2 mb-0">核心設備正在維修，這間教室目前暫停預約，無法核准任何時段（仍可拒絕）。</p>
         @endif
     </div>
 </div>

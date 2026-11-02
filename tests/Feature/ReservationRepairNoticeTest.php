@@ -16,7 +16,8 @@ use Tests\TestCase;
 /**
  * 空間預約結合設備報修：
  * - 教室有設備在等待維修（報修未結案）時，選好教室後顯示「印表機正在等待維修」。
- * - 一般設備只提醒（黃色），仍可預約；核心設備則暫停預約（紅色）：可以查課表，但不能送出、不能核准。
+ * - 只提醒（黃色）時仍可預約；核心設備的報修進入處理中、教室被標成設備異常時暫停預約（紅色）：
+ *   可以查課表，但不能送出、不能核准。
  */
 class ReservationRepairNoticeTest extends TestCase
 {
@@ -113,26 +114,29 @@ class ReservationRepairNoticeTest extends TestCase
         $this->post(route('reservations.store'), $this->payload($this->classroom))->assertSessionHas('success');
     }
 
-    public function test_core_device_waiting_for_repair_suspends_booking_but_timetable_still_works(): void
+    public function test_core_device_repair_only_suspends_booking_once_work_has_started(): void
     {
         $projector = $this->makeDevice($this->classroom, 'DEV-0100', '投影機', core: true);
-        // 報修剛送出（還沒開始處理，教室還沒被標成異常）就要暫停預約。
-        RepairRequest::factory()->create(['device_id' => $projector->id, 'status' => 'pending']);
-        $this->assertSame('normal', $this->classroom->fresh()->reservation_status);
+        $repair = RepairRequest::factory()->create(['device_id' => $projector->id, 'status' => 'assigned']);
 
+        // 報修還沒開始處理：只提醒，不暫停預約（沿用原本規則）。
+        $this->assertSame([], ClassroomRepairNotices::suspendedIds([$this->classroom->id]));
+        $this->assertSame([['text' => '投影機正在等待維修', 'core' => true]], ClassroomRepairNotices::for([$this->classroom->id])[$this->classroom->id]);
+        $this->post(route('reservations.store'), $this->payload($this->classroom))->assertSessionHas('success');
+
+        // 進入處理中 → 設備維修中 → 教室設備異常 → 暫停預約。
+        DeviceStatusService::updateStatus($projector, 'repairing');
         $this->assertSame([$this->classroom->id], ClassroomRepairNotices::suspendedIds([$this->classroom->id]));
 
-        // 可以選、可以查課表
+        // 仍可選、可查課表，但不能送出。
         $this->get(route('reservations.create'))->assertOk()->assertSee('data-id="' . $this->classroom->id . '"', false);
         $this->getJson(route('reservations.timetable.week', [
             'classroom_id' => $this->classroom->id,
             'date' => now()->addDays(3)->toDateString(),
         ]))->assertOk();
-
-        // 不能送出
-        $this->post(route('reservations.store'), $this->payload($this->classroom))
-            ->assertSessionHas('error', '這間教室的核心設備正在等待維修，目前暫停預約，無法送出申請。');
-        $this->assertDatabaseCount('classroom_reservations', 0);
+        $this->post(route('reservations.store'), $this->payload($this->classroom) + ['start_time' => '13:00', 'end_time' => '14:00'])
+            ->assertSessionHas('error', '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。');
+        $this->assertDatabaseCount('classroom_reservations', 1);
     }
 
     public function test_abnormal_classroom_is_selectable_but_cannot_be_booked(): void
@@ -144,11 +148,12 @@ class ReservationRepairNoticeTest extends TestCase
         $this->post(route('reservations.store'), $this->payload($this->classroom))->assertSessionHas('error');
     }
 
-    public function test_pending_request_cannot_be_approved_while_a_core_device_waits_for_repair(): void
+    public function test_pending_request_cannot_be_approved_while_a_core_device_is_being_repaired(): void
     {
         $reservation = ClassroomReservation::create($this->payload($this->classroom) + ['requester_id' => auth()->id(), 'status' => 'pending']);
         $projector = $this->makeDevice($this->classroom, 'DEV-0100', '投影機', core: true);
-        RepairRequest::factory()->create(['device_id' => $projector->id, 'status' => 'pending']);
+        RepairRequest::factory()->create(['device_id' => $projector->id, 'status' => 'in_progress']);
+        DeviceStatusService::updateStatus($projector, 'repairing');   // 報修進入處理中時系統會這樣標記
 
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
 

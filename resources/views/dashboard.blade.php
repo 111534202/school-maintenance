@@ -40,6 +40,8 @@
         ['label' => __('dashboard.cards.in_progress'), 'value' => $inProgressCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'in_progress']), 'note' => null],
         ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null],
         ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null],
+        // 空間預約待審核：點了進到只列「未審核」的預約列表。
+        ['label' => __('dashboard.cards.pending_reservations'), 'value' => $pendingReservationCount, 'unit' => __('dashboard.cards.unit_reservations'), 'icon' => 'bi-calendar-check', 'color' => 'primary', 'url' => route('reservations.index', ['status' => 'pending']), 'note' => null],
     ];
     // 下面三張卡片依權限才加入：Controller 沒算（null）就代表這個人沒有對應主檔的權限。
     if ($deviceTotal !== null) {

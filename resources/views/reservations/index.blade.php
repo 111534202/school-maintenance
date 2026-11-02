@@ -34,9 +34,19 @@
         </div>
     @endif
 
+    {{-- 申請狀態篩選：主控台「空間預約待審核」卡片會連到「未審核」。 --}}
+    @php($currentStatus = request('status'))
+    <div class="btn-group mb-3" role="group" aria-label="申請狀態篩選">
+        <a href="{{ route('reservations.index') }}" class="btn btn-sm {{ in_array($currentStatus, ['pending', 'reviewed'], true) ? 'btn-outline-secondary' : 'btn-secondary' }}">全部</a>
+        <a href="{{ route('reservations.index', ['status' => 'pending']) }}" class="btn btn-sm {{ $currentStatus === 'pending' ? 'btn-warning' : 'btn-outline-warning' }}">未審核</a>
+        <a href="{{ route('reservations.index', ['status' => 'reviewed']) }}" class="btn btn-sm {{ $currentStatus === 'reviewed' ? 'btn-success' : 'btn-outline-success' }}">已審核</a>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-body">
-            @if ($reservations->isEmpty())
+            @if ($reservations->isEmpty() && in_array($currentStatus, ['pending', 'reviewed'], true))
+                <p class="text-center text-muted py-5 mb-0">沒有{{ $currentStatus === 'pending' ? '未審核' : '已審核' }}的申請。</p>
+            @elseif ($reservations->isEmpty())
                 <div class="text-center py-5">
                     <i class="bi bi-calendar-x fs-1 text-muted"></i>
                     <h2 class="h5 mt-3">目前沒有預約紀錄</h2>
