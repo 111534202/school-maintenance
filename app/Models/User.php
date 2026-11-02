@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable; // Laravel 內建的「�
 use Illuminate\Notifications\Notifiable;                // 讓用戶可以收通知
 
 // 允許批次寫入的欄位白名單（create / update 只會接受這些欄位）。
-#[Fillable(['name', 'username', 'email', 'phone', 'password', 'role_id', 'department_id', 'is_active', 'last_login_at'])]
+#[Fillable(['name', 'account', 'email', 'phone', 'password', 'role_id', 'department_id', 'is_active', 'last_login_at'])]
 // 轉成 JSON / 陣列時一律隱藏密碼與「記住我」token，避免意外洩漏。
 #[Hidden(['password', 'remember_token'])]
 /**
@@ -58,7 +58,7 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         // ?-> 是「沒有身分（null）時不要報錯，直接當成 null」。
-        return $this->role?->slug === 'admin';
+        return $this->role?->role_code === 'admin';
     }
 
     /** 這個用戶的身分有沒有開放某個權限（系統管理員永遠有）。Gate、@can、can: 中介層最後都是呼叫這裡。 */

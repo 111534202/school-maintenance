@@ -8,7 +8,8 @@ use App\Models\Classroom;      // 教室資料表的模型
 use App\Models\Department;     // 部門資料表的模型（教室所屬部門的下拉選單來源）
 use App\Models\User;           // 用戶資料表的模型（教室「管理人」的下拉選單來源）
 use App\Services\AuditLogger;  // 共用的操作紀錄寫入工具
-use Illuminate\Http\Request;   // 這一次瀏覽器送來的請求
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;   // 這一次瀏覽器送來的請求
 
 /**
  * 教室主檔：列表／篩選、新增、編輯、啟用／停用（需要 classrooms.manage 權限，見 routes/web.php）。
@@ -142,7 +143,7 @@ class ClassroomController extends Controller
             ],
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', 'string', 'max:255'],
-            'manager_id' => ['nullable', 'exists:users,id'],            // 管理人可不選；有選就必須是真的存在的用戶
+            'manager_id' => ['nullable', Rule::exists('users', 'id')->whereNull('deleted_at')],            // 管理人可不選；有選就必須是真的存在的用戶
         ]);
     }
 }

@@ -49,7 +49,7 @@
                     </div>
                     {{-- 查到設備時顯示的綠色確認框（預設隱藏；從設備入口頁帶 ?device= 過來時一開始就會顯示）。 --}}
                     <div id="device_display" class="alert alert-success py-2 mt-3 mb-0" style="{{ $device ? '' : 'display:none;' }}">
-                        <i class="bi bi-check-circle me-1"></i>{{ __('repair_requests.create.device_display_label') }}<strong id="device_display_text">{{ $device?->device_code }} {{ $device?->category?->name }} {{ $device?->brand }} {{ $device?->model }}（{{ $device?->classroom?->room_name ?? $device?->classroom?->room_code }}）</strong>
+                        <i class="bi bi-check-circle me-1"></i>{{ __('repair_requests.create.device_display_label') }}<strong id="device_display_text">{{ $device?->device_code }} {{ $device?->category?->name }} {{ $device?->brand }} {{ $device?->model }}（{{ $device?->classroom?->name ?? $device?->classroom?->classroom_code }}）</strong>
                     </div>
                     {{-- 隱藏欄位：真正送給後端的設備編號（JavaScript 查到設備後會填入）。 --}}
                     <input type="hidden" id="device_id" name="device_id" value="{{ $device->id ?? '' }}">
@@ -80,7 +80,7 @@
                             <label for="title" class="form-label">{{ __('repair_requests.create.title_label') }}</label>
                             {{-- 報修標題：預設值依序是 ① 驗證失敗帶回的內容 ② 知識庫文章標題 ③ 依設備自動建議的標題（教室 + 類別 + 故障）。 --}}
                             <input type="text" class="form-control" id="title" name="title"
-                                value="{{ old('title', $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->room_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
+                                value="{{ old('title', $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
                         </div>
                         <div class="col-12">
                             <label for="description" class="form-label">{{ __('repair_requests.create.description_label') }}</label>
@@ -97,11 +97,11 @@
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
                             {{-- 核取方塊沒勾時瀏覽器不會送出欄位，靠這個隱藏欄位確保一定送出 0 或 1。 --}}
-                            <input type="hidden" name="affects_class" value="0">
+                            <input type="hidden" name="is_class_affected" value="0">
                             <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" role="switch" id="affects_class" name="affects_class" value="1"
-                                    {{ old('affects_class') ? 'checked' : '' }}>
-                                <label class="form-check-label" for="affects_class">{{ __('repair_requests.create.affects_class_label') }}</label>
+                                <input class="form-check-input" type="checkbox" role="switch" id="is_class_affected" name="is_class_affected" value="1"
+                                    {{ old('is_class_affected') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="is_class_affected">{{ __('repair_requests.create.affects_class_label') }}</label>
                             </div>
                         </div>
                     </div>

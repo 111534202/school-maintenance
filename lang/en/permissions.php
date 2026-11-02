@@ -13,6 +13,7 @@ return [
         'maintenance' => 'Maintenance & AI Predictive Maintenance',
         'knowledge' => 'Knowledge Base',
         'reservation' => 'Space Reservations',
+        'inventory' => 'Parts Inventory',
     ],
 
     // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
@@ -59,6 +60,9 @@ return [
         ],
         'ai-maintenance' => [
             'manage' => ['name' => 'AI Preventive Maintenance', 'description' => 'Scan device risk, approve or reject AI candidates, tune AI parameters'],
+        ],
+        'parts' => [
+            'manage' => ['name' => 'Manage Parts Inventory', 'description' => 'View and manage parts inventory records'],
         ],
         'knowledge-base' => [
             'manage' => ['name' => 'Manage Knowledge Base', 'description' => 'Add, edit and delete knowledge base articles (everyone can read them)'],

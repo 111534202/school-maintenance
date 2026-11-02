@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Classroom;
+use App\Models\Device;
+use App\Models\DeviceCategory;
 use App\Models\Part;
 use App\Models\RepairLog;
 use App\Models\RepairPartUsage;
@@ -35,7 +38,7 @@ class RepairCostAnalysisTest extends TestCase
         ?int $unitPrice
     ): RepairPartUsage {
         $repairRequest = RepairRequest::factory()->create([
-            'reporter_id' => $reporter->id,
+            'requester_id' => $reporter->id,
             'assigned_to' => null,
         ]);
 
@@ -272,5 +275,215 @@ class RepairCostAnalysisTest extends TestCase
             ]))
             ->assertRedirect(route('repair-cost-analysis.index'))
             ->assertSessionHasErrors('end_date');
+    }
+
+    /**
+     * 未指定狀態時，成本分析應包含不同狀態案件的用料。
+     */
+    public function test_cost_analysis_includes_all_repair_statuses_by_default(): void
+    {
+        $user = $this->makeCostViewer();
+
+        $pendingUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 09:00:00',
+            '待處理案件備品',
+            2,
+            100
+        );
+
+        $completedUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 10:00:00',
+            '已完成案件備品',
+            1,
+            300
+        );
+
+        $pendingUsage->repairLog->repairRequest->update([
+            'status' => 'pending',
+        ]);
+
+        $completedUsage->repairLog->repairRequest->update([
+            'status' => 'completed',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('repair-cost-analysis.index'))
+            ->assertOk()
+            ->assertSee('待處理案件備品')
+            ->assertSee('已完成案件備品')
+            ->assertViewHas('knownSubtotal', 500);
+    }
+
+    /**
+     * 指定案件狀態時，只顯示該狀態的用料。
+     */
+    public function test_cost_analysis_can_filter_by_repair_status(): void
+    {
+        $user = $this->makeCostViewer();
+
+        $pendingUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 09:00:00',
+            '待處理案件備品',
+            2,
+            100
+        );
+
+        $completedUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 10:00:00',
+            '已完成案件備品',
+            1,
+            300
+        );
+
+        $pendingUsage->repairLog->repairRequest->update([
+            'status' => 'pending',
+        ]);
+
+        $completedUsage->repairLog->repairRequest->update([
+            'status' => 'completed',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('repair-cost-analysis.index', [
+                'status' => 'completed',
+            ]))
+            ->assertOk()
+            ->assertSee('已完成案件備品')
+            ->assertDontSee('待處理案件備品')
+            ->assertViewHas('knownSubtotal', 300);
+    }
+
+    /**
+     * 同一案件有多筆用料時，案件數應去重，備品使用量應正確彙總。
+     */
+    public function test_cost_analysis_summarizes_unique_requests_and_part_usage(): void
+    {
+        $user = $this->makeCostViewer();
+
+        $firstUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 09:00:00',
+            '彙總測試備品',
+            2,
+            100
+        );
+
+        $secondUsage = $this->makeUsage(
+            $user,
+            '2026-10-10 10:00:00',
+            '另一筆測試用料',
+            3,
+            100
+        );
+
+        // 讓兩筆用料共用同一個維修案件與備品。
+        $secondUsage->repairLog->update([
+            'repair_request_id' => $firstUsage->repairLog->repair_request_id,
+        ]);
+
+        $secondUsage->update([
+            'part_id' => $firstUsage->part_id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('repair-cost-analysis.index'))
+            ->assertOk()
+            ->assertViewHas('repairRequestCount', 1)
+            ->assertViewHas('partUsageSummary', function ($summary) {
+                $item = $summary->first();
+
+                return $summary->count() === 1
+                    && $item->part_id !== null
+                    && (int) $item->total_quantity === 5
+                    && (float) $item->known_subtotal === 500.0
+                    && (int) $item->missing_price_count === 0;
+            });
+    }
+    /**
+     * 成本分析明細應顯示案件狀態、設備編號與教室資訊。
+     */
+    public function test_cost_analysis_detail_shows_repair_status_device_and_classroom(): void
+    {
+        $user = $this->makeCostViewer();
+
+        $usage = $this->makeUsage(
+            $user,
+            '2026-10-10 09:00:00',
+            '明細顯示測試備品',
+            2,
+            150
+        );
+
+        $classroom = Classroom::create([
+            'campus' => '本校區',
+            'building' => 'A棟',
+            'floor' => '1F',
+            'classroom_code' => 'COST-A101',
+            'name' => '成本測試教室',
+        ]);
+
+        $category = DeviceCategory::create([
+            'name' => '成本測試投影機',
+        ]);
+
+        $device = Device::create([
+            'device_code' => 'COST-DEV-001',
+            'device_category_id' => $category->id,
+            'classroom_id' => $classroom->id,
+            'status' => 'normal',
+        ]);
+
+        $usage->repairLog->repairRequest->update([
+            'title' => '成本明細設備案件',
+            'status' => 'completed',
+            'device_id' => $device->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('repair-cost-analysis.index'))
+            ->assertOk()
+            ->assertSee('成本明細設備案件')
+            ->assertSee('已結案')
+            ->assertSee('COST-DEV-001')
+            ->assertSee('成本測試教室')
+            ->assertSee('COST-A101')
+            ->assertSee('明細顯示測試備品');
+    }
+
+    /**
+     * 沒有關聯設備時，明細應使用案件的設備描述與地點。
+     */
+    public function test_cost_analysis_detail_shows_fallback_for_request_without_device(): void
+    {
+        $user = $this->makeCostViewer();
+
+        $usage = $this->makeUsage(
+            $user,
+            '2026-10-10 09:00:00',
+            '無設備案件測試備品',
+            1,
+            200
+        );
+
+        $usage->repairLog->repairRequest->update([
+            'title' => '無設備成本案件',
+            'status' => 'pending',
+            'device_id' => null,
+            'device_note' => '手動填寫的老舊冷氣',
+            'location' => 'B棟二樓走廊',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('repair-cost-analysis.index'))
+            ->assertOk()
+            ->assertSee('無設備成本案件')
+            ->assertSee('新報修')
+            ->assertSee('手動填寫的老舊冷氣')
+            ->assertSee('B棟二樓走廊')
+            ->assertSee('無設備案件測試備品');
     }
 }

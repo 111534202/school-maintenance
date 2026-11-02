@@ -67,7 +67,7 @@
     <div class="card shadow-sm">
         <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,6,7">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('classrooms.table.code') }}</th>

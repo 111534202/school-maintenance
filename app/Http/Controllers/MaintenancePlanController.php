@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreMaintenancePlanRequest;
 use App\Http\Requests\UpdateMaintenancePlanRequest;
 use App\Models\MaintenanceItem;
+use App\Models\DeviceCategory;
 use App\Models\MaintenancePlan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -35,6 +36,7 @@ class MaintenancePlanController extends Controller
             'plan' => new MaintenancePlan(['is_active' => true]),
             'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
             'selectedItemIds' => [],
+            'categories' => DeviceCategory::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -57,6 +59,7 @@ class MaintenancePlanController extends Controller
             'plan' => $maintenancePlan,
             'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
             'selectedItemIds' => $maintenancePlan->maintenanceItems()->pluck('maintenance_items.id')->all(),
+            'categories' => DeviceCategory::query()->orderBy('name')->get(),
         ]);
     }
 

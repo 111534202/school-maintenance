@@ -33,4 +33,16 @@ class KnowledgeBase extends Model
     protected $casts = [
         'is_published' => 'boolean',
     ];
+    /**
+     * 只查詢目前使用者有權限看到的知識庫文章。
+     * 管理者可以查看所有文章，一般使用者只能查看已上架文章。
+     */
+    public function scopeVisibleTo($query, $user)
+    {
+        if ($user && $user->can('knowledge-base.manage')) {
+            return $query;
+        }
+
+        return $query->where('is_published', true);
+    }
 }

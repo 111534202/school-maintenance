@@ -36,8 +36,8 @@ class RepairRequestFlowTest extends TestCase
             'campus' => '本校區',
             'building' => 'A棟',
             'floor' => '1',
-            'room_code' => 'A101',
-            'room_name' => 'A101 教室',
+            'classroom_code' => 'A101',
+            'name' => 'A101 教室',
         ]);
         $category = DeviceCategory::create(['name' => '投影機']);
 
@@ -80,7 +80,7 @@ class RepairRequestFlowTest extends TestCase
             'location' => 'A101',
             'description' => '出風口有風但溫度沒有下降，已檢查濾網。',
             'impact_level' => 'high',
-            'affects_class' => '1',
+            'is_class_affected' => '1',
         ];
 
         $response = $this->post(route('repairs.store'), $payload);
@@ -90,7 +90,7 @@ class RepairRequestFlowTest extends TestCase
         $this->assertDatabaseHas('repair_requests', [
             'title' => '教室冷氣完全不冷',
             'impact_level' => 'high',
-            'affects_class' => true,
+            'is_class_affected' => true,
             'status' => 'pending',
         ]);
     }
@@ -102,7 +102,7 @@ class RepairRequestFlowTest extends TestCase
             'title' => '',
             'description' => '',
             'impact_level' => '',
-            'affects_class' => '0',
+            'is_class_affected' => '0',
         ]);
 
         $response->assertSessionHasErrors(['title', 'description', 'impact_level']);
@@ -226,12 +226,12 @@ class RepairRequestFlowTest extends TestCase
             'device_id' => $device->id,
             'description' => '開機後畫面閃爍。',
             'impact_level' => 'medium',
-            'affects_class' => '1',
+            'is_class_affected' => '1',
         ]);
 
         $repairRequest = RepairRequest::firstWhere('title', 'A101 投影機故障');
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $this->assertSame($device->id, $repairRequest->device_id);
-        $this->assertNotNull($repairRequest->reporter_id);
+        $this->assertNotNull($repairRequest->requester_id);
     }
 }

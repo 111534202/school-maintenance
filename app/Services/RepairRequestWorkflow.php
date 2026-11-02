@@ -100,70 +100,70 @@ class RepairRequestWorkflow
 
     /**
      * 真正執行狀態轉換：檢查合法性 → 更新 status 欄位並存檔 → 視情況通知
-     * DeviceStatusSync（讓設備狀態跟報修狀態保持同步；目前 DeviceStatusSync 只記 log，
-     * 還沒有真的改設備資料，見那支 class 的說明）。
+     * DeviceStatusSync，依報修單狀態同步更新設備狀態。
      */
     public function transitionTo(RepairRequest $repairRequest, RepairRequestStatus $to): RepairRequest
     {
-        // 第一步一定先檢查，不合法就在這裡丟例外結束，下面都不會執行。
-        $this->assertCanTransition($repairRequest, $to);
 
-        $repairRequest->status = $to;   // 改狀態（只有這個類別才應該這樣寫）
-        $repairRequest->save();         // 存進資料庫
+        // 將報修單狀態更新與設備同步放在同一個交易中。
+        // 任一步驟失敗，資料庫變更都會回滾。
+        return DB::transaction(function () use ($repairRequest, $to): RepairRequest {
+            // 第一步一定先檢查，不合法就在這裡丟例外。
+            $this->assertCanTransition($repairRequest, $to);
 
-        // 案件開始「處理中」：如果這台設備是核心設備，通知把設備標成「維修中」。
-        if ($to === RepairRequestStatus::InProgress) {
-            $this->deviceStatusSync->markUnderRepair($repairRequest);
-        }
+            $repairRequest->status = $to;
+            $repairRequest->save();
 
-        // 案件進到「待驗收」或「已結案」：代表暫時（或永久）不用再修了，
-        // 通知去檢查這台設備還有沒有「其他」進行中的案件，沒有的話才把設備
-        // 狀態改回正常（可能同一台設備同時有兩張報修單在處理）。
-        if (in_array($to, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
-            $this->deviceStatusSync->markNormalIfNoActiveRepairs($repairRequest);
-        }
+            // 案件開始「處理中」：將關聯設備標記為「維修中」。
+            if ($to === RepairRequestStatus::InProgress) {
+                $this->deviceStatusSync->markUnderRepair($repairRequest);
+            }
 
-        return $repairRequest;
+            // 只有案件進入「已結案」時，才檢查設備能否恢復正常。
+            if ($to === RepairRequestStatus::Completed) {
+                $this->deviceStatusSync->markNormalIfNoActiveRepairs($repairRequest);
+            }
+
+            return $repairRequest;
+        });
+
     }
 
     /**
-     * 主管派工：新報修 -> 已派工，同時記錄維修人員（assignee_note 文字備援 +
-     * assigned_to 真正的 users.id 外鍵）與預計處理日期（scheduled_at）。
+     * 主管派工：新報修 -> 已派工，記錄維修人員的 users.id 外鍵
+     * 與預計處理日期（scheduled_at）。
      *
-     * $assignedTo 是 devices/users 表合併後新增的參數，預設 null 是為了不動到
-     * 既有呼叫端（例如舊測試、NG 轉報修等還沒接上真實帳號的情境），只有真的
-     * 挑了一個系統使用者當維修人員時才會帶入、寫進 assigned_to 這個外鍵欄位。
-     *
-     * 先檢查狀態合不合法，合法才寫欄位＋轉狀態，兩件事包在同一個 DB transaction
-     * 裡（要嘛兩個都成功，要嘛兩個都不生效，不會有「寫一半」的情況）。
-     *
-     * 這裡曾經出過一個真實的 bug：舊版本是先把 assignee_note 寫進資料庫、
-     * 最後才檢查狀態合不合法。如果使用者重複送出表單（連點兩下、按上一頁重送），
-     * 即使案件早就不是「新報修」了（例如已經是「已派工」），assignee_note 還是
-     * 會被悄悄覆蓋成新值，即使畫面顯示操作失敗——資料跟畫面對不上。現在改成
-     * 「先確認狀態合法，才動手寫欄位」，就不會有這個問題。
+     * 先檢查狀態是否合法，再寫入指派人員與預計處理時間並轉換狀態。
+     * 寫入與狀態轉換包在同一個資料庫交易中，確保兩者一起成功或一起回滾。
      */
-    public function assign(RepairRequest $repairRequest, ?string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
+    public function assign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
-        // 先檢查，不合法就丟例外，後面一個欄位都不會動。
         $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
 
-        // DB::transaction：裡面的動作「要嘛全部成功，要嘛全部取消」。
-        return DB::transaction(function () use ($repairRequest, $assigneeNote, $scheduledAt, $assignedTo) {
-            $repairRequest->assignee_note = $assigneeNote;   // 維修人員姓名（文字備援）
-            $repairRequest->assigned_to = $assignedTo;       // 維修人員的用戶編號（正式外鍵）
-            $repairRequest->scheduled_at = $scheduledAt;     // 預計處理時間
+        return DB::transaction(function () use ($repairRequest, $assignedTo, $scheduledAt) {
+            $repairRequest->assigned_to = $assignedTo;
+            $repairRequest->scheduled_at = $scheduledAt;
             $repairRequest->save();
 
             return $this->transitionTo($repairRequest, RepairRequestStatus::Assigned);
         });
     }
-
     /**
      * 維修人員開始處理：已派工 -> 處理中。
      */
     public function start(RepairRequest $repairRequest): RepairRequest
     {
+        // 只有「已派工」案件可以開始處理。
+        // 「待驗收」退回處理中必須經過 reject()，不能直接開始處理。
+        if ($repairRequest->status !== RepairRequestStatus::Assigned) {
+            throw new DomainException(
+                __('repair_requests.errors.invalid_transition', [
+                    'from' => $repairRequest->status->label(),
+                    'to' => RepairRequestStatus::InProgress->label(),
+                ])
+            );
+        }
+
         return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
     }
 
@@ -221,7 +221,7 @@ class RepairRequestWorkflow
      * 派過工，應該走 assign()；「待驗收」「已結案」代表已經在走驗收流程，
      * 這時候換人意義不大，也容易造成混亂，所以不開放。
      */
-    public function reassign(RepairRequest $repairRequest, string $assigneeNote, ?string $scheduledAt, ?int $assignedTo = null): RepairRequest
+    public function reassign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
         // 這個動作不改狀態，所以不走 TRANSITIONS 表，直接列出「允許換人的狀態」。
         $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
@@ -232,7 +232,6 @@ class RepairRequestWorkflow
             );
         }
 
-        $repairRequest->assignee_note = $assigneeNote;
         $repairRequest->assigned_to = $assignedTo;
         $repairRequest->scheduled_at = $scheduledAt;
         $repairRequest->save();

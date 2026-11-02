@@ -33,7 +33,7 @@ class MaintenanceFlowTest extends TestCase
         return MaintenanceOrder::create([
             'maintenance_plan_id' => $this->makePlan($device)->id,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => null,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->toDateString(),
@@ -86,7 +86,6 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-07 10:00:00',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
@@ -95,6 +94,7 @@ class MaintenanceFlowTest extends TestCase
         $result = MaintenanceResult::firstOrFail();
         $this->assertSame(MaintenanceResult::RESULT_OK, $result->result);
         $this->assertSame(MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE, $result->ng_conversion_status);
+        $this->assertSame((int) auth()->id(), (int) $result->executed_by);
     }
 
     public function test_reporting_ng_completes_the_order_and_hands_off_to_repair(): void
@@ -103,9 +103,8 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-07 10:00:00',
-            'notes' => '風扇異音',
+            'note' => '風扇異音',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
@@ -120,7 +119,7 @@ class MaintenanceFlowTest extends TestCase
                 : MaintenanceResult::NG_CONVERSION_PENDING,
             $result->ng_conversion_status
         );
-        $this->assertSame('風扇異音', $result->notes);
+        $this->assertSame('風扇異音', $result->note);
     }
 
     public function test_result_requires_a_valid_result_value(): void
@@ -129,7 +128,6 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'maybe',
-            'executed_by' => '王小明',
             'executed_at' => '2026-10-07 10:00:00',
         ])->assertSessionHasErrors('result');
 
@@ -140,7 +138,7 @@ class MaintenanceFlowTest extends TestCase
     public function test_an_order_cannot_be_reported_twice(): void
     {
         $order = $this->pendingOrder();
-        $payload = ['result' => 'ok', 'executed_by' => '王小明', 'executed_at' => '2026-10-07 10:00:00'];
+        $payload = ['result' => 'ok',  'executed_at' => '2026-10-07 10:00:00'];
 
         $this->post(route('maintenance-orders.results.store', $order), $payload);
         $this->post(route('maintenance-orders.results.store', $order), $payload)->assertStatus(422);

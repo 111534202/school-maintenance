@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\MaintenanceOrder;
 use App\Models\MaintenancePlan;
 use App\Models\MaintenanceResult;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -74,7 +75,7 @@ class AiDemoDataSeeder extends Seeder
                         'brand' => $referenceDevice->brand,
                         'model' => $referenceDevice->model,
                         'serial_number' => 'SN-AI-'.str_pad((string) ($extraIndex + 1), 4, '0', STR_PAD_LEFT),
-                        'warranty_until' => $referenceDevice->warranty_until,
+                        'warranty_end_date' => $referenceDevice->warranty_end_date,
                         'classroom_id' => $classroomIds[$extraIndex % $classroomIds->count()],
                         'status' => Device::STATUSES[0], // normal
                         'is_core' => false,
@@ -101,7 +102,7 @@ class AiDemoDataSeeder extends Seeder
             ['name' => 'AI 測試資料：'.$device->device_code.' 月檢計畫'],
             [
                 'device_id' => $device->id,
-                'device_category' => $device->category?->name,
+                'device_category_id' => null,
                 'cycle_days' => 30,
                 'start_date' => Carbon::now()->subMonths(6)->startOfMonth(),
                 'next_due_date' => Carbon::now()->addMonth()->startOfMonth()->addDays(4),
@@ -129,7 +130,7 @@ class AiDemoDataSeeder extends Seeder
                     'source' => MaintenanceOrder::SOURCE_PERIODIC,
                     'scheduled_date' => $scheduledDate->toDateString(),
                     'device_id' => $device->id,
-                    'device_category' => $device->category?->name,
+                    'device_category_id' => null,
                     'status' => MaintenanceOrder::STATUS_COMPLETED,
                 ]);
 
@@ -144,9 +145,9 @@ class AiDemoDataSeeder extends Seeder
                 ['maintenance_order_id' => $order->id],
                 [
                     'result' => $isNg ? MaintenanceResult::RESULT_NG : MaintenanceResult::RESULT_OK,
-                    'executed_by' => 'AI 測試資料 Seeder',
+                    'executed_by' => User::query()->value('id'),
                     'executed_at' => $scheduledDate->copy()->addHours(10),
-                    'notes' => $isNg
+                    'note' => $isNg
                         ? '工程實作：AI 測試資料集刻意安排的異常紀錄，用於展示風險評分。'
                         : null,
                     'ng_conversion_status' => $isNg ? MaintenanceResult::NG_CONVERSION_PENDING : null,
@@ -167,7 +168,7 @@ class AiDemoDataSeeder extends Seeder
             ],
             [
                 'device_id' => $device->id,
-                'device_category' => $device->category?->name,
+                'device_category_id' => null,
                 'scheduled_date' => Carbon::today()->addDays(7)->toDateString(),
             ]
         );

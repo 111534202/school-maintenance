@@ -70,7 +70,7 @@ class DeviceCategoryManagementTest extends TestCase
     {
         $used = DeviceCategory::create(['name' => '使用中類別']);
         $unused = DeviceCategory::create(['name' => '沒人用的類別']);
-        $classroom = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => 'A1', 'room_name' => 'A1']);
+        $classroom = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'A1']);
         Device::create(['device_code' => 'D-1', 'device_category_id' => $used->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
 
         $this->delete(route('device-categories.destroy', $used))->assertSessionHas('error');
@@ -85,7 +85,7 @@ class DeviceCategoryManagementTest extends TestCase
     {
         $projector = DeviceCategory::create(['name' => '投影機']);
         DeviceCategory::create(['name' => '交換器']);
-        $classroom = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => 'A1', 'room_name' => 'A1']);
+        $classroom = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'A1']);
         Device::create(['device_code' => 'D-1', 'device_category_id' => $projector->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
         Device::create(['device_code' => 'D-2', 'device_category_id' => $projector->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
 

@@ -67,15 +67,10 @@ class RepairRequestController extends Controller
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             // 地點篩選：like %字% 是「包含這段字」，所以打 A1 也找得到 A101。
             ->when($request->filled('location'), fn ($query) => $query->where('location', 'like', '%' . $request->string('location') . '%'))
-            // 維修人員篩選：users 表合併後改成對「已指派的真實使用者姓名」模糊比對，
-            // 沒有 assigned_to（例如保養 NG 轉報修等舊資料）就退回比對 assignee_note 文字。
+            // 維修人員篩選：只依 assigned_to 關聯的使用者姓名模糊比對。
             ->when($request->filled('assignee'), function ($query) use ($request) {
                 $keyword = $request->string('assignee');
-                // 括號包起來：確保「或」只在「姓名符合」與「備註文字符合」之間，不會影響上面的狀態、地點篩選。
-                $query->where(function ($q) use ($keyword) {
-                    $q->whereHas('assignedTechnician', fn ($uq) => $uq->where('name', 'like', "%{$keyword}%"))
-                        ->orWhere('assignee_note', 'like', "%{$keyword}%");
-                });
+                $query->whereHas('assignedTechnician', fn ($uq) => $uq->where('name', 'like', "%{$keyword}%"));
             })
             ->latest()            // 依建立時間，最新的排最前面
             ->paginate(10)        // 每頁 10 張
@@ -85,7 +80,7 @@ class RepairRequestController extends Controller
         $statuses = RepairRequestStatus::cases();
 
         // 統計「每個維修人員手上還有幾張還沒結案的案件」，現在以真正的 assigned_to
-        // （users.id）分組，比用文字 assignee_note 分組更準確（不會被同名不同人混淆）。
+        // （users.id）分組，避免以姓名文字分組造成同名不同人混淆。
         $activeCaseCountsByAssignee = RepairRequest::query()
             ->visibleTo($request->user())                                        // 同樣只算這位用戶看得到的案件
             ->whereNotNull('assigned_to')                                        // 只算有指派人的
@@ -95,7 +90,7 @@ class RepairRequestController extends Controller
             ->pluck('active_count', 'assigned_to');                              // 結果：[用戶編號 => 張數]
 
         // 篩選列「教室」下拉選單的選項；若網址帶了 ?device_id=，查出那台設備讓畫面顯示「目前只看這台設備」。
-        $classrooms = Classroom::orderBy('room_code')->get();
+        $classrooms = Classroom::orderBy('classroom_code')->get();
         $filteredDevice = $request->filled('device_id') ? Device::find($request->integer('device_id')) : null;
 
         return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice'));
@@ -117,7 +112,7 @@ class RepairRequestController extends Controller
 
         // 網址有帶 ?from_kb=文章編號 → 找出那篇知識庫文章，畫面上會顯示「你剛剛看過這篇」的提示。
         if (request()->filled('from_kb')) {
-            $fromKnowledgeBase = KnowledgeBase::find(request()->integer('from_kb'));
+            $fromKnowledgeBase = KnowledgeBase::visibleTo(auth()->user())->find(request()->integer('from_kb'));
         }
 
         // 網址有帶 ?device=設備編號 → 找出那台設備（連同類別、教室），表單會自動帶入設備資訊。
@@ -170,15 +165,15 @@ class RepairRequestController extends Controller
             'device_code' => $device->device_code,
             'display' => trim(
                 ($device->category->name ?? '') . ' ' . $device->brand . ' ' . $device->model
-                . '（' . ($device->classroom->room_name ?? $device->classroom->room_code ?? '') . '）'
+                . '（' . ($device->classroom->name ?? $device->classroom->classroom_code ?? '') . '）'
             ),
-            'title_suggestion' => trim(($device->classroom->room_code ?? '') . ' ' . ($device->category->name ?? '') . '故障'),
+            'title_suggestion' => trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障'),
         ]);
     }
 
     /**
      * 使用者送出「新增報修」表單後，真正把資料存進資料庫。
-     * 附件（例如故障照片）如果有上傳，會另外存進 attachments 表；reporter_id
+     * 附件（例如故障照片）如果有上傳，會另外存進 attachments 表；requester_id
      * 現在直接用登入者的 id（auth 中介層保證一定有登入者，不會是 null）。
      */
     public function store(StoreRepairRequestRequest $request, AttachmentUploader $attachmentUploader)
@@ -187,7 +182,7 @@ class RepairRequestController extends Controller
         // ... 是「把陣列展開放進來」。
         $repairRequest = RepairRequest::create([
             ...$request->safe()->except('attachments'),
-            'reporter_id' => Auth::id(),
+            'requester_id' => Auth::id(),
         ]);
 
         // 有上傳附件才處理；storeMany 會把每個檔案存起來並在 attachments 資料表留一筆。
@@ -217,7 +212,14 @@ class RepairRequestController extends Controller
         Gate::authorize('view', $repairRequest);
 
         // 補查畫面要用到的關聯資料（附件、維修紀錄與其附件、設備與其類別／教室、維修人員）。
-        $repairRequest->load(['attachments', 'repairLogs.attachments', 'device.category', 'device.classroom', 'assignedTechnician']);
+        $repairRequest->load([
+            'attachments',
+            'repairLogs.attachments',
+            'repairLogs.partUsages.part',
+            'device.category',
+            'device.classroom',
+            'assignedTechnician',
+        ]);
 
         // 派工／重新指派表單要挑選真正的維修人員，不再讓主管自己打字輸入姓名。
         // 誰能被指派由身分主檔決定：身分有勾選「可被指派為維修人員」權限、且帳號啟用中的用戶。
@@ -226,7 +228,27 @@ class RepairRequestController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('repairs.show', compact('repairRequest', 'technicians'));
+        // 計算這張報修單目前已記錄的材料費。
+        $partUsages = $repairRequest->repairLogs
+            ->flatMap(fn ($log) => $log->partUsages);
+
+        $hasIncompletePrice = $partUsages->contains(
+            fn ($usage) => $usage->unit_price === null
+        );
+
+        $materialCost = $hasIncompletePrice
+            ? null
+            : $partUsages->sum(
+                fn ($usage) => $usage->quantity * $usage->unit_price
+            );
+
+        return view('repairs.show', compact(
+            'repairRequest',
+            'technicians',
+            'partUsages',
+            'materialCost',
+            'hasIncompletePrice'
+        ));
     }
 
     /**
@@ -244,9 +266,8 @@ class RepairRequestController extends Controller
             // 呼叫 Workflow 做派工；如果目前狀態不能派工（例如已經被別人派了），它會丟出 DomainException。
             $workflow->assign(
                 $repairRequest,
-                $technician->name,
-                $request->validated('scheduled_at'),   // 預計處理時間
                 $technician->id,
+                $request->validated('scheduled_at'),
             );
         } catch (DomainException $exception) {
             // 不合法就導回詳細頁並顯示錯誤，不往下執行（也就不會寄信、不會寫成功紀錄）。
@@ -283,9 +304,8 @@ class RepairRequestController extends Controller
             // 只換人與時間，狀態不變；不合法（例如案件已結案）會丟 DomainException。
             $workflow->reassign(
                 $repairRequest,
-                $technician->name,
-                $request->validated('scheduled_at'),
                 $technician->id,
+                $request->validated('scheduled_at'),
             );
         } catch (DomainException $exception) {
             return $this->redirectWithWorkflowError($repairRequest, $exception);

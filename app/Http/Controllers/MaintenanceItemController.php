@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMaintenanceItemRequest;
 use App\Http\Requests\UpdateMaintenanceItemRequest;
+use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -31,6 +32,7 @@ class MaintenanceItemController extends Controller
     {
         return view('maintenance_items.create', [
             'item' => new MaintenanceItem(['is_active' => true]),
+            'categories' => DeviceCategory::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -45,7 +47,10 @@ class MaintenanceItemController extends Controller
 
     public function edit(MaintenanceItem $maintenanceItem): View
     {
-        return view('maintenance_items.edit', ['item' => $maintenanceItem]);
+        return view('maintenance_items.edit', [
+            'item' => $maintenanceItem,
+            'categories' => DeviceCategory::query()->orderBy('name')->get(),
+        ]);
     }
 
     public function update(UpdateMaintenanceItemRequest $request, MaintenanceItem $maintenanceItem): RedirectResponse

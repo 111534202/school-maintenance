@@ -21,9 +21,9 @@ class MaintenanceResultFactory extends Factory
         return [
             'maintenance_order_id' => MaintenanceOrder::factory(),
             'result' => $this->faker->randomElement([MaintenanceResult::RESULT_OK, MaintenanceResult::RESULT_NG]),
-            'executed_by' => $this->faker->name(),
+            'executed_by' => null,
             'executed_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'notes' => null,
+            'note' => null,
             'ng_conversion_status' => null,
         ];
     }

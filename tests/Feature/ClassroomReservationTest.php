@@ -555,4 +555,166 @@ class ClassroomReservationTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_timetable_week_endpoint_returns_monday_to_friday(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+        $selectedDate = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY)->addDays(2);
+        $monday = $selectedDate->copy()->startOfWeek(\Carbon\Carbon::MONDAY);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $classroom->id,
+            'date' => $selectedDate->toDateString(),
+        ]))
+            ->assertOk()
+            ->assertJsonPath('classroom.id', $classroom->id)
+            ->assertJsonPath('selected_date', $selectedDate->toDateString())
+            ->assertJsonPath('week_start', $monday->toDateString())
+            ->assertJsonPath('week_end', $monday->copy()->addDays(4)->toDateString())
+            ->assertJsonCount(5, 'days')
+            ->assertJsonPath('days.0.date', $monday->toDateString())
+            ->assertJsonPath('days.4.date', $monday->copy()->addDays(4)->toDateString())
+            ->assertJsonPath('days.0.periods.0.period_no', 1)
+            ->assertJsonPath('days.0.periods.0.start_time', '08:10');
+    }
+
+    public function test_timetable_week_endpoint_includes_pending_and_approved_slots(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+        $monday = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY);
+        $tuesday = $monday->copy()->addDay();
+
+        $pending = ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $monday->toDateString(),
+                'class_name' => '待審核週課表班級',
+                'start_time' => '08:20',
+                'end_time' => '08:40',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'pending',
+        ]);
+
+        \App\Models\ClassroomReservationSlot::create([
+            'classroom_reservation_id' => $pending->id,
+            'reservation_date' => $monday->toDateString(),
+            'start_time' => '08:20',
+            'end_time' => '08:40',
+            'period_no' => 1,
+        ]);
+
+        $approved = ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $tuesday->toDateString(),
+                'class_name' => '已核准週課表班級',
+                'start_time' => '09:10',
+                'end_time' => '09:30',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'approved',
+        ]);
+
+        \App\Models\ClassroomReservationSlot::create([
+            'classroom_reservation_id' => $approved->id,
+            'reservation_date' => $tuesday->toDateString(),
+            'start_time' => '09:10',
+            'end_time' => '09:30',
+            'period_no' => 2,
+        ]);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $classroom->id,
+            'date' => $monday->copy()->addDays(2)->toDateString(),
+        ]))
+            ->assertOk()
+            ->assertJsonPath('days.0.periods.0.reservations.0.class_name', '待審核週課表班級')
+            ->assertJsonPath('days.0.periods.0.reservations.0.status', 'pending')
+            ->assertJsonPath('days.1.periods.1.reservations.0.class_name', '已核准週課表班級')
+            ->assertJsonPath('days.1.periods.1.reservations.0.status', 'approved');
+    }
+
+    public function test_timetable_week_endpoint_excludes_reservations_outside_the_week(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+        $monday = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY);
+        $outsideDate = $monday->copy()->addDays(5);
+
+        ClassroomReservation::create([
+            ...$this->payload($classroom, [
+                'reservation_date' => $outsideDate->toDateString(),
+                'class_name' => '週末預約不應出現',
+                'start_time' => '08:20',
+                'end_time' => '08:40',
+            ]),
+            'requester_id' => $this->applicant->id,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $classroom->id,
+            'date' => $monday->toDateString(),
+        ]));
+
+        $response->assertOk()->assertJsonCount(5, 'days');
+
+        foreach ($response->json('days') as $day) {
+            foreach ($day['periods'] as $period) {
+                foreach ($period['reservations'] as $reservation) {
+                    $this->assertNotSame(
+                        '週末預約不應出現',
+                        $reservation['class_name']
+                    );
+                }
+            }
+        }
+    }
+
+    public function test_timetable_week_endpoint_rejects_invalid_parameters(): void
+    {
+        $classroom = $this->makeClassroom('IT-301');
+
+        $this->getJson(route('reservations.timetable.week'))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['classroom_id', 'date']);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => 999999,
+            'date' => now()->addDays(3)->toDateString(),
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['classroom_id']);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $classroom->id,
+            'date' => 'not-a-date',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['date']);
+
+        $this->getJson(route('reservations.timetable.week', [
+            'classroom_id' => $classroom->id,
+            'date' => now()->subDay()->toDateString(),
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['date']);
+    }
+
+    public function test_timetable_week_endpoint_rejects_inactive_or_abnormal_classrooms(): void
+    {
+        $inactive = $this->makeClassroom('W101', [
+            'is_active' => false,
+        ]);
+
+        $abnormal = $this->makeClassroom('W102', [
+            'reservation_status' => 'abnormal',
+        ]);
+
+        $date = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY)->toDateString();
+
+        foreach ([$inactive, $abnormal] as $classroom) {
+            $this->getJson(route('reservations.timetable.week', [
+                'classroom_id' => $classroom->id,
+                'date' => $date,
+            ]))->assertStatus(422);
+        }
+    }
 }

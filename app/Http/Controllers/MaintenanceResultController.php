@@ -18,6 +18,8 @@ class MaintenanceResultController extends Controller
     {
         abort_if($maintenanceOrder->result()->exists(), 422, '這張工單已經回報過保養結果了');
 
+        $maintenanceOrder->load(['device.category', 'deviceCategory']);
+
         return view('maintenance_results.create', ['order' => $maintenanceOrder]);
     }
 
@@ -30,7 +32,12 @@ class MaintenanceResultController extends Controller
     {
         abort_unless($maintenanceOrder->result()->exists(), 404);
 
-        $maintenanceOrder->load(['result', 'maintenancePlan']);
+        $maintenanceOrder->load([
+            'result.executor',
+            'maintenancePlan',
+            'device.category',
+            'deviceCategory',
+        ]);
 
         return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result]);
     }
@@ -44,6 +51,7 @@ class MaintenanceResultController extends Controller
 
         $result = MaintenanceResult::create([
             ...$request->validated(),
+            'executed_by' => $request->user()->id,
             'maintenance_order_id' => $maintenanceOrder->id,
         ]);
 

@@ -22,7 +22,9 @@ class KnowledgeBaseController extends Controller
     public function index()
     {
         // latest()：依建立時間由新到舊；paginate(10)：分頁，每頁 10 筆。
-        $knowledgeBaseEntries = KnowledgeBase::latest()->paginate(10);
+        $knowledgeBaseEntries = KnowledgeBase::visibleTo(auth()->user())
+            ->latest()
+            ->paginate(10);
 
         return view('knowledge-base.index', compact('knowledgeBaseEntries'));
     }
@@ -46,9 +48,14 @@ class KnowledgeBaseController extends Controller
             ->with('success', __('knowledge_base.flash.created'));
     }
 
-    /** 單篇知識庫文章的詳細頁，底下會有「問題已解決」／「前往報修」兩個按鈕。 */
     public function show(KnowledgeBase $knowledgeBase)
     {
+        // 未上架的文章，只有知識庫管理者可以查看。
+        abort_unless(
+            $knowledgeBase->is_published || auth()->user()->can('knowledge-base.manage'),
+            404
+        );
+
         return view('knowledge-base.show', compact('knowledgeBase'));
     }
 

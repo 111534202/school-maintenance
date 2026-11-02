@@ -22,7 +22,7 @@
 
                 <dt class="col-sm-3">設備 / 類別</dt>
                 <dd class="col-sm-9">
-                    {{ $order->device_category ?? '—' }}
+                    {{ $order->categoryName() ?? '—' }}
                     @if ($order->device_id)
                         <span class="text-muted">（設備編號：{{ $order->device_id }}）</span>
                     @endif
@@ -42,13 +42,13 @@
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $resultColor }}">{{ $resultText }}</span></dd>
 
                 <dt class="col-sm-3">執行人</dt>
-                <dd class="col-sm-9">{{ $result->executed_by ?? '—' }}</dd>
+                <dd class="col-sm-9">{{ $result->executor?->name ?? '—' }}</dd>
 
                 <dt class="col-sm-3">執行時間</dt>
                 <dd class="col-sm-9">{{ $result->executed_at?->format('Y-m-d H:i') ?? '—' }}</dd>
 
                 <dt class="col-sm-3">說明 / 備註</dt>
-                <dd class="col-sm-9">{{ $result->notes ?? '—' }}</dd>
+                <dd class="col-sm-9">{{ $result->note ?? '—' }}</dd>
 
                 @if ($result->isNg())
                     <dt class="col-sm-3">轉報修狀態</dt>

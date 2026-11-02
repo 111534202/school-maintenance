@@ -26,7 +26,7 @@ return [
         'title' => '標題',
         'device_location' => '設備／地點',
         'impact_level' => '影響程度',
-        'affects_class' => '影響上課',
+        'is_class_affected' => '影響上課',
         'status' => '狀態',
         'assignee' => '維修人員',
         'submitted_at' => '送出時間',

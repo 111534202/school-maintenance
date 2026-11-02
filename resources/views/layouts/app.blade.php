@@ -19,6 +19,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {{-- Bootstrap Icons：全站按鈕統一用圖示（筆=編輯、垃圾桶=刪除…），不使用 emoji。 --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
     {{-- 以下是本站自訂的樣式，補強 Bootstrap 不足的地方。 --}}
     <style>
         /* 頁面至少和視窗一樣高。 */
@@ -70,7 +71,7 @@
     </style>
 </head>
 {{-- 頁面主體：淺灰色背景。 --}}
-<body class="bg-light">
+<body class="bg-light" data-onion-filter="{{ __('common.buttons.filter') }}" data-onion-details="{{ __('common.buttons.details') }}" data-onion-collapse="{{ __('common.buttons.collapse') }}">
     {{-- 最上方的深色導覽列。 --}}
     <nav class="navbar navbar-dark bg-dark">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
@@ -203,5 +204,6 @@
 
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('js/onion.js') }}?v={{ filemtime(public_path('js/onion.js')) }}"></script>
 </body>
 </html>

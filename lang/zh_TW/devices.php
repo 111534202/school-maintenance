@@ -73,7 +73,7 @@ return [
         'brand' => '品牌',
         'model' => '型號',
         'serial_number' => '序號',
-        'warranty_until' => '保固期限',
+        'warranty_end_date' => '保固期限',
         'status' => '狀態',
         'is_core' => '核心設備',
     ],

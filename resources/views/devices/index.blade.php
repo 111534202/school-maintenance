@@ -30,7 +30,7 @@
                         <option value="">{{ __('devices.filter.classroom_all') }}</option>
                         {{-- 教室下拉選單的選項。 --}}
                         @foreach ($classrooms as $classroom)
-                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->room_code }} - {{ $classroom->room_name }}</option>
+                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->classroom_code }} - {{ $classroom->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -82,7 +82,7 @@
     <div class="card shadow-sm">
         <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="3,6">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('devices.table.code') }}</th>
@@ -102,7 +102,7 @@
                             <td><a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a></td>
                             <td>{{ $device->category->name ?? __('devices.no_value') }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
-                            <td>{{ $device->classroom->room_name ?? __('devices.no_value') }}</td>
+                            <td>{{ $device->classroom->name ?? __('devices.no_value') }}</td>
                             {{-- 狀態徽章依狀態上色：正常綠、維修中黃、已淘汰灰、停用紅（和主控台的設備狀態圖同一套顏色）。 --}}
                             <td class="text-center"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
                             <td class="text-center">

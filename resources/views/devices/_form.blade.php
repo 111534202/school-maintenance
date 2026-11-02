@@ -38,7 +38,7 @@
             <option value="">{{ __('devices.form.please_select') }}</option>
             @foreach ($classrooms as $classroom)
                 <option value="{{ $classroom->id }}" @selected(old('classroom_id', $device->classroom_id ?? '') == $classroom->id)>
-                    {{ $classroom->room_code }} - {{ $classroom->room_name }}
+                    {{ $classroom->classroom_code }} - {{ $classroom->name }}
                 </option>
             @endforeach
         </select>
@@ -59,9 +59,9 @@
         <input type="text" id="serial_number" name="serial_number" class="form-control @error('serial_number') is-invalid @enderror" value="{{ old('serial_number', $device->serial_number ?? '') }}">
     </div>
     <div class="col-md-4">
-        <label for="warranty_until" class="form-label">{{ __('devices.form.warranty_until') }}</label>
+        <label for="warranty_end_date" class="form-label">{{ __('devices.form.warranty_end_date') }}</label>
         {{-- 保固期限（日期選擇器）；optional(...) 是「沒有資料也不要報錯」。 --}}
-        <input type="date" id="warranty_until" name="warranty_until" class="form-control @error('warranty_until') is-invalid @enderror" value="{{ old('warranty_until', optional($device->warranty_until ?? null)->format('Y-m-d')) }}">
+        <input type="date" id="warranty_end_date" name="warranty_end_date" class="form-control @error('warranty_end_date') is-invalid @enderror" value="{{ old('warranty_end_date', optional($device->warranty_end_date ?? null)->format('Y-m-d')) }}">
     </div>
     <div class="col-md-4">
         <label for="status" class="form-label">{{ __('devices.form.status') }}</label>

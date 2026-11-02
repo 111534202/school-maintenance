@@ -75,7 +75,7 @@
 
     <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle mb-0">
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,2,3">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('audit.table.time') }}</th>

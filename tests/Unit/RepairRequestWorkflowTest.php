@@ -3,7 +3,12 @@
 namespace Tests\Unit;
 
 use App\Enums\RepairRequestStatus;
+use App\Models\Classroom;
+use App\Models\Department;
+use App\Models\Device;
+use App\Models\DeviceCategory;
 use App\Models\RepairRequest;
+use App\Models\User;
 use App\Services\DeviceStatusSync;
 use App\Services\RepairRequestWorkflow;
 use DomainException;
@@ -23,26 +28,132 @@ class RepairRequestWorkflowTest extends TestCase
         return new RepairRequestWorkflow(new DeviceStatusSync());
     }
 
+    // 輔助方法：建立一台可供報修單關聯的測試設備。
+    private function makeDevice(array $attrs = []): Device
+    {
+        $department = Department::create(['name' => '資訊組']);
+        $classroom = Classroom::create([
+            'department_id' => $department->id,
+            'campus' => '本校區',
+            'building' => 'A棟',
+            'floor' => '1',
+            'classroom_code' => 'A101',
+            'name' => 'A101 教室',
+        ]);
+        $category = DeviceCategory::create(['name' => '測試設備類別']);
+
+        return Device::create([
+            'device_code' => 'DEV-WORKFLOW-TEST',
+            'device_category_id' => $category->id,
+            'brand' => '測試品牌',
+            'model' => '測試型號',
+            'classroom_id' => $classroom->id,
+            'status' => 'normal',
+            ...$attrs,
+        ]);
+    }
+
     // 合法的完整路徑：新報修一路走到已結案都成功。
     public function test_full_legal_path_pending_to_completed(): void
     {
-        $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
+        $device = $this->makeDevice(['is_core' => true]);
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'pending',
+            'device_id' => $device->id,
+        ]);
         $workflow = $this->workflow();
 
-        $workflow->assign($repairRequest, '王小明', null);
+        $this->assertSame('normal', $device->fresh()->status);
+
+        $technician = User::factory()->create();
+        $workflow->assign($repairRequest, $technician->id, null);
         $this->assertSame(RepairRequestStatus::Assigned, $repairRequest->fresh()->status);
 
         $workflow->start($repairRequest);
+        $this->assertSame(
+            'abnormal',
+            $device->classroom()->firstOrFail()->fresh()->reservation_status
+        );
         $this->assertSame(RepairRequestStatus::InProgress, $repairRequest->fresh()->status);
+        $this->assertSame('repairing', $device->fresh()->status);
 
         $workflow->submitForReview($repairRequest);
+        $this->assertSame(
+            'abnormal',
+            $device->classroom()->firstOrFail()->fresh()->reservation_status
+        );
         $this->assertSame(RepairRequestStatus::PendingReview, $repairRequest->fresh()->status);
+        $this->assertSame('repairing', $device->fresh()->status);
 
         $workflow->transitionTo($repairRequest, RepairRequestStatus::Completed);
         $this->assertSame(RepairRequestStatus::Completed, $repairRequest->fresh()->status);
+        $this->assertSame('normal', $device->fresh()->status);
+        $this->assertSame(
+            'normal',
+            $device->classroom()->firstOrFail()->fresh()->reservation_status
+        );
+    }
+
+
+    // 設備狀態同步失敗時，報修單狀態也必須回滾。
+    public function test_start_rolls_back_repair_status_when_device_sync_fails(): void
+    {
+        $device = $this->makeDevice();
+
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'assigned',
+            'device_id' => $device->id,
+        ]);
+
+        $sync = $this->createMock(DeviceStatusSync::class);
+
+        $sync->expects($this->once())
+            ->method('markUnderRepair')
+            ->willThrowException(new \RuntimeException('模擬設備同步失敗'));
+
+        $workflow = new RepairRequestWorkflow($sync);
+
+        try {
+            $workflow->start($repairRequest);
+            $this->fail('設備同步失敗時，應該拋出例外。');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('模擬設備同步失敗', $exception->getMessage());
+        }
+
+        $this->assertSame(
+            RepairRequestStatus::Assigned,
+            $repairRequest->fresh()->status,
+            '設備同步失敗後，報修單狀態應回滾為已派工。'
+        );
+
+        $this->assertSame(
+            'normal',
+            $device->fresh()->status,
+            '設備同步失敗後，設備狀態應維持正常。'
+        );
     }
 
     // 待驗收可以被退回「處理中」。
+    public function test_start_rejects_pending_review_and_keeps_status_unchanged(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'pending_review',
+        ]);
+
+        $thrown = false;
+
+        try {
+            $this->workflow()->start($repairRequest);
+        } catch (DomainException $exception) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown, '待驗收案件不得直接呼叫 start()。');
+        $this->assertSame(
+            RepairRequestStatus::PendingReview,
+            $repairRequest->fresh()->status
+        );
+    }
     public function test_pending_review_can_be_rejected_back_to_in_progress(): void
     {
         // Week1 決策#3：驗收不通過退回「處理中」，不是退回「已派工」。
@@ -113,15 +224,17 @@ class RepairRequestWorkflowTest extends TestCase
     public function test_reassign_works_when_assigned_or_in_progress(): void
     {
         // 依《第四週個人工作計畫》第 1 項：已派工／處理中都能重新指派，不影響狀態本身。
+        $originalTechnician = User::factory()->create();
+        $newTechnician = User::factory()->create();
         foreach (['assigned', 'in_progress'] as $status) {
             $repairRequest = RepairRequest::factory()->create([
                 'status' => $status,
-                'assignee_note' => '王小明',
+                'assigned_to' => $originalTechnician->id,
             ]);
 
-            $this->workflow()->reassign($repairRequest, '劉小華', null);
+            $this->workflow()->reassign($repairRequest, $newTechnician->id, null);
 
-            $this->assertSame('劉小華', $repairRequest->fresh()->assignee_note);
+            $this->assertSame($newTechnician->id, $repairRequest->fresh()->assigned_to);
             $this->assertSame($status, $repairRequest->fresh()->status->value);
         }
     }
@@ -132,21 +245,26 @@ class RepairRequestWorkflowTest extends TestCase
         // 注意：expectException() 一次只能驗證「下一個」丟出的例外，丟完程式就會
         // 中斷，所以這裡用 try/catch 逐一驗證每個狀態都真的會擋下來，
         // 而不是只測到迴圈第一輪就結束（曾經在別支測試裡犯過這個錯，這裡刻意避開）。
+        $originalTechnician = User::factory()->create();
+        $newTechnician = User::factory()->create();
         foreach (['pending', 'pending_review', 'completed'] as $status) {
             $repairRequest = RepairRequest::factory()->create([
                 'status' => $status,
-                'assignee_note' => '王小明',
+                'assigned_to' => $originalTechnician->id,
             ]);
 
             $threwException = false;
             try {
-                $this->workflow()->reassign($repairRequest, '劉小華', null);
+                $this->workflow()->reassign($repairRequest, $newTechnician->id, null);
             } catch (DomainException $exception) {
                 $threwException = true;
             }
 
             $this->assertTrue($threwException, "狀態「{$status}」應該要擋下重新指派，但沒有丟出例外。");
-            $this->assertSame('王小明', $repairRequest->fresh()->assignee_note, "狀態「{$status}」時 assignee_note 不應該被改動。");
+            $this->assertSame($originalTechnician->id,
+                $repairRequest->fresh()->assigned_to,
+                "狀態「{$status}」時 assigned_to 不應該被改動。"
+            );
         }
     }
 }

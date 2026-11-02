@@ -97,7 +97,7 @@ class RepairLogPartUsageTest extends TestCase
             ->where('repair_request_id', $repairRequest->id)
             ->sole();
 
-        $this->assertDatabaseHas('repair_part_usage', [
+        $this->assertDatabaseHas('repair_part_usages', [
             'repair_log_id' => $repairLog->id,
             'part_id' => $part->id,
             'quantity' => 3,
@@ -177,7 +177,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             2,
@@ -210,7 +210,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             10,
@@ -247,7 +247,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
 
         $this->assertSame(
             10,
@@ -284,7 +284,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -315,7 +315,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -346,7 +346,7 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
@@ -378,11 +378,42 @@ class RepairLogPartUsageTest extends TestCase
             'repair_request_id' => $repairRequest->id,
         ]);
 
-        $this->assertDatabaseCount('repair_part_usage', 0);
+        $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
             'in_progress',
             $repairRequest->fresh()->status->value
         );
+    }
+
+/**
+     * 尚未開始處理的案件，不應開放填寫維修紀錄。
+     */
+    public function test_repair_log_form_is_not_available_before_work_starts(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'assigned',
+        ]);
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertRedirect(route('repairs.show', $repairRequest));
+        $response->assertSessionHas('error');
+    }
+
+    /**
+     * 案件進入處理中後，應可以開啟維修紀錄表單。
+     */
+    public function test_repair_log_form_is_available_while_in_progress(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertOk();
     }
 }

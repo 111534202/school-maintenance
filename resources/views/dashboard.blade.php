@@ -20,6 +20,24 @@
     // 數字卡片清單：標題、數字、單位、圖示、顏色、點擊後要跳去的網址、右下角的備註文字。前三張（報修）所有人都看得到。
     $cards = [
         ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index'), 'note' => null],
+	    ['label' => __('dashboard.cards.monthly_repairs'), 'value' => $monthlyRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-calendar-month', 'color' => 'info', 'url' => route('repairs.index'), 'note' => null],
+        [
+            'label' => __('dashboard.cards.average_repair_hours'),
+            'value' => $averageRepairHours !== null
+                ? number_format($averageRepairHours, 2)
+                : '—',
+            'unit' => __('dashboard.cards.unit_hours'),
+            'icon' => 'bi-clock-history',
+            'color' => 'primary',
+            'url' => route('repairs.index', ['status' => 'completed']),
+            'note' => $repairDurationMissingCount > 0
+                ? __('dashboard.cards.repair_hours_missing', [
+                    'count' => $repairDurationMissingCount,
+                ])
+                : null,
+        ],
+        ['label' => __('dashboard.cards.pending_repairs'), 'value' => $pendingRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index'), 'note' => null],
+        ['label' => __('dashboard.cards.in_progress'), 'value' => $inProgressCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'in_progress']), 'note' => null],
         ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null],
         ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null],
     ];
@@ -77,6 +95,31 @@
             'colors' => array_map(fn ($i) => $palette[$i % count($palette)], array_keys($roleDistribution)),
             'urls' => array_column($roleDistribution, 'url'),
             'series' => __('dashboard.cards.users'),
+        ];
+    }
+    if ($classroomRepairRanking !== null) {
+        // 本月教室報修排行：長條圖，點擊後前往報修看板。
+        $charts['classroomRepairRanking'] = [
+            'title' => __('dashboard.charts.classroom_repair_ranking'),
+            'type' => 'bar',
+            'labels' => array_column($classroomRepairRanking, 'label'),
+            'counts' => array_column($classroomRepairRanking, 'count'),
+            'colors' => array_fill(0, count($classroomRepairRanking), '#dc3545'),
+            'urls' => array_column($classroomRepairRanking, 'url'),
+            'series' => __('dashboard.charts.repair_trend_series'),
+        ];
+    }
+
+    if ($deviceCategoryRepairRanking !== null) {
+        // 本月設備類別報修排行：長條圖，點擊後前往報修看板。
+        $charts['deviceCategoryRepairRanking'] = [
+            'title' => __('dashboard.charts.device_category_repair_ranking'),
+            'type' => 'bar',
+            'labels' => array_column($deviceCategoryRepairRanking, 'label'),
+            'counts' => array_column($deviceCategoryRepairRanking, 'count'),
+            'colors' => array_fill(0, count($deviceCategoryRepairRanking), '#0d6efd'),
+            'urls' => array_column($deviceCategoryRepairRanking, 'url'),
+            'series' => __('dashboard.charts.repair_trend_series'),
         ];
     }
 @endphp

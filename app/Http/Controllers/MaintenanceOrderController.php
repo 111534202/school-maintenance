@@ -17,7 +17,7 @@ class MaintenanceOrderController extends Controller
     public function index(Request $request): View
     {
         $orders = MaintenanceOrder::query()
-            ->with(['maintenancePlan', 'result', 'device'])
+            ->with(['maintenancePlan', 'result.executor', 'device.category', 'deviceCategory'])
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
@@ -34,7 +34,12 @@ class MaintenanceOrderController extends Controller
      */
     public function show(MaintenanceOrder $maintenanceOrder): View
     {
-        $maintenanceOrder->load('maintenancePlan.maintenanceItems', 'result', 'device');
+        $maintenanceOrder->load([
+            'maintenancePlan.maintenanceItems.deviceCategory',
+            'result.executor',
+            'device.category',
+            'deviceCategory',
+        ]);
 
         return view('maintenance_orders.show', compact('maintenanceOrder'));
     }
@@ -51,7 +56,9 @@ class MaintenanceOrderController extends Controller
         MaintenanceOrder::create([
             'maintenance_plan_id' => $maintenancePlan->id,
             'device_id' => $maintenancePlan->device_id,
-            'device_category' => $maintenancePlan->device_category,
+            'device_category_id' => $maintenancePlan->device_id
+            ? null
+            : $maintenancePlan->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => $maintenancePlan->next_due_date,

@@ -16,10 +16,10 @@ class DeviceSeeder extends Seeder
     public function run(): void
     {
         // 先把示範設備要放的四間教室找出來。
-        $room1 = Classroom::where('room_code', 'IT-301')->first();
-        $room2 = Classroom::where('room_code', 'IT-401')->first();
-        $room3 = Classroom::where('room_code', 'EE-201')->first();
-        $room4 = Classroom::where('room_code', 'IN-101')->first();
+        $room1 = Classroom::where('classroom_code', 'IT-301')->first();
+        $room2 = Classroom::where('classroom_code', 'IT-401')->first();
+        $room3 = Classroom::where('classroom_code', 'EE-201')->first();
+        $room4 = Classroom::where('classroom_code', 'IN-101')->first();
         // 再找出會用到的設備類別。
         $desktop = DeviceCategory::where('name', '桌上型電腦')->first();
         $projector = DeviceCategory::where('name', '投影機')->first();
@@ -42,7 +42,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'Dell',
                 'model' => 'OptiPlex 7010',
                 'serial_number' => 'SN-DELL-0001',
-                'warranty_until' => '2028-06-30',
+                'warranty_end_date' => '2028-06-30',
                 'classroom_id' => $room1->id,
                 'status' => 'normal',
                 'is_core' => false,
@@ -55,7 +55,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'Epson',
                 'model' => 'EB-2250U',
                 'serial_number' => 'SN-EPSON-0001',
-                'warranty_until' => '2027-12-31',
+                'warranty_end_date' => '2027-12-31',
                 'classroom_id' => $room1->id,
                 'status' => 'normal',
                 'is_core' => true,
@@ -68,7 +68,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'BenQ',
                 'model' => 'GW2480',
                 'serial_number' => 'SN-BENQ-0001',
-                'warranty_until' => '2026-12-31',
+                'warranty_end_date' => '2026-12-31',
                 'classroom_id' => $room2->id,
                 'status' => 'repairing',
                 'is_core' => false,
@@ -82,7 +82,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'NEC',
                 'model' => 'NP-PA653U',
                 'serial_number' => 'SN-NEC-0001',
-                'warranty_until' => '2027-06-30',
+                'warranty_end_date' => '2027-06-30',
                 'classroom_id' => $room3->id,
                 'status' => 'repairing',
                 'is_core' => true,
@@ -95,7 +95,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'Lenovo',
                 'model' => 'ThinkPad E14',
                 'serial_number' => 'SN-LENOVO-0001',
-                'warranty_until' => '2029-01-31',
+                'warranty_end_date' => '2029-01-31',
                 'classroom_id' => $room4->id,
                 'status' => 'normal',
                 'is_core' => false,
@@ -108,7 +108,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'HP',
                 'model' => 'LaserJet Pro M404',
                 'serial_number' => 'SN-HP-0001',
-                'warranty_until' => '2025-12-31',
+                'warranty_end_date' => '2025-12-31',
                 'classroom_id' => $room4->id,
                 'status' => 'disabled',
                 'is_core' => false,
@@ -121,7 +121,7 @@ class DeviceSeeder extends Seeder
                 'brand' => 'Dell',
                 'model' => 'OptiPlex 3000',
                 'serial_number' => 'SN-DELL-0002',
-                'warranty_until' => '2024-06-30',
+                'warranty_end_date' => '2024-06-30',
                 'classroom_id' => $room2->id,
                 'status' => 'retired',
                 'is_core' => false,

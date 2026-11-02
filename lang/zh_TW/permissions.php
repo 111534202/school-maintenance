@@ -13,6 +13,7 @@ return [
         'maintenance' => '保養與 AI 預測性維護',
         'knowledge' => '自助知識庫',
         'reservation' => '空間預約',
+        'inventory' => '零件庫存',
     ],
 
     // 每個權限的名稱與說明；鍵名必須和 App\Support\PermissionCatalog 裡的權限代碼一致（代碼裡的點代表下一層，所以這裡是巢狀陣列）。
@@ -59,6 +60,9 @@ return [
         ],
         'ai-maintenance' => [
             'manage' => ['name' => 'AI 預防保養', 'description' => '掃描設備風險、核准或駁回 AI 預防保養候選、調整 AI 參數'],
+        ],
+        'parts' => [
+            'manage' => ['name' => '零件庫存管理', 'description' => '查看及管理零件庫存資料'],
         ],
         'knowledge-base' => [
             'manage' => ['name' => '管理知識庫', 'description' => '新增、編輯、刪除知識庫文章（所有人都能查看）'],

@@ -154,6 +154,20 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->middleware('can:maintenance.view')
         ->name('repair-cost-analysis.index');
 
+    Route::get('repair-cost-analysis/export/excel', [
+        RepairCostAnalysisController::class,
+        'exportExcel',
+    ])
+        ->middleware('can:maintenance.view')
+        ->name('repair-cost-analysis.export.excel');
+
+    Route::get('repair-cost-analysis/export/pdf', [
+        RepairCostAnalysisController::class,
+        'exportPdf',
+    ])
+        ->middleware('can:maintenance.view')
+        ->name('repair-cost-analysis.export.pdf');
+
     // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，需要 ai-maintenance.manage（預設只有設備管理員，admin 永遠有）。
     Route::middleware('can:ai-maintenance.manage')->prefix('ai-maintenance')->group(function () {
         Route::get('candidates', [PreventiveCandidateController::class, 'index'])->name('preventive-candidates.index');
@@ -209,7 +223,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // 零件庫存
-    Route::middleware('role:admin,it_manager')->group(function () {
+    Route::middleware('can:parts.manage')->group(function () {
         Route::resource('parts', PartController::class)
             ->except(['show']);
     });

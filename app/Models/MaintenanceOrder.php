@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'maintenance_plan_id',
     'device_id',
-    'device_category',
+    'device_category_id',
     'source',
     'status',
     'scheduled_date',
@@ -21,6 +21,15 @@ class MaintenanceOrder extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceOrderFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $model) {
+            if ($model->device_id !== null) {
+                $model->device_category_id = null;
+            }
+        });
+    }
 
     // 工單來源：定期排程 / AI 辨識（本週僅會用到 SOURCE_PERIODIC，SOURCE_AI 由後續 AI 任務接手）
     public const SOURCE_PERIODIC = 'periodic';
@@ -57,9 +66,28 @@ class MaintenanceOrder extends Model
         return $this->belongsTo(Device::class)->withTrashed();
     }
 
+    /**
+     * 此工單指定的設備類別。
+     */
+    public function deviceCategory(): BelongsTo
+    {
+        return $this->belongsTo(DeviceCategory::class);
+    }
     public function result(): HasOne
     {
         return $this->hasOne(MaintenanceResult::class);
+    }
+
+    /**
+     * 優先使用設備的類別；沒有設備時，使用工單指定的類別。
+     */
+    public function categoryName(): ?string
+    {
+        if ($this->device !== null) {
+            return $this->device->category?->name;
+        }
+
+        return $this->deviceCategory?->name;
     }
 
     /**

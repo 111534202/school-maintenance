@@ -94,8 +94,8 @@ class DeviceProfileTest extends TestCase
     private function attach(RepairRequest|RepairLog $owner, string $name): void
     {
         $owner->attachments()->create([
-            'disk_path' => 'attachments/'.$name,
-            'original_name' => $name,
+            'file_path' => 'attachments/'.$name,
+            'file_name' => $name,
             'mime_type' => 'image/jpeg',
             'size_bytes' => 1234,
         ]);

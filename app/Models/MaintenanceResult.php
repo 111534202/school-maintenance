@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'result',
     'executed_by',
     'executed_at',
-    'notes',
+    'note',
     'ng_conversion_status',
     'repair_request_id',
 ])]
@@ -46,6 +46,14 @@ class MaintenanceResult extends Model
     public function maintenanceOrder(): BelongsTo
     {
         return $this->belongsTo(MaintenanceOrder::class);
+    }
+
+    /**
+     * 執行此保養工作的使用者。
+     */
+    public function executor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'executed_by');
     }
 
     public function isNg(): bool

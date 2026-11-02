@@ -47,7 +47,7 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table class="table table-hover align-middle mb-0" data-onion-primary="1,3">
                         <thead class="table-light">
                             <tr>
                                 <th>預約日期</th>

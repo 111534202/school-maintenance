@@ -27,6 +27,9 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.locale' => 'zh_TW']);
+        app()->setLocale('zh_TW');
+
         $this->loginAsAnyUser();
         $this->category = DeviceCategory::create(['name' => '投影機']);
     }
@@ -234,7 +237,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->actingAs($manager);
         $this->assertSame('0', $this->classroomRows()['A101']['cells'][7]);
 
-        $this->repair($device, 'pending', ['reporter_id' => $manager->id]);   // 自己報修的看得到
+        $this->repair($device, 'pending', ['requester_id' => $manager->id]);   // 自己報修的看得到
         $this->assertSame('1', $this->classroomRows()['A101']['cells'][7]);
 
         $this->actingAs($this->makeItManager());   // 能派工的人看全部

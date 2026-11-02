@@ -10,10 +10,18 @@
 </div>
 
 <div class="mb-3">
-    <label for="category" class="form-label">分類</label>
-    <input type="text" name="category" id="category" class="form-control @error('category') is-invalid @enderror"
-        value="{{ old('category', $item->category) }}" maxlength="100" placeholder="例如：空調、電力設備（選填）">
-    @error('category')
+    <label for="device_category_id" class="form-label">設備類別</label>
+    <select name="device_category_id" id="device_category_id"
+        class="form-select @error('device_category_id') is-invalid @enderror">
+        <option value="">請選擇設備類別（選填）</option>
+        @foreach ($categories as $category)
+            <option value="{{ $category->id }}"
+                {{ (string) old('device_category_id', $item->device_category_id) === (string) $category->id ? 'selected' : '' }}>
+                {{ $category->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('device_category_id')
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror
 </div>

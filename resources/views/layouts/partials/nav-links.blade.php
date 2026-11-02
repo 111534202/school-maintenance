@@ -11,13 +11,67 @@
     // 目前所在頁面是不是主檔頁面（routeIs 比對路由名稱）；是的話群組預設展開。
     $masterOpen = request()->routeIs('users.*', 'roles.*', 'departments.*', 'classrooms.*', 'device-categories.*', 'devices.*');
 @endphp
-
 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>{{ __('common.nav.dashboard') }}</a>
 
-{{-- 以下連結都依「身分主檔」勾選的權限顯示，沒有權限的人看不到，直接輸入網址也進不去（路由有 can: 保護）。 --}}
+{{-- 報修服務 --}}
+@if (Route::has('knowledge-base.index') || Route::has('repairs.index'))
+    <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.repair_section') }}</div>
+    @if (Route::has('knowledge-base.index'))
+        <a class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}" href="{{ route('knowledge-base.index') }}"><i class="bi bi-book me-2"></i>{{ __('common.nav.knowledge_base') }}</a>
+    @endif
+    @if (Route::has('repairs.index'))
+        <a class="nav-link {{ request()->routeIs('repairs.*', 'repair-logs.*') ? 'active' : '' }}" href="{{ route('repairs.index') }}"><i class="bi bi-tools me-2"></i>{{ __('common.nav.repair_requests') }}</a>
+    @endif
+@endif
 
-{{-- 主檔：用戶、身分、部門、教室、設備類別、設備全部收進同一個可展開的群組。 --}}
-{{-- @canany：只要有其中任何一個權限就顯示（整個「主檔」群組）。 --}}
+{{-- 保養管理 --}}
+@canany(['maintenance.view', 'ai-maintenance.manage'])
+    <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.maintenance_section') }}</div>
+
+    @can('maintenance.view')
+        @if (Route::has('maintenance-items.index'))
+            <a class="nav-link {{ request()->routeIs('maintenance-items.*') ? 'active' : '' }}" href="{{ route('maintenance-items.index') }}"><i class="bi bi-list-check me-2"></i>{{ __('common.nav.maintenance_items') }}</a>
+        @endif
+        @if (Route::has('maintenance-plans.index'))
+            <a class="nav-link {{ request()->routeIs('maintenance-plans.*') ? 'active' : '' }}" href="{{ route('maintenance-plans.index') }}"><i class="bi bi-calendar-event me-2"></i>{{ __('common.nav.maintenance_plans') }}</a>
+        @endif
+        @if (Route::has('maintenance-orders.index'))
+            <a class="nav-link {{ request()->routeIs('maintenance-orders.*') ? 'active' : '' }}" href="{{ route('maintenance-orders.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>{{ __('common.nav.maintenance_orders') }}</a>
+        @endif
+        @if (Route::has('device-profile.index'))
+            <a class="nav-link {{ request()->routeIs('device-profile.*') ? 'active' : '' }}" href="{{ route('device-profile.index') }}"><i class="bi bi-journal-text me-2"></i>{{ __('common.nav.device_profile') }}</a>
+        @endif
+        @if (Route::has('repair-cost-analysis.index'))
+            <a class="nav-link {{ request()->routeIs('repair-cost-analysis.*') ? 'active' : '' }}" href="{{ route('repair-cost-analysis.index') }}"><i class="bi bi-cash-stack me-2"></i>第一版成本分析</a>
+        @endif
+    @endcan
+
+    @can('ai-maintenance.manage')
+        @if (Route::has('preventive-candidates.index'))
+            <a class="nav-link {{ request()->routeIs('preventive-candidates.*', 'ai-settings.*') ? 'active' : '' }}" href="{{ route('preventive-candidates.index') }}"><i class="bi bi-robot me-2"></i>{{ __('common.nav.preventive_ai') }}</a>
+        @endif
+    @endcan
+@endcanany
+
+{{-- 空間與備品 --}}
+@if (Route::has('reservations.index') || Route::has('inventory.index') || Route::has('parts.index'))
+    <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.resource_section') }}</div>
+
+    @if (Route::has('reservations.index'))
+        <a class="nav-link {{ request()->routeIs('reservations.*') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="bi bi-calendar-check me-2"></i>{{ __('common.nav.reservations') }}</a>
+    @endif
+
+    @if (Route::has('inventory.index'))
+        <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}"><i class="bi bi-box-seam me-2"></i>庫存</a>
+    @endif
+
+    @if (Route::has('parts.index'))
+        @can('parts.manage')
+            <a class="nav-link {{ request()->routeIs('parts.*') ? 'active' : '' }}" href="{{ route('parts.index') }}"><i class="bi bi-box-seam me-2"></i>{{ __('common.nav.parts') }}</a>
+        @endcan
+    @endif
+@endif
+
 @canany($masterPermissions)
     <a class="nav-link nav-group-toggle d-flex justify-content-between align-items-center {{ $masterOpen ? '' : 'collapsed' }}"
         {{-- 點這個連結會展開／收合 href 指向的區塊（Bootstrap 的 collapse 功能）。 --}}
@@ -56,36 +110,6 @@
         </div>
     </div>
 @endcanany
-
-{{-- 「業務功能」小標題。 --}}
-<div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.business_section') }}</div>
-{{-- 以下連結等其他組員的模組合併進 develop 後會自動出現，不用回來改這個檔案 --}}
-{{-- Route::has：該路由存在才顯示連結，其他組員的模組尚未合併時不會出現壞連結。 --}}
-@if (Route::has('knowledge-base.index'))
-    <a class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}" href="{{ route('knowledge-base.index') }}"><i class="bi bi-book me-2"></i>{{ __('common.nav.knowledge_base') }}</a>
-@endif
-@if (Route::has('repairs.index'))
-    <a class="nav-link {{ request()->routeIs('repairs.*') ? 'active' : '' }}" href="{{ route('repairs.index') }}"><i class="bi bi-tools me-2"></i>{{ __('common.nav.repair_requests') }}</a>
-@endif
-@if (Route::has('maintenance-items.index'))
-    {{-- 保養模組（王佑恩）：查看類連結需要 maintenance.view；AI 預防保養需要 ai-maintenance.manage。 --}}
-    @can('maintenance.view')
-        <a class="nav-link {{ request()->routeIs('maintenance-items.*') ? 'active' : '' }}" href="{{ route('maintenance-items.index') }}"><i class="bi bi-list-check me-2"></i>保養項目</a>
-        <a class="nav-link {{ request()->routeIs('maintenance-plans.*') ? 'active' : '' }}" href="{{ route('maintenance-plans.index') }}"><i class="bi bi-calendar-event me-2"></i>保養計畫</a>
-        <a class="nav-link {{ request()->routeIs('maintenance-orders.*') ? 'active' : '' }}" href="{{ route('maintenance-orders.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>保養工單</a>
-        <a class="nav-link {{ request()->routeIs('device-profile.*') ? 'active' : '' }}" href="{{ route('device-profile.index') }}"><i class="bi bi-journal-text me-2"></i>設備履歷</a>
-        <a class="nav-link {{ request()->routeIs('repair-cost-analysis.*') ? 'active' : '' }}" href="{{ route('repair-cost-analysis.index') }}"><i class="bi bi-cash-stack me-2"></i>第一版成本分析</a>
-    @endcan
-    @can('ai-maintenance.manage')
-        <a class="nav-link {{ request()->routeIs('preventive-candidates.*', 'ai-settings.*') ? 'active' : '' }}" href="{{ route('preventive-candidates.index') }}"><i class="bi bi-robot me-2"></i>AI 預防保養</a>
-    @endcan
-@endif
-@if (Route::has('reservations.index'))
-    <a class="nav-link {{ request()->routeIs('reservations.*') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="bi bi-calendar-check me-2"></i>空間預約</a>
-@endif
-@if (Route::has('inventory.index'))
-    <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}"><i class="bi bi-box-seam me-2"></i>庫存</a>
-@endif
 
 @can('audit-logs.view')
     <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.system_section') }}</div>

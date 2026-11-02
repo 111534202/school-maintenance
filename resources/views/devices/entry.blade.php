@@ -27,7 +27,7 @@
 
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.classroom') }}</dt>
                         <dd class="col-sm-8 mb-0">
-                            {{ $device->classroom->room_code ?? __('devices.no_value') }} - {{ $device->classroom->room_name ?? '' }}
+                            {{ $device->classroom->classroom_code ?? __('devices.no_value') }} - {{ $device->classroom->name ?? '' }}
                             （{{ $device->classroom->department->name ?? __('devices.no_department') }}）
                         </dd>
 

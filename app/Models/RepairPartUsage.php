@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RepairPartUsage extends Model
 {
-    protected $table = 'repair_part_usage';
+    protected $table = 'repair_part_usages';
 
     protected $fillable = [
         'repair_log_id',

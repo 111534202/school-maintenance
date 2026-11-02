@@ -25,8 +25,8 @@ class Attachment extends Model
     protected $fillable = [
         'attachable_type',
         'attachable_id',
-        'disk_path',      // 檔案實際存在硬碟上的路徑
-        'original_name',  // 使用者上傳時，檔案原本的名稱
+        'file_path',      // 檔案實際存在硬碟上的路徑
+        'file_name',      // 使用者上傳時，檔案原本的名稱
         'mime_type',       // 檔案類型，例如 image/jpeg
         'size_bytes',      // 檔案大小（位元組）
     ];
@@ -51,10 +51,17 @@ class Attachment extends Model
      * 早期版本上傳、還沒搬走的舊檔案在公開磁碟（public），找不到時回傳 null。
      * （舊檔案會由 2026_10_04 的 migration 搬到私有磁碟，之後這個備援就不會再用到。）
      */
+    /**
+     * 舊欄位相容讀取：讓歷史附件搬移資料庫變更檔仍可讀取原路徑。
+     */
+    public function getDiskPathAttribute($value): ?string
+    {
+        return $value ?? ($this->attributes['file_path'] ?? null);
+    }
     public function storageDisk(): ?string
     {
         foreach (['local', 'public'] as $disk) {
-            if (Storage::disk($disk)->exists($this->disk_path)) {
+            if (Storage::disk($disk)->exists($this->file_path)) {
                 return $disk;
             }
         }

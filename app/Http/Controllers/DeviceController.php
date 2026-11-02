@@ -9,7 +9,8 @@ use App\Models\Device;                            // 設備資料表的模型
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
-use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;                      // 這一次瀏覽器送來的請求
 use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套件
 
 /**
@@ -56,7 +57,7 @@ class DeviceController extends Controller
             ->withQueryString();       // 換頁時保留篩選條件
 
         // 篩選列的下拉選單：所有教室、所有設備類別。
-        $classrooms = Classroom::orderBy('room_code')->get();
+        $classrooms = Classroom::orderBy('classroom_code')->get();
         $categories = DeviceCategory::orderBy('name')->get();
 
         return view('devices.index', compact('devices', 'classrooms', 'categories'));
@@ -66,7 +67,7 @@ class DeviceController extends Controller
     public function create()
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        $classrooms = Classroom::where('is_active', true)->orderBy('classroom_code')->get();
 
         return view('devices.create', compact('categories', 'classrooms'));
     }
@@ -100,7 +101,10 @@ class DeviceController extends Controller
     public function edit(Device $device)
     {
         $categories = DeviceCategory::orderBy('name')->get();
-        $classrooms = Classroom::orderBy('room_code')->get();
+        $classrooms = Classroom::where('is_active', true)
+            ->orWhere('id', $device->classroom_id)
+            ->orderBy('classroom_code')
+            ->get();
 
         return view('devices.edit', compact('device', 'categories', 'classrooms'));
     }
@@ -173,8 +177,8 @@ class DeviceController extends Controller
             'brand' => ['nullable', 'string', 'max:255'],                             // 品牌
             'model' => ['nullable', 'string', 'max:255'],                             // 型號
             'serial_number' => ['nullable', 'string', 'max:255'],                     // 序號
-            'warranty_until' => ['nullable', 'date'],                                 // 保固到期日
-            'classroom_id' => ['required', 'exists:classrooms,id'],                   // 所在教室：必須是真的存在的教室
+            'warranty_end_date' => ['nullable', 'date'],                                 // 保固到期日
+            'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],                   // 所在教室：必須是真的存在的教室
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
             'is_core' => ['sometimes', 'boolean'],                                    // 是否為核心設備；sometimes = 有送才檢查
