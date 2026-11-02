@@ -26,6 +26,13 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // 替中介層取短名字：路由裡寫 'role:admin' 就等於使用 CheckRole（目前沒有路由用到）；
         // 'active' 是「帳號必須啟用中」的檢查，套用在 routes/web.php 登入後的路由群組。
+        // 透過 HTTPS 通道（例如 Cloudflare Tunnel、ngrok）分享網站時，網站本身仍在本機用 http 執行，
+        // 通道會在 X-Forwarded-* 標頭告訴網站「外面其實是 https」。在 .env 設 TRUSTED_PROXIES=* 才採信這些標頭，
+        // 網站產生的連結、CSS 網址才會是 https（否則瀏覽器會擋下 http 的樣式檔，畫面跑版）。沒設定時維持原本行為。
+        if ($trustedProxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $trustedProxies === '*' ? '*' : array_map('trim', explode(',', $trustedProxies)));
+        }
+
         $middleware->alias([
             'role' => CheckRole::class,
             'active' => EnsureUserIsActive::class,
