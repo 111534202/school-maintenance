@@ -21,12 +21,12 @@ class SidebarNavigationTest extends TestCase
         return $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
     }
 
-    // 教師：只有報修服務與空間預約；沒有保養管理、零件庫存、主檔、系統。
+    // 教師：只有報修服務與空間預約（空間與零件只剩預約一項，直接變成第一層的連結）；沒有保養管理、零件庫存、主檔、系統。
     public function test_teacher_sees_only_repair_services_and_reservations(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('teacher', '教師'));
 
-        foreach (['報修服務', '自助知識庫', '空間與零件', '空間預約'] as $text) {
+        foreach (['報修服務', '自助知識庫', '空間預約'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
         foreach (['保養管理', '保養項目', '零件庫存', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
@@ -58,12 +58,12 @@ class SidebarNavigationTest extends TestCase
         }
     }
 
-    // 只有 AI 預防保養權限（沒有保養查看權限）時，保養管理區塊仍會出現，並且只有那一個連結。
-    public function test_ai_only_user_sees_the_maintenance_section_with_just_the_ai_link(): void
+    // 只有 AI 預防保養權限（沒有保養查看權限）時，保養管理只剩一個項目，直接變成第一層的連結（不顯示「保養管理」分類）。
+    public function test_ai_only_user_sees_just_the_ai_link(): void
     {
         $html = $this->dashboardAs($this->makeUserWithPermissions(['ai-maintenance.manage']));
 
-        $this->assertStringContainsString('保養管理', $html);
+        $this->assertStringNotContainsString('data-drill-open="maintenance"', $html);
         $this->assertStringContainsString('AI 預防保養', $html);
         $this->assertStringNotContainsString('保養項目', $html);
     }
@@ -94,14 +94,14 @@ class SidebarNavigationTest extends TestCase
         $this->assertStringNotContainsString('common.nav.', $html);
     }
 
-    // 填維修紀錄頁屬於報修：選單的「報修」要亮起來。
-    public function test_repair_menu_stays_highlighted_on_the_repair_log_page(): void
+    // 填維修紀錄頁屬於報修：選單停在「報修服務」那一層（該層預設展開）。
+    public function test_repair_menu_stays_open_on_the_repair_log_page(): void
     {
         $tech = $this->makeTechnician();
         $case = \App\Models\RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $tech->id]);
 
         $html = $this->actingAs($tech)->get(route('repair-logs.create', $case))->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/nav-link active"\s+href="[^"]*\/repairs"/', $html);
+        $this->assertMatchesRegularExpression('/class="drill-panel drill-sub is-open" data-drill-panel="work"/', $html);
     }
 }
