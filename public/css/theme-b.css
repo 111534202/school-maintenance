@@ -111,7 +111,9 @@ body.tb-body {
    - 表格直接放在卡片裡（.card > .table-responsive）：沿用卡片圓角，把表格最外圈的框線拿掉，避免和卡片框線疊成兩條。
    - 表格沒有包卡片（只有 .table-responsive）：外面補一個白底圓角框。 */
 @media (min-width: 768px) {
-    .tb-body .app-content .card > .table-responsive { border-radius: var(--bs-card-inner-border-radius); }
+    /* 只有貼著卡片上緣／下緣的那一側才圓角；表格上方有卡片標題（card-header）時上緣維持直角，表頭底色才不會缺角。 */
+    .tb-body .app-content .card > .table-responsive:first-child { border-top-left-radius: var(--bs-card-inner-border-radius); border-top-right-radius: var(--bs-card-inner-border-radius); }
+    .tb-body .app-content .card > .table-responsive:last-child { border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius); }
     .tb-body .app-content .table-responsive:not(.card .table-responsive):not(.modal .table-responsive):not(.tb .table-responsive) {
         background: #FFFFFF; border: 1px solid #E7E1D6; border-radius: 16px; margin-bottom: 1rem;
     }
@@ -287,3 +289,12 @@ body.tb-body {
     .tb-bar-row { grid-template-columns: minmax(0, 1fr) auto; }
     .tb-bar-row .tb-bar-track { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* ================= 3. 全站共用的小調整 ================= */
+
+/* 新增／編輯表單、詳細頁（.page-narrow）原本限制最大寬度 880px，大螢幕右邊會空一大塊；改成跟列表頁一樣滿版。 */
+.tb-body .page-narrow { max-width: none; }
+
+/* 可點的表格列：有 data-href 的 <tr> 點任何一格（或按 Enter）都進入詳細頁（行為見 layouts/app.blade.php 底部的程式）。 */
+.tb-body tr[data-href] { cursor: pointer; }
+.tb-body tr[data-href]:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }

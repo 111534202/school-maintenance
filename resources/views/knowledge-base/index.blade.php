@@ -71,7 +71,8 @@
                     <tbody>
                         {{-- 逐一列出每篇文章。 --}}
                         @foreach ($knowledgeBaseEntries as $entry)
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入文章（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('knowledge-base.show', $entry) }}">
                                 <td><a href="{{ route('knowledge-base.show', $entry) }}" class="text-decoration-none">{{ $entry->title }}</a></td>
                                 <td>{{ $entry->category ?? __('knowledge_base.uncategorized') }}</td>
                                 <td class="text-center">
@@ -86,9 +87,6 @@
                                 <td>{{ $entry->updated_at->format('Y-m-d H:i') }}</td>
                                 <td class="text-center">
                                     <div class="d-inline-flex gap-1">
-                                        {{-- 檢視按鈕（眼睛圖示）：所有人都有。 --}}
-                                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('knowledge-base.show', $entry) }}"
-                                            title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
                                         @can('knowledge-base.manage')
                                             <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('knowledge-base.edit', $entry) }}"
                                                 title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>

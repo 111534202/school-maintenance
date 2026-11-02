@@ -98,7 +98,7 @@
                 <tbody>
                     {{-- 逐筆列出設備；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($devices as $device)
-                        <tr>
+                        <tr data-href="{{ route('devices.show', $device) }}">
                             <td><a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a></td>
                             <td>{{ $device->category->name ?? __('devices.no_value') }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
@@ -122,8 +122,6 @@
                             </td>
                             <td class="text-center">
                                 <div class="d-inline-flex gap-1">
-                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('devices.show', $device) }}"
-                                        title="{{ __('devices.actions.detail') }}" aria-label="{{ __('devices.actions.detail') }}"><i class="bi bi-eye"></i></a>
                                     <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                     {{-- 停用按鈕：送出前先跳出確認視窗；停用 = 狀態改 disabled 並軟刪除。 --}}

@@ -57,7 +57,8 @@
                     <tbody>
                         {{-- 逐一列出每個身分，每個身分一列。 --}}
                         @foreach ($roles as $role)
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('roles.edit', $role) }}">
                                 <td>
                                     <span class="fw-semibold">{{ $role->name }}</span>
                                     {{-- 系統內建的身分加上「系統內建」徽章（內建身分不能刪除）。 --}}

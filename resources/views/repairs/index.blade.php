@@ -91,7 +91,6 @@
                             <th>{{ __('repair_requests.table.assignee') }}</th>
                             <th>{{ __('repair_requests.table.submitted_at') }}</th>
                             <th>{{ __('repair_requests.table.waiting_time') }}</th>
-                            <th class="text-center"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,7 +100,8 @@
                                 // 影響程度 → 徽章顏色：輕微綠、中等黃、嚴重紅；未知值用灰色。
                                 $impactBadge = ['low' => 'text-bg-success', 'medium' => 'text-bg-warning', 'high' => 'text-bg-danger'][$repairRequest->impact_level] ?? 'text-bg-secondary';
                             @endphp
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入案件詳細頁（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('repairs.show', $repairRequest) }}">
                                 <td><a href="{{ route('repairs.show', $repairRequest) }}" class="text-decoration-none">{{ $repairRequest->title }}</a></td>
                                 {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的設備地點，沒有就用設備所在教室）。 --}}
                                 @php($rowClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom)
@@ -136,10 +136,6 @@
                                 <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>
                                 {{-- 等待時間：用「3 小時前」這種口語方式顯示；語言由 SetLocale 中介層決定。 --}}
                                 <td>{{ $repairRequest->created_at->diffForHumans() }}</td>
-                                <td class="text-center">
-                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.show', $repairRequest) }}"
-                                        title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
-                                </td>
                             </tr>
                         @endforeach
                     </tbody>

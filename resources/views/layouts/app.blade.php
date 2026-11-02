@@ -203,6 +203,23 @@
         </div>
     @endauth
 
+    {{-- 可點的表格列：列表裡有 data-href 的 <tr>，點任何一格（或用 Tab 移到該列後按 Enter）就進入該筆的詳細頁；
+         點到列裡的按鈕、連結、表單欄位時照原本的功能，正在選取文字時也不跳頁。 --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('tr[data-href]').forEach(function (row) {
+            if (!row.hasAttribute('tabindex')) { row.tabIndex = 0; }
+            row.addEventListener('click', function (event) {
+                if (event.defaultPrevented || event.target.closest('a, button, input, select, textarea, label, form')) { return; }
+                if (window.getSelection().toString()) { return; }
+                window.location.href = row.dataset.href;
+            });
+            row.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' && event.target === row) { window.location.href = row.dataset.href; }
+            });
+        });
+    });
+    </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {{-- 洋蔥式版面的行為（表格卡片化、篩選與區塊收合），說明見 public/js/onion.js。 --}}
