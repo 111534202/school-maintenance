@@ -74,6 +74,33 @@
         </div>
     </div>
 
+    {{-- 保養用料：一次用料跨兩個採購批次時會分成兩列，各自顯示那一批的單價（先進先出）。 --}}
+    <div class="card mb-3">
+        <div class="card-header">使用零件</div>
+        @if ($result->partUsages->isEmpty())
+            <div class="card-body text-muted small">這次保養沒有使用零件。</div>
+        @else
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>零件編號</th><th>零件</th><th class="text-end">數量</th><th class="text-end">單價</th><th class="text-end">小計</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($result->partUsages as $usage)
+                            <tr>
+                                <td>{{ $usage->part?->part_code ?? '—' }}</td>
+                                <td>{{ $usage->part?->name ?? '零件資料不存在' }}@if ($usage->part?->specification)（{{ $usage->part->specification }}）@endif</td>
+                                <td class="text-end">{{ $usage->quantity }}</td>
+                                <td class="text-end">{{ $usage->unit_price === null ? '缺少單價' : 'NT$ ' . number_format($usage->unit_price) }}</td>
+                                <td class="text-end">{{ $usage->unit_price === null ? '—' : 'NT$ ' . number_format($usage->quantity * $usage->unit_price) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     <div class="card">
         <div class="card-header">附件</div>
         <div class="card-body text-muted small">

@@ -13,10 +13,14 @@
     // 設備欄要顯示的文字：有綁定設備就顯示「設備編號 類別 品牌 型號（教室）」；沒有就退回手填描述、地點，都沒有顯示「未填寫」。
     $deviceDisplay = $repairRequest->device
         ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->name ?? $repairRequest->device->classroom->classroom_code ?? '') . '）')
-        : ($repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled'));
+        : ($repairRequest->device_note ?? __('repair_requests.not_filled'));
+    // 設備地點：報修單選的教室（掃描設備時自動帶入設備所在教室）。
+    $locationDisplay = $repairRequest->locationLabel() ?? __('repair_requests.not_filled');
+    // 派工時查課表用的教室：報修單的設備地點，沒有就用設備所在的教室。
+    $timetableClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom;
 
-    // 維修人員欄要顯示的文字：優先用真實用戶姓名，其次文字備註，最後顯示「未指派」。
-    $assigneeDisplay = $repairRequest->assignedTechnician->name ?? __('repair_requests.unassigned');
+    // 維修人員欄只顯示 assigned_to 關聯的真實使用者姓名。
+    $assigneeDisplay = $repairRequest->assignedTechnician?->name ?? __('repair_requests.unassigned');
 
     // 目前的案件狀態（RepairRequestStatus 列舉）。
     $status = $repairRequest->status;
@@ -59,6 +63,9 @@
                     <dl class="row mb-0 gy-2">
                         <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.show.device_location_prefix') }}</dt>
                         <dd class="col-6 col-sm-8 mb-0">{{ $deviceDisplay }}</dd>
+
+                        <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-geo-alt me-2"></i>設備地點：</dt>
+                        <dd class="col-6 col-sm-8 mb-0">{{ $locationDisplay }}</dd>
 
                         <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-speedometer me-2"></i>{{ __('repair_requests.show.impact_level_prefix') }}</dt>
                         <dd class="col-6 col-sm-8 mb-0"><span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span></dd>
@@ -119,9 +126,13 @@
                 @foreach ($repairRequest->repairLogs as $log)
                     <div class="card shadow-sm mb-3">
                         <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
-                            <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                            <div>
+                                <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
+                                <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                            </div>
                             <span class="text-muted">{{ __('repair_requests.show.total_hours_suffix', ['hours' => $log->total_hours]) }}</span>
                         </div>
+
                         <div class="card-body">
                             <dl class="row mb-0 gy-2">
                                 {{-- 每筆維修紀錄依序顯示：故障原因、處置方式，有填才顯示的使用備品與附件。 --}}
@@ -155,6 +166,68 @@
             @endif
         </div>
 
+        {{-- 材料費明細：彙總這張報修單所有維修紀錄的零件使用情況。 --}}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">材料費明細</h5>
+            </div>
+            <div class="card-body">
+                @if ($partUsages->isEmpty())
+                    <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle mb-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>零件名稱</th>
+                                    <th>維修紀錄</th>
+                                    <th class="text-end">數量</th>
+                                    <th class="text-end">單價</th>
+                                    <th class="text-end">小計</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($repairRequest->repairLogs as $log)
+                                    @foreach ($log->partUsages as $usage)
+                                        <tr>
+                                            <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
+                                            <td>#{{ $log->id }}</td>
+                                            <td class="text-end">{{ $usage->quantity }}</td>
+                                            <td class="text-end">
+                                                @if ($usage->unit_price === null)
+                                                    <span class="text-danger">缺少單價</span>
+                                                @else
+                                                    NT$ {{ number_format($usage->unit_price) }}
+                                                @endif
+                                            </td>
+                                            <td class="text-end">
+                                                @if ($usage->unit_price === null)
+                                                    —
+                                                @else
+                                                    NT$ {{ number_format($usage->quantity * $usage->unit_price) }}
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if ($hasIncompletePrice)
+                        <div class="alert alert-warning mb-0">
+                            部分零件缺少歷史單價，目前無法提供完整的材料費總額。
+                        </div>
+                    @else
+                        <div class="text-end">
+                            <span class="text-muted me-2">目前記錄的材料費總額</span>
+                            <strong class="fs-5">NT$ {{ number_format($materialCost) }}</strong>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        </div>
+
         {{-- 右欄：依目前狀態顯示可以做的操作 --}}
         {{-- 沒有任何可做的操作時（例如已結案、或你沒有權限），整個右欄不顯示。 --}}
         @if ($hasActions)
@@ -179,6 +252,11 @@
                                 <div class="mb-3">
                                     <label for="scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
                                     <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at">
+                                    @if ($timetableClassroom)
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="scheduled_at">
+                                            <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂
+                                        </button>
+                                    @endif
                                 </div>
                                 <button class="btn btn-primary w-100" type="submit"><i class="bi bi-person-check me-1"></i>{{ __('repair_requests.show.confirm_dispatch') }}</button>
                             </form>
@@ -237,6 +315,11 @@
                                     <div class="mb-3">
                                         <label for="reassign_scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
                                         <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at">
+                                        @if ($timetableClassroom)
+                                            <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="reassign_scheduled_at">
+                                                <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂
+                                            </button>
+                                        @endif
                                     </div>
                                     <button class="btn btn-secondary w-100" type="submit"><i class="bi bi-arrow-left-right me-1"></i>{{ __('repair_requests.show.confirm_reassign') }}</button>
                                 </form>
@@ -247,4 +330,143 @@
             </div>
         @endif
     </div>
+    {{-- 教室課表視窗（派工、重新指派共用）：顯示設備地點那間教室一週的課表，點空堂就把時間填進「建議處理時間」。 --}}
+    @if ($timetableClassroom && ($showDispatch || $canReassign))
+        <div class="modal fade" id="timetableModal" tabindex="-1" aria-labelledby="timetableModalTitle" aria-hidden="true"
+            data-url="{{ route('repairs.timetable', $repairRequest) }}">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="timetableModalTitle">{{ $timetableClassroom->name }}（{{ $timetableClassroom->classroom_code }}）課表</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ttPrev"><i class="bi bi-chevron-left"></i> 上一週</button>
+                            <input type="date" class="form-control form-control-sm" id="ttDate" style="width: 11rem;" aria-label="選擇日期">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="ttNext">下一週 <i class="bi bi-chevron-right"></i></button>
+                            <span class="small text-muted ms-auto" id="ttRange"></span>
+                        </div>
+                        <div class="small mb-2 d-flex flex-wrap gap-3">
+                            <span><span class="badge text-bg-success">空堂</span> 可以選</span>
+                            <span><span class="badge text-bg-warning">有待審核預約</span> 可以選，但之後可能被核准</span>
+                            <span><span class="badge text-bg-secondary">課程／已核准預約</span> 不能選</span>
+                            <span><span class="badge text-bg-info">已排其他維修</span> 同一節已有別張報修單</span>
+                        </div>
+                        <div id="ttBody" class="table-responsive"><p class="text-muted my-4 text-center">載入中…</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('timetableModal');
+            const body = document.getElementById('ttBody');
+            const dateInput = document.getElementById('ttDate');
+            let targetInput = null;
+            let current = null;   // 目前顯示的這一週任一天（YYYY-MM-DD）
+
+            function shift(dateString, days) {
+                const d = new Date(dateString + 'T00:00:00');
+                d.setDate(d.getDate() + days);
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+
+            function cell(text, cls) {
+                const td = document.createElement('td');
+                td.className = 'small ' + (cls || '');
+                td.textContent = text;
+                td.style.whiteSpace = 'pre-line';
+                return td;
+            }
+
+            async function load(dateString) {
+                body.innerHTML = '<p class="text-muted my-4 text-center">載入中…</p>';
+                try {
+                    const response = await fetch(modal.dataset.url + '?date=' + encodeURIComponent(dateString), { headers: { 'Accept': 'application/json' } });
+                    const data = await response.json();
+                    if (!response.ok) { throw new Error(data.message || '課表載入失敗'); }
+                    current = data.selected_date;
+                    dateInput.value = data.selected_date;
+                    document.getElementById('ttRange').textContent = data.week_start + ' ～ ' + data.week_end;
+                    render(data);
+                } catch (error) {
+                    body.innerHTML = '';
+                    const p = document.createElement('p');
+                    p.className = 'text-danger my-4 text-center';
+                    p.textContent = error.message;
+                    body.appendChild(p);
+                }
+            }
+
+            function render(data) {
+                const now = new Date();
+                const table = document.createElement('table');
+                table.className = 'table table-bordered align-middle text-center mb-0';
+                const head = table.createTHead().insertRow();
+                head.appendChild(Object.assign(document.createElement('th'), { textContent: '節次', className: 'table-light text-nowrap' }));
+                data.days.forEach(function (day) {
+                    head.appendChild(Object.assign(document.createElement('th'), { textContent: day.weekday + ' ' + day.date.slice(5), className: 'table-light text-nowrap' }));
+                });
+
+                const tbody = table.createTBody();
+                data.days[0].periods.forEach(function (period, index) {
+                    const row = tbody.insertRow();
+                    row.appendChild(cell('第 ' + period.period_no + ' 節\n' + period.start_time + '–' + period.end_time, 'text-nowrap table-light'));
+
+                    data.days.forEach(function (day) {
+                        const p = day.periods[index];
+                        const approved = p.reservations.filter(function (r) { return r.status === 'approved'; });
+                        const pending = p.reservations.filter(function (r) { return r.status === 'pending'; });
+                        const start = new Date(day.date + 'T' + p.start_time + ':00');
+                        let td;
+
+                        if (p.is_class) {
+                            td = cell((p.course_name || '課程') + '\n' + (p.class_name || ''), 'bg-secondary-subtle text-secondary');
+                        } else if (approved.length) {
+                            td = cell('已核准預約\n' + approved[0].class_name, 'bg-secondary-subtle text-secondary');
+                        } else if (start < now) {
+                            td = cell('已過', 'text-muted bg-light');
+                        } else {
+                            let label = '空堂';
+                            let cls = 'bg-success-subtle';
+                            if (pending.length) { label = '有待審核預約\n' + pending[0].class_name; cls = 'bg-warning-subtle'; }
+                            if (p.repairs.length) { label += '\n已排維修 #' + p.repairs[0].id; cls = 'bg-info-subtle'; }
+                            td = cell(label, cls + ' tt-free');
+                            td.tabIndex = 0;
+                            td.setAttribute('role', 'button');
+                            td.setAttribute('aria-label', day.date + ' 第 ' + p.period_no + ' 節 ' + p.start_time + '，選這個時間');
+                            const choose = function () {
+                                if (targetInput) { targetInput.value = day.date + 'T' + p.start_time; }
+                                bootstrap.Modal.getInstance(modal).hide();
+                            };
+                            td.addEventListener('click', choose);
+                            td.addEventListener('keydown', function (e) { if (e.key === 'Enter') { choose(); } });
+                        }
+                        td.style.whiteSpace = 'pre-line';
+                        row.appendChild(td);
+                    });
+                });
+
+                body.innerHTML = '';
+                body.appendChild(table);
+            }
+
+            modal.addEventListener('show.bs.modal', function (event) {
+                targetInput = document.getElementById(event.relatedTarget.dataset.targetInput);
+                // 已經填過建議時間就從那一週開始看，否則從今天這一週。
+                const start = targetInput && targetInput.value ? targetInput.value.slice(0, 10) : (current || shift(new Date().toLocaleDateString('en-CA'), 0));
+                load(start);
+            });
+            document.getElementById('ttPrev').addEventListener('click', function () { load(shift(current, -7)); });
+            document.getElementById('ttNext').addEventListener('click', function () { load(shift(current, 7)); });
+            dateInput.addEventListener('change', function () { if (dateInput.value) { load(dateInput.value); } });
+        });
+        </script>
+        <style>
+            .tt-free { cursor: pointer; }
+            .tt-free:hover, .tt-free:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: -2px; }
+        </style>
+    @endif
 @endsection

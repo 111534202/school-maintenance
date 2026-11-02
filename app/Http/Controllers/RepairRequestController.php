@@ -57,16 +57,16 @@ class RepairRequestController extends Controller
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
             ->visibleTo($request->user())
             // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
-            ->with(['device.classroom', 'assignedTechnician'])
+            ->with(['device.classroom', 'classroom', 'assignedTechnician'])
             // 設備／教室篩選（教室主檔與設備主檔的連結會帶這兩個參數過來）：
             //   ?device_id=   只看這台設備的報修單；
-            //   ?classroom_id= 只看「這間教室裡的設備」的報修單（透過設備串到教室，沒有綁定設備的報修單不會出現）。
+            //   ?classroom_id= 只看這間教室的報修單：報修單的設備地點是這間教室，或報修的設備現在在這間教室。
             ->when($request->filled('device_id'), fn ($query) => $query->where('device_id', $request->integer('device_id')))
-            ->when($request->filled('classroom_id'), fn ($query) => $query->whereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id'))))
+            ->when($request->filled('classroom_id'), fn ($query) => $query->where(fn ($q) => $q
+                ->where('classroom_id', $request->integer('classroom_id'))
+                ->orWhereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id')))))
             // 狀態篩選：有帶 ?status= 才套用。
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            // 地點篩選：like %字% 是「包含這段字」，所以打 A1 也找得到 A101。
-            ->when($request->filled('location'), fn ($query) => $query->where('location', 'like', '%' . $request->string('location') . '%'))
             // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
             ->when($request->filled('assignee'), fn ($query) => $query->whereHas(
                 'assignedTechnician',
@@ -120,7 +120,10 @@ class RepairRequestController extends Controller
             $device = Device::with(['category', 'classroom'])->find(request()->integer('device'));
         }
 
-        return view('repairs.create', compact('fromKnowledgeBase', 'device'));
+        // 設備地點只能從現有、啟用中的教室選（和空間預約的選法相同）。
+        $classrooms = Classroom::query()->where('is_active', true)->orderBy('classroom_code')->get();
+
+        return view('repairs.create', compact('fromKnowledgeBase', 'device', 'classrooms'));
     }
 
     /**
@@ -168,6 +171,11 @@ class RepairRequestController extends Controller
                 . '（' . ($device->classroom->name ?? $device->classroom->classroom_code ?? '') . '）'
             ),
             'title_suggestion' => trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障'),
+            // 設備所在教室：表單的「設備地點」會自動帶入這間教室。
+            'classroom' => $device->classroom ? [
+                'id' => $device->classroom->id,
+                'label' => $device->classroom->name . '（' . $device->classroom->classroom_code . '）',
+            ] : null,
         ]);
     }
 
@@ -180,8 +188,15 @@ class RepairRequestController extends Controller
     {
         // 建立報修單：先放入驗證通過的欄位（但不含 attachments 檔案），再補上報修人 = 目前登入者。
         // ... 是「把陣列展開放進來」。
+        $data = $request->safe()->except('attachments');
+
+        // 有掃描設備、但沒選地點時，地點就用設備目前所在的教室。
+        if (empty($data['classroom_id']) && ! empty($data['device_id'])) {
+            $data['classroom_id'] = Device::query()->whereKey($data['device_id'])->value('classroom_id');
+        }
+
         $repairRequest = RepairRequest::create([
-            ...$request->safe()->except('attachments'),
+            ...$data,
             'requester_id' => Auth::id(),
         ]);
 
@@ -212,7 +227,15 @@ class RepairRequestController extends Controller
         Gate::authorize('view', $repairRequest);
 
         // 補查畫面要用到的關聯資料（附件、維修紀錄與其附件、設備與其類別／教室、維修人員）。
-        $repairRequest->load(['attachments', 'repairLogs.attachments', 'device.category', 'device.classroom', 'assignedTechnician']);
+        $repairRequest->load([
+            'attachments',
+            'repairLogs.attachments',
+            'repairLogs.partUsages.part',
+            'device.category',
+            'device.classroom',
+            'classroom',
+            'assignedTechnician',
+        ]);
 
         // 派工／重新指派表單要挑選真正的維修人員，不再讓主管自己打字輸入姓名。
         // 誰能被指派由身分主檔決定：身分有勾選「可被指派為維修人員」權限、且帳號啟用中的用戶。
@@ -221,7 +244,27 @@ class RepairRequestController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('repairs.show', compact('repairRequest', 'technicians'));
+        // 計算這張報修單目前已記錄的材料費。
+        $partUsages = $repairRequest->repairLogs
+            ->flatMap(fn ($log) => $log->partUsages);
+
+        $hasIncompletePrice = $partUsages->contains(
+            fn ($usage) => $usage->unit_price === null
+        );
+
+        $materialCost = $hasIncompletePrice
+            ? null
+            : $partUsages->sum(
+                fn ($usage) => $usage->quantity * $usage->unit_price
+            );
+
+        return view('repairs.show', compact(
+            'repairRequest',
+            'technicians',
+            'partUsages',
+            'materialCost',
+            'hasIncompletePrice'
+        ));
     }
 
     /**

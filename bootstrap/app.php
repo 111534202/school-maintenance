@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // 自動載入 app/Console/Commands 目錄中的自訂指令。
+    ->withCommands()
     // 中介層設定：中介層是請求進到 Controller 之前會經過的「關卡」。
     ->withMiddleware(function (Middleware $middleware): void {
         // i18n：每個網頁請求都套用使用者目前選的語言（存在 session 裡）。

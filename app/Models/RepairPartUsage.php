@@ -13,6 +13,7 @@ class RepairPartUsage extends Model
     protected $fillable = [
         'repair_log_id',
         'part_id',
+        'part_purchase_id',   // 用的是哪一批採購（先進先出；跨兩批時拆成兩列）
         'quantity',
         'unit_price',
     ];
@@ -36,5 +37,11 @@ class RepairPartUsage extends Model
     public function part(): BelongsTo
     {
         return $this->belongsTo(Part::class, 'part_id');
+    }
+
+    /** 這筆用料扣的是哪一批採購。 */
+    public function purchase(): BelongsTo
+    {
+        return $this->belongsTo(PartPurchase::class, 'part_purchase_id');
     }
 }

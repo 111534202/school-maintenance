@@ -43,14 +43,17 @@ class GenerateSchemaDocs extends Command
         'maintenance_plan_items' => ['保養計畫明細', '第 7 章 maintenance_plan_items', '純關聯表（多對多），符合 2NF／3NF。'],
         'maintenance_orders' => ['保養工單', '第 7 章 maintenance_orders', '符合 3NF（設備與類別二選一，理由同保養計畫）。'],
         'maintenance_results' => ['保養結果', '第 7 章 maintenance_results', '符合 3NF。執行人以 executed_by（users.id）關聯，不再存姓名文字。ng_conversion_status 與 repair_request_id 有部分重疊（converted 代表已有報修單），因為還需要區分「待轉」與「不需轉」兩種沒有報修單的情況，所以保留。'],
-        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note／location 是「沒有綁定設備」時的後備文字，有綁設備時可由設備與教室推得（保留為歷史與手動輸入用）。'],
+        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note 是「沒有綁定設備」時的後備文字。設備地點以 classroom_id 關聯教室（原本自由輸入的 location 文字已移除，舊資料依教室代碼或名稱轉換）；它記的是「報修當時」的地點，設備之後搬到別的教室也不會改變，所以不是由設備推得的重複資料。'],
         'repair_logs' => ['維修紀錄', '第 7 章 repair_logs', '大致符合 3NF。total_hours 是由起訖時間推得的值，規格書要求存起來所以保留；parts_used_note 是自由文字備註，結構化的備品使用已改存 repair_part_usages（舊資料與額外說明仍可寫在這裡）。'],
-        'repair_part_usages' => ['維修零件使用明細', '規格書未列（備品使用的結構化）', '符合 3NF。unit_price 是「使用當下的單價快照」，刻意和 parts.unit_price 分開存（零件日後調價不影響歷史成本），不算重複。'],
+        'repair_part_usages' => ['維修零件使用明細', '規格書未列（備品使用的結構化）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），part_purchase_id 記錄扣的是哪一批；一次用料跨兩批時拆成兩列。舊資料沒有批次時 part_purchase_id 為空。'],
         'attachments' => ['附件資料', '第 7 章 attachments', '符合 3NF。用 Laravel 多型關聯（attachable_type + attachable_id）指向報修單、維修紀錄等，不加外鍵。'],
         'audit_logs' => ['操作日誌', '第 7 章 audit_logs', '日誌資料。changes 是 JSON：記錄「當時」的變更內容快照，不需要單獨查詢內容，所以刻意不拆成欄位（1NF 的有意例外）。'],
         'knowledge_base' => ['自助知識庫文章', '規格書未列（工作計畫指定模組）', '符合 3NF。category 是自由文字（沒有獨立的分類表）；值很少、也沒有跨表查詢需求，若日後分類變多再拆成獨立資料表。'],
-        'parts' => ['零件庫存', '規格書未列（備品庫存模組）', '符合 3NF。'],
+        'parts' => ['零件庫存', '規格書未列（備品庫存模組）', '大致符合 3NF。part_code 是零件編號，可自訂、可修改（不可重複），未填時自動產生 PART-順序數字；其他資料表以 id 關聯零件，所以改編號不影響紀錄；單價不存在零件上，改存在每一筆採購批次。current_stock 等於各批次剩餘數量的加總，是為了列表與扣料檢查保留的快取值，只能由 PartStockService 更新（進貨、用料），不能手動修改。'],
+        'part_purchases' => ['零件採購紀錄', '規格書未列（備品庫存模組：採購與先進先出成本）', '符合 3NF。每一筆是一個進貨批次；總價＝數量×單價，不另存。remaining_quantity 是這一批還沒被用掉的數量，先進先出扣料時遞減。發票以 attachments 多型關聯保存。'],
+        'maintenance_part_usages' => ['保養零件使用明細', '規格書未列（保養用料，與維修用料同結構）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），一次用料跨兩批時拆成兩列。'],
         'classroom_reservations' => ['教室預約申請', '規格書未列（空間預約模組）', '符合 3NF。'],
+        'classroom_reservation_slots' => ['教室預約時段明細', '規格書未列（教室預約課表與多時段預約功能）', '一對多關聯明細表：每筆明細透過 classroom_reservation_id 關聯一筆預約申請；刪除預約申請時，外鍵會級聯刪除所屬時段。每個時段分別審核：status 為這個時段的結果（空白代表跟著整筆申請，供舊資料與未審核的申請使用），被拒絕時 rejection_reason 記錄原因。'],
         'ai_settings' => ['AI 預防保養參數', '規格書未列（AI 預測性維護）', '「參數名稱＋參數值」的設定表（key-value），參數會隨功能增減，所以刻意不為每個參數開一個欄位。'],
         'preventive_candidates' => ['預防保養候選', '規格書未列（AI 預測性維護）', '符合 3NF。explanation／features 是 JSON：當時評分的快照（日後改規則也要能重現當時結果），有意不拆。'],
     ];
@@ -77,11 +80,14 @@ class GenerateSchemaDocs extends Command
         'repair_requests' => ['單據', 'repair', 'requests'],
         'repair_logs' => ['紀錄', 'repair', 'logs'],
         'repair_part_usages' => ['明細', 'repair', 'part_usages'],
+        'part_purchases' => ['單據', 'part', 'purchases'],
+        'maintenance_part_usages' => ['明細', 'maintenance', 'part_usages'],
         'attachments' => ['附屬（多型）', '', 'attachments'],
         'audit_logs' => ['紀錄', 'audit', 'logs'],
         'knowledge_base' => ['主檔（例外）', '', 'knowledge_base'],
         'parts' => ['主檔', '', 'parts'],
         'classroom_reservations' => ['單據', 'classroom', 'reservations'],
+        'classroom_reservation_slots' => ['關聯明細', 'classroom', 'reservation_slots'],
         'ai_settings' => ['設定', 'ai', 'settings'],
         'preventive_candidates' => ['單據', 'preventive', 'candidates'],
     ];
@@ -89,7 +95,7 @@ class GenerateSchemaDocs extends Command
     /** 領域詞清單：資料表名稱的前半段只能用這些（每個詞的意思見文件 1.5 節）；新增領域詞要先加在這裡。 */
     public const DOMAIN_WORDS = [
         'ai' => 'AI 預測性維護', 'audit' => '稽核與操作日誌', 'classroom' => '教室與空間預約', 'device' => '設備',
-        'maintenance' => '定期保養', 'preventive' => '預防保養（AI 候選）', 'repair' => '報修與維修', 'role' => '身分與權限',
+        'maintenance' => '定期保養', 'part' => '零件庫存', 'preventive' => '預防保養（AI 候選）', 'repair' => '報修與維修', 'role' => '身分與權限',
     ];
 
     /**
@@ -112,11 +118,12 @@ class GenerateSchemaDocs extends Command
         'maintenance_plan_id' => '來源保養計畫', 'maintenance_item_id' => '保養項目', 'device_id' => '設備（devices.id）', 'source' => '來源', 'scheduled_date' => '預定保養日',
         'maintenance_order_id' => '所屬保養工單', 'result' => '結果', 'executed_by' => '執行人（users.id，由登入帳號帶入）', 'executed_at' => '執行時間', 'note' => '備註（操作人員填寫）', 'ng_conversion_status' => 'NG 轉報修狀態',
         'repair_request_id' => '報修單（repair_requests.id）', 'impact_level' => '影響程度', 'is_class_affected' => '是否影響上課', 'rejection_reason' => '驗收退回原因',
-        'requester_id' => '提出者（users.id）：報修人／預約申請人', 'device_note' => '設備說明（手動輸入、沒有綁設備時用）', 'assigned_to' => '指派的維修人員（users.id）', 'scheduled_at' => '預計處理時間', 'location' => '地點（文字）',
+        'requester_id' => '提出者（users.id）：報修人／預約申請人', 'device_note' => '設備說明（手動輸入、沒有綁設備時用）', 'assigned_to' => '指派的維修人員（users.id）', 'scheduled_at' => '預計處理時間',
+        'classroom_reservation_id' => '所屬預約申請（classroom_reservations.id）', 'period_no' => '課表節次（可為空）',
         'cause' => '故障原因', 'resolution' => '處置方式', 'parts_used_note' => '使用備品說明（文字備註）', 'started_at' => '起始時間', 'ended_at' => '結束時間', 'total_hours' => '總工時（系統計算）',
         'attachable_type' => '附件所屬資料類型（多型）', 'attachable_id' => '附件所屬資料編號（多型）', 'file_path' => '檔案儲存路徑（私有磁碟）', 'file_name' => '原始檔名（使用者上傳時的檔名）', 'mime_type' => '檔案類型', 'size_bytes' => '檔案大小（位元組）',
         'user_id' => '操作人（users.id）', 'action' => '操作動作', 'loggable_type' => '被操作資料類型（多型）', 'loggable_id' => '被操作資料編號（多型）', 'changes' => '變更內容（JSON 快照）',
-        'specification' => '規格', 'unit_price' => '單價', 'current_stock' => '目前庫存', 'safety_stock' => '安全庫存', 'repair_log_id' => '所屬維修紀錄', 'part_id' => '零件（parts.id）', 'quantity' => '使用數量',
+        'part_code' => '零件編號（唯一，可自訂；未填時自動產生 PART-順序數字）', 'unit' => '單位（條、個、片…）', 'purchase_date' => '採購日期', 'vendor_name' => '廠商名稱', 'remaining_quantity' => '批次剩餘數量', 'part_purchase_id' => '扣用的採購批次（part_purchases.id）', 'maintenance_result_id' => '所屬保養結果', 'specification' => '規格', 'unit_price' => '單價', 'current_stock' => '目前庫存', 'safety_stock' => '安全庫存', 'repair_log_id' => '所屬維修紀錄', 'part_id' => '零件（parts.id）', 'quantity' => '使用數量',
         'class_name' => '班級名稱', 'reservation_date' => '預約日期', 'start_time' => '開始時間', 'end_time' => '結束時間', 'reviewed_by' => '審核人（users.id）', 'reviewed_at' => '審核時間', 'purpose' => '用途',
         'key' => '參數名稱', 'value' => '參數值', 'risk_score' => '風險分數（0～1）', 'threshold' => '當時的門檻', 'algorithm' => '評分演算法版本', 'explanation' => '評分明細（JSON 快照）', 'features' => '輸入特徵（JSON 快照）',
         'decided_by' => '審核人（users.id）', 'decided_at' => '審核時間', 'decision_note' => '審核備註',
@@ -125,7 +132,7 @@ class GenerateSchemaDocs extends Command
     /** @var array<string, string> 個別資料表裡意思不同的欄位 */
     private array $columnTextSpecific = [
         'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
-        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'maintenance_items.description' => '說明',
+        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
     ];
 
     /**
@@ -138,7 +145,8 @@ class GenerateSchemaDocs extends Command
         'repair_requests.impact_level' => ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'],
         'devices.status' => ['normal' => '正常', 'repairing' => '維修中', 'retired' => '已淘汰', 'disabled' => '停用'],
         'classrooms.reservation_status' => ['normal' => '正常（可預約）', 'abnormal' => '有核心設備異常（不開放預約）'],
-        'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准', 'rejected' => '已駁回'],
+        'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准（全部時段同意）', 'rejected' => '已駁回（全部時段拒絕）', 'partially_approved' => '部分核准（有同意也有拒絕的時段）'],
+        'classroom_reservation_slots.status' => ['approved' => '同意', 'rejected' => '拒絕'],
         'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中', 'completed' => '已完成'],
         'maintenance_orders.source' => ['periodic' => '定期', 'ai' => 'AI 預防'],
         'maintenance_results.result' => ['ok' => '正常', 'ng' => '異常'],

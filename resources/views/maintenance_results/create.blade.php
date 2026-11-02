@@ -62,6 +62,13 @@
             @enderror
         </div>
 
+        {{-- 保養用料（可不填）：和維修紀錄共用同一個零件選擇器；送出時依先進先出扣庫存，庫存不足會擋下。 --}}
+        <div class="mb-4">
+            <label class="form-label">使用零件明細</label>
+            <div class="form-text mb-2">如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。</div>
+            @include('parts._usage-picker', ['parts' => $parts])
+        </div>
+
         <button type="submit" class="btn btn-primary">送出</button>
         <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary">取消</a>
     </form>

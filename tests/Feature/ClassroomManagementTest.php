@@ -86,7 +86,7 @@ class ClassroomManagementTest extends TestCase
     }
 
     // 修改時，不改教室代碼不會被誤判成「與自己重複」，欄位確實被更新。
-    public function test_update_keeps_own_room_code_and_changes_fields(): void
+    public function test_update_keeps_own_classroom_code_and_changes_fields(): void
     {
         $classroom = $this->makeClassroom('A101');
 

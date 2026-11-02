@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * 冒煙測試（smoke test）：用正式的示範資料（等同 migrate:fresh --seed），
  * 讓每一個身分把「系統裡所有看得到的頁面」各打開一次，確認沒有任何一頁出現伺服器錯誤（HTTP 500），
- * 而且畫面用的是洋蔥式選單、沒有殘留沒被解析的 Blade 語法。
+ * 而且畫面有載入洋蔥式版面（onion.js）、沒有殘留沒被解析的 Blade 語法。
  *
  * 權限不足的頁面會回 403、被導向登入頁會回 302，這些都是正常的，只要不是 500 就算過。
  * 有網址參數的頁面（例如 /repairs/{id}）會自動用資料庫裡第一筆資料代入。
@@ -95,9 +95,9 @@ class SmokeTest extends TestCase
     }
 
     #[DataProvider('roles')]
-    public function test_every_page_opens_without_a_server_error(string $slug): void
+    public function test_every_page_opens_without_a_server_error(string $roleCode): void
     {
-        $user = User::whereHas('role', fn ($q) => $q->where('role_code', $slug))->orderBy('id')->firstOrFail();
+        $user = User::whereHas('role', fn ($q) => $q->where('role_code', $roleCode))->orderBy('id')->firstOrFail();
         $this->actingAs($user);
 
         $problems = [];
@@ -109,7 +109,7 @@ class SmokeTest extends TestCase
 
             if ($status >= 500) {
                 $why = $response->baseResponse->exception ?? null;
-                $problems[] = "[$slug] $status $url".($why ? '  → '.get_class($why).': '.$why->getMessage() : '');
+                $problems[] = "[$roleCode] $status $url".($why ? '  → '.get_class($why).': '.$why->getMessage() : '');
 
                 continue;
             }
@@ -119,15 +119,15 @@ class SmokeTest extends TestCase
                 continue;   // 不是完整的登入後頁面（轉址、下載檔案、權限不足…）就不檢查版面
             }
 
-            // 登入後的完整頁面：手機與桌面各有一份洋蔥式選單，而且沒有殘留的 Blade 語法。
-            foreach (['id="drill-drawer"'] as $needle) {
+            // 登入後的完整頁面：有洋蔥式選單（抽屜裡唯一的一份）、有載入洋蔥式版面（public/js/onion.js），而且沒有殘留的 Blade 語法。
+            foreach (['id="drill-drawer"', 'js/onion.js'] as $needle) {
                 if (! str_contains($html, $needle)) {
-                    $problems[] = "[$slug] $url 缺少選單 $needle";
+                    $problems[] = "[$roleCode] $url 缺少洋蔥式版面 $needle";
                 }
             }
             foreach (['@foreach', '@endif', '@php', '@include', 'Undefined variable'] as $leftover) {
                 if (str_contains($html, $leftover)) {
-                    $problems[] = "[$slug] $url 頁面出現殘留文字 $leftover";
+                    $problems[] = "[$roleCode] $url 頁面出現殘留文字 $leftover";
                 }
             }
         }

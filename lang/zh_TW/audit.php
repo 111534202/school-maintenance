@@ -33,6 +33,8 @@ return [
         'RepairRequest' => '報修單',
         'RepairLog' => '維修紀錄',
         'KnowledgeBase' => '知識庫文章',
+        'Part' => '零件',
+        'PartPurchase' => '零件採購紀錄',
     ],
 
     // 操作紀錄頁篩選列的文字。

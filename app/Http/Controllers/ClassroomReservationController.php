@@ -5,44 +5,107 @@ namespace App\Http\Controllers;
 use App\Models\Classroom;
 use App\Models\ClassroomReservation;
 use App\Services\AuditLogger;
+use App\Services\ClassroomRepairNotices;
+use App\Services\ReservationReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ClassroomReservationController extends Controller
 {
     /**
-     * 預約列表：
-     * 一般使用者只看自己的申請；
-     * 有預約管理權限的人可以查看全部申請。
+     * 預約列表：只列申請時間、申請人、申請班級、申請狀態（已審核／未審核），點一行進入詳細頁。
+     * 一般使用者只看自己的申請；有預約管理權限的人可以查看全部申請。
      */
     public function index(Request $request)
     {
-        $query = ClassroomReservation::with(['classroom', 'requester'])
-            ->orderByDesc('reservation_date')
-            ->orderBy('start_time');
+        $query = ClassroomReservation::with(['requester'])
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")   // 未審核的排前面
+            ->orderByDesc('created_at');
 
         if (! $request->user()->hasPermission('reservations.manage')) {
             $query->where('requester_id', $request->user()->id);
         }
 
-        $reservations = $query->paginate(15);
+        // 申請狀態篩選：pending＝未審核（主控台「空間預約待審核」卡片連過來）；reviewed＝已審核。
+        $status = $request->query('status');
+        if ($status === 'pending') {
+            $query->where('status', ClassroomReservation::STATUS_PENDING);
+        } elseif ($status === 'reviewed') {
+            $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
+        }
+
+        $reservations = $query->paginate(15)->withQueryString();
 
         return view('reservations.index', compact('reservations'));
     }
 
     /**
+     * 預約詳細頁：教室、預約日期、使用時段、用途、審核人與審核時間；
+     * 有預約管理權限的人可以在這裡逐一審核每個時段。申請人本人也可以看自己的申請。
+     */
+    public function show(Request $request, ClassroomReservation $reservation)
+    {
+        $canManage = $request->user()->hasPermission('reservations.manage');
+        abort_unless($canManage || $reservation->requester_id === $request->user()->id, 403);
+
+        // 舊資料沒有時段明細：用整筆申請的時間補一個時段，審核畫面才能逐一選擇。
+        if (! $reservation->slots()->exists()) {
+            $reservation->slots()->create([
+                'reservation_date' => $reservation->reservation_date->toDateString(),
+                'start_time' => $reservation->start_time,
+                'end_time' => $reservation->end_time,
+                'period_no' => null,
+            ]);
+        }
+
+        $reservation->load(['classroom', 'requester', 'reviewer', 'slots']);
+
+        // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
+        $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id])[$reservation->classroom_id] ?? [];
+        $classroomSuspended = ClassroomRepairNotices::isSuspended((int) $reservation->classroom_id);
+
+        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices', 'classroomSuspended'));
+    }
+
+    /**
+     * 分時段審核：每個時段都要選「同意」或「拒絕」，拒絕要寫原因；同意的時段要再確認沒有和其他已核准的時段衝突。
+     */
+    public function review(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
+    {
+        abort_unless($request->user()->hasPermission('reservations.manage'), 403);
+
+        $validated = $request->validate([
+            'decisions' => ['required', 'array'],
+            'decisions.*.decision' => ['required', 'in:approved,rejected'],
+            'decisions.*.reason' => ['nullable', 'required_if:decisions.*.decision,rejected', 'string', 'max:500'],
+        ], [
+            'decisions.required' => '請逐一選擇每個時段要同意或拒絕。',
+            'decisions.*.decision.required' => '每個時段都要選擇同意或拒絕。',
+            'decisions.*.reason.required_if' => '拒絕的時段請填寫原因。',
+            'decisions.*.reason.max' => '拒絕原因不可超過 500 個字元。',
+        ]);
+
+        $result = $reviewService->review($reservation, $validated['decisions'], $request->user());
+
+        return $this->afterReview($result, route('reservations.show', $reservation));
+    }
+
+    /**
      * 顯示新增預約表單。
-     * 只有啟用且正常開放外借的教室可以選擇。
+     * 所有啟用中的教室都可以選、可以查詢課表；暫停預約的教室（核心設備等待維修）不能送出申請。
      */
     public function create()
     {
         $classrooms = Classroom::query()
             ->where('is_active', true)
-            ->where('reservation_status', 'normal')
             ->orderBy('name')
             ->get();
 
-        return view('reservations.create', compact('classrooms'));
+        // 每間教室目前在等待維修的設備，以及哪些教室暫停預約；選好教室後在畫面上提醒。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
+        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
+
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds'));
     }
 
     /**
@@ -50,87 +113,138 @@ class ClassroomReservationController extends Controller
      */
     public function store(Request $request)
     {
+        $submittedSlots = $request->input('slots');
+
+        if (is_array($submittedSlots) && count($submittedSlots) > 0) {
+            $firstSlot = reset($submittedSlots);
+
+            if (is_array($firstSlot)) {
+                $request->merge([
+                    'reservation_date' => $request->input(
+                        'reservation_date',
+                        $firstSlot['reservation_date'] ?? null
+                    ),
+                    'start_time' => $request->input(
+                        'start_time',
+                        $firstSlot['start_time'] ?? null
+                    ),
+                    'end_time' => $request->input(
+                        'end_time',
+                        $firstSlot['end_time'] ?? null
+                    ),
+                ]);
+            }
+        }
+
         $validated = $request->validate([
-            'classroom_id' => [
-                'required',
-                'integer',
-                'exists:classrooms,id',
-            ],
-            'class_name' => [
-                'required',
-                'string',
-                'max:100',
-            ],
-            'reservation_date' => [
-                'required',
-                'date',
-                'after_or_equal:today',
-            ],
-            'start_time' => [
-                'required',
-                'date_format:H:i',
-            ],
-            'end_time' => [
-                'required',
-                'date_format:H:i',
-                'after:start_time',
-            ],
-            'purpose' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-        ], [
-            'class_name.required' => '請輸入班級名稱。',
-            'class_name.max' => '班級名稱不可超過 100 個字元。',
-            'reservation_date.after_or_equal' => '預約日期不可早於今天。',
-            'end_time.after' => '結束時間必須晚於開始時間。',
+            'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
+            'class_name' => ['required', 'string', 'max:100'],
+            'reservation_date' => ['required', 'date', 'after_or_equal:today'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'slots' => ['sometimes', 'array', 'min:1'],
+            'slots.*.reservation_date' => ['required', 'date', 'after_or_equal:today'],
+            'slots.*.start_time' => ['required', 'date_format:H:i'],
+            'slots.*.end_time' => ['required', 'date_format:H:i'],
+            'slots.*.period_no' => ['nullable', 'integer', 'min:1'],
+            'purpose' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // 鎖定教室資料列，讓同一間教室的同時送件依序檢查。
-        $result = DB::transaction(function () use ($validated, $request) {
+        $slots = $validated['slots'] ?? [[
+            'reservation_date' => $validated['reservation_date'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'period_no' => null,
+        ]];
+
+        $uniqueSlots = [];
+
+        foreach ($slots as $slot) {
+            if (
+                strtotime($slot['end_time']) <= strtotime($slot['start_time'])
+            ) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Each time slot must end after it starts.');
+            }
+
+            $key = implode('|', [
+                $slot['reservation_date'],
+                $slot['start_time'],
+                $slot['end_time'],
+            ]);
+
+            if (isset($uniqueSlots[$key])) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Duplicate time slots were selected. Please review your selection.');
+            }
+
+            $uniqueSlots[$key] = $slot;
+        }
+
+        $slots = array_values($uniqueSlots);
+        $firstSlot = $slots[0];
+
+        $result = DB::transaction(function () use (
+            $validated,
+            $slots,
+            $firstSlot,
+            $request
+        ) {
             $classroom = Classroom::query()
                 ->whereKey($validated['classroom_id'])
                 ->lockForUpdate()
                 ->first();
 
-            // 教室可能已被停用，或已因設備異常而暫停外借。
-            if (
-                ! $classroom ||
-                ! $classroom->is_active ||
-                $classroom->reservation_status !== 'normal'
-            ) {
+            if (! $classroom || ! $classroom->is_active) {
                 return ['type' => 'unavailable'];
             }
 
-            // 待審核及已核准的預約都會佔用時段。
-            // 開始時間 < 對方結束時間，且結束時間 > 對方開始時間，
-            // 才算時間重疊；首尾相接不算衝突。
-            $conflict = ClassroomReservation::query()
-                ->where('classroom_id', $classroom->id)
-                ->whereDate('reservation_date', $validated['reservation_date'])
-                ->whereIn('status', ['pending', 'approved'])
-                ->where('start_time', '<', $validated['end_time'])
-                ->where('end_time', '>', $validated['start_time'])
-                ->first();
-
-            if ($conflict) {
-                return [
-                    'type' => 'conflict',
-                    'reservation' => $conflict,
-                ];
+            // 教室被標成設備異常（核心設備維修處理中／停用）：暫停預約，不能送出。
+            if (ClassroomRepairNotices::isSuspended($classroom->id)) {
+                return ['type' => 'suspended'];
             }
+
+
+            foreach ($slots as $slot) {
+                $date = $slot['reservation_date'];
+                $start = $slot['start_time'];
+                $end = $slot['end_time'];
+
+                // 和其他「已核准」的時段重疊就不能送出（包含部分核准申請裡已同意的時段）。
+                $conflict = app(ReservationReviewService::class)->approvedConflict($classroom->id, $date, $start, $end);
+
+                if ($conflict) {
+                    return [
+                        'type' => 'conflict',
+                        'reservation' => $conflict,
+                        'date' => $date,
+                    ];
+                }
+
+            }
+
 
             $reservation = ClassroomReservation::create([
                 'classroom_id' => $classroom->id,
                 'requester_id' => $request->user()->id,
                 'class_name' => $validated['class_name'],
-                'reservation_date' => $validated['reservation_date'],
-                'start_time' => $validated['start_time'],
-                'end_time' => $validated['end_time'],
+                'reservation_date' => $firstSlot['reservation_date'],
+                'start_time' => $firstSlot['start_time'],
+                'end_time' => $firstSlot['end_time'],
                 'status' => 'pending',
                 'purpose' => $validated['purpose'] ?? null,
             ]);
+
+            foreach ($slots as $slot) {
+                $reservation->slots()->create([
+                    'reservation_date' => $slot['reservation_date'],
+                    'start_time' => $slot['start_time'],
+                    'end_time' => $slot['end_time'],
+                    'period_no' => $slot['period_no'] ?? null,
+                ]);
+            }
 
             AuditLogger::log(
                 'created',
@@ -138,12 +252,10 @@ class ClassroomReservationController extends Controller
                 [
                     'classroom_id' => $classroom->id,
                     'class_name' => $reservation->class_name,
-                    'reservation_date' => $reservation->reservation_date->toDateString(),
-                    'start_time' => $reservation->start_time,
-                    'end_time' => $reservation->end_time,
+                    'slots' => $slots,
                     'status' => $reservation->status,
                 ],
-                '建立空間預約申請：' . $reservation->class_name
+                'Reservation request created: ' . $reservation->class_name
             );
 
             return ['type' => 'created'];
@@ -152,134 +264,48 @@ class ClassroomReservationController extends Controller
         if ($result['type'] === 'unavailable') {
             return back()
                 ->withInput()
-                ->with('error', '這間教室目前已停用或暫停外借，請重新選擇教室。');
+                ->with('error', 'The classroom is unavailable or is not accepting reservations.');
+        }
+
+        if ($result['type'] === 'suspended') {
+            return back()
+                ->withInput()
+                ->with('error', '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。');
         }
 
         if ($result['type'] === 'conflict') {
             $conflict = $result['reservation'];
 
-            $statusLabel = $conflict->status === 'pending'
-                ? '尚待審核'
-                : '已核准';
-
             return back()
                 ->withInput()
                 ->with(
                     'error',
-                    '目前已有「' . $conflict->class_name . '」班級申請此時段（' .
-                    $statusLabel . '），建議重新選擇時間。'
+                    'The selected time on ' . $result['date'] .
+                    ' conflicts with an approved reservation for ' .
+                    $conflict->class_name . ' (' .
+                    substr((string) $conflict->start_time, 0, 5) . '-' .
+                    substr((string) $conflict->end_time, 0, 5) .
+                    '). Please choose another time.'
                 );
         }
 
-        return redirect()
-            ->route('reservations.index')
-            ->with('success', '預約申請已送出，請等待管理人員審核。');
-    }
-    /**
-     * 核准空間預約。
-     */
-    public function approve(Request $request, ClassroomReservation $reservation)
-    {
-        abort_unless(
-            $request->user()->hasPermission('reservations.manage'),
-            403
-        );
-
-        $result = DB::transaction(function () use ($reservation, $request) {
-            // 先鎖定預約資料，避免兩位管理人員同時審核。
-            $lockedReservation = ClassroomReservation::query()
-                ->whereKey($reservation->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($lockedReservation->status !== 'pending') {
-                return ['type' => 'already_reviewed'];
-            }
-
-            // 鎖定教室，並重新檢查教室是否仍可外借。
-            $classroom = Classroom::query()
-                ->whereKey($lockedReservation->classroom_id)
-                ->lockForUpdate()
-                ->first();
-
-            if (
-                ! $classroom ||
-                ! $classroom->is_active ||
-                $classroom->reservation_status !== 'normal'
-            ) {
-                return ['type' => 'unavailable'];
-            }
-
-            // 核准前再次檢查，避免重疊的預約同時獲准。
-            $conflict = ClassroomReservation::query()
-                ->where('classroom_id', $lockedReservation->classroom_id)
-                ->whereDate('reservation_date', $lockedReservation->reservation_date)
-                ->whereKeyNot($lockedReservation->id)
-                ->where('status', 'approved')
-                ->where('start_time', '<', $lockedReservation->end_time)
-                ->where('end_time', '>', $lockedReservation->start_time)
-                ->exists();
-
-            if ($conflict) {
-                return ['type' => 'conflict'];
-            }
-
-            $lockedReservation->update([
-                'status' => 'approved',
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-                'rejection_reason' => null,
-            ]);
-
-            AuditLogger::log(
-                'status_changed',
-                $lockedReservation,
-                [
-                    'status' => [
-                        'old' => 'pending',
-                        'new' => 'approved',
-                    ],
-                    'reviewed_by' => $request->user()->id,
-                    'reviewed_at' => $lockedReservation->reviewed_at->toDateTimeString(),
-                ],
-                '核准空間預約：' . $lockedReservation->class_name
-            );
-
-            return ['type' => 'approved'];
-        });
-
-        if ($result['type'] === 'already_reviewed') {
-            return redirect()
-                ->route('reservations.index')
-                ->with('error', '這筆預約已經審核過，無法重複操作。');
-        }
-
-        if ($result['type'] === 'unavailable') {
-            return redirect()
-                ->route('reservations.index')
-                ->with('error', '教室目前已停用或暫停外借，無法核准此預約。');
-        }
-
-        if ($result['type'] === 'conflict') {
-            return redirect()
-                ->route('reservations.index')
-                ->with('error', '核准失敗：此時段已有其他已核准的預約。');
-        }
 
         return redirect()
             ->route('reservations.index')
-            ->with('success', '預約已核准。');
+            ->with('success', 'Reservation request submitted. Please wait for approval.');
+    }
+    /** 整筆核准（每個時段都同意）。 */
+    public function approve(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
+    {
+        abort_unless($request->user()->hasPermission('reservations.manage'), 403);
+
+        return $this->afterReview($reviewService->approveAll($reservation, $request->user()), route('reservations.index'));
     }
 
-    /**
-     * 拒絕空間預約，並要求填寫原因。
-     */
-    public function reject(Request $request, ClassroomReservation $reservation)
+    /** 整筆拒絕（每個時段都拒絕），並要求填寫原因。 */
+    public function reject(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
     {
-        abort_unless(
-            $request->user()->hasPermission('reservations.manage'),
-            403
-        );
+        abort_unless($request->user()->hasPermission('reservations.manage'), 403);
 
         $validated = $request->validate([
             'rejection_reason' => ['required', 'string', 'max:500'],
@@ -288,49 +314,29 @@ class ClassroomReservationController extends Controller
             'rejection_reason.max' => '拒絕原因不可超過 500 個字元。',
         ]);
 
-        $result = DB::transaction(function () use ($reservation, $request, $validated) {
-            $lockedReservation = ClassroomReservation::query()
-                ->whereKey($reservation->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        return $this->afterReview(
+            $reviewService->rejectAll($reservation, $request->user(), $validated['rejection_reason']),
+            route('reservations.index')
+        );
+    }
 
-            if ($lockedReservation->status !== 'pending') {
-                return ['type' => 'already_reviewed'];
-            }
+    /** 審核完成後依結果導向並顯示訊息。 */
+    private function afterReview(array $result, string $redirectTo)
+    {
+        $redirect = redirect()->to($redirectTo);
 
-            $lockedReservation->update([
-                'status' => 'rejected',
-                'reviewed_by' => $request->user()->id,
-                'reviewed_at' => now(),
-                'rejection_reason' => $validated['rejection_reason'],
-            ]);
-
-            AuditLogger::log(
-                'status_changed',
-                $lockedReservation,
-                [
-                    'status' => [
-                        'old' => 'pending',
-                        'new' => 'rejected',
-                    ],
-                    'reviewed_by' => $request->user()->id,
-                    'reviewed_at' => $lockedReservation->reviewed_at->toDateTimeString(),
-                    'rejection_reason' => $lockedReservation->rejection_reason,
-                ],
-                '拒絕空間預約：' . $lockedReservation->class_name
-            );
-
-            return ['type' => 'rejected'];
-        });
-
-        if ($result['type'] === 'already_reviewed') {
-            return redirect()
-                ->route('reservations.index')
-                ->with('error', '這筆預約已經審核過，無法重複操作。');
-        }
-
-        return redirect()
-            ->route('reservations.index')
-            ->with('success', '預約已拒絕。');
+        return match ($result['type']) {
+            'already_reviewed' => $redirect->with('error', '這筆預約已經審核過，無法重複操作。'),
+            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在維修而暫停預約，無法核准此預約（仍可拒絕）。'),
+            'conflict' => $redirect->with('error', '核准失敗：下列時段已有其他已核准的預約，請改為拒絕或調整後再送出：' . implode('、', $result['slots'])),
+            'incomplete' => $redirect->with('error', ($result['missing_reason'] ?? false)
+                ? "時段 {$result['slot']} 選擇拒絕，請填寫原因。"
+                : "時段 {$result['slot']} 還沒有選擇同意或拒絕，每個時段都要決定才能送出。"),
+            default => $redirect->with('success', match ($result['status']) {
+                ClassroomReservation::STATUS_APPROVED => '預約已核准。',
+                ClassroomReservation::STATUS_REJECTED => '預約已拒絕。',
+                default => "預約已部分核准：同意 {$result['approved']} 個時段、拒絕 {$result['rejected']} 個時段。",
+            }),
+        };
     }
 }

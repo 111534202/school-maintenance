@@ -74,10 +74,12 @@ class RepairRequestFlowTest extends TestCase
     // 可以送出報修單，並成為「新報修」狀態。
     public function test_can_submit_a_repair_request(): void
     {
+        $classroom = \App\Models\Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室']);
+
         $payload = [
             'title' => '教室冷氣完全不冷',
             'device_note' => 'A101 冷氣',
-            'location' => 'A101',
+            'classroom_id' => $classroom->id,
             'description' => '出風口有風但溫度沒有下降，已檢查濾網。',
             'impact_level' => 'high',
             'is_class_affected' => '1',
@@ -92,7 +94,37 @@ class RepairRequestFlowTest extends TestCase
             'impact_level' => 'high',
             'is_class_affected' => true,
             'status' => 'pending',
+            'classroom_id' => $classroom->id,
         ]);
+    }
+
+    // 設備地點只能選現有教室：送出不存在的教室編號會被擋下。
+    public function test_location_must_be_an_existing_classroom(): void
+    {
+        $this->post(route('repairs.store'), [
+            'title' => '亂填地點', 'description' => '測試', 'impact_level' => 'low', 'is_class_affected' => '0',
+            'classroom_id' => 999999,
+        ])->assertSessionHasErrors('classroom_id');
+    }
+
+    // 掃描到設備、沒選地點時，地點自動用設備所在的教室；設備查詢也會回傳教室給表單自動帶入。
+    public function test_scanned_device_fills_in_its_classroom_as_the_location(): void
+    {
+        $classroom = \App\Models\Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '3', 'classroom_code' => 'IT-301', 'name' => '資訊教室一']);
+        $category = \App\Models\DeviceCategory::create(['name' => '電腦']);
+        $device = \App\Models\Device::create(['device_code' => 'DEV-0001', 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
+
+        $this->getJson(route('repairs.device-lookup', ['code' => 'DEV-0001']))
+            ->assertOk()
+            ->assertJsonPath('classroom.id', $classroom->id)
+            ->assertJsonPath('classroom.label', '資訊教室一（IT-301）');
+
+        $this->post(route('repairs.store'), [
+            'title' => '電腦無法開機', 'description' => '按電源沒反應', 'impact_level' => 'medium', 'is_class_affected' => '0',
+            'device_id' => $device->id,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($classroom->id, RepairRequest::firstWhere('title', '電腦無法開機')->classroom_id);
     }
 
     // 標題、描述、影響程度是必填，沒填會被擋下。

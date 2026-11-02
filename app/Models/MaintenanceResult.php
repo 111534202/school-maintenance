@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'maintenance_order_id',
@@ -52,6 +53,12 @@ class MaintenanceResult extends Model
     public function executor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'executed_by');
+    }
+
+    /** 這次保養用掉的零件（保養用料明細）。 */
+    public function partUsages(): HasMany
+    {
+        return $this->hasMany(MaintenancePartUsage::class);
     }
 
     public function isNg(): bool

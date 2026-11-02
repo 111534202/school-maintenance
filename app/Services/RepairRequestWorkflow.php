@@ -100,30 +100,33 @@ class RepairRequestWorkflow
 
     /**
      * 真正執行狀態轉換：檢查合法性 → 更新 status 欄位並存檔 → 視情況通知
-     * DeviceStatusSync（讓設備狀態跟報修狀態保持同步；目前 DeviceStatusSync 只記 log，
-     * 還沒有真的改設備資料，見那支 class 的說明）。
+     * DeviceStatusSync，依報修單狀態同步更新設備狀態。
      */
     public function transitionTo(RepairRequest $repairRequest, RepairRequestStatus $to): RepairRequest
     {
-        // 第一步一定先檢查，不合法就在這裡丟例外結束，下面都不會執行。
-        $this->assertCanTransition($repairRequest, $to);
 
-        $repairRequest->status = $to;   // 改狀態（只有這個類別才應該這樣寫）
-        $repairRequest->save();         // 存進資料庫
+        // 將報修單狀態更新與設備同步放在同一個交易中。
+        // 任一步驟失敗，資料庫變更都會回滾。
+        return DB::transaction(function () use ($repairRequest, $to): RepairRequest {
+            // 第一步一定先檢查，不合法就在這裡丟例外。
+            $this->assertCanTransition($repairRequest, $to);
 
-        // 案件開始「處理中」：如果這台設備是核心設備，通知把設備標成「維修中」。
-        if ($to === RepairRequestStatus::InProgress) {
-            $this->deviceStatusSync->markUnderRepair($repairRequest);
-        }
+            $repairRequest->status = $to;
+            $repairRequest->save();
 
-        // 案件進到「待驗收」或「已結案」：代表暫時（或永久）不用再修了，
-        // 通知去檢查這台設備還有沒有「其他」進行中的案件，沒有的話才把設備
-        // 狀態改回正常（可能同一台設備同時有兩張報修單在處理）。
-        if (in_array($to, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
-            $this->deviceStatusSync->markNormalIfNoActiveRepairs($repairRequest);
-        }
+            // 案件開始「處理中」：將關聯設備標記為「維修中」。
+            if ($to === RepairRequestStatus::InProgress) {
+                $this->deviceStatusSync->markUnderRepair($repairRequest);
+            }
 
-        return $repairRequest;
+            // 只有案件進入「已結案」時，才檢查設備能否恢復正常。
+            if ($to === RepairRequestStatus::Completed) {
+                $this->deviceStatusSync->markNormalIfNoActiveRepairs($repairRequest);
+            }
+
+            return $repairRequest;
+        });
+
     }
 
     /**
@@ -141,7 +144,6 @@ class RepairRequestWorkflow
      */
     public function assign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
-        // 先檢查，不合法就丟例外，後面一個欄位都不會動。
         $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
 
         // DB::transaction：裡面的動作「要嘛全部成功，要嘛全部取消」。
@@ -153,7 +155,6 @@ class RepairRequestWorkflow
             return $this->transitionTo($repairRequest, RepairRequestStatus::Assigned);
         });
     }
-
     /**
      * 維修人員開始處理：已派工 -> 處理中。
      *

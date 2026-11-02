@@ -16,6 +16,14 @@
     // 選單內容：type = link（單一連結）／group（往內一層）。
     $menu = [
         ['type' => 'link'] + $link(__('common.nav.dashboard'), 'bi-speedometer2', 'dashboard', ['dashboard']),
+        ['type' => 'group', 'id' => 'master', 'label' => __('common.nav.master_section'), 'icon' => 'bi-database', 'children' => [
+            $link(__('common.nav.users'), 'bi-people', 'users.index', ['users.*'], $can('users.manage')),
+            $link(__('common.nav.roles'), 'bi-shield-lock', 'roles.index', ['roles.*'], $can('roles.manage')),
+            $link(__('common.nav.departments'), 'bi-diagram-3', 'departments.index', ['departments.*'], $can('departments.manage')),
+            $link(__('common.nav.classrooms'), 'bi-building', 'classrooms.index', ['classrooms.*'], $can('classrooms.manage')),
+            $link(__('common.nav.device_categories'), 'bi-tags', 'device-categories.index', ['device-categories.*'], $can('device-categories.manage')),
+            $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
+        ]],
         ['type' => 'group', 'id' => 'work', 'label' => __('common.nav.repair_section'), 'icon' => 'bi-tools', 'children' => [
             $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*']),
             $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
@@ -30,14 +38,7 @@
         ['type' => 'group', 'id' => 'space', 'label' => __('common.nav.resource_section'), 'icon' => 'bi-building', 'children' => [
             $link(__('common.nav.reservations'), 'bi-calendar-check', 'reservations.index', ['reservations.*']),
             $link(__('common.nav.parts'), 'bi-box-seam', 'parts.index', ['parts.*'], $can('parts.manage')),
-        ]],
-        ['type' => 'group', 'id' => 'master', 'label' => __('common.nav.master_section'), 'icon' => 'bi-database', 'children' => [
-            $link(__('common.nav.users'), 'bi-people', 'users.index', ['users.*'], $can('users.manage')),
-            $link(__('common.nav.roles'), 'bi-shield-lock', 'roles.index', ['roles.*'], $can('roles.manage')),
-            $link(__('common.nav.departments'), 'bi-diagram-3', 'departments.index', ['departments.*'], $can('departments.manage')),
-            $link(__('common.nav.classrooms'), 'bi-building', 'classrooms.index', ['classrooms.*'], $can('classrooms.manage')),
-            $link(__('common.nav.device_categories'), 'bi-tags', 'device-categories.index', ['device-categories.*'], $can('device-categories.manage')),
-            $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
+            $link(__('common.nav.cost_analysis'), 'bi-cash-stack', 'repair-cost-analysis.index', ['repair-cost-analysis.*'], $can('maintenance.view')),
         ]],
         ['type' => 'group', 'id' => 'system', 'label' => __('common.nav.system_section'), 'icon' => 'bi-gear', 'children' => [
             $link(__('common.nav.audit_logs'), 'bi-clock-history', 'audit-logs.index', ['audit-logs.*'], $can('audit-logs.view')),

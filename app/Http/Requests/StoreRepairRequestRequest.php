@@ -33,7 +33,8 @@ class StoreRepairRequestRequest extends FormRequest
             // 沒有掃描、手動輸入的案件則沒有 device_id，device_note 當文字後備描述。
             'device_id' => ['nullable', 'integer', 'exists:devices,id'],
             'device_note' => ['nullable', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'],      // 地點（教室）：可不填
+            // 設備地點：可不填；有填就必須是現有、啟用中的教室（只能從清單選，不能自由輸入）。
+            'classroom_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('classrooms', 'id')->whereNull('deleted_at')->where('is_active', true)],
             // 附件：圖片/PDF/影片都允許（依《第四週個人工作計畫》第 2 項「故障照片/影片」新增
             // 影片格式），單檔上限提高到 20MB 以容納短片，避免任意檔案類型。
             // 最多 5 個檔案（max:5）；單檔最大 20480 KB = 20 MB；想放寬或限制就改這裡的數字與副檔名。

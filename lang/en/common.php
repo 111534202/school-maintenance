@@ -26,6 +26,7 @@ return [
         'preventive_ai' => 'AI Preventive Maintenance',
         'reservations' => 'Space Reservations',
         'parts' => 'Parts Inventory',
+        'cost_analysis' => 'Cost Analysis Report',
         'users' => 'User Master',
         'roles' => 'Role Master',
         'departments' => 'Department Master',

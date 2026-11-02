@@ -1,7 +1,10 @@
 {{-- 各頁面自己的內容會被放在這裡（兩處是登入後與未登入的版面）。 --}}
 {{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
 {{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
-{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-drilldown.blade.php。 --}}
+{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
+{{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
+{{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
+{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
 {{-- Blade 語法速查：雙大括號包住變數 = 輸出文字（會自動防止惡意程式碼）；@if / @foreach 是條件與迴圈；@can('權限') 有權限才顯示；大括號加兩個減號的寫法是不會輸出到網頁的註解。 --}}
 <!DOCTYPE html>
 {{-- 網頁的語言標記，依目前選的語言自動變成 zh-TW 或 en。 --}}
@@ -16,6 +19,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {{-- Bootstrap Icons：全站按鈕統一用圖示（筆=編輯、垃圾桶=刪除…），不使用 emoji。 --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
     {{-- 以下是本站自訂的樣式，補強 Bootstrap 不足的地方。 --}}
     <style>
         /* 頁面至少和視窗一樣高。 */
@@ -167,7 +171,7 @@
                     <div class="alert alert-success">{{ session('success') }}</div>
                 @endif
                 {{-- 操作失敗訊息（Controller 用 ->with('error', ...) 帶過來）。 --}}
-                @if (session('error'))
+                @if (session('error') && !request()->routeIs('reservations.index'))
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
                 {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡。 --}}

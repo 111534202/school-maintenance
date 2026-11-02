@@ -6,7 +6,9 @@ use App\Enums\RepairRequestStatus;           // 報修單狀態列舉
 use App\Models\RepairRequest;                // 報修單資料表模型
 use App\Models\User;                         // 用戶資料表模型
 use App\Services\AI\PredictionServiceInterface;   // AI 預測服務介面（王佑恩，第 4 週）
-use App\Services\AI\RuleBasedPredictionService;   // 規則式 AI 預測實作（王佑恩，第 4 週）
+use App\Services\AI\RuleBasedPredictionService;
+use App\Services\Timetable\LocalTimetableProvider;
+use App\Services\Timetable\TimetableProvider;   // 規則式 AI 預測實作（王佑恩，第 4 週）
 use App\Support\PermissionCatalog;           // 權限清單
 use Illuminate\Pagination\Paginator;         // 分頁元件的設定
 use Illuminate\Support\Facades\Gate;         // 權限判斷（Gate）
@@ -29,6 +31,19 @@ class AppServiceProvider extends ServiceProvider
         // 第 4 週：AI 預測服務的正式實作。之後要換成別的演算法，只需改這一行，
         // 其他呼叫端（候選掃描、設備履歷、Artisan 指令）全部吃 PredictionServiceInterface，不用動。
         $this->app->bind(PredictionServiceInterface::class, RuleBasedPredictionService::class);
+
+        // Timetable source is isolated behind an interface for future API integration.
+        $this->app->bind(TimetableProvider::class, function ($app) {
+            $provider = config('timetable.provider', 'local');
+
+            if ($provider === 'local') {
+                return $app->make(LocalTimetableProvider::class);
+            }
+
+            throw new \InvalidArgumentException(
+                'Timetable provider is not implemented: ' . $provider
+            );
+        });
     }
 
     /**

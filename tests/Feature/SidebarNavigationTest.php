@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 /**
  * 左側選單：依身分權限顯示分區與連結。
- * 順序：主控台 → 報修服務 → 保養管理 → 空間與零件 → 主檔（可收合）→ 系統。
+ * 第一層的順序：主控台 → 主檔 → 報修服務 → 保養管理 → 空間與零件（含成本分析報表）→ 系統（洋蔥式選單，點分類才進到第二層）。
  */
 class SidebarNavigationTest extends TestCase
 {
@@ -68,12 +68,15 @@ class SidebarNavigationTest extends TestCase
         $this->assertStringNotContainsString('保養項目', $html);
     }
 
-    // 區塊順序固定：報修服務 → 保養管理 → 空間與零件 → 主檔 → 系統。
+    // 第一層的分類順序固定：主檔（緊接主控台）→ 報修服務 → 保養管理 → 空間與零件 → 系統（只有一項時直接顯示成連結）。
     public function test_sections_appear_in_the_documented_order(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('admin', '系統管理員'));
 
-        $positions = array_map(fn ($text) => strpos($html, $text), ['報修服務', '保養管理', '空間與零件', 'bi-database', '操作紀錄']);
+        $positions = array_map(fn ($text) => strpos($html, $text), [
+            'data-drill-open="master"', 'data-drill-open="work"', 'data-drill-open="maintenance"', 'data-drill-open="space"',
+            'href="' . route('audit-logs.index') . '"',
+        ]);
 
         $this->assertNotContains(false, $positions);
         $sorted = $positions;

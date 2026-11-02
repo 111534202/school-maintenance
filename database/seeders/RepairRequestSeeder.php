@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Actions\CreateRepairRequestFromMaintenanceNg;
+use App\Models\Classroom;
 use App\Models\Device;
 use App\Models\RepairRequest;
 use App\Models\User;
@@ -38,6 +39,8 @@ class RepairRequestSeeder extends Seeder
         //   「D102 教室螢幕」→ DEV-0003（IT-401 教室的螢幕，維修中）；「E201 印表機」→ DEV-0006（IN-101 教室的印表機，停用）。
         // 示範報修單標題裡的教室代碼只是情境文字，和設備實際所在的教室不一定相同。
         $deviceId = fn (string $code) => Device::where('device_code', $code)->value('id');
+        // 設備地點只能是現有教室（ClassroomSeeder 建立的 IT-301、IT-401、EE-201、IN-101）。
+        $classroomId = fn (string $code) => Classroom::where('classroom_code', $code)->value('id');
 
         $requests = [
             [
@@ -47,7 +50,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => false,
                 'status' => 'pending',
                 'device_note' => 'B203 電腦教室 3 號機',
-                'location' => 'B203',
+                'classroom_id' => $classroomId('IT-301'),
                 'requester_id' => $teacherId,
             ],
             // 情境 2：核心設備故障，正在影響上課。
@@ -58,7 +61,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => true,
                 'status' => 'pending',
                 'device_note' => 'A101 教室投影機（核心設備）',
-                'location' => 'A101',
+                'classroom_id' => $classroomId('EE-201'),
                 'device_id' => $deviceId('DEV-0004'),
                 'requester_id' => $teacherId,
             ],
@@ -72,7 +75,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => false,
                 'status' => 'in_progress',
                 'device_note' => 'C305 無線 AP',
-                'location' => 'C305',
+                'classroom_id' => $classroomId('IT-301'),
                 'requester_id' => $teacherId,
                 'assigned_to' => $userId('陳大成'),
             ],
@@ -84,7 +87,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => false,
                 'status' => 'assigned',
                 'device_note' => 'D102 教室投影幕',
-                'location' => 'D102',
+                'classroom_id' => $classroomId('IT-401'),
                 'device_id' => $deviceId('DEV-0003'),
                 'requester_id' => $teacherId,
                 'assigned_to' => $userId('王小明'),
@@ -122,7 +125,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => false,
                 'status' => 'pending_review',
                 'device_note' => 'E201 教室印表機',
-                'location' => 'E201',
+                'classroom_id' => $classroomId('IN-101'),
                 'device_id' => $deviceId('DEV-0006'),
                 'requester_id' => $teacherId,
                 'assigned_to' => $userId('劉小華'),
@@ -150,7 +153,7 @@ class RepairRequestSeeder extends Seeder
                 'is_class_affected' => false,
                 'status' => 'completed',
                 'device_note' => 'F103 教室日光燈',
-                'location' => 'F103',
+                'classroom_id' => $classroomId('IT-401'),
                 'requester_id' => $teacherId,
                 'assigned_to' => $userId('陳大成'),
             ]

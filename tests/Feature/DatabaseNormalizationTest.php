@@ -92,6 +92,7 @@ class DatabaseNormalizationTest extends TestCase
             'repair_requests.requester_id' => 'users',
             'repair_requests.assigned_to' => 'users',
             'repair_requests.device_id' => 'devices',
+            'repair_requests.classroom_id' => 'classrooms',
             'classroom_reservations.requester_id' => 'users',
             'classroom_reservations.reviewed_by' => 'users',
             'maintenance_results.executed_by' => 'users',
@@ -104,6 +105,11 @@ class DatabaseNormalizationTest extends TestCase
             'knowledge_base.created_by' => 'users',
             'repair_part_usages.repair_log_id' => 'repair_logs',
             'repair_part_usages.part_id' => 'parts',
+            'repair_part_usages.part_purchase_id' => 'part_purchases',
+            'part_purchases.part_id' => 'parts',
+            'maintenance_part_usages.maintenance_result_id' => 'maintenance_results',
+            'maintenance_part_usages.part_id' => 'parts',
+            'maintenance_part_usages.part_purchase_id' => 'part_purchases',
         ];
 
         foreach ($expected as $column => $table) {

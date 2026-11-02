@@ -43,7 +43,8 @@ class RepairRequest extends Model
      * - device_note：沒有掃描設備條碼、手動輸入的案件，用文字描述設備位置（device_id 會是空的）
      * - scheduled_at：預計處理日期
      * - rejection_reason：驗收不通過退回時，驗收人填的退回原因
-     * - location：地點（教室），文字欄位，看板可依它模糊篩選
+     * - classroom_id：設備地點（只能選現有教室）。掃描設備時自動帶入設備所在的教室；
+     *   記的是「報修當時」的地點，設備之後搬走也不會改變。
      */
     protected $fillable = [
         'title',
@@ -57,7 +58,7 @@ class RepairRequest extends Model
         'assigned_to',
         'scheduled_at',
         'rejection_reason',
-        'location',
+        'classroom_id',
     ];
 
     /**
@@ -113,6 +114,18 @@ class RepairRequest extends Model
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
+    }
+
+    /** 設備地點（教室）。含已停用（軟刪除）的教室，舊報修單才查得到當時的地點。 */
+    public function classroom(): BelongsTo
+    {
+        return $this->belongsTo(Classroom::class)->withTrashed();
+    }
+
+    /** 畫面顯示用的地點：教室名稱（教室代碼）；沒填地點時回傳 null。 */
+    public function locationLabel(): ?string
+    {
+        return $this->classroom ? "{$this->classroom->name}（{$this->classroom->classroom_code}）" : null;
     }
 
     /** 送出這張報修單的使用者。 */

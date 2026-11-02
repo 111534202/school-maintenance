@@ -67,6 +67,10 @@
                     deviceIdField.value = data.id;
                     displayText.textContent = data.device_code + ' ' + data.display;
                     displayBox.style.display = '';
+                    // 設備地點自動帶入設備所在的教室（例如掃到 DEV-0001 → 資訊教室一）。
+                    if (data.classroom && window.setRepairClassroom) {
+                        window.setRepairClassroom(data.classroom.id, data.classroom.label);
+                    }
                     if (!titleField.value) {
                         titleField.value = data.title_suggestion;
                     }

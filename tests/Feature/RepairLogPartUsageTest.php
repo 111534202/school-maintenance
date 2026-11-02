@@ -122,8 +122,7 @@ class RepairLogPartUsageTest extends TestCase
         $repairRequest = $this->makeInProgressRequest();
         $part = $this->makePart(10);
 
-        // 記錄維修時，零件單價為 150 元。
-        $part->update(['unit_price' => 150]);
+        // 記錄維修時，零件只有一批期初庫存，單價 150 元（makePart 建立）。
 
         $response = $this->post(
             route('repair-logs.store', $repairRequest),
@@ -147,11 +146,42 @@ class RepairLogPartUsageTest extends TestCase
         // 明細應保存使用當下的單價，而不是只依賴零件目前的價格。
         $this->assertSame(150, (int) $usage->unit_price);
 
-        // 即使零件目前價格變成 200 元，舊維修用料明細仍應是 150 元。
-        $part->update(['unit_price' => 200]);
+        // 之後用 200 元進貨新的一批，舊維修用料明細仍應是 150 元。
+        app(\App\Services\PartStockService::class)->receive($part, [
+            'purchase_date' => now()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 5, 'unit_price' => 200, 'note' => null,
+        ]);
 
-        $this->assertSame(200, (int) $part->fresh()->unit_price);
+        $this->assertSame(200, (int) $part->purchases()->latest('id')->value('unit_price'));
         $this->assertSame(150, (int) $usage->fresh()->unit_price);
+    }
+
+    /**
+     * 一次用料跨兩個採購批次（先進先出）時，同一筆維修紀錄會有兩列同零件的明細，不能被唯一鍵擋掉。
+     * 重現：期初 10 條（150 元）＋進貨 10 條（10 元），先用 2 條，第二次再用 15 條 → 8 條 150 元＋7 條 10 元。
+     */
+    public function test_usage_spanning_two_batches_is_split_into_two_rows(): void
+    {
+        $part = $this->makePart(10);
+        app(\App\Services\PartStockService::class)->receive($part, [
+            'purchase_date' => now()->addDay()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 10, 'unit_price' => 10, 'note' => null,
+        ]);
+
+        $first = $this->makeInProgressRequest();
+        $this->post(route('repair-logs.store', $first), $this->validPayload([
+            'part_usages' => [['part_id' => $part->id, 'quantity' => 2]],
+        ]))->assertRedirect(route('repairs.show', $first));
+
+        $second = $this->makeInProgressRequest();
+        $this->post(route('repair-logs.store', $second), $this->validPayload([
+            'part_usages' => [['part_id' => $part->id, 'quantity' => 15]],
+        ]))->assertRedirect(route('repairs.show', $second));
+
+        $log = RepairLog::query()->where('repair_request_id', $second->id)->sole();
+        $rows = RepairPartUsage::query()->where('repair_log_id', $log->id)->orderBy('id')->get();
+
+        $this->assertSame([8, 7], $rows->pluck('quantity')->map(fn ($q) => (int) $q)->all());
+        $this->assertSame([150, 10], $rows->pluck('unit_price')->map(fn ($p) => (int) $p)->all());
+        $this->assertSame(3, (int) $part->fresh()->current_stock);
     }
 
     /**
@@ -384,5 +414,55 @@ class RepairLogPartUsageTest extends TestCase
             'in_progress',
             $repairRequest->fresh()->status->value
         );
+    }
+
+/**
+     * 尚未開始處理的案件，不應開放填寫維修紀錄。
+     */
+    public function test_repair_log_form_is_not_available_before_work_starts(): void
+    {
+        $repairRequest = RepairRequest::factory()->create([
+            'status' => 'assigned',
+        ]);
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertRedirect(route('repairs.show', $repairRequest));
+        $response->assertSessionHas('error');
+    }
+
+    /**
+     * 案件進入處理中後，應可以開啟維修紀錄表單。
+     */
+    public function test_repair_log_form_is_available_while_in_progress(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+
+        $response = $this->get(
+            route('repair-logs.create', $repairRequest)
+        );
+
+        $response->assertOk();
+    }
+
+    /**
+     * 維修紀錄表單：標題改為「使用零件明細」；零件選單列出全部零件，沒有庫存的也會出現（庫存 0、不能選）。
+     */
+    public function test_repair_log_form_lists_every_part_including_out_of_stock_ones(): void
+    {
+        $repairRequest = $this->makeInProgressRequest();
+        $inStock = $this->makePart(5);
+        $empty = $this->makePart(0);
+
+        $this->get(route('repair-logs.create', $repairRequest))
+            ->assertOk()
+            ->assertSee('使用零件明細')
+            ->assertSee('如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。')
+            ->assertSee('新增使用紀錄')
+            ->assertSee($inStock->part_code)
+            ->assertSee($empty->part_code)
+            ->assertSee('"stock":0', false);
     }
 }

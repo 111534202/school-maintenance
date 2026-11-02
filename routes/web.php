@@ -39,8 +39,10 @@ use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
 use App\Http\Controllers\PartController;
+use App\Http\Controllers\PartPurchaseController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
+use App\Http\Controllers\RepairCostAnalysisController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -148,6 +150,25 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
         ->middleware('can:maintenance.view')->name('maintenance-completion-rate.index');
 
+    // 成本分析報表：唯讀頁面，沿用 maintenance.view 權限。
+    Route::get('repair-cost-analysis', [RepairCostAnalysisController::class, 'index'])
+        ->middleware('can:maintenance.view')
+        ->name('repair-cost-analysis.index');
+
+    Route::get('repair-cost-analysis/export/excel', [
+        RepairCostAnalysisController::class,
+        'exportExcel',
+    ])
+        ->middleware('can:maintenance.view')
+        ->name('repair-cost-analysis.export.excel');
+
+    Route::get('repair-cost-analysis/export/pdf', [
+        RepairCostAnalysisController::class,
+        'exportPdf',
+    ])
+        ->middleware('can:maintenance.view')
+        ->name('repair-cost-analysis.export.pdf');
+
     // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，需要 ai-maintenance.manage（預設只有設備管理員，admin 永遠有）。
     Route::middleware('can:ai-maintenance.manage')->prefix('ai-maintenance')->group(function () {
         Route::get('candidates', [PreventiveCandidateController::class, 'index'])->name('preventive-candidates.index');
@@ -173,6 +194,11 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [ClassroomReservationController::class, 'index'])
             ->name('index');
 
+        Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'day'])
+            ->name('timetable');
+        Route::get('/timetable/week', [\App\Http\Controllers\TimetableController::class, 'week'])
+            ->name('timetable.week');
+
         Route::get('/create', [ClassroomReservationController::class, 'create'])
             ->name('create');
 
@@ -190,6 +216,14 @@ Route::middleware(['auth', 'active'])->group(function () {
             ClassroomReservationController::class,
             'reject',
         ])->name('reject');
+
+        // 分時段審核（每個時段同意或拒絕）
+        Route::post('/{reservation}/review', [ClassroomReservationController::class, 'review'])->name('review');
+
+        // 預約詳細頁（放最後，避免 /timetable、/create 被當成預約編號）
+        Route::get('/{reservation}', [ClassroomReservationController::class, 'show'])
+            ->whereNumber('reservation')
+            ->name('show');
     });
 
     // 設備類別主檔：沒有 show（類別沒有獨立檢視頁）。
@@ -198,9 +232,13 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // 零件庫存：需要 parts.manage 權限（身分主檔勾選；設備管理員預設有）。
+    // parts.show 是零件履歷；採購紀錄掛在零件底下（新增採購會增加庫存），權限相同。
     Route::middleware('can:parts.manage')->group(function () {
-        Route::resource('parts', PartController::class)
-            ->except(['show']);
+        // 即時檢查零件編號是否重複（要放在 resource 前面，否則 check-code 會被當成零件編號）。
+        Route::get('parts/check-code', [PartController::class, 'checkCode'])->name('parts.check-code');
+        Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
+        Route::resource('parts', PartController::class);
+        Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
@@ -275,6 +313,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:repairs.dispatch')->group(function () {
         Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])->name('repairs.assign');
         Route::post('repairs/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])->name('repairs.reassign');
+        // 派工時查詢報修地點那間教室的一週課表，挑空堂當建議處理時間。
+        Route::get('repairs/{repair_request}/timetable', [\App\Http\Controllers\TimetableController::class, 'repairWeek'])->name('repairs.timetable');
     });
 
     // 維修人員處理：開始處理、填維修紀錄（送出後自動推進到待驗收）：需要 repairs.process。

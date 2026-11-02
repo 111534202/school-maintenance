@@ -22,3 +22,17 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# Dompdf generated font cache
+/storage/fonts/*
+
+# Local PDF font diagnostic scripts
+/test-dompdf-font.php
+/test-dompdf-path.php
+# Local backups and temporary editing copies
+*.bak
+*.before-*
+/backups/
+
+# Local reservation editing helper scripts
+/check_reservation_store.ps1
+/replace_reservation_store.ps1

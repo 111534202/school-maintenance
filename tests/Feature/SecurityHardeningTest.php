@@ -23,6 +23,14 @@ class SecurityHardeningTest extends TestCase
 {
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+protected function setUp(): void
+{
+    parent::setUp();
+
+    // 這個測試類別固定使用繁體中文，避免預設英文影響文字斷言。
+    config(['app.locale' => 'zh_TW']);
+    app()->setLocale('zh_TW');
+}
 
     /** 輔助方法：建立一位可用帳號名稱與固定密碼登入的維修人員。 */
     private function makeLoginUser(string $username, string $password = 'right-pass-1'): User

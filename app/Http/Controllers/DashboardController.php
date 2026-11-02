@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;   // 報修單狀態的列舉（新報修、已派工、處理中、待驗收、已結案）
 use App\Models\Classroom;            // 教室資料表模型
+use App\Models\ClassroomReservation; // 空間預約申請資料表模型
 use App\Models\Device;               // 設備資料表模型
 use App\Models\RepairRequest;        // 報修單資料表模型
 use App\Models\Role;                 // 身分資料表模型
 use App\Models\User;                 // 用戶資料表模型
 use Illuminate\Http\Request;         // 這一次瀏覽器送來的請求
+use App\Services\RepairDurationStatisticsService;
 
 /**
  * 主控台：用數字卡片與圖表呈現目前的概況，每一張卡片、每一塊圖表點下去都會跳到對應的功能區
@@ -53,6 +55,22 @@ class DashboardController extends Controller
         // 「進行中工單」= 除了「已結案」以外全部加起來。
         $openCount = collect($repairStatuses)->where('key', '!=', RepairRequestStatus::Completed->value)->sum('count');
 
+        // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
+        $monthStart = now()->startOfMonth();
+        $nextMonthStart = $monthStart->copy()->addMonth();
+
+        $monthlyRepairCount = RepairRequest::visibleTo($user)
+            ->where('created_at', '>=', $monthStart)
+            ->where('created_at', '<', $nextMonthStart)
+            ->count();
+
+        // 本月平均累計維修工時：以本月 ended_at 判斷資格，符合資格後加總該單全部歷史紀錄。
+        $repairDurationStats = app(RepairDurationStatisticsService::class)->forPeriod(
+            $user,
+            $monthStart->copy(),
+            $monthStart->copy()->endOfMonth(),
+        );
+
         // 近 14 天每天新增幾張報修單（沒有的日子補 0，折線才不會斷）。
         $since = now()->subDays(13)->startOfDay();   // 13 天前的 00:00，加上今天剛好 14 天
         $perDay = RepairRequest::visibleTo($user)->where('created_at', '>=', $since)->get()
@@ -71,14 +89,31 @@ class DashboardController extends Controller
             'repairStatuses' => $repairStatuses,
             'openCount' => $openCount,
             'pendingCount' => (int) ($statusCounts[RepairRequestStatus::Pending->value] ?? 0),
+            'pendingRepairCount' => (int) (
+                ($statusCounts[RepairRequestStatus::Pending->value] ?? 0)
+                + ($statusCounts[RepairRequestStatus::Assigned->value] ?? 0)
+            ),
+            'inProgressCount' => (int) (
+                $statusCounts[RepairRequestStatus::InProgress->value] ?? 0
+            ),
             'pendingReviewCount' => (int) ($statusCounts[RepairRequestStatus::PendingReview->value] ?? 0),
+            'monthlyRepairCount' => $monthlyRepairCount,
+            'averageRepairHours' => $repairDurationStats['average_hours'],
+            'repairDurationMissingCount' => $repairDurationStats['missing_hours_request_count'],
             'trend' => $trend,
+            // 空間預約待審核：有預約管理權限的人算全部，其他人只算自己提出的（和預約列表看到的一致）。
+            'pendingReservationCount' => ClassroomReservation::query()
+                ->where('status', ClassroomReservation::STATUS_PENDING)
+                ->when(! $user->hasPermission('reservations.manage'), fn ($q) => $q->where('requester_id', $user->id))
+                ->count(),
             'deviceStatuses' => null,
             'deviceTotal' => null,
             'roleDistribution' => null,
             'userTotal' => null,
             'classroomTotal' => null,
             'classroomAbnormal' => null,
+            'classroomRepairRanking' => null,
+            'deviceCategoryRepairRanking' => null,
         ];
 
         // ---- 設備（需要設備主檔權限）----
@@ -92,6 +127,36 @@ class DashboardController extends Controller
                 'url' => route('devices.index', ['status' => $status]),
             ])->values()->all();
             $data['deviceTotal'] = Device::count();   // 設備總數
+
+            // 本月設備類別報修排行：只統計可見、已綁定實際設備的報修單。
+            $data['deviceCategoryRepairRanking'] = RepairRequest::query()
+                ->visibleTo($user)
+                ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
+                ->join(
+                    'device_categories',
+                    'devices.device_category_id',
+                    '=',
+                    'device_categories.id'
+                )
+                ->whereNull('devices.deleted_at')
+                ->where('repair_requests.created_at', '>=', $monthStart)
+                ->where('repair_requests.created_at', '<', $nextMonthStart)
+                ->select(
+                    'device_categories.id',
+                    'device_categories.name'
+                )
+                ->selectRaw('COUNT(repair_requests.id) AS total')
+                ->groupBy('device_categories.id', 'device_categories.name')
+                ->orderByDesc('total')
+                ->orderBy('device_categories.name')
+                ->limit(5)
+                ->get()
+                ->map(fn ($item) => [
+                    'label' => $item->name,
+                    'count' => (int) $item->total,
+                    'url' => route('repairs.index'),
+                ])
+                ->all();
         }
 
         // ---- 用戶（需要用戶主檔權限）----
@@ -113,6 +178,37 @@ class DashboardController extends Controller
             $data['classroomTotal'] = Classroom::count();
             // 預約狀態為 abnormal 的教室，卡片上會用紅字提示「設備異常教室 N 間」。
             $data['classroomAbnormal'] = Classroom::withAbnormalDevices()->count();
+
+            // 本月教室報修排行：透過實際設備所在教室彙整。
+            $data['classroomRepairRanking'] = RepairRequest::query()
+                ->visibleTo($user)
+                ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
+                ->join('classrooms', 'devices.classroom_id', '=', 'classrooms.id')
+                ->whereNull('devices.deleted_at')
+                ->whereNull('classrooms.deleted_at')
+                ->where('repair_requests.created_at', '>=', $monthStart)
+                ->where('repair_requests.created_at', '<', $nextMonthStart)
+                ->select(
+                    'classrooms.id',
+                    'classrooms.classroom_code',
+                    'classrooms.name'
+                )
+                ->selectRaw('COUNT(repair_requests.id) AS total')
+                ->groupBy(
+                    'classrooms.id',
+                    'classrooms.classroom_code',
+                    'classrooms.name'
+                )
+                ->orderByDesc('total')
+                ->orderBy('classrooms.classroom_code')
+                ->limit(5)
+                ->get()
+                ->map(fn ($item) => [
+                    'label' => trim($item->classroom_code . ' ' . $item->name),
+                    'count' => (int) $item->total,
+                    'url' => route('repairs.index'),
+                ])
+                ->all();
         }
 
         // 把整理好的資料交給 resources/views/dashboard.blade.php 畫出來。

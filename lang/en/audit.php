@@ -33,6 +33,8 @@ return [
         'RepairRequest' => 'Repair request',
         'RepairLog' => 'Repair log',
         'KnowledgeBase' => 'Knowledge base article',
+        'Part' => 'Part',
+        'PartPurchase' => 'Part purchase',
     ],
 
     // 操作紀錄頁篩選列的文字。

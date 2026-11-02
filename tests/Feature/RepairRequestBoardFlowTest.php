@@ -230,17 +230,19 @@ class RepairRequestBoardFlowTest extends TestCase
         $response->assertSee('（未結案 2 件）', false);
     }
 
-    // 看板可依狀態與地點篩選。
+    // 看板可依狀態與地點（教室）篩選。
     public function test_index_can_filter_by_status_and_location(): void
     {
-        RepairRequest::factory()->create(['status' => 'pending', 'title' => '待處理案件', 'location' => 'A101']);
-        RepairRequest::factory()->create(['status' => 'completed', 'title' => '已結案案件', 'location' => 'B203']);
+        $a101 = \App\Models\Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室']);
+        $b203 = \App\Models\Classroom::create(['campus' => '本', 'building' => 'B', 'floor' => '2', 'classroom_code' => 'B203', 'name' => 'B203 教室']);
+        RepairRequest::factory()->create(['status' => 'pending', 'title' => '待處理案件', 'classroom_id' => $a101->id]);
+        RepairRequest::factory()->create(['status' => 'completed', 'title' => '已結案案件', 'classroom_id' => $b203->id]);
 
         $response = $this->get(route('repairs.index', ['status' => 'pending']));
         $response->assertSee('待處理案件');
         $response->assertDontSee('已結案案件');
 
-        $response = $this->get(route('repairs.index', ['location' => 'A101']));
+        $response = $this->get(route('repairs.index', ['classroom_id' => $a101->id]));
         $response->assertSee('待處理案件');
         $response->assertDontSee('已結案案件');
     }

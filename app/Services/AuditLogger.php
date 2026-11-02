@@ -26,7 +26,7 @@ class AuditLogger
     /**
      * 寫一筆操作紀錄。
      *
-     * @param string      $action      事件代碼，例如 created、updated、deleted、login（中文名稱在 lang/各語言資料夾/audit.php）
+     * @param string      $action      事件代碼，例如 created、updated、deleted、logged_in（中文名稱在 lang/各語言資料夾/audit.php）
      * @param Model|null  $subject     操作的對象（用戶、設備、報修單...）；沒有對象的事件（例如登入失敗）就不用給
      * @param array       $changes     變更內容（會以 JSON 存起來，在紀錄頁的「詳細」欄顯示）。絕對不要放密碼
      * @param string|null $description 人看得懂的說明；不給的話自動產生
@@ -63,7 +63,7 @@ class AuditLogger
     public static function subjectName(Model $subject): string
     {
         // 依序找這些欄位（姓名、標題、設備編號、教室名稱、帳號），第一個有內容的就是它的名字。
-        foreach (['name', 'title', 'device_code', 'account'] as $field) {
+        foreach (['name', 'title', 'device_code', 'classroom_code', 'account'] as $field) {
             $value = $subject->getAttribute($field);
             if (is_string($value) && $value !== '') {
                 return $value;
