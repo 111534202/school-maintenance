@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * 零件（備品）主檔。
  *
- * - part_code：零件編號（PART-1、PART-2…，依新增順序），新增時由系統自動產生、之後不能修改。
+ * - part_code：零件編號，新增或修改時可以自己填（不能和其他零件重複，大小寫視為相同）；
+ *   新增時沒填，就自動產生 PART-順序數字（PART-1、PART-2…）。
  *   同一種零件的不同規格要建成不同筆零件，例如「HDMI 線 2 公尺」與「HDMI 線 5 公尺」是兩個編號。
+ *   其他資料表都用 id 關聯零件，所以改編號不會影響採購、用料與成本紀錄。
  * - current_stock：目前庫存。它等於所有採購批次的剩餘數量加總，只能透過 PartStockService
  *   進貨（新增採購）或用料（維修、保養）來改變，畫面上不能直接修改。
  * - 單價不存在零件上，而是存在每一筆採購批次（part_purchases），成本採先進先出計算。
@@ -18,9 +20,9 @@ class Part extends Model
 {
     public const CODE_PREFIX = 'PART-';
 
-    // part_code 不放在 fillable：只能由系統產生，表單送來的值一律不接受。
     // unit_price 不是資料表欄位：只在新增零件時當作「期初庫存的單價」，存成第一筆採購批次。
     protected $fillable = [
+        'part_code',
         'name',
         'specification',
         'brand',
@@ -63,18 +65,32 @@ class Part extends Model
         });
     }
 
-    /** 下一個零件編號：取目前最大的編號再加一（PART-3 → PART-4）。 */
+    /**
+     * 下一個自動編號：找出「PART-數字」格式中最大的數字再加一（PART-3 → PART-4）。
+     * 自己取的編號（例如 HDMI-2M）不影響順序；如果算出來的編號剛好被人手動用掉了，就再往後找。
+     */
     public static function nextCode(): string
     {
-        $last = self::query()
+        $max = self::query()
             ->where('part_code', 'like', self::CODE_PREFIX . '%')
-            ->orderByRaw('LENGTH(part_code) DESC')   // 沒有補零，PART-10 比 PART-9 長，先比長度才不會排錯
-            ->orderByDesc('part_code')
-            ->value('part_code');
+            ->pluck('part_code')
+            ->map(fn ($code) => preg_match('/^' . preg_quote(self::CODE_PREFIX, '/') . '(\d+)$/i', $code, $m) ? (int) $m[1] : 0)
+            ->max() ?? 0;
 
-        $number = $last ? ((int) substr($last, strlen(self::CODE_PREFIX))) + 1 : 1;
+        do {
+            $code = self::CODE_PREFIX . (++$max);
+        } while (self::codeTaken($code));
 
-        return self::CODE_PREFIX . $number;
+        return $code;
+    }
+
+    /** 這個零件編號是否已經被其他零件使用（大小寫視為相同；修改時傳自己的 id 排除自己）。 */
+    public static function codeTaken(string $code, ?int $ignoreId = null): bool
+    {
+        return self::query()
+            ->whereRaw('LOWER(part_code) = ?', [mb_strtolower(trim($code))])
+            ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))
+            ->exists();
     }
 
     /** 標題用的完整名稱：PART-1 HDMI 線（2公尺）。 */

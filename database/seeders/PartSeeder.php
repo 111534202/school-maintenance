@@ -9,7 +9,7 @@ use Illuminate\Database\Seeder;
 class PartSeeder extends Seeder
 {
     /**
-     * 示範零件：零件編號（PART-1…）由系統自動產生；current_stock＋unit_price 會建立一筆「期初庫存」批次。
+     * 示範零件：沒有指定零件編號，所以自動產生 PART-1、PART-2…；current_stock＋unit_price 會建立一筆「期初庫存」批次。
      * HDMI 線 2 公尺用三筆採購示範先進先出：之後用料會先扣 9/1 的期初庫存，再扣 10/10、10/12 的批次。
      */
     public function run(): void

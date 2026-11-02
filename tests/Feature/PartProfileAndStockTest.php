@@ -61,17 +61,82 @@ class PartProfileAndStockTest extends TestCase
         $this->assertSame('PART-11', Part::nextCode());
     }
 
-    public function test_a_submitted_part_code_is_ignored_and_cannot_be_changed(): void
+    public function test_a_custom_code_can_be_given_when_creating_and_blank_falls_back_to_the_next_number(): void
     {
         $this->loginAsAnyUser();
 
-        $this->post(route('parts.store'), ['part_code' => 'HACK-1', 'name' => '網路線', 'safety_stock' => 1, 'current_stock' => 0])
-            ->assertRedirect();
-        $part = Part::firstOrFail();
-        $this->assertSame('PART-1', $part->part_code);
+        $this->post(route('parts.store'), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasNoErrors();
+        $this->post(route('parts.store'), ['part_code' => '', 'name' => '網路線', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasNoErrors();
 
-        $this->put(route('parts.update', $part), ['part_code' => 'HACK-2', 'name' => '網路線', 'safety_stock' => 2])->assertRedirect();
-        $this->assertSame('PART-1', $part->fresh()->part_code);
+        $this->assertTrue(Part::where('part_code', 'HDMI-2M')->exists());
+        $this->assertTrue(Part::where('part_code', 'PART-1')->exists(), '自己取的編號不影響自動編號的順序');
+    }
+
+    public function test_the_automatic_number_skips_a_code_someone_already_typed_by_hand(): void
+    {
+        $this->makePart(['part_code' => 'PART-1']);
+        $this->makePart(['part_code' => 'part-2']);   // 大小寫不同也算同一個編號
+
+        $this->assertSame('PART-3', Part::nextCode());
+        $this->assertSame('PART-3', $this->makePart()->part_code);
+    }
+
+    public function test_a_duplicate_code_is_refused_when_creating_or_updating_ignoring_case(): void
+    {
+        $this->loginAsAnyUser();
+        $first = $this->makePart(['part_code' => 'HDMI-2M']);
+        $second = $this->makePart(['part_code' => 'NET-3M']);
+
+        $this->post(route('parts.store'), ['part_code' => 'hdmi-2m', 'name' => '重複', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasErrors('part_code');
+        $this->assertSame(2, Part::count());
+
+        $this->put(route('parts.update', $second), ['part_code' => 'HDMI-2M', 'name' => '網路線', 'safety_stock' => 1])
+            ->assertSessionHasErrors('part_code');
+        $this->assertSame('NET-3M', $second->fresh()->part_code);
+
+        // 保留自己原本的編號不算重複。
+        $this->put(route('parts.update', $first), ['part_code' => 'HDMI-2M', 'name' => 'HDMI 線（新名稱）', 'safety_stock' => 1])
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_the_code_can_be_changed_later_and_purchases_stay_attached(): void
+    {
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+        $this->buy($part, '2026-10-10', 2, 20);
+
+        $this->put(route('parts.update', $part), ['part_code' => 'HDMI-1M', 'name' => 'HDMI 線', 'safety_stock' => 1])
+            ->assertRedirect(route('parts.show', $part));
+
+        $this->assertSame('HDMI-1M', $part->fresh()->part_code);
+        $this->assertSame(1, $part->fresh()->purchases()->count());
+        $this->get(route('parts.show', $part))->assertSee('零件履歷：HDMI-1M HDMI 線（1公尺）');
+    }
+
+    public function test_the_code_must_use_allowed_characters_and_is_required_when_editing(): void
+    {
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+
+        $this->post(route('parts.store'), ['part_code' => 'HDMI 2M', 'name' => '空白', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasErrors('part_code');
+        $this->put(route('parts.update', $part), ['part_code' => '', 'name' => 'HDMI 線', 'safety_stock' => 1])
+            ->assertSessionHasErrors('part_code');
+    }
+
+    public function test_the_live_check_reports_whether_a_code_is_available(): void
+    {
+        $this->loginAsAnyUser();
+        $part = $this->makePart(['part_code' => 'HDMI-2M']);
+
+        $this->getJson(route('parts.check-code', ['code' => 'hdmi-2m']))->assertJson(['available' => false]);
+        $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M', 'ignore' => $part->id]))->assertJson(['available' => true]);
+        $this->getJson(route('parts.check-code', ['code' => 'NEW-1']))->assertJson(['available' => true]);
+        $this->getJson(route('parts.check-code', ['code' => 'bad code']))->assertJson(['available' => false]);
+        $this->getJson(route('parts.check-code', ['code' => '']))->assertJson(['available' => true]);
     }
 
     // ---------- 列表與搜尋 ----------

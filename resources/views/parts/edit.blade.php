@@ -10,11 +10,7 @@
             @csrf
             @method('PUT')
 
-            {{-- 零件編號建立後就不能修改，維修、保養用料與成本報表都靠它對應。 --}}
-            <div class="mb-3">
-                <label class="form-label">零件編號</label>
-                <input type="text" class="form-control" value="{{ $part->part_code }}" disabled>
-            </div>
+            @include('parts._code-field', ['part' => $part, 'nextCode' => null])
 
             @include('parts._basic-fields', ['part' => $part])
 

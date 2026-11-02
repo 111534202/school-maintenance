@@ -226,6 +226,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // 零件庫存：需要 parts.manage 權限（身分主檔勾選；設備管理員預設有）。
     // parts.show 是零件履歷；採購紀錄掛在零件底下（新增採購會增加庫存），權限相同。
     Route::middleware('can:parts.manage')->group(function () {
+        // 即時檢查零件編號是否重複（要放在 resource 前面，否則 check-code 會被當成零件編號）。
+        Route::get('parts/check-code', [PartController::class, 'checkCode'])->name('parts.check-code');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
     });

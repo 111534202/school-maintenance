@@ -41,15 +41,17 @@ class PartController extends Controller
         return view('parts.create', ['nextCode' => Part::nextCode()]);
     }
 
-    /** 新增零件：編號自動產生；有填期初庫存時，會建立一筆「期初庫存」採購批次。 */
+    /** 新增零件：編號可以自己填，沒填就自動產生；有填期初庫存時，會建立一筆「期初庫存」採購批次。 */
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'part_code' => $this->codeRules(null, required: false),
             ...$this->basicRules(),
             'current_stock' => ['required', 'integer', 'min:0'],
             'unit_price' => ['required_unless:current_stock,0', 'nullable', 'integer', 'min:0'],
         ], [
             'unit_price.required_unless' => '有期初庫存時，請填寫期初單價。',
+            ...$this->codeMessages(),
         ]);
 
         $part = DB::transaction(fn () => Part::create($validated));
@@ -107,10 +109,13 @@ class PartController extends Controller
         return view('parts.edit', compact('part'));
     }
 
-    /** 修改基本資料（名稱、規格、品牌、型號、安全庫存）；編號與目前庫存不能在這裡改。 */
+    /** 修改基本資料（零件編號、名稱、規格、品牌、型號、安全庫存）；目前庫存不能在這裡改。 */
     public function update(Request $request, Part $part)
     {
-        $validated = $request->validate($this->basicRules());
+        $validated = $request->validate([
+            'part_code' => $this->codeRules($part->id, required: true),
+            ...$this->basicRules(),
+        ], $this->codeMessages());
 
         $part->update($validated);
 
@@ -139,6 +144,56 @@ class PartController extends Controller
 
         return redirect()->route('parts.index')
             ->with('success', "零件 {$part->part_code} 已刪除。");
+    }
+
+    /**
+     * 即時檢查零件編號能不能用（新增、修改表單輸入時呼叫，回傳 JSON）。
+     * 這只是提早提醒；真正送出時伺服器還會再檢查一次，避免兩個人同時送出相同編號。
+     */
+    public function checkCode(Request $request)
+    {
+        $code = trim((string) $request->query('code', ''));
+        $ignoreId = $request->integer('ignore') ?: null;
+
+        if ($code === '') {
+            return response()->json(['available' => true, 'message' => '未填寫，儲存時會自動產生 ' . Part::nextCode() . '。']);
+        }
+
+        if (! preg_match(self::CODE_PATTERN, $code) || mb_strlen($code) > 20) {
+            return response()->json(['available' => false, 'message' => '零件編號只能用英文字母、數字、「-」、「_」、「.」，最多 20 個字。']);
+        }
+
+        return Part::codeTaken($code, $ignoreId)
+            ? response()->json(['available' => false, 'message' => "零件編號「{$code}」已經被使用，請換一個。"])
+            : response()->json(['available' => true, 'message' => "零件編號「{$code}」可以使用。"]);
+    }
+
+    /** 零件編號允許的字元：英文字母、數字、- _ .（會印在標籤或表單上，所以不允許空白與特殊符號）。 */
+    private const CODE_PATTERN = '/^[A-Za-z0-9._-]+$/';
+
+    /** 零件編號的驗證規則：格式、長度，以及不可和其他零件重複（大小寫視為相同）。 */
+    private function codeRules(?int $ignoreId, bool $required): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            'string',
+            'max:20',
+            'regex:' . self::CODE_PATTERN,
+            function (string $attribute, mixed $value, \Closure $fail) use ($ignoreId) {
+                if (filled($value) && Part::codeTaken($value, $ignoreId)) {
+                    $fail("零件編號「{$value}」已經被使用，請換一個。");
+                }
+            },
+        ];
+    }
+
+    private function codeMessages(): array
+    {
+        return [
+            'part_code.required' => '請填寫零件編號。',
+            'part_code.max' => '零件編號最多 20 個字。',
+            'part_code.regex' => '零件編號只能用英文字母、數字、「-」、「_」、「.」。',
+        ];
     }
 
     /** 新增與修改共用的基本資料驗證。 */

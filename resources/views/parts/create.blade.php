@@ -9,12 +9,7 @@
         <form method="POST" action="{{ route('parts.store') }}">
             @csrf
 
-            {{-- 零件編號由系統依新增順序自動產生（PART-1、PART-2…），不用填。 --}}
-            <div class="mb-3">
-                <label class="form-label">零件編號</label>
-                <input type="text" class="form-control" value="{{ $nextCode }}（儲存後由系統產生）" disabled>
-                <div class="form-text">同一種零件的不同規格（例如 HDMI 線 2 公尺、5 公尺）請分開新增，各自會有不同的編號。</div>
-            </div>
+            @include('parts._code-field', ['part' => null, 'nextCode' => $nextCode])
 
             @include('parts._basic-fields', ['part' => null])
 
