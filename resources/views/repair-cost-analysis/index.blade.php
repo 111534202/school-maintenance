@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', '第一版成本分析')
+@section('title', __('common.nav.cost_analysis'))
 
 @section('content')
 <div class="container-fluid">
     <div class="page-header mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
-            <h1 class="h3 mb-1">第一版成本分析</h1>
+            <h1 class="h3 mb-1">{{ __('common.nav.cost_analysis') }}</h1>
             <p class="text-muted mb-0">
                 依維修紀錄建立時間統計備品材料成本。
             </p>

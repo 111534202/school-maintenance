@@ -1,7 +1,7 @@
 {{-- 選單連結內容（同時被手機版抽屜與桌面版側邊欄引入，所以寫成獨立檔案）。 --}}
 {{-- 每個連結都用 @can('權限') 包起來：沒有權限的人看不到該連結，而且就算手動輸入網址，路由的 can: 也會擋下來。 --}}
 {{-- 想新增選單項目：照下面的格式加一個 <a class="nav-link ...">，放進最適合的區塊（報修服務／保養管理／空間與零件）；主檔類放進「主檔」群組，並把它的權限加進 $masterPermissions。 --}}
-{{-- 選單的順序：主控台 → 報修服務 → 保養管理 → 空間與零件 → 主檔（可收合）→ 系統。文字都放在 lang 的 common.nav.* 裡。 --}}
+{{-- 選單的順序：主控台 → 主檔（可收合）→ 報修服務 → 保養管理 → 空間與零件 → 系統。文字都放在 lang 的 common.nav.* 裡。 --}}
 @php
     // $navId：收合區塊的 id 前綴（同一頁如果畫兩份選單，id 不能重複）。目前只有漢堡抽屜一份，由外面傳 drawer；沒傳就用 nav。
     $navId = $navId ?? 'nav';
@@ -13,40 +13,7 @@
 @endphp
 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>{{ __('common.nav.dashboard') }}</a>
 
-{{-- 以下三個區塊是日常使用的功能，各有一個小標題；沒有任何可見連結的區塊整個不顯示。 --}}
-
-{{-- ① 報修服務：自助知識庫與報修單，所有登入的人都看得到（案件能看到哪些，由報修單政策再限制）。 --}}
-<div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.repair_section') }}</div>
-<a class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}" href="{{ route('knowledge-base.index') }}"><i class="bi bi-book me-2"></i>{{ __('common.nav.knowledge_base') }}</a>
-{{-- repair-logs.* 是「填維修紀錄」頁，也算在報修底下，這樣填紀錄時「報修」仍會亮起來。 --}}
-<a class="nav-link {{ request()->routeIs('repairs.*', 'repair-logs.*') ? 'active' : '' }}" href="{{ route('repairs.index') }}"><i class="bi bi-tools me-2"></i>{{ __('common.nav.repair_requests') }}</a>
-
-{{-- ② 保養管理（王佑恩的模組）：查看類連結需要 maintenance.view；AI 預防保養另外需要 ai-maintenance.manage。 --}}
-@canany(['maintenance.view', 'ai-maintenance.manage'])
-    <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.maintenance_section') }}</div>
-    @can('maintenance.view')
-        <a class="nav-link {{ request()->routeIs('maintenance-items.*') ? 'active' : '' }}" href="{{ route('maintenance-items.index') }}"><i class="bi bi-list-check me-2"></i>{{ __('common.nav.maintenance_items') }}</a>
-        <a class="nav-link {{ request()->routeIs('maintenance-plans.*') ? 'active' : '' }}" href="{{ route('maintenance-plans.index') }}"><i class="bi bi-calendar-event me-2"></i>{{ __('common.nav.maintenance_plans') }}</a>
-        <a class="nav-link {{ request()->routeIs('maintenance-orders.*') ? 'active' : '' }}" href="{{ route('maintenance-orders.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>{{ __('common.nav.maintenance_orders') }}</a>
-        <a class="nav-link {{ request()->routeIs('device-profile.*') ? 'active' : '' }}" href="{{ route('device-profile.index') }}"><i class="bi bi-journal-text me-2"></i>{{ __('common.nav.device_profile') }}</a>
-        @if (Route::has('repair-cost-analysis.index'))
-            <a class="nav-link {{ request()->routeIs('repair-cost-analysis.*') ? 'active' : '' }}" href="{{ route('repair-cost-analysis.index') }}"><i class="bi bi-cash-stack me-2"></i>第一版成本分析</a>
-        @endif
-    @endcan
-    @can('ai-maintenance.manage')
-        <a class="nav-link {{ request()->routeIs('preventive-candidates.*', 'ai-settings.*') ? 'active' : '' }}" href="{{ route('preventive-candidates.index') }}"><i class="bi bi-robot me-2"></i>{{ __('common.nav.preventive_ai') }}</a>
-    @endcan
-@endcanany
-
-{{-- ③ 空間與零件（劉家芸的模組）：空間預約人人可申請（審核才需要 reservations.manage）；零件庫存需要 parts.manage。 --}}
-<div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.resource_section') }}</div>
-<a class="nav-link {{ request()->routeIs('reservations.*') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="bi bi-calendar-check me-2"></i>{{ __('common.nav.reservations') }}</a>
-@can('parts.manage')
-    <a class="nav-link {{ request()->routeIs('parts.*') ? 'active' : '' }}" href="{{ route('parts.index') }}"><i class="bi bi-box-seam me-2"></i>{{ __('common.nav.parts') }}</a>
-@endcan
-
-{{-- 以下連結都依「身分主檔」勾選的權限顯示，沒有權限的人看不到，直接輸入網址也進不去（路由有 can: 保護）。 --}}
-
+{{-- 主檔（可收合）：緊接在主控台下面。裡面的連結都依「身分主檔」勾選的權限顯示，沒有權限的人看不到，直接輸入網址也進不去（路由有 can: 保護）。 --}}
 @canany($masterPermissions)
     <a class="nav-link nav-group-toggle d-flex justify-content-between align-items-center {{ $masterOpen ? '' : 'collapsed' }}"
         {{-- 點這個連結會展開／收合 href 指向的區塊（Bootstrap 的 collapse 功能）。 --}}
@@ -85,6 +52,39 @@
         </div>
     </div>
 @endcanany
+
+{{-- 以下三個區塊是日常使用的功能，各有一個小標題；沒有任何可見連結的區塊整個不顯示。 --}}
+
+{{-- ① 報修服務：自助知識庫與報修單，所有登入的人都看得到（案件能看到哪些，由報修單政策再限制）。 --}}
+<div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.repair_section') }}</div>
+<a class="nav-link {{ request()->routeIs('knowledge-base.*') ? 'active' : '' }}" href="{{ route('knowledge-base.index') }}"><i class="bi bi-book me-2"></i>{{ __('common.nav.knowledge_base') }}</a>
+{{-- repair-logs.* 是「填維修紀錄」頁，也算在報修底下，這樣填紀錄時「報修」仍會亮起來。 --}}
+<a class="nav-link {{ request()->routeIs('repairs.*', 'repair-logs.*') ? 'active' : '' }}" href="{{ route('repairs.index') }}"><i class="bi bi-tools me-2"></i>{{ __('common.nav.repair_requests') }}</a>
+
+{{-- ② 保養管理（王佑恩的模組）：查看類連結需要 maintenance.view；AI 預防保養另外需要 ai-maintenance.manage。 --}}
+@canany(['maintenance.view', 'ai-maintenance.manage'])
+    <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.maintenance_section') }}</div>
+    @can('maintenance.view')
+        <a class="nav-link {{ request()->routeIs('maintenance-items.*') ? 'active' : '' }}" href="{{ route('maintenance-items.index') }}"><i class="bi bi-list-check me-2"></i>{{ __('common.nav.maintenance_items') }}</a>
+        <a class="nav-link {{ request()->routeIs('maintenance-plans.*') ? 'active' : '' }}" href="{{ route('maintenance-plans.index') }}"><i class="bi bi-calendar-event me-2"></i>{{ __('common.nav.maintenance_plans') }}</a>
+        <a class="nav-link {{ request()->routeIs('maintenance-orders.*') ? 'active' : '' }}" href="{{ route('maintenance-orders.index') }}"><i class="bi bi-wrench-adjustable me-2"></i>{{ __('common.nav.maintenance_orders') }}</a>
+        <a class="nav-link {{ request()->routeIs('device-profile.*') ? 'active' : '' }}" href="{{ route('device-profile.index') }}"><i class="bi bi-journal-text me-2"></i>{{ __('common.nav.device_profile') }}</a>
+    @endcan
+    @can('ai-maintenance.manage')
+        <a class="nav-link {{ request()->routeIs('preventive-candidates.*', 'ai-settings.*') ? 'active' : '' }}" href="{{ route('preventive-candidates.index') }}"><i class="bi bi-robot me-2"></i>{{ __('common.nav.preventive_ai') }}</a>
+    @endcan
+@endcanany
+
+{{-- ③ 空間與零件（劉家芸的模組）：空間預約人人可申請（審核才需要 reservations.manage）；零件庫存需要 parts.manage；成本分析報表需要 maintenance.view。 --}}
+<div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.resource_section') }}</div>
+<a class="nav-link {{ request()->routeIs('reservations.*') ? 'active' : '' }}" href="{{ route('reservations.index') }}"><i class="bi bi-calendar-check me-2"></i>{{ __('common.nav.reservations') }}</a>
+@can('parts.manage')
+    <a class="nav-link {{ request()->routeIs('parts.*') ? 'active' : '' }}" href="{{ route('parts.index') }}"><i class="bi bi-box-seam me-2"></i>{{ __('common.nav.parts') }}</a>
+@endcan
+{{-- 成本分析報表：統計維修用掉的零件與材料費，沿用 maintenance.view 權限。 --}}
+@can('maintenance.view')
+    <a class="nav-link {{ request()->routeIs('repair-cost-analysis.*') ? 'active' : '' }}" href="{{ route('repair-cost-analysis.index') }}"><i class="bi bi-cash-stack me-2"></i>{{ __('common.nav.cost_analysis') }}</a>
+@endcan
 
 @can('audit-logs.view')
     <div class="text-uppercase text-muted small fw-semibold px-3 pt-3 pb-1">{{ __('common.nav.system_section') }}</div>

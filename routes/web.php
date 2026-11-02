@@ -149,7 +149,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
         ->middleware('can:maintenance.view')->name('maintenance-completion-rate.index');
 
-    // 第一版成本分析：唯讀頁面，沿用 maintenance.view 權限。
+    // 成本分析報表：唯讀頁面，沿用 maintenance.view 權限。
     Route::get('repair-cost-analysis', [RepairCostAnalysisController::class, 'index'])
         ->middleware('can:maintenance.view')
         ->name('repair-cost-analysis.index');

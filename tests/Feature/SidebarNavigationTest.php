@@ -68,12 +68,12 @@ class SidebarNavigationTest extends TestCase
         $this->assertStringNotContainsString('保養項目', $html);
     }
 
-    // 區塊順序固定：報修服務 → 保養管理 → 空間與零件 → 主檔 → 系統。
+    // 區塊順序固定：主檔（緊接主控台）→ 報修服務 → 保養管理 → 空間與零件（含成本分析報表）→ 系統。
     public function test_sections_appear_in_the_documented_order(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('admin', '系統管理員'));
 
-        $positions = array_map(fn ($text) => strpos($html, $text), ['報修服務', '保養管理', '空間與零件', 'bi-database', '操作紀錄']);
+        $positions = array_map(fn ($text) => strpos($html, $text), ['bi-database', '報修服務', '保養管理', '空間與零件', '成本分析報表', '操作紀錄']);
 
         $this->assertNotContains(false, $positions);
         $sorted = $positions;
