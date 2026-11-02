@@ -107,7 +107,8 @@ class ReservationRepairNoticeTest extends TestCase
             ->assertSee('選擇教室')
             ->assertSee('data-id="' . $this->classroom->id . '"', false)
             ->assertDontSee('暫停預約</span>', false)   // 選單裡不放提示
-            ->assertSee('印表機正在等待維修');            // 提醒資料給選好教室後的提示框使用
+            // 提醒資料交給選好教室後的提示框使用（@json 會把中文轉成 \uXXXX，所以檢查傳給畫面的資料）
+            ->assertViewHas('repairNotices', fn ($notices) => $notices[$this->classroom->id][0]['text'] === '印表機正在等待維修');
 
         $this->assertSame([], ClassroomRepairNotices::suspendedIds([$this->classroom->id]));
 
