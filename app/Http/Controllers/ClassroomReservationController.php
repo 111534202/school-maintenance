@@ -152,7 +152,7 @@ class ClassroomReservationController extends Controller
             'slots.*.reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'slots.*.start_time' => ['required', 'date_format:H:i'],
             'slots.*.end_time' => ['required', 'date_format:H:i'],
-            'slots.*.period_no' => ['nullable', 'integer', 'min:1'],
+            'slots.*.period_no' => ['nullable', 'integer', 'min:0'],   // 早自習為 0、午休為空
             'purpose' => ['nullable', 'string', 'max:255'],
         ]);
 

@@ -107,7 +107,7 @@ class TimetableController extends Controller
         $monday = $selectedDate->copy()->startOfWeek(Carbon::MONDAY);
         $days = [];
 
-        for ($offset = 0; $offset < 5; $offset++) {
+        for ($offset = 0; $offset < 7; $offset++) {   // 星期一到星期日
             $date = $monday->copy()->addDays($offset);
             $dateString = $date->toDateString();
 
@@ -155,7 +155,7 @@ class TimetableController extends Controller
             ],
             'selected_date' => $selectedDate->toDateString(),
             'week_start' => $monday->toDateString(),
-            'week_end' => $monday->copy()->addDays(4)->toDateString(),
+            'week_end' => $monday->copy()->addDays(6)->toDateString(),
             'days' => $days,
         ]);
     }

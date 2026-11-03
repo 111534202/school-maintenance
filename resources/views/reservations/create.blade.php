@@ -772,7 +772,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             groupedByDate[item.date].push(
-                '第 ' + item.period.period_no + ' 節'
+                periodLabel(item.period)
             );
         });
 
@@ -791,6 +791,11 @@ document.addEventListener('DOMContentLoaded', function () {
         step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
         classNameInput.focus({ preventScroll: true });
     });
+    // 節次名稱：早自習、第1節…、午休（後端課表設定提供 label；舊資料沒有就用「第 N 節」）。
+    function periodLabel(period) {
+        return period.label || ('第' + period.period_no + '節');
+    }
+
     // 使用者電腦目前的日期（YYYY-MM-DD）與時間（HH:MM），用來判斷哪些節次已經過去；送出時後端會再檢查一次。
     function pad2(n) { return String(n).padStart(2, '0'); }
     function localToday() {
@@ -823,7 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectedPeriodSummary.textContent = '尚未選取時段。';
         timetableResult.hidden = false;
 
-        const weekdayNames = ['星期一', '星期二', '星期三', '星期四', '星期五'];
+        const weekdayNames = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
         // 週切換：上一週／下一週（和報修派工的課表視窗相同），切換後直接重新查詢。
         const weekNav = document.createElement('div');
         weekNav.className = 'd-flex flex-wrap align-items-center gap-2 mb-2';
@@ -868,13 +873,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const table = document.createElement('table');
         table.className = 'table table-bordered align-middle text-center';
-        table.style.minWidth = '900px';
+        table.style.minWidth = '1000px';
 
         const thead = document.createElement('thead');
         thead.className = 'table-light';
         const headerRow = document.createElement('tr');
 
-        addScheduleText(headerRow, 'th', '節次', 'text-nowrap');
+        // 節次與時間合併成一欄（例如「第1節」下面一行「08:30－09:20」）。
         addScheduleText(headerRow, 'th', '時間', 'text-nowrap');
 
         data.days.forEach(function (day, index) {
@@ -896,18 +901,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         periods.forEach(function (basePeriod, periodIndex) {
             const row = document.createElement('tr');
-            addScheduleText(row, 'th', '第 ' + basePeriod.period_no + ' 節', 'text-nowrap');
-            addScheduleText(
-                row,
-                'td',
-                basePeriod.start_time + '－' + basePeriod.end_time,
-                'text-nowrap'
-            );
+            const timeHeader = addScheduleText(row, 'th', periodLabel(basePeriod), 'text-nowrap');
+            addScheduleText(timeHeader, 'div', basePeriod.start_time + '－' + basePeriod.end_time, 'small fw-normal text-muted');
 
             data.days.forEach(function (day) {
                 const period = day.periods[periodIndex];
                 const cell = document.createElement('td');
-                cell.style.minWidth = '145px';
+                cell.style.minWidth = '120px';
 
                 if (!period) {
                     cell.textContent = '—';
@@ -930,7 +930,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (occupied) {
                     cell.className = 'table-secondary';
                 } else if (isPast) {
-                    cell.className = 'text-muted';
+                    cell.className = 'table-secondary text-muted';   // 時間已過的空堂維持灰底
                 } else if (pending.length) {
                     cell.className = 'table-warning';
                 } else {
@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
 
                                 groupedByDate[item.date].push(
-                                    '第 ' + item.period.period_no + ' 節'
+                                    periodLabel(item.period)
                                 );
                             });
 

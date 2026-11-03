@@ -416,7 +416,7 @@
                 const tbody = table.createTBody();
                 data.days[0].periods.forEach(function (period, index) {
                     const row = tbody.insertRow();
-                    row.appendChild(cell('第 ' + period.period_no + ' 節\n' + period.start_time + '–' + period.end_time, 'text-nowrap table-light'));
+                    row.appendChild(cell((period.label || ('第 ' + period.period_no + ' 節')) + '\n' + period.start_time + '–' + period.end_time, 'text-nowrap table-light'));
 
                     data.days.forEach(function (day) {
                         const p = day.periods[index];
@@ -439,7 +439,7 @@
                             td = cell(label, cls + ' tt-free');
                             td.tabIndex = 0;
                             td.setAttribute('role', 'button');
-                            td.setAttribute('aria-label', day.date + ' 第 ' + p.period_no + ' 節 ' + p.start_time + '，選這個時間');
+                            td.setAttribute('aria-label', day.date + ' ' + (p.label || ('第 ' + p.period_no + ' 節')) + ' ' + p.start_time + '，選這個時間');
                             const choose = function () {
                                 if (targetInput) { targetInput.value = day.date + 'T' + p.start_time; }
                                 bootstrap.Modal.getInstance(modal).hide();
