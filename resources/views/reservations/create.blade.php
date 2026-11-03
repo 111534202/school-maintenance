@@ -156,7 +156,7 @@
                                 id="reservation_date"
                                 name="reservation_date"
                                 class="form-control @error('reservation_date') is-invalid @enderror"
-                                value="{{ old('reservation_date') }}"
+                                value="{{ old('reservation_date', now()->toDateString()) }}"
                                 min="{{ now()->toDateString() }}"
                                 required
                             >
