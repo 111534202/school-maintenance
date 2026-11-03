@@ -791,6 +791,17 @@ document.addEventListener('DOMContentLoaded', function () {
         step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
         classNameInput.focus({ preventScroll: true });
     });
+    // 使用者電腦目前的日期（YYYY-MM-DD）與時間（HH:MM），用來判斷哪些節次已經過去；送出時後端會再檢查一次。
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function localToday() {
+        const d = new Date();
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    function localNowTime() {
+        const d = new Date();
+        return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+
     // 'YYYY-MM-DD' 加減天數（用 UTC 計算，避免時區造成日期偏移一天）。
     function shiftDate(dateString, days) {
         const parts = dateString.split('-').map(Number);
@@ -912,15 +923,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     return item.status === 'pending';
                 });
                 const occupied = Boolean(period.is_class) || hasApproved;
-                const today = dateInput.min || dateInput.value;
-                const isPast = day.date < today;
+                // 時間已過：今天以前的日期，或今天但這一節已經開始（例如現在 13:00，13:00 以前開始的節次都算過去），不能預約。
+                const isPast = day.date < localToday() ||
+                    (day.date === localToday() && String(period.start_time).slice(0, 5) <= localNowTime());
 
                 if (occupied) {
                     cell.className = 'table-secondary';
-                } else if (pending.length) {
-                    cell.className = 'table-warning';
                 } else if (isPast) {
                     cell.className = 'text-muted';
+                } else if (pending.length) {
+                    cell.className = 'table-warning';
                 } else {
                     cell.className = 'table-success';
                 }
@@ -930,12 +942,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     addScheduleText(cell, 'div', period.course_name || '課程中', 'small');
                 } else if (!hasApproved && !pending.length) {
                     addScheduleText(cell, 'div', '空堂', 'fw-semibold mb-2');
-                    addScheduleText(
-                        cell,
-                        'span',
-                        '可預約',
-                        'badge text-bg-success'
-                    );
+                    if (!isPast) {
+                        addScheduleText(cell, 'span', '可預約', 'badge text-bg-success');
+                    }
                 }
 
                 if (hasApproved) {
@@ -966,7 +975,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (occupied) {
                     // 已有課堂時保留班級與課程資訊，不額外顯示不可選標籤。
                 } else if (isPast) {
-                    addScheduleText(cell, 'span', '日期已過', 'badge text-bg-light mt-1');
+                    addScheduleText(cell, 'span', '時間已過', 'badge text-bg-light border text-muted');
                 } else {
                     cell.style.cursor = 'pointer';
                     cell.title = pending.length

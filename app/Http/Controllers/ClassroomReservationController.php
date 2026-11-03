@@ -166,6 +166,16 @@ class ClassroomReservationController extends Controller
         $uniqueSlots = [];
 
         foreach ($slots as $slot) {
+            // 不能預約已經開始（或已經過去）的時段：今天的節次，開始時間必須晚於現在。
+            if (
+                $slot['reservation_date'] === now()->toDateString()
+                && substr((string) $slot['start_time'], 0, 5) <= now()->format('H:i')
+            ) {
+                return back()
+                    ->withInput()
+                    ->with('error', '不能預約已經過去的時段（' . $slot['reservation_date'] . ' ' . substr((string) $slot['start_time'], 0, 5) . '），請重新選擇。');
+            }
+
             if (
                 strtotime($slot['end_time']) <= strtotime($slot['start_time'])
             ) {

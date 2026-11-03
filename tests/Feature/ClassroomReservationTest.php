@@ -758,4 +758,21 @@ class ClassroomReservationTest extends TestCase
         $this->assertSame('14:00', substr((string) $reservation->end_time, 0, 5));
         $this->assertSame(2, $reservation->slots()->count());
     }
+
+    /** 今天已經開始的節次不能預約；今天稍晚的節次可以。 */
+    public function test_a_period_that_has_already_started_today_cannot_be_reserved(): void
+    {
+        $classroom = $this->makeClassroom();
+        $this->travelTo(now()->setTime(13, 0));
+        $today = now()->toDateString();
+
+        $this->post(route('reservations.store'), $this->payload($classroom, [
+            'reservation_date' => $today, 'start_time' => '10:10', 'end_time' => '11:00',
+        ]))->assertSessionHas('error');
+        $this->assertDatabaseCount('classroom_reservations', 0);
+
+        $this->post(route('reservations.store'), $this->payload($classroom, [
+            'reservation_date' => $today, 'start_time' => '13:10', 'end_time' => '14:00',
+        ]))->assertSessionHas('success');
+    }
 }
