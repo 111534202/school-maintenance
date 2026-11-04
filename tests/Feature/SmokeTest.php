@@ -97,7 +97,7 @@ class SmokeTest extends TestCase
     #[DataProvider('roles')]
     public function test_every_page_opens_without_a_server_error(string $slug): void
     {
-        $user = User::whereHas('role', fn ($q) => $q->where('slug', $slug))->orderBy('id')->firstOrFail();
+        $user = User::whereHas('role', fn ($q) => $q->where('role_code', $slug))->orderBy('id')->firstOrFail();
         $this->actingAs($user);
 
         $problems = [];
