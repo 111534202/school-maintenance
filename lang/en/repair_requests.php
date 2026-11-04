@@ -19,6 +19,8 @@ return [
         'classroom_all' => 'All classrooms',
         // Notice shown when arriving from the device list (?device_id=); :device is replaced with the device code.
         'only_device' => 'Showing repair requests of device ":device" only',
+        // Notice shown when arriving from the dashboard's "Overdue Repairs" card (?overdue=1).
+        'only_overdue' => 'Showing overdue repair requests only (open and past the scheduled time)',
     ],
 
     // 報修看板表格欄位標題。
@@ -34,6 +36,8 @@ return [
     ],
 
     'unassigned' => 'Unassigned',
+    // Overdue badge (shown next to the status when the case is still open and past its scheduled time).
+    'overdue' => 'Overdue',
     'active_case_suffix' => '(:count open case(s))',
     'not_filled' => 'Not filled in',
     'yes' => 'Yes',

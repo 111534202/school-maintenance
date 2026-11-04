@@ -53,6 +53,9 @@ class DashboardController extends Controller
         // 「進行中工單」= 除了「已結案」以外全部加起來。
         $openCount = collect($repairStatuses)->where('key', '!=', RepairRequestStatus::Completed->value)->sum('count');
 
+        // 「逾時工單」= 還沒結案、且已經超過預計處理時間的案件（見 RepairRequest::scopeOverdue）。
+        $overdueCount = RepairRequest::visibleTo($user)->overdue()->count();
+
         // 近 14 天每天新增幾張報修單（沒有的日子補 0，折線才不會斷）。
         $since = now()->subDays(13)->startOfDay();   // 13 天前的 00:00，加上今天剛好 14 天
         $perDay = RepairRequest::visibleTo($user)->where('created_at', '>=', $since)->get()
@@ -72,6 +75,7 @@ class DashboardController extends Controller
             'openCount' => $openCount,
             'pendingCount' => (int) ($statusCounts[RepairRequestStatus::Pending->value] ?? 0),
             'pendingReviewCount' => (int) ($statusCounts[RepairRequestStatus::PendingReview->value] ?? 0),
+            'overdueCount' => $overdueCount,
             'trend' => $trend,
             'deviceStatuses' => null,
             'deviceTotal' => null,

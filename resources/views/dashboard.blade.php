@@ -22,6 +22,8 @@
         ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index'), 'note' => null],
         ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null],
         ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null],
+        // 逾時工單：還沒結案、且已經超過預計處理時間（沒填預計時間的不算），紅色提醒主管該催進度了。
+        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['overdue' => 1]), 'note' => null],
     ];
     // 下面三張卡片依權限才加入：Controller 沒算（null）就代表這個人沒有對應主檔的權限。
     if ($deviceTotal !== null) {

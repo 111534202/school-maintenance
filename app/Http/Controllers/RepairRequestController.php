@@ -65,6 +65,8 @@ class RepairRequestController extends Controller
             ->when($request->filled('classroom_id'), fn ($query) => $query->whereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id'))))
             // 狀態篩選：有帶 ?status= 才套用。
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
+            ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
             // 地點篩選：like %字% 是「包含這段字」，所以打 A1 也找得到 A101。
             ->when($request->filled('location'), fn ($query) => $query->where('location', 'like', '%' . $request->string('location') . '%'))
             // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。

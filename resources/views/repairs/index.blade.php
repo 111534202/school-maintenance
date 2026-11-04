@@ -57,11 +57,15 @@
                 @if (request('device_id'))
                     <input type="hidden" name="device_id" value="{{ request('device_id') }}">
                 @endif
+                {{-- 從主控台「逾時工單」卡片連過來時網址帶有 overdue=1，同樣要帶著，不然一篩選就被洗掉。 --}}
+                @if (request('overdue'))
+                    <input type="hidden" name="overdue" value="1">
+                @endif
                 <div class="d-inline-flex gap-1">
                     <button class="btn btn-primary btn-sm icon-btn" type="submit"
                         title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
                     {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('status') || request('location') || request('assignee') || request('classroom_id') || request('device_id'))
+                    @if (request('status') || request('location') || request('assignee') || request('classroom_id') || request('device_id') || request('overdue'))
                         <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.index') }}"
                             title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
                     @endif
@@ -69,6 +73,14 @@
             </form>
         </div>
     </div>
+
+    {{-- 從主控台「逾時工單」卡片連過來（?overdue=1）時，提醒目前篩選範圍。 --}}
+    @if (request('overdue'))
+        <div class="alert alert-danger py-2 d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-alarm me-2"></i>{{ __('repair_requests.filter.only_overdue') }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['overdue', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endif
 
     {{-- 從設備主檔連過來（?device_id=）時，提醒「目前只看這台設備」，並提供清除的連結。 --}}
     @if ($filteredDevice)
@@ -127,7 +139,13 @@
                                     @endif
                                 </td>
                                 {{-- 引入共用的狀態徽章（看板與詳細頁用同一份，顏色集中管理）。 --}}
-                                <td class="text-center">@include('repairs._status-badge', ['status' => $repairRequest->status])</td>
+                                <td class="text-center">
+                                    @include('repairs._status-badge', ['status' => $repairRequest->status])
+                                    {{-- 逾時提醒：還沒結案、且已經超過預計處理時間（見 RepairRequest::isOverdue）。 --}}
+                                    @if ($repairRequest->is_overdue)
+                                        <span class="badge text-bg-danger ms-1"><i class="bi bi-alarm"></i> {{ __('repair_requests.overdue') }}</span>
+                                    @endif
+                                </td>
                                 <td>
                                     {{-- 讓主管看到「這個人手上還有幾件沒結案」，跟名字放在同一格，方便判斷要不要再加派；
                                          系統不會自動幫忙排序或推薦人選。 --}}

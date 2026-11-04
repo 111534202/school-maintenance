@@ -13,6 +13,7 @@ return [
         'open_repairs' => '進行中工單',
         'pending_dispatch' => '待派工',
         'pending_review' => '待驗收',
+        'overdue' => '逾時工單',
         'devices' => '設備總數',
         'users' => '用戶數量',
         'classrooms' => '教室數量',

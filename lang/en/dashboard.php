@@ -13,6 +13,7 @@ return [
         'open_repairs' => 'Open Repairs',
         'pending_dispatch' => 'Awaiting Dispatch',
         'pending_review' => 'Awaiting Acceptance',
+        'overdue' => 'Overdue Repairs',
         'devices' => 'Total Devices',
         'users' => 'Total Users',
         'classrooms' => 'Total Classrooms',
