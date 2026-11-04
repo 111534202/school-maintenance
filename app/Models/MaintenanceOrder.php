@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'maintenance_plan_id',
     'device_id',
-    'device_category',
+    'device_category_id',
     'source',
     'status',
     'scheduled_date',
@@ -33,6 +33,16 @@ class MaintenanceOrder extends Model
     public const STATUS_IN_PROGRESS = 'in_progress';
 
     public const STATUS_COMPLETED = 'completed';
+
+    // 第三正規化：已經指定了一台設備（device_id），類別由設備推得，不另存 device_category_id（儲存時自動清掉）。
+    protected static function booted(): void
+    {
+        static::saving(function (self $model) {
+            if ($model->device_id !== null) {
+                $model->device_category_id = null;
+            }
+        });
+    }
 
     /**
      * @return array<string, string>
@@ -55,6 +65,20 @@ class MaintenanceOrder extends Model
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class)->withTrashed();
+    }
+
+    /** 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。 */
+    public function deviceCategory(): BelongsTo
+    {
+        return $this->belongsTo(DeviceCategory::class);
+    }
+
+    /**
+     * 畫面顯示用的設備類別名稱：有設備就用設備本身的類別，沒有設備（只針對一類設備的工單）才用工單自己的設備類別。
+     */
+    public function categoryName(): ?string
+    {
+        return $this->device?->category?->name ?? $this->deviceCategory?->name;
     }
 
     public function result(): HasOne

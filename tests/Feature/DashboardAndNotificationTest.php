@@ -24,7 +24,7 @@ class DashboardAndNotificationTest extends TestCase
     {
         $classroom = Classroom::create([
             'department_id' => Department::create(['name' => '資訊組'])->id, 'campus' => '本校區', 'building' => 'A棟',
-            'floor' => '1', 'room_code' => 'A101', 'room_name' => 'A101 教室', 'reservation_status' => 'abnormal',
+            'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'reservation_status' => 'abnormal',
         ]);
         $category = DeviceCategory::create(['name' => '投影機']);
         foreach (['normal', 'normal', 'repairing'] as $i => $status) {
@@ -126,7 +126,7 @@ class DashboardAndNotificationTest extends TestCase
         // 用戶身分圖表點某個身分 → 用戶主檔只列該身分
         $other = $this->makeTechnician();
         $this->get(route('users.index', ['role_id' => $admin->role_id]))
-            ->assertSee($admin->username)->assertDontSee($other->username);
+            ->assertSee($admin->account)->assertDontSee($other->account);
     }
 
     // 所有主檔與紀錄頁的表格都有框線（全站設計規則）。

@@ -39,6 +39,8 @@
         .page-narrow { max-width: 880px; }
         /* 表單分區標題的字型。 */
         .form-section-title { font-size: 0.95rem; font-weight: 600; color: #495057; }
+        /* 選單抽屜：寬度固定 280px（Bootstrap 預設 400px 在桌面太寬）；窄螢幕時最多佔 85% 寬度。 */
+        #sidebarOffcanvas { --bs-offcanvas-width: min(280px, 85vw); }
         /* 桌面側邊欄至少撐到視窗底部（扣掉頂部列 56px）。 */
         .app-sidebar { min-height: calc(100vh - 56px); }
         /* 選單連結平常是深灰色，目前所在頁面（.active）是藍底白字。 */
@@ -73,7 +75,7 @@
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
-                {{-- 手機／平板才出現的「漢堡」按鈕：點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
+                {{-- 手機／平板才出現的「漢堡」按鈕：點了會打開下面的 #sidebarOffcanvas 側邊選單（桌面版用左邊固定的側邊欄）。 --}}
                 <button class="btn btn-outline-light btn-sm d-lg-none flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
@@ -146,8 +148,7 @@
     @endif
 
     @auth
-        {{-- 手機與平板的側邊選單（< lg 才會出現按鈕觸發） --}}
-        {{-- 手機版的滑出側邊選單（桌面版不顯示，改用右邊的固定側邊欄）。 --}}
+        {{-- 手機與平板的滑出側邊選單（< lg 才會出現按鈕觸發；桌面版改用左邊的固定側邊欄）。 --}}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
             <div class="offcanvas-header">
                 <h6 class="offcanvas-title">選單</h6>

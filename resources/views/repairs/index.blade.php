@@ -39,7 +39,7 @@
                     <select id="classroom_id" name="classroom_id" class="form-select form-select-sm" style="width: 12rem;">
                         <option value="">{{ __('repair_requests.filter.classroom_all') }}</option>
                         @foreach ($classrooms as $classroom)
-                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->room_code }} - {{ $classroom->room_name }}</option>
+                            <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->classroom_code }} - {{ $classroom->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -85,13 +85,13 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格（有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0">
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,5">
                     <thead class="table-light">
                         <tr>
                             <th>{{ __('repair_requests.table.title') }}</th>
                             <th>{{ __('repair_requests.table.device_location') }}</th>
                             <th class="text-center">{{ __('repair_requests.table.impact_level') }}</th>
-                            <th class="text-center">{{ __('repair_requests.table.affects_class') }}</th>
+                            <th class="text-center">{{ __('repair_requests.table.is_class_affected') }}</th>
                             <th class="text-center">{{ __('repair_requests.table.status') }}</th>
                             <th>{{ __('repair_requests.table.assignee') }}</th>
                             <th>{{ __('repair_requests.table.submitted_at') }}</th>
@@ -113,14 +113,14 @@
                                     {{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled') }}
                                     {{-- 報修的是真實設備時，在下面顯示它所在的教室，方便一眼看出是哪間教室的問題。 --}}
                                     @if ($repairRequest->device?->classroom)
-                                        <div class="small text-muted">{{ $repairRequest->device->classroom->room_code }} {{ $repairRequest->device->classroom->room_name }}</div>
+                                        <div class="small text-muted">{{ $repairRequest->device->classroom->classroom_code }} {{ $repairRequest->device->classroom->name }}</div>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     <span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span>
                                 </td>
                                 <td class="text-center">
-                                    @if ($repairRequest->affects_class)
+                                    @if ($repairRequest->is_class_affected)
                                         <span class="badge text-bg-danger">{{ __('repair_requests.yes') }}</span>
                                     @else
                                         <span class="badge text-bg-light border text-muted">{{ __('repair_requests.no') }}</span>
@@ -132,7 +132,7 @@
                                     {{-- 讓主管看到「這個人手上還有幾件沒結案」，跟名字放在同一格，方便判斷要不要再加派；
                                          系統不會自動幫忙排序或推薦人選。 --}}
                                     {{-- 維修人員：優先顯示指派的真實用戶姓名，沒有就用文字備註，再沒有顯示「未指派」。 --}}
-                                    {{ $repairRequest->assignedTechnician->name ?? $repairRequest->assignee_note ?? __('repair_requests.unassigned') }}
+                                    {{ $repairRequest->assignedTechnician->name ?? __('repair_requests.unassigned') }}
                                     {{-- 顯示該維修人員「手上還有 N 件未結案」，讓主管判斷是否要再加派（只顯示數字，不自動推薦）。 --}}
                                     @if ($repairRequest->assigned_to && ($activeCaseCountsByAssignee[$repairRequest->assigned_to] ?? 0) > 0)
                                         <span class="text-muted small">{{ __('repair_requests.active_case_suffix', ['count' => $activeCaseCountsByAssignee[$repairRequest->assigned_to]]) }}</span>

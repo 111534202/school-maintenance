@@ -23,6 +23,8 @@ class RepairRequestBoardFlowTest extends TestCase
     {
         parent::setUp();
 
+        app()->setLocale('zh_TW');
+
         $this->loginAsAnyUser();
     }
 
@@ -36,7 +38,7 @@ class RepairRequestBoardFlowTest extends TestCase
             'device_note' => 'A101 投影機',
             'description' => '畫面全暗，燈泡指示燈閃紅燈。',
             'impact_level' => 'high',
-            'affects_class' => '1',
+            'is_class_affected' => '1',
             'attachments' => [UploadedFile::fake()->image('broken.jpg')],
         ];
 
@@ -45,7 +47,7 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::firstWhere('title', 'A101 投影機燈泡燒壞');
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $this->assertCount(1, $repairRequest->attachments);
-        Storage::disk('local')->assertExists($repairRequest->attachments->first()->disk_path);
+        Storage::disk('local')->assertExists($repairRequest->attachments->first()->file_path);
     }
 
     // 完整流程：新報修 → 派工 → 開始處理 → 填維修紀錄 → 待驗收。
@@ -113,7 +115,6 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create([
             'status' => 'assigned',
             'assigned_to' => $originalTechnician->id,
-            'assignee_note' => $originalTechnician->name,
         ]);
 
         $response = $this->post(route('repairs.assign', $repairRequest), [
@@ -270,7 +271,6 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create([
             'status' => 'assigned',
             'assigned_to' => $originalTechnician->id,
-            'assignee_note' => $originalTechnician->name,
         ]);
 
         $response = $this->post(route('repairs.reassign', $repairRequest), [
@@ -292,7 +292,6 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create([
             'status' => 'in_progress',
             'assigned_to' => $originalTechnician->id,
-            'assignee_note' => $originalTechnician->name,
         ]);
 
         $response = $this->post(route('repairs.reassign', $repairRequest), [
@@ -328,7 +327,6 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create([
             'status' => 'completed',
             'assigned_to' => $originalTechnician->id,
-            'assignee_note' => $originalTechnician->name,
         ]);
 
         $response = $this->post(route('repairs.reassign', $repairRequest), [
@@ -370,7 +368,7 @@ class RepairRequestBoardFlowTest extends TestCase
             'title' => '測試不合法附件類型',
             'description' => '測試用',
             'impact_level' => 'low',
-            'affects_class' => '0',
+            'is_class_affected' => '0',
             'attachments' => [UploadedFile::fake()->create('virus.exe', 100, 'application/x-msdownload')],
         ]);
 

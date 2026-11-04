@@ -18,7 +18,7 @@ class UpdateMaintenancePlanRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:200'],
-            'device_category' => ['nullable', 'string', 'max:100'],
+            'device_category_id' => ['nullable', 'integer', 'exists:device_categories,id'],
             'cycle_days' => ['required', 'integer', 'min:1', 'max:3650'],
             'start_date' => ['required', 'date'],
             'is_active' => ['sometimes', 'boolean'],

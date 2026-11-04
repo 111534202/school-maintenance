@@ -80,10 +80,10 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格：table-bordered 有框線、table-hover 滑鼠移上去會變色（全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0">
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,4">
                     <thead class="table-light">
                         <tr>
-                            <th>{{ __('users.table.username') }}</th>
+                            <th>{{ __('users.table.account') }}</th>
                             <th>{{ __('users.table.name') }}</th>
                             <th>{{ __('users.table.email') }}</th>
                             <th>{{ __('users.table.phone') }}</th>
@@ -102,7 +102,7 @@
                             {{-- 已刪除（軟刪除）的用戶整列用灰色背景標示。 --}}
                             <tr class="{{ $user->trashed() ? 'table-secondary' : '' }}">
                                 <td>
-                                    <span class="fw-semibold">{{ $user->username ?? '—' }}</span>
+                                    <span class="fw-semibold">{{ $user->account ?? '—' }}</span>
                                     {{-- 標出「這是你自己」的徽章。 --}}
                                     @if ($isSelf)
                                         <span class="badge text-bg-info ms-1">{{ __('users.current_user_badge') }}</span>

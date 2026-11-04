@@ -45,7 +45,7 @@ class DueMaintenanceOrderGenerator
                 MaintenanceOrder::create([
                     'maintenance_plan_id' => $plan->id,
                     'device_id' => $plan->device_id,
-                    'device_category' => $plan->device_category,
+                    'device_category_id' => $plan->device_category_id,
                     'source' => MaintenanceOrder::SOURCE_PERIODIC,
                     'status' => MaintenanceOrder::STATUS_PENDING,
                     'scheduled_date' => $plan->next_due_date,

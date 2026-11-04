@@ -12,11 +12,11 @@
 
     // 設備欄要顯示的文字：有綁定設備就顯示「設備編號 類別 品牌 型號（教室）」；沒有就退回手填描述、地點，都沒有顯示「未填寫」。
     $deviceDisplay = $repairRequest->device
-        ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->room_name ?? $repairRequest->device->classroom->room_code ?? '') . '）')
+        ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->name ?? $repairRequest->device->classroom->classroom_code ?? '') . '）')
         : ($repairRequest->device_note ?? $repairRequest->location ?? __('repair_requests.not_filled'));
 
     // 維修人員欄要顯示的文字：優先用真實用戶姓名，其次文字備註，最後顯示「未指派」。
-    $assigneeDisplay = $repairRequest->assignedTechnician->name ?? $repairRequest->assignee_note ?? __('repair_requests.unassigned');
+    $assigneeDisplay = $repairRequest->assignedTechnician->name ?? __('repair_requests.unassigned');
 
     // 目前的案件狀態（RepairRequestStatus 列舉）。
     $status = $repairRequest->status;
@@ -65,7 +65,7 @@
 
                         <dt class="col-6 col-sm-4 text-muted fw-normal text-nowrap"><i class="bi bi-mortarboard me-2"></i>{{ __('repair_requests.show.affects_class_prefix') }}</dt>
                         <dd class="col-6 col-sm-8 mb-0">
-                            @if ($repairRequest->affects_class)
+                            @if ($repairRequest->is_class_affected)
                                 <span class="badge text-bg-danger">{{ __('repair_requests.yes') }}</span>
                             @else
                                 <span class="badge text-bg-light border text-muted">{{ __('repair_requests.no') }}</span>
@@ -106,7 +106,7 @@
                     <div class="card-header bg-white"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.show.attachments_heading') }}</div>
                     <ul class="list-group list-group-flush">
                         @foreach ($repairRequest->attachments as $attachment)
-                            <li class="list-group-item"><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-2"></i>{{ $attachment->original_name }}</a></li>
+                            <li class="list-group-item"><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-2"></i>{{ $attachment->file_name }}</a></li>
                         @endforeach
                     </ul>
                 </div>
@@ -143,7 +143,7 @@
                                     <dd class="col-8 col-sm-9 mb-0">
                                         <ul class="list-unstyled mb-0">
                                             @foreach ($log->attachments as $attachment)
-                                                <li><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-1"></i>{{ $attachment->original_name }}</a></li>
+                                                <li><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-1"></i>{{ $attachment->file_name }}</a></li>
                                             @endforeach
                                         </ul>
                                     </dd>

@@ -40,7 +40,7 @@ class MasterPagesI18nTest extends TestCase
     public function test_pages_render_in_english_without_chinese_labels_or_raw_keys(): void
     {
         $this->loginAsAnyUser();
-        $room = Classroom::create(['campus' => 'Main', 'building' => 'A', 'floor' => '1', 'room_code' => 'A1', 'room_name' => 'Room A1']);
+        $room = Classroom::create(['campus' => 'Main', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'Room A1']);
         $category = DeviceCategory::create(['name' => 'Projector']);
         $device = Device::create(['device_code' => 'D-1', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'repairing']);
 

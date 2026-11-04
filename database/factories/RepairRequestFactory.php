@@ -26,7 +26,7 @@ class RepairRequestFactory extends Factory
             // 影響程度：隨機挑 low / medium / high。
             'impact_level' => $this->faker->randomElement(['low', 'medium', 'high']),
             // 是否影響上課：隨機 true / false。
-            'affects_class' => $this->faker->boolean(),
+            'is_class_affected' => $this->faker->boolean(),
             // 預設狀態是「新報修」。
             'status' => 'pending',
             // 設備位置描述：從清單隨機挑一個。

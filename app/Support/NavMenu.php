@@ -36,20 +36,21 @@ class NavMenu
 
         $menu = [
             ['type' => 'link'] + $link(__('common.nav.dashboard'), 'bi-speedometer2', 'dashboard', ['dashboard']),
-            ['type' => 'group', 'id' => 'work', 'label' => '報修與知識庫', 'icon' => 'bi-tools', 'children' => [
-                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*']),
+            ['type' => 'group', 'id' => 'work', 'label' => __('common.nav.repair_section'), 'icon' => 'bi-tools', 'children' => [
+                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*']),
                 $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ]],
-            ['type' => 'group', 'id' => 'maintenance', 'label' => '保養與 AI 預防', 'icon' => 'bi-wrench-adjustable', 'children' => [
-                $link('保養項目', 'bi-list-check', 'maintenance-items.index', ['maintenance-items.*'], $can('maintenance.view')),
-                $link('保養計畫', 'bi-calendar-event', 'maintenance-plans.index', ['maintenance-plans.*'], $can('maintenance.view')),
-                $link('保養工單', 'bi-wrench-adjustable', 'maintenance-orders.index', ['maintenance-orders.*'], $can('maintenance.view')),
-                $link('設備履歷', 'bi-journal-text', 'device-profile.index', ['device-profile.*'], $can('maintenance.view')),
-                $link('AI 預防保養', 'bi-robot', 'preventive-candidates.index', ['preventive-candidates.*', 'ai-settings.*'], $can('ai-maintenance.manage')),
+            ['type' => 'group', 'id' => 'maintenance', 'label' => __('common.nav.maintenance_section'), 'icon' => 'bi-wrench-adjustable', 'children' => [
+                $link(__('common.nav.maintenance_items'), 'bi-list-check', 'maintenance-items.index', ['maintenance-items.*'], $can('maintenance.view')),
+                $link(__('common.nav.maintenance_plans'), 'bi-calendar-event', 'maintenance-plans.index', ['maintenance-plans.*'], $can('maintenance.view')),
+                $link(__('common.nav.maintenance_orders'), 'bi-wrench-adjustable', 'maintenance-orders.index', ['maintenance-orders.*'], $can('maintenance.view')),
+                $link(__('common.nav.device_profile'), 'bi-journal-text', 'device-profile.index', ['device-profile.*'], $can('maintenance.view')),
+                $link(__('common.nav.preventive_ai'), 'bi-robot', 'preventive-candidates.index', ['preventive-candidates.*', 'ai-settings.*'], $can('ai-maintenance.manage')),
             ]],
-            ['type' => 'group', 'id' => 'space', 'label' => '空間與庫存', 'icon' => 'bi-building', 'children' => [
-                $link('空間預約', 'bi-calendar-check', 'reservations.index', ['reservations.*']),
-                $link('庫存', 'bi-box-seam', 'inventory.index', ['inventory.*']),
+            ['type' => 'group', 'id' => 'space', 'label' => __('common.nav.resource_section'), 'icon' => 'bi-building', 'children' => [
+                $link(__('common.nav.reservations'), 'bi-calendar-check', 'reservations.index', ['reservations.*']),
+                // 零件庫存需要 parts.manage（身分主檔勾選；設備管理員預設有）。
+                $link(__('common.nav.parts'), 'bi-box-seam', 'parts.index', ['parts.*'], $can('parts.manage')),
             ]],
             ['type' => 'group', 'id' => 'master', 'label' => __('common.nav.master_section'), 'icon' => 'bi-database', 'children' => [
                 $link(__('common.nav.users'), 'bi-people', 'users.index', ['users.*'], $can('users.manage')),

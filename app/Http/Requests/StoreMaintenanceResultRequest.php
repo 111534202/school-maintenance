@@ -19,10 +19,9 @@ class StoreMaintenanceResultRequest extends FormRequest
     {
         return [
             'result' => ['required', 'in:'.MaintenanceResult::RESULT_OK.','.MaintenanceResult::RESULT_NG],
-            // 工程實作欄位：目前無登入系統，先讓執行人自行輸入姓名。
-            'executed_by' => ['required', 'string', 'max:100'],
+            // 執行人不用填：由登入帳號自動帶入（controller 寫入 executed_by，指向 users.id）。
             'executed_at' => ['required', 'date'],
-            'notes' => ['nullable', 'string', 'max:2000'],
+            'note' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

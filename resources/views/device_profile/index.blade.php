@@ -17,7 +17,7 @@
     </form>
 
     <div class="table-responsive">
-        <table class="table table-bordered bg-white align-middle text-nowrap">
+        <table class="table table-bordered bg-white align-middle text-nowrap" data-onion-primary="3">
             <thead class="table-light">
                 <tr>
                     <th>設備編號</th>
@@ -34,7 +34,7 @@
                         <td>{{ $device->device_code }}</td>
                         <td>{{ $device->category?->name ?? '—' }}</td>
                         <td>{{ $device->brand }} {{ $device->model }}</td>
-                        <td>{{ $device->classroom?->room_name ?? '—' }}</td>
+                        <td>{{ $device->classroom?->name ?? '—' }}</td>
                         <td><span class="badge text-bg-secondary">{{ $device->status }}</span></td>
                         <td class="text-end">
                             <a href="{{ route('device-profile.show', $device) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>

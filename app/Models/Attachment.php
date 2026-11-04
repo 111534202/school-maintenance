@@ -25,8 +25,8 @@ class Attachment extends Model
     protected $fillable = [
         'attachable_type',
         'attachable_id',
-        'disk_path',      // 檔案實際存在硬碟上的路徑
-        'original_name',  // 使用者上傳時，檔案原本的名稱
+        'file_path',      // 檔案實際存在硬碟上的路徑
+        'file_name',  // 使用者上傳時，檔案原本的名稱
         'mime_type',       // 檔案類型，例如 image/jpeg
         'size_bytes',      // 檔案大小（位元組）
     ];
@@ -54,7 +54,7 @@ class Attachment extends Model
     public function storageDisk(): ?string
     {
         foreach (['local', 'public'] as $disk) {
-            if (Storage::disk($disk)->exists($this->disk_path)) {
+            if (Storage::disk($disk)->exists($this->file_path)) {
                 return $disk;
             }
         }

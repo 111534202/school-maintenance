@@ -25,7 +25,7 @@ class DeviceStatusServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->room = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'room_code' => 'A1', 'room_name' => 'A1']);
+        $this->room = Classroom::create(['campus' => '本', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'A1']);
     }
 
     private function makeDevice(string $code, array $attrs = []): Device

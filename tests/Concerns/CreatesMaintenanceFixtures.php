@@ -21,7 +21,7 @@ trait CreatesMaintenanceFixtures
     protected function makeUser(string $roleSlug = 'admin'): User
     {
         // 內建身分帶入跟正式環境一樣的預設權限（admin 永遠全開），這樣測試才會真的檢查權限。
-        $role = Role::firstOrCreate(['slug' => $roleSlug], [
+        $role = Role::firstOrCreate(['role_code' => $roleSlug], [
             'name' => $roleSlug,
             'is_system' => in_array($roleSlug, ['admin', 'it_manager', 'technician', 'teacher', 'executive'], true),
             'permissions' => PermissionCatalog::defaultsFor($roleSlug),
@@ -35,8 +35,8 @@ trait CreatesMaintenanceFixtures
         $category = DeviceCategory::firstOrCreate(['name' => '測試電腦']);
 
         $classroom = Classroom::firstOrCreate(
-            ['room_code' => 'R-TEST'],
-            ['campus' => '主校區', 'building' => 'A', 'floor' => '1', 'room_name' => '測試教室']
+            ['classroom_code' => 'R-TEST'],
+            ['campus' => '主校區', 'building' => 'A', 'floor' => '1', 'name' => '測試教室']
         );
 
         return Device::create([
@@ -55,7 +55,7 @@ trait CreatesMaintenanceFixtures
         return MaintenancePlan::create(array_merge([
             'name' => '測試月檢計畫 '.$device->device_code,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'cycle_days' => 30,
             'start_date' => now()->subMonths(6)->toDateString(),
             'next_due_date' => now()->addDays(20)->toDateString(),
@@ -82,7 +82,7 @@ trait CreatesMaintenanceFixtures
             $order = MaintenanceOrder::create([
                 'maintenance_plan_id' => $plan->id,
                 'device_id' => $device->id,
-                'device_category' => $device->category?->name,
+                'device_category_id' => $device->device_category_id,
                 'source' => MaintenanceOrder::SOURCE_PERIODIC,
                 'status' => MaintenanceOrder::STATUS_COMPLETED,
                 'scheduled_date' => $when->toDateString(),
@@ -91,7 +91,6 @@ trait CreatesMaintenanceFixtures
             MaintenanceResult::create([
                 'maintenance_order_id' => $order->id,
                 'result' => $code === 'n' ? MaintenanceResult::RESULT_NG : MaintenanceResult::RESULT_OK,
-                'executed_by' => '測試',
                 'executed_at' => $when,
                 'ng_conversion_status' => $code === 'n' ? MaintenanceResult::NG_CONVERSION_PENDING : null,
             ]);
@@ -103,7 +102,7 @@ trait CreatesMaintenanceFixtures
         return MaintenanceOrder::create([
             'maintenance_plan_id' => null,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'source' => $source,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->addDays($dueInDays)->toDateString(),

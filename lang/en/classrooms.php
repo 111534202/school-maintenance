@@ -60,9 +60,9 @@ return [
         'campus' => 'Campus',
         'building' => 'Building',
         'floor' => 'Floor',
-        'room_code' => 'Room Code',
-        'room_name' => 'Room Name',
-        'room_type' => 'Room Type',
+        'classroom_code' => 'Room Code',
+        'name' => 'Room Name',
+        'type' => 'Room Type',
     ],
 
     'flash' => [

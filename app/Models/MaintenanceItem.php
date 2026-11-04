@@ -6,6 +6,7 @@ use Database\Factories\MaintenanceItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
@@ -13,12 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  *
  * @property int $id
  * @property string $name
- * @property string|null $category
+ * @property int|null $device_category_id
  * @property string|null $description
  * @property int|null $default_cycle_days
  * @property bool $is_active
  */
-#[Fillable(['name', 'category', 'description', 'default_cycle_days', 'is_active'])]
+#[Fillable(['name', 'device_category_id', 'description', 'default_cycle_days', 'is_active'])]
 class MaintenanceItem extends Model
 {
     /** @use HasFactory<MaintenanceItemFactory> */
@@ -27,9 +28,16 @@ class MaintenanceItem extends Model
     protected function casts(): array
     {
         return [
+            'device_category_id' => 'integer',
             'default_cycle_days' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。 */
+    public function deviceCategory(): BelongsTo
+    {
+        return $this->belongsTo(DeviceCategory::class);
     }
 
     /**

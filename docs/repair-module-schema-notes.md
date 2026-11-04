@@ -34,13 +34,12 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 | title | string | 報修單簡短標題 |
 | description | text | 故障描述 |
 | impact_level | enum(low/medium/high), default medium | 影響程度，見待確認③ |
-| affects_class | boolean, default false | 是否影響上課 |
+| is_class_affected | boolean, default false | 是否影響上課（原名 affects_class，2026-10-25 統一改名） |
 | status | string, cast 成 `App\Enums\RepairRequestStatus` | 案件狀態，見下方「狀態機」 |
-| reporter_id | unsignedBigInteger, nullable | 報修人，見待確認② |
+| requester_id | unsignedBigInteger, nullable | 報修人（原名 reporter_id，2026-10-15 統一改名，對齊規格書） |
 | device_id | unsignedBigInteger, nullable | 設備，見待確認⑤ |
 | device_note | string, nullable | devices 表合併前，暫時用文字描述設備 |
 | assigned_to | unsignedBigInteger, nullable | 維修人員，見待確認② |
-| assignee_note | string, nullable | users 表合併前，暫時用文字記錄維修人員（Week2 新增） |
 | scheduled_at | timestamp, nullable | 預計處理日期（Week2 新增） |
 | location | string, nullable | 地點，見待確認⑥ |
 | rejection_reason | text, nullable | 驗收不通過退回時的原因，只保留最新一次（Week3 新增） |
@@ -57,7 +56,7 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 不直接改 `status` 欄位。非法轉換會丟出 `DomainException`。Week3 補上 `complete()`（驗收通過結案）
 與 `reject()`（驗收不通過退回，需附退回原因）兩個方法，對應 `repair-requests.complete`/
 `repair-requests.reject` 這兩個路由。Week4 補上 `reassign()`（重新指派，只換
-`assignee_note`/`scheduled_at`，不屬於狀態轉換，只允許在「已派工」「處理中」時使用）。
+`assigned_to`/`scheduled_at`，不屬於狀態轉換，只允許在「已派工」「處理中」時使用）。
 
 ## 3. repair_logs（正式表，Week2 加上填單 UI + 附件）
 
@@ -83,8 +82,8 @@ show 頁提供「問題已解決」／「無法排除，前往報修」兩個按
 |---|---|---|
 | id | bigint | 主鍵 |
 | attachable_type / attachable_id | morphs | 多型關聯，目前被 `repair_requests`（報修附件）與 `repair_logs`（維修前後照片）共用 |
-| disk_path | string | 存放路徑（私有磁碟 `storage/app/private/attachments`，**不對外公開**；一律透過 `GET /attachments/{id}` 下載，會先檢查「能不能檢視所屬報修單」。早期版本放在 `storage/app/public`，由 `2026_10_04_000001_move_attachments_to_private_disk` 搬到私有磁碟） |
-| original_name | string | 原始檔名 |
+| file_path | string | 存放路徑（私有磁碟 `storage/app/private/attachments`，**不對外公開**；一律透過 `GET /attachments/{id}` 下載，會先檢查「能不能檢視所屬報修單」。早期版本放在 `storage/app/public`，由 `2026_10_04_000001_move_attachments_to_private_disk` 搬到私有磁碟） |
+| file_name | string | 原始檔名（原名 original_name；原 disk_path 也已改為 file_path，2026-10-25 統一改名） |
 | mime_type | string | MIME type |
 | size_bytes | unsignedBigInteger | 檔案大小 |
 | timestamps | | |
@@ -105,7 +104,7 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
 ## 6. 看板資訊補強（Week3）
 
 `repair-requests.index`（維修案件看板）新增：
-- 每個維修人員（`assignee_note`）手上還有幾張「未結案」的案件，方便主管判斷（只顯示
+- 每個維修人員（`assigned_to`）手上還有幾張「未結案」的案件，方便主管判斷（只顯示
   客觀數字，不做自動派工推薦，依規格「未確認規則不做自動推薦」）。
 - 每張案件「等待多久」（`created_at->diffForHumans()`）。
 
@@ -120,11 +119,11 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
 `develop` 合併了林政寬的 `feature/auth-device`（devices/users/roles/classrooms/audit_logs 都是
 真正的表了），所以把待確認②⑤原本「先用文字欄位頂著」的部分正式補上：
 
-- `repair_requests.device_id` / `reporter_id` / `assigned_to` 都補上真正外鍵
+- `repair_requests.device_id` / `requester_id`（原名 reporter_id）/ `assigned_to` 都補上真正外鍵
   （`2026_09_30_064236_add_foreign_keys_to_repair_requests_table.php`），`RepairRequest` model
-  新增 `device()`／`reporter()`／`assignedTechnician()` 三個 `belongsTo()`。`device_note` /
-  `assignee_note` 兩個文字欄位保留當後備顯示（沒有對應真實設備/帳號時，例如舊資料、保養 NG
-  轉報修尚未掃碼建立設備關聯的案件）。
+  新增 `device()`／`requester()`／`assignedTechnician()` 三個 `belongsTo()`。`device_note`
+  文字欄位保留當後備顯示（沒有對應真實設備時，例如舊資料、保養 NG 轉報修尚未掃碼建立設備關聯的案件）。
+  （`assignee_note` 已在 2026-10-15 的資料庫整理中移除，維修人員只存 `assigned_to` 外鍵，舊資料已對應到帳號。）
 - **資產報修（簡化流程）**：報修表單新增「設備條碼」輸入框，掃描（條碼掃描器對電腦來說就是
   鍵盤輸入+Enter，不需要相機或解碼函式庫）或手動輸入設備編號後，用
   `GET repairs/device-lookup/{device_code}`（`RepairRequestController::deviceLookup()`）即時查
@@ -140,7 +139,7 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
   打字輸入姓名（`AssignRepairRequestRequest` 用 `Rule::exists('users','id')->where('role_id', ...)`
   驗證）。
 - 因為登入系統合併了，`knowledge-base`/`repairs` 系列路由全部搬進 `Route::middleware('auth')`
-  群組裡，`reporter_id` 現在直接用 `Auth::id()`，不再是 null。
+  群組裡，`requester_id`（原名 reporter_id）現在直接用 `Auth::id()`，不再是 null。
 - 路由名稱從 `repair-requests.*` 改成 `repairs.*`，對齊林政寬 `layouts/partials/nav-links.blade.php`
   （用 `Route::has('repairs.index')` 判斷要不要顯示報修連結）與 `DeviceEntryController` 的命名。
 
@@ -191,3 +190,10 @@ devices 表尚未合併進本專案，`RepairRequestWorkflow` 在轉入「處理
 - 角色權限限制（等林政寬的登入/角色系統合併，目前任何人都能操作所有按鈕）
 - 第五週範圍控制：不改狀態模型、不重做 UI、不新增功能（只做回歸測試、RWD 收尾、
   文件整理），本次的漢堡選單/篩選欄位換行修正屬於 RWD 收尾範圍，不算新增功能。
+
+
+## 資料庫統一整理（2026-10-15）
+
+欄位命名、外鍵與重複文字欄位的整理結果見 `docs/資料庫命名規範與資料字典.md`；轉換 migration 是 `2026_10_15_100000_normalize_foreign_keys_and_duplicated_text_columns.php`（舊資料會轉換、不遺失）。對報修模組的影響：`reporter_id` 改名 `requester_id`、`assignee_note` 移除（`RepairRequestWorkflow::assign()`／`reassign()` 的參數改成維修人員的用戶編號）、`maintenance_results.repair_request_id` 補上外鍵。
+
+2026-10-25 的最後一批統一改名（`is_class_affected`、`file_name`、`file_path`、`classroom_code`、`account`、`role_code` 等）與定案原則，見 `docs/資料庫命名規範與資料字典.md` 第 9 節。

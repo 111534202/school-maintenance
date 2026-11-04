@@ -36,26 +36,26 @@ class UserManagementTest extends TestCase
     // 輔助方法：建立一位指定帳號的系統管理員。
     private function makeAdmin(string $username, array $attrs = []): User
     {
-        $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => '系統管理員']);
+        $role = Role::firstOrCreate(['role_code' => 'admin'], ['name' => '系統管理員']);
 
-        return User::factory()->create(['role_id' => $role->id, 'username' => $username] + $attrs);
+        return User::factory()->create(['role_id' => $role->id, 'account' => $username] + $attrs);
     }
 
     // 輔助方法：建立一位一般身分的同仁（預設是維修人員）。
     private function makeStaff(string $username, string $roleSlug = 'technician', array $attrs = []): User
     {
-        $role = Role::firstOrCreate(['slug' => $roleSlug], ['name' => $roleSlug]);
+        $role = Role::firstOrCreate(['role_code' => $roleSlug], ['name' => $roleSlug]);
 
-        return User::factory()->create(['role_id' => $role->id, 'username' => $username] + $attrs);
+        return User::factory()->create(['role_id' => $role->id, 'account' => $username] + $attrs);
     }
 
     // 輔助方法：回傳一份「完全合法」的新增用戶表單內容，各測試只改自己要測的欄位。
     private function validPayload(array $overrides = []): array
     {
-        $role = Role::firstOrCreate(['slug' => 'technician'], ['name' => '維修人員']);
+        $role = Role::firstOrCreate(['role_code' => 'technician'], ['name' => '維修人員']);
 
         return array_merge([
-            'username' => 'new.user',
+            'account' => 'new.user',
             'name' => '新同仁',
             'email' => 'new.user@example.com',
             'phone' => '0912-345-678',
@@ -153,7 +153,7 @@ class UserManagementTest extends TestCase
         $response = $this->post(route('users.store'), $this->validPayload());
 
         $response->assertRedirect(route('users.index'));
-        $user = User::firstWhere('username', 'new.user');
+        $user = User::firstWhere('account', 'new.user');
         $this->assertNotNull($user);
         $this->assertSame('新同仁', $user->name);
         $this->assertTrue($user->is_active);
@@ -172,17 +172,17 @@ class UserManagementTest extends TestCase
         $this->makeStaff('taken', 'technician', ['email' => 'taken@example.com']);
 
         // 帳號與別人重複 → 帳號欄位出錯。
-        $this->post(route('users.store'), $this->validPayload(['username' => 'taken']))
-            ->assertSessionHasErrors('username');
+        $this->post(route('users.store'), $this->validPayload(['account' => 'taken']))
+            ->assertSessionHasErrors('account');
         // Email 與別人重複 → Email 欄位出錯。
         $this->post(route('users.store'), $this->validPayload(['email' => 'taken@example.com']))
             ->assertSessionHasErrors('email');
         // 帳號含空白與特殊符號 → 格式不合。
-        $this->post(route('users.store'), $this->validPayload(['username' => 'bad name!']))
-            ->assertSessionHasErrors('username');
+        $this->post(route('users.store'), $this->validPayload(['account' => 'bad name!']))
+            ->assertSessionHasErrors('account');
         // 帳號太短（少於 3 字）→ 帳號欄位出錯。
-        $this->post(route('users.store'), $this->validPayload(['username' => 'ab']))
-            ->assertSessionHasErrors('username');
+        $this->post(route('users.store'), $this->validPayload(['account' => 'ab']))
+            ->assertSessionHasErrors('account');
         // 密碼太短（少於 8 碼）→ 密碼欄位出錯。
         $this->post(route('users.store'), $this->validPayload(['password' => 'short', 'password_confirmation' => 'short']))
             ->assertSessionHasErrors('password');
@@ -196,7 +196,7 @@ class UserManagementTest extends TestCase
         $this->post(route('users.store'), $this->validPayload(['name' => '', 'email' => 'not-an-email']))
             ->assertSessionHasErrors(['name', 'email']);
 
-        $this->assertDatabaseMissing('users', ['username' => 'new.user']);
+        $this->assertDatabaseMissing('users', ['account' => 'new.user']);
     }
 
     // ---------- 編輯 ----------
@@ -208,7 +208,7 @@ class UserManagementTest extends TestCase
         $department = Department::create(['name' => '教務處']);
 
         $response = $this->put(route('users.update', $user), $this->validPayload([
-            'username' => 'editme',          // 沒改帳號：不能跟自己衝突
+            'account' => 'editme',          // 沒改帳號：不能跟自己衝突
             'email' => 'old@example.com',    // 沒改 Email：不能跟自己衝突
             'name' => '新名',
             'department_id' => $department->id,
@@ -228,7 +228,7 @@ class UserManagementTest extends TestCase
         $user = $this->makeStaff('keeppass', 'technician', ['password' => 'original-pass']);
 
         $this->put(route('users.update', $user), $this->validPayload([
-            'username' => 'keeppass', 'email' => $user->email, 'password' => 'hacked-pass1', 'password_confirmation' => 'hacked-pass1',
+            'account' => 'keeppass', 'email' => $user->email, 'password' => 'hacked-pass1', 'password_confirmation' => 'hacked-pass1',
         ]))->assertRedirect();
 
         $this->assertTrue(Hash::check('original-pass', $user->fresh()->password));
@@ -239,15 +239,15 @@ class UserManagementTest extends TestCase
     // 管理員不能把自己降級或停用自己（避免把自己鎖在系統外）。
     public function test_admin_cannot_demote_or_deactivate_self(): void
     {
-        $techRole = Role::firstOrCreate(['slug' => 'technician'], ['name' => '維修人員']);
+        $techRole = Role::firstOrCreate(['role_code' => 'technician'], ['name' => '維修人員']);
 
         $this->put(route('users.update', $this->admin), $this->validPayload([
-            'username' => 'admin_main', 'email' => $this->admin->email, 'role_id' => $techRole->id,
+            'account' => 'admin_main', 'email' => $this->admin->email, 'role_id' => $techRole->id,
         ]))->assertSessionHas('error');
         $this->assertTrue($this->admin->fresh()->isAdmin());
 
         $this->put(route('users.update', $this->admin), $this->validPayload([
-            'username' => 'admin_main', 'email' => $this->admin->email, 'role_id' => $this->admin->role_id, 'is_active' => '0',
+            'account' => 'admin_main', 'email' => $this->admin->email, 'role_id' => $this->admin->role_id, 'is_active' => '0',
         ]))->assertSessionHas('error');
         $this->assertTrue($this->admin->fresh()->is_active);
     }
@@ -279,9 +279,9 @@ class UserManagementTest extends TestCase
         $this->patch(route('users.toggle', $target))->assertSessionHas('error');
         $this->assertTrue($target->fresh()->is_active);
 
-        $techRole = Role::firstOrCreate(['slug' => 'technician'], ['name' => '維修人員']);
+        $techRole = Role::firstOrCreate(['role_code' => 'technician'], ['name' => '維修人員']);
         $this->put(route('users.update', $target), $this->validPayload([
-            'username' => 'only_admin', 'email' => $target->email, 'role_id' => $techRole->id,
+            'account' => 'only_admin', 'email' => $target->email, 'role_id' => $techRole->id,
         ]))->assertSessionHas('error');
         $this->assertTrue($target->fresh()->isAdmin());
     }

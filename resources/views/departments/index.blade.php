@@ -54,7 +54,7 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格（有框線，全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0">
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1">
                     <thead class="table-light">
                         <tr>
                             <th>{{ __('departments.table.code') }}</th>
@@ -70,7 +70,7 @@
                         {{-- 逐一列出每個部門，每個部門一列。 --}}
                         @foreach ($departments as $department)
                             <tr>
-                                <td>{{ $department->code ?? '—' }}</td>
+                                <td>{{ $department->department_code ?? '—' }}</td>
                                 <td class="fw-semibold">{{ $department->name }}</td>
                                 <td>{{ $department->description ?? '—' }}</td>
                                 {{-- 這個部門的用戶數（Controller 用 withCount 先算好）。 --}}

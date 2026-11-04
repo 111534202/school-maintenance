@@ -37,7 +37,7 @@
 
                 <dt class="col-sm-3">設備 / 類別</dt>
                 <dd class="col-sm-9">
-                    {{ $maintenanceOrder->device_category ?? '—' }}
+                    {{ $maintenanceOrder->categoryName() ?? '—' }}
                     @if ($maintenanceOrder->device)
                         <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $maintenanceOrder->device) }}">{{ $maintenanceOrder->device->device_code }}</a>）</span>
                     @endif
@@ -71,13 +71,13 @@
                     <dd class="col-sm-9"><span class="badge text-bg-{{ $resultColor }}">{{ $resultText }}</span></dd>
 
                     <dt class="col-sm-3">執行人</dt>
-                    <dd class="col-sm-9">{{ $maintenanceOrder->result->executed_by ?? '—' }}</dd>
+                    <dd class="col-sm-9">{{ $maintenanceOrder->result->executor?->name ?? '—' }}</dd>
 
                     <dt class="col-sm-3">執行時間</dt>
                     <dd class="col-sm-9">{{ $maintenanceOrder->result->executed_at?->format('Y-m-d H:i') }}</dd>
 
                     <dt class="col-sm-3">備註</dt>
-                    <dd class="col-sm-9">{{ $maintenanceOrder->result->notes ?? '—' }}</dd>
+                    <dd class="col-sm-9">{{ $maintenanceOrder->result->note ?? '—' }}</dd>
 
                     @if ($maintenanceOrder->result->isNg())
                         <dt class="col-sm-3">轉報修狀態</dt>
@@ -108,8 +108,8 @@
                 @foreach ($maintenanceOrder->maintenancePlan->maintenanceItems as $item)
                     <li class="list-group-item">
                         {{ $item->name }}
-                        @if ($item->category)
-                            <span class="text-muted small">（{{ $item->category }}）</span>
+                        @if ($item->deviceCategory)
+                            <span class="text-muted small">（{{ $item->deviceCategory->name }}）</span>
                         @endif
                     </li>
                 @endforeach

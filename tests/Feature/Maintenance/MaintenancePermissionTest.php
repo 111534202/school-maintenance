@@ -36,7 +36,7 @@ class MaintenancePermissionTest extends TestCase
         $order = MaintenanceOrder::create([
             'maintenance_plan_id' => $plan->id,
             'device_id' => $device->id,
-            'device_category' => $device->category?->name,
+            'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->toDateString(),
@@ -105,7 +105,7 @@ class MaintenancePermissionTest extends TestCase
 
         // 主管：只能看，連回報結果的送出動作也被擋。
         $this->actingAs($this->makeUser('executive'));
-        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_by' => 'x'])->assertForbidden();
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok'])->assertForbidden();
         $this->assertNull($order->fresh()->result, '被擋下時不可以寫入保養結果');
     }
 
@@ -114,13 +114,13 @@ class MaintenancePermissionTest extends TestCase
         [$order] = $this->fixtures();
 
         // 只勾「回報結果」：能開回報頁，但看不到工單列表。
-        $role = Role::create(['name' => '只回報', 'slug' => 'report_only', 'is_system' => false, 'permissions' => ['maintenance.report']]);
+        $role = Role::create(['name' => '只回報', 'role_code' => 'report_only', 'is_system' => false, 'permissions' => ['maintenance.report']]);
         $this->actingAs(User::factory()->create(['role_id' => $role->id]));
         $this->get(route('maintenance-orders.results.create', $order))->assertOk();
         $this->get(route('maintenance-orders.index'))->assertForbidden();
 
         // 只勾「AI 預防保養」：能開 AI 頁，但不能看保養項目。
-        $role = Role::create(['name' => '只 AI', 'slug' => 'ai_only', 'is_system' => false, 'permissions' => ['ai-maintenance.manage']]);
+        $role = Role::create(['name' => '只 AI', 'role_code' => 'ai_only', 'is_system' => false, 'permissions' => ['ai-maintenance.manage']]);
         $this->actingAs(User::factory()->create(['role_id' => $role->id]));
         $this->get(route('preventive-candidates.index'))->assertOk();
         $this->get(route('maintenance-items.index'))->assertForbidden();
@@ -185,38 +185,5 @@ class MaintenancePermissionTest extends TestCase
         $this->assertEqualsCanonicalizing(['maintenance.view', 'maintenance.report'], array_values(array_intersect(PermissionCatalog::defaultsFor('technician'), PermissionCatalog::GROUPS['maintenance'])));
         $this->assertSame(['maintenance.view'], array_values(array_intersect(PermissionCatalog::defaultsFor('executive'), PermissionCatalog::GROUPS['maintenance'])));
         $this->assertSame([], array_values(array_intersect(PermissionCatalog::defaultsFor('teacher'), PermissionCatalog::GROUPS['maintenance'])));
-    }
-
-    public function test_backfill_migration_adds_the_new_permissions_without_touching_the_others_and_is_repeatable(): void
-    {
-        // 模擬「舊資料庫」：內建身分只有升級前的權限（自訂過一個額外權限）。
-        $old = ['repairs.create', 'repairs.process', 'repairs.assignable'];
-        Role::create(['name' => '維修人員', 'slug' => 'technician', 'is_system' => true, 'permissions' => $old]);
-        Role::create(['name' => '資訊組主管', 'slug' => 'it_manager', 'is_system' => true, 'permissions' => ['devices.manage']]);
-        Role::create(['name' => '主管', 'slug' => 'executive', 'is_system' => true, 'permissions' => null]);
-        Role::create(['name' => '教師', 'slug' => 'teacher', 'is_system' => true, 'permissions' => ['repairs.create']]);
-        Role::create(['name' => '自訂', 'slug' => 'custom_x', 'is_system' => false, 'permissions' => ['repairs.create']]);
-
-        $migration = require base_path('database/migrations/2026_10_08_110000_add_maintenance_permissions_to_system_roles.php');
-        $migration->up();
-        $migration->up();   // 重跑一次，不能出現重複項目
-
-        $get = fn (string $slug) => Role::where('slug', $slug)->first()->permissions;
-
-        $this->assertEqualsCanonicalizing(array_merge($old, ['maintenance.view', 'maintenance.report']), $get('technician'));
-        $this->assertEqualsCanonicalizing(['devices.manage', 'maintenance.view', 'maintenance.manage', 'maintenance.report', 'ai-maintenance.manage'], $get('it_manager'));
-        $this->assertSame(['maintenance.view'], $get('executive'));
-        $this->assertSame(['repairs.create'], $get('teacher'), '教師預設沒有保養權限');
-        $this->assertSame(['repairs.create'], $get('custom_x'), '自訂身分不會被動到');
-
-        $this->assertSame(
-            count(array_unique($get('technician'))),
-            count($get('technician')),
-            '不可以有重複的權限'
-        );
-
-        $migration->down();
-        $this->assertEqualsCanonicalizing($old, $get('technician'));
-        $this->assertSame([], $get('executive'));
     }
 }

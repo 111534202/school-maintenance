@@ -28,7 +28,7 @@ class SecurityHardeningTest extends TestCase
     private function makeLoginUser(string $username, string $password = 'right-pass-1'): User
     {
         $user = $this->makeTechnician();
-        $user->update(['username' => $username, 'password' => $password]);
+        $user->update(['account' => $username, 'password' => $password]);
 
         return $user;
     }
@@ -179,11 +179,11 @@ class SecurityHardeningTest extends TestCase
     {
         $this->loginAsAnyUser();
         $evil = "x');alert(document.domain);//";
-        Department::create(['name' => $evil, 'code' => 'EVIL']);
-        $this->makeUserWithRole('technician', '維修人員', ['name' => $evil, 'username' => 'evil.one']);
-        $deleted = $this->makeUserWithRole('teacher', '教師', ['name' => $evil, 'username' => 'evil.two']);
+        Department::create(['name' => $evil, 'department_code' => 'EVIL']);
+        $this->makeUserWithRole('technician', '維修人員', ['name' => $evil, 'account' => 'evil.one']);
+        $deleted = $this->makeUserWithRole('teacher', '教師', ['name' => $evil, 'account' => 'evil.two']);
         $deleted->delete();
-        Role::create(['name' => $evil, 'slug' => 'custom_evil', 'is_system' => false, 'permissions' => []]);
+        Role::create(['name' => $evil, 'role_code' => 'custom_evil', 'is_system' => false, 'permissions' => []]);
         KnowledgeBase::create(['title' => $evil, 'symptom' => 's', 'solution' => 'f', 'is_published' => true]);
 
         $checked = 0;
@@ -259,7 +259,7 @@ class SecurityHardeningTest extends TestCase
     public function test_only_the_reporter_can_accept_a_case(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher1->id]);
+        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher1->id]);
 
         $this->actingAs($teacher2)->post(route('repairs.complete', $case))->assertForbidden();
         $this->assertSame('pending_review', $case->fresh()->status->value);
@@ -272,7 +272,7 @@ class SecurityHardeningTest extends TestCase
     public function test_only_the_reporter_can_reject_a_case(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher1->id]);
+        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher1->id]);
 
         $this->actingAs($teacher2)->post(route('repairs.reject', $case), ['rejection_reason' => '亂退'])->assertForbidden();
         $this->assertNull($case->fresh()->rejection_reason);
@@ -286,7 +286,7 @@ class SecurityHardeningTest extends TestCase
     public function test_a_case_without_a_reporter_can_be_accepted_by_anyone_with_the_accept_permission(): void
     {
         [, , $teacher1] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => null, 'assigned_to' => $teacher1->id]);
+        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => null, 'assigned_to' => $teacher1->id]);
 
         $this->actingAs($teacher1)->post(route('repairs.complete', $case))->assertRedirect(route('repairs.show', $case));
         $this->assertSame('completed', $case->fresh()->status->value);
@@ -298,7 +298,7 @@ class SecurityHardeningTest extends TestCase
         [$techA, , $teacher1] = $this->twoTechniciansAndTwoTeachers();
         $this->loginAsAnyUser();
         $assigned = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $techA->id]);
-        $review = RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher1->id]);
+        $review = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher1->id]);
 
         $this->post(route('repairs.start', $assigned))->assertRedirect();
         $this->post(route('repairs.complete', $review))->assertRedirect();
@@ -310,8 +310,8 @@ class SecurityHardeningTest extends TestCase
     public function test_a_teacher_can_only_open_cases_they_reported(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        $mine = RepairRequest::factory()->create(['reporter_id' => $teacher1->id]);
-        $others = RepairRequest::factory()->create(['reporter_id' => $teacher2->id]);
+        $mine = RepairRequest::factory()->create(['requester_id' => $teacher1->id]);
+        $others = RepairRequest::factory()->create(['requester_id' => $teacher2->id]);
 
         $this->actingAs($teacher1);
         $this->get(route('repairs.show', $mine))->assertOk();
@@ -334,7 +334,7 @@ class SecurityHardeningTest extends TestCase
     public function test_dispatchers_and_admin_can_open_every_case(): void
     {
         [, , $teacher1] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['reporter_id' => $teacher1->id]);
+        $case = RepairRequest::factory()->create(['requester_id' => $teacher1->id]);
 
         foreach ([$this->makeUserWithRole('executive', '主管'), $this->makeItManager(), $this->makeUserWithRole('admin', '系統管理員')] as $viewer) {
             $this->actingAs($viewer)->get(route('repairs.show', $case))->assertOk();
@@ -345,8 +345,8 @@ class SecurityHardeningTest extends TestCase
     public function test_the_board_only_lists_cases_the_user_may_see(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        RepairRequest::factory()->create(['title' => '教師一的案件', 'reporter_id' => $teacher1->id]);
-        RepairRequest::factory()->create(['title' => '教師二的案件', 'reporter_id' => $teacher2->id]);
+        RepairRequest::factory()->create(['title' => '教師一的案件', 'requester_id' => $teacher1->id]);
+        RepairRequest::factory()->create(['title' => '教師二的案件', 'requester_id' => $teacher2->id]);
 
         $this->actingAs($teacher1)->get(route('repairs.index'))->assertSee('教師一的案件')->assertDontSee('教師二的案件');
         $this->actingAs($this->makeUserWithRole('executive', '主管'))->get(route('repairs.index'))
@@ -357,8 +357,8 @@ class SecurityHardeningTest extends TestCase
     public function test_dashboard_repair_numbers_only_count_visible_cases(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        RepairRequest::factory()->count(2)->create(['status' => 'pending', 'reporter_id' => $teacher1->id]);
-        RepairRequest::factory()->count(5)->create(['status' => 'pending', 'reporter_id' => $teacher2->id]);
+        RepairRequest::factory()->count(2)->create(['status' => 'pending', 'requester_id' => $teacher1->id]);
+        RepairRequest::factory()->count(5)->create(['status' => 'pending', 'requester_id' => $teacher2->id]);
 
         $this->actingAs($teacher1)->get(route('dashboard'))->assertSeeInOrder(['待派工', '2']);
         $this->actingAs($this->makeUserWithRole('executive', '主管'))->get(route('dashboard'))->assertSeeInOrder(['待派工', '7']);
@@ -368,9 +368,9 @@ class SecurityHardeningTest extends TestCase
     public function test_bell_counts_only_cases_the_user_can_actually_accept(): void
     {
         [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
-        RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher1->id]);
-        RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => $teacher2->id]);
-        RepairRequest::factory()->create(['status' => 'pending_review', 'reporter_id' => null]);
+        RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher1->id]);
+        RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher2->id]);
+        RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => null]);
 
         // 教師 1 能驗收：自己報修的 1 張 + 沒有報修人的 1 張 = 2 張（教師 2 的那張不算）。
         $this->actingAs($teacher1)->get(route('dashboard'))->assertSee('2 張工單待驗收');

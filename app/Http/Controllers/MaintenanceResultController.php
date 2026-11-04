@@ -44,6 +44,7 @@ class MaintenanceResultController extends Controller
 
         $result = MaintenanceResult::create([
             ...$request->validated(),
+            'executed_by' => $request->user()->id,   // 執行人 = 登入帳號（外鍵 users.id），不能自己亂填
             'maintenance_order_id' => $maintenanceOrder->id,
         ]);
 

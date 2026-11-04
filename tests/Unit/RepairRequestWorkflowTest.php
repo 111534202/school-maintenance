@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Enums\RepairRequestStatus;
 use App\Models\RepairRequest;
+use App\Models\User;
 use App\Services\DeviceStatusSync;
 use App\Services\RepairRequestWorkflow;
 use DomainException;
@@ -29,7 +30,7 @@ class RepairRequestWorkflowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
         $workflow = $this->workflow();
 
-        $workflow->assign($repairRequest, '王小明', null);
+        $workflow->assign($repairRequest, User::factory()->create()->id, null);
         $this->assertSame(RepairRequestStatus::Assigned, $repairRequest->fresh()->status);
 
         $workflow->start($repairRequest);
@@ -114,14 +115,16 @@ class RepairRequestWorkflowTest extends TestCase
     {
         // 依《第四週個人工作計畫》第 1 項：已派工／處理中都能重新指派，不影響狀態本身。
         foreach (['assigned', 'in_progress'] as $status) {
+            $original = User::factory()->create();
+            $another = User::factory()->create();
             $repairRequest = RepairRequest::factory()->create([
                 'status' => $status,
-                'assignee_note' => '王小明',
+                'assigned_to' => $original->id,
             ]);
 
-            $this->workflow()->reassign($repairRequest, '劉小華', null);
+            $this->workflow()->reassign($repairRequest, $another->id, null);
 
-            $this->assertSame('劉小華', $repairRequest->fresh()->assignee_note);
+            $this->assertSame($another->id, $repairRequest->fresh()->assigned_to);
             $this->assertSame($status, $repairRequest->fresh()->status->value);
         }
     }
@@ -133,20 +136,22 @@ class RepairRequestWorkflowTest extends TestCase
         // 中斷，所以這裡用 try/catch 逐一驗證每個狀態都真的會擋下來，
         // 而不是只測到迴圈第一輪就結束（曾經在別支測試裡犯過這個錯，這裡刻意避開）。
         foreach (['pending', 'pending_review', 'completed'] as $status) {
+            $original = User::factory()->create();
+            $another = User::factory()->create();
             $repairRequest = RepairRequest::factory()->create([
                 'status' => $status,
-                'assignee_note' => '王小明',
+                'assigned_to' => $original->id,
             ]);
 
             $threwException = false;
             try {
-                $this->workflow()->reassign($repairRequest, '劉小華', null);
+                $this->workflow()->reassign($repairRequest, $another->id, null);
             } catch (DomainException $exception) {
                 $threwException = true;
             }
 
             $this->assertTrue($threwException, "狀態「{$status}」應該要擋下重新指派，但沒有丟出例外。");
-            $this->assertSame('王小明', $repairRequest->fresh()->assignee_note, "狀態「{$status}」時 assignee_note 不應該被改動。");
+            $this->assertSame($original->id, $repairRequest->fresh()->assigned_to, "狀態「{$status}」時維修人員不應該被改動。");
         }
     }
 }

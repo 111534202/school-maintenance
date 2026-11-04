@@ -20,12 +20,12 @@ class FormStepperTest extends TestCase
     {
         // 欄位：路由名稱、預期的步驟數、這張表單原本就有的欄位 name
         return [
-            '新增設備' => ['devices.create', 3, ['device_code', 'asset_code', 'device_category_id', 'classroom_id', 'brand', 'model', 'serial_number', 'warranty_until', 'status', 'is_core']],
-            '新增教室' => ['classrooms.create', 3, ['department_id', 'manager_id', 'campus', 'building', 'floor', 'room_code', 'room_name', 'room_type']],
-            '新增用戶' => ['users.create', 3, ['username', 'name', 'email', 'password']],
+            '新增設備' => ['devices.create', 3, ['device_code', 'asset_code', 'device_category_id', 'classroom_id', 'brand', 'model', 'serial_number', 'warranty_end_date', 'status', 'is_core']],
+            '新增教室' => ['classrooms.create', 3, ['department_id', 'manager_id', 'campus', 'building', 'floor', 'classroom_code', 'name', 'type']],
+            '新增用戶' => ['users.create', 3, ['account', 'name', 'email', 'password']],
             '新增報修單' => ['repairs.create', 3, ['title', 'description', 'impact_level', 'location', 'attachments[]']],
             '新增身分' => ['roles.create', 2, ['name', 'permissions[]']],
-            '新增保養計畫' => ['maintenance-plans.create', 3, ['name', 'device_category', 'cycle_days', 'start_date', 'is_active']],
+            '新增保養計畫' => ['maintenance-plans.create', 3, ['name', 'device_category_id', 'cycle_days', 'start_date', 'is_active']],
         ];
     }
 

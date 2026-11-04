@@ -28,12 +28,12 @@
                 <dd class="col-sm-9">{{ $device->serial_number ?? '—' }}</dd>
 
                 <dt class="col-sm-3">保固期限</dt>
-                <dd class="col-sm-9">{{ $device->warranty_until?->format('Y-m-d') ?? '—' }}</dd>
+                <dd class="col-sm-9">{{ $device->warranty_end_date?->format('Y-m-d') ?? '—' }}</dd>
 
                 <dt class="col-sm-3">所在教室</dt>
                 <dd class="col-sm-9">
                     @if ($device->classroom)
-                        {{ $device->classroom->room_code }} - {{ $device->classroom->room_name }}
+                        {{ $device->classroom->classroom_code }} - {{ $device->classroom->name }}
                     @else
                         —
                     @endif
@@ -85,7 +85,7 @@
                                     <span class="text-muted">尚未回報</span>
                                 @endif
                             </td>
-                            <td>{{ $order->result->executed_by ?? '—' }}</td>
+                            <td>{{ $order->result->executor?->name ?? '—' }}</td>
                             <td class="text-end">
                                 <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary">詳細</a>
                             </td>
@@ -189,8 +189,8 @@
                         <span class="text-muted small">{{ $repair->created_at?->format('Y-m-d H:i') }}</span>
                     </div>
                     <div class="text-muted small mt-1">
-                        報修人：{{ $repair->reporter?->name ?? '系統轉入' }}
-                        ／ 維修人員：{{ $repair->assignedTechnician?->name ?? $repair->assignee_note ?? '尚未指派' }}
+                        報修人：{{ $repair->requester?->name ?? '系統轉入' }}
+                        ／ 維修人員：{{ $repair->assignedTechnician?->name ?? '尚未指派' }}
                         @if ($ngSource?->maintenanceOrder)
                             ／ 來源：<a href="{{ route('maintenance-orders.results.show', $ngSource->maintenanceOrder) }}">保養工單 #{{ $ngSource->maintenance_order_id }} 的 NG 結果</a>
                         @endif
@@ -244,7 +244,7 @@
                     <ul class="list-group list-group-flush small">
                         @foreach ($attachments as $item)
                             <li class="list-group-item">
-                                <a href="{{ $item['file']->url() }}" target="_blank" rel="noopener">{{ $item['file']->original_name }}</a>
+                                <a href="{{ $item['file']->url() }}" target="_blank" rel="noopener">{{ $item['file']->file_name }}</a>
                                 <span class="text-muted">— {{ $item['from'] }}</span>
                             </li>
                         @endforeach

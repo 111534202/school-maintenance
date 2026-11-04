@@ -26,8 +26,7 @@ class MaintenancePlanFactory extends Factory
         return [
             'name' => fake()->randomElement(['空調機房', '飲水機', '電腦教室', '實驗室電力', '消防設備']).' 定期保養計畫',
             'device_id' => $device?->id,
-            'device_category' => $device?->category?->name
-                ?? fake()->randomElement(['空調', '電力設備', '資訊設備', '機械設備']),
+            'device_category_id' => $device?->device_category_id,
             'cycle_days' => $cycleDays,
             'start_date' => $startDate,
             'next_due_date' => (clone $startDate)->modify("+{$cycleDays} days"),

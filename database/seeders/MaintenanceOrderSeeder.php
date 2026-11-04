@@ -22,11 +22,11 @@ class MaintenanceOrderSeeder extends Seeder
                 ],
                 [
                     // 工程實作修正（第 3 週任務 2）：這裡原本漏掉 device_id，只帶了
-                    // device_category 文字，導致 maintenance_orders 永遠沒有實際連到
+                    // 設備類別，導致 maintenance_orders 永遠沒有實際連到
                     // devices 表，設備履歷頁查不到任何保養紀錄。改成跟 device_category
                     // 一樣直接帶入來源計畫的 device_id。
                     'device_id' => $plan->device_id,
-                    'device_category' => $plan->device_category,
+                    'device_category_id' => $plan->device_category_id,
                     'status' => MaintenanceOrder::STATUS_PENDING,
                     'scheduled_date' => $plan->next_due_date,
                 ]

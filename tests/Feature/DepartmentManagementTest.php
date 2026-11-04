@@ -29,7 +29,7 @@ class DepartmentManagementTest extends TestCase
     {
         return Classroom::create([
             'department_id' => $department?->id, 'campus' => '本校區', 'building' => 'A棟',
-            'floor' => '1', 'room_code' => $code, 'room_name' => $code . ' 教室',
+            'floor' => '1', 'classroom_code' => $code, 'name' => $code . ' 教室',
         ]);
     }
 
@@ -47,10 +47,10 @@ class DepartmentManagementTest extends TestCase
     public function test_admin_can_create_a_department_with_code_and_it_is_logged(): void
     {
         $this->post(route('departments.store'), [
-            'name' => '研發處', 'code' => 'RD', 'description' => '產品研發', 'is_active' => '1',
+            'name' => '研發處', 'department_code' => 'RD', 'description' => '產品研發', 'is_active' => '1',
         ])->assertRedirect(route('departments.index'));
 
-        $department = Department::firstWhere('code', 'RD');
+        $department = Department::firstWhere('department_code', 'RD');
         $this->assertNotNull($department);
         $this->assertTrue($department->is_active);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $department->id]);
@@ -59,21 +59,21 @@ class DepartmentManagementTest extends TestCase
     // 新增時的驗證：名稱不可重複、代碼不可重複、代碼格式限英數與 . _ -、名稱必填。
     public function test_create_validates_unique_name_unique_code_and_code_format(): void
     {
-        Department::create(['name' => '總務處', 'code' => 'GA']);
+        Department::create(['name' => '總務處', 'department_code' => 'GA']);
 
         $this->post(route('departments.store'), ['name' => '總務處', 'is_active' => '1'])->assertSessionHasErrors('name');
-        $this->post(route('departments.store'), ['name' => '新部門', 'code' => 'GA', 'is_active' => '1'])->assertSessionHasErrors('code');
-        $this->post(route('departments.store'), ['name' => '新部門', 'code' => 'bad code!', 'is_active' => '1'])->assertSessionHasErrors('code');
+        $this->post(route('departments.store'), ['name' => '新部門', 'department_code' => 'GA', 'is_active' => '1'])->assertSessionHasErrors('department_code');
+        $this->post(route('departments.store'), ['name' => '新部門', 'department_code' => 'bad code!', 'is_active' => '1'])->assertSessionHasErrors('department_code');
         $this->post(route('departments.store'), ['name' => '', 'is_active' => '1'])->assertSessionHasErrors('name');
     }
 
     // 修改部門時，不改名稱與代碼不會被誤判重複，且欄位確實被更新。
     public function test_update_keeps_own_unique_values_and_changes_fields(): void
     {
-        $department = Department::create(['name' => '人事室', 'code' => 'HR']);
+        $department = Department::create(['name' => '人事室', 'department_code' => 'HR']);
 
         $this->put(route('departments.update', $department), [
-            'name' => '人力資源室', 'code' => 'HR', 'description' => '改名', 'is_active' => '1',
+            'name' => '人力資源室', 'department_code' => 'HR', 'description' => '改名', 'is_active' => '1',
         ])->assertRedirect(route('departments.index'));
 
         $this->assertSame('人力資源室', $department->fresh()->name);
@@ -119,7 +119,7 @@ class DepartmentManagementTest extends TestCase
     // 列表顯示每個部門的用戶數與教室數，並且可以篩選。
     public function test_index_shows_counts_and_can_filter(): void
     {
-        $department = Department::create(['name' => '資訊中心', 'code' => 'IT']);
+        $department = Department::create(['name' => '資訊中心', 'department_code' => 'IT']);
         User::factory()->count(2)->create(['department_id' => $department->id]);
         Department::create(['name' => '停用的處室', 'is_active' => false]);
 
@@ -133,7 +133,7 @@ class DepartmentManagementTest extends TestCase
     {
         Department::create(['name' => '啟用部門甲']);
         $inactive = Department::create(['name' => '停用部門乙', 'is_active' => false]);
-        $user = User::factory()->create(['department_id' => $inactive->id, 'username' => 'someone']);
+        $user = User::factory()->create(['department_id' => $inactive->id, 'account' => 'someone']);
 
         $this->get(route('users.create'))->assertSee('啟用部門甲')->assertDontSee('停用部門乙');
 

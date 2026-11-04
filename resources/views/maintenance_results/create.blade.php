@@ -9,7 +9,7 @@
         <div class="card-body">
             <p class="mb-1"><strong>工單編號：</strong>#{{ $order->id }}</p>
             <p class="mb-1"><strong>來源計畫：</strong>{{ $order->maintenancePlan?->name ?? '—' }}</p>
-            <p class="mb-0"><strong>設備類別：</strong>{{ $order->device_category ?? '—' }}</p>
+            <p class="mb-0"><strong>設備類別：</strong>{{ $order->categoryName() ?? '—' }}</p>
         </div>
     </div>
 
@@ -37,17 +37,10 @@
         </div>
 
         <div class="mb-3">
-            <label for="executed_by" class="form-label">執行人 <span class="text-danger">*</span></label>
-            <input type="text" name="executed_by" id="executed_by"
-                class="form-control @error('executed_by') is-invalid @enderror"
-                value="{{ old('executed_by', auth()->user()->name) }}" required maxlength="100">
-            <div class="form-text">
-                預設帶入登入帳號的姓名；欄位目前仍是純文字記錄（工程實作決定，待全組確認後再評估改成 user_id 外鍵），
-                如果是代別人回報可以直接改掉。
-            </div>
-            @error('executed_by')
-                <div class="invalid-feedback">{{ $message }}</div>
-            @enderror
+            <label class="form-label">執行人</label>
+            {{-- 執行人固定是登入帳號（寫入時由系統帶入 users.id），所以只顯示、不讓人改。 --}}
+            <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly>
+            <div class="form-text">由登入帳號自動帶入，不能手動修改。</div>
         </div>
 
         <div class="mb-3">
@@ -61,10 +54,10 @@
         </div>
 
         <div class="mb-4">
-            <label for="notes" class="form-label">備註</label>
-            <textarea name="notes" id="notes" class="form-control @error('notes') is-invalid @enderror"
-                rows="3" maxlength="2000" placeholder="NG 時可說明異常狀況">{{ old('notes') }}</textarea>
-            @error('notes')
+            <label for="note" class="form-label">備註</label>
+            <textarea name="note" id="note" class="form-control @error('note') is-invalid @enderror"
+                rows="3" maxlength="2000" placeholder="NG 時可說明異常狀況">{{ old('note') }}</textarea>
+            @error('note')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror
         </div>

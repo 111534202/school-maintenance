@@ -35,6 +35,8 @@ class DatabaseSeeder extends Seeder
             MaintenanceOrderSeeder::class,
             // 第 3 週任務 6：多台同型號設備的保養歷史，供 Week4 AI 預測展示用。
             AiDemoDataSeeder::class,
+            // 零件庫存模組的示範資料。
+            PartSeeder::class,
         ]);
 
         // feature/repair（彭仕衡）的測試資料。
