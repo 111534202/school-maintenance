@@ -124,6 +124,18 @@ class DrilldownNavigationTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\bd-(sm|md|lg|xl|xxl)-none\b|\bd-none\b/', $button[0]);
     }
 
+    // 最內層的清單頁（用戶主檔、空間預約…）也要有「返回」；主控台是最上層，不需要。
+    public function test_inner_pages_have_a_back_button_but_the_dashboard_does_not(): void
+    {
+        $this->assertStringNotContainsString('data-page-back aria-label=', $this->page('admin', 'dashboard'));   // 按鈕本體；頁尾的 script 在每一頁都有
+
+        foreach (['users.index', 'reservations.index', 'classrooms.index', 'repairs.index', 'maintenance-orders.index'] as $route) {
+            $html = $this->page('admin', $route);
+            $this->assertStringContainsString('data-page-back aria-label=', $html, "{$route} 缺少返回按鈕");
+            $this->assertStringContainsString('href="'.route('dashboard').'" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back', $html);
+        }
+    }
+
     public function test_group_containing_current_page_is_opened_by_default(): void
     {
         $html = $this->page('admin', 'maintenance-orders.index');

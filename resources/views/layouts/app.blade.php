@@ -80,6 +80,13 @@
                 <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
+                {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
+                     點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回主控台。 --}}
+                @unless (request()->routeIs('dashboard'))
+                    <a href="{{ route('dashboard') }}" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back aria-label="{{ __('common.buttons.back') }}">
+                        <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline ms-1">{{ __('common.buttons.back') }}</span>
+                    </a>
+                @endunless
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
             <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
@@ -193,6 +200,23 @@
 
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @auth
+        <script>
+            // 「返回」：上一頁是本站的頁面才用瀏覽器的上一頁；否則維持連結本身（回主控台）。
+            (function () {
+                var back = document.querySelector('[data-page-back]');
+                if (!back) { return; }
+                back.addEventListener('click', function (event) {
+                    var sameSite = false;
+                    try { sameSite = document.referrer !== '' && new URL(document.referrer).origin === location.origin; } catch (e) {}
+                    if (sameSite && history.length > 1) {
+                        event.preventDefault();
+                        history.back();
+                    }
+                });
+            })();
+        </script>
+    @endauth
     {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
     @include('layouts.partials.form-stepper')
     {{-- 篩選列的洋蔥式：一長排篩選欄位收成「篩選條件」摘要列，點開從右邊滑入、直向排列。 --}}
