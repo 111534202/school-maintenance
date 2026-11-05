@@ -1,10 +1,7 @@
 {{-- 各頁面自己的內容會被放在這裡（兩處是登入後與未登入的版面）。 --}}
 {{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
 {{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
-{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
-{{-- 【Blade 版面（layout）是什麼？】所有頁面共用的外框：最上方的導覽列、左邊的選單、訊息區，中間 @yield('content') 才是各頁面自己的內容。 --}}
-{{-- 各頁面用 @extends('layouts.app') 套用這個外框，再用 @section('content') 填入內容。 --}}
-{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 layouts/partials/nav-links.blade.php。 --}}
+{{-- 想改全站共用的外觀（顏色、導覽列、選單位置）改這個檔案；想改選單有哪些連結，改 app/Support/NavMenu.php。 --}}
 {{-- Blade 語法速查：雙大括號包住變數 = 輸出文字（會自動防止惡意程式碼）；@if / @foreach 是條件與迴圈；@can('權限') 有權限才顯示；大括號加兩個減號的寫法是不會輸出到網頁的註解。 --}}
 <!DOCTYPE html>
 {{-- 網頁的語言標記，依目前選的語言自動變成 zh-TW 或 en。 --}}
@@ -19,7 +16,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     {{-- Bootstrap Icons：全站按鈕統一用圖示（筆=編輯、垃圾桶=刪除…），不使用 emoji。 --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
     {{-- 以下是本站自訂的樣式，補強 Bootstrap 不足的地方。 --}}
     <style>
         /* 頁面至少和視窗一樣高。 */
@@ -69,31 +65,34 @@
         .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
         .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
-    {{-- 全站風格 B「校園溫和」：墨綠導覽列、暖白底、思源黑體／宋體、Bootstrap 主色換成墨綠（說明見 public/css/theme-b.css 開頭）。 --}}
+    {{-- 全站風格 B「校園溫和」：墨綠導覽列、暖白底、思源黑體／宋體、Bootstrap 主色換成墨綠（說明見 public/css/theme-b.css 開頭）。
+         洋蔥式元件（清單詳細面板、篩選面板、分步驟表單、洋蔥式選單、主控台入口）的配色也在那個檔案的「3. 洋蔥式元件」。 --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
-    {{-- 「洋蔥式」響應式版面（手機上表格變卡片、篩選與區塊可收合；桌面版不受影響），說明見檔案開頭。?v= 是檔案修改時間，改了檔案瀏覽器就會重新下載。 --}}
-    <link href="{{ asset('css/onion.css') }}?v={{ filemtime(public_path('css/onion.css')) }}" rel="stylesheet">
 </head>
 {{-- 頁面主體：暖白色背景（tb-body，見 theme-b.css）。 --}}
-<body class="tb-body" data-onion-filter="{{ __('common.buttons.filter') }}" data-onion-details="{{ __('common.buttons.details') }}" data-onion-collapse="{{ __('common.buttons.collapse') }}">
-    {{-- 最上方的墨綠導覽列（tb-navbar，見 theme-b.css）。 --}}
+<body class="tb-body">
+    {{-- 最上方的墨綠導覽列（tb-navbar，見 theme-b.css；捲動時固定在畫面最上方）。 --}}
     <nav class="navbar navbar-dark tb-navbar">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
                 {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
-                {{-- 寬螢幕（1200px 以上）選單直接放在上方列（top-nav），漢堡按鈕只在比較窄的螢幕出現。 --}}
-                <button class="btn btn-outline-light btn-sm flex-shrink-0 d-xl-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
+                {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
+                     點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回父頁（清單頁或所屬的工單，規則見 App\Support\BackLink），再不行回主控台。
+                     各頁面不再自己放返回連結，返回只放在這裡（守門測試：BackLinkTest）。 --}}
+                @unless (request()->routeIs('dashboard'))
+                    <a href="{{ \App\Support\BackLink::url(request()->route()) }}" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back aria-label="{{ __('common.buttons.back') }}">
+                        <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline ms-1">{{ __('common.buttons.back') }}</span>
+                    </a>
+                @endunless
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
-            <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
-            @auth
-                @include('layouts.partials.top-nav')
-            @endauth
+            <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
                      .env 的 APP_LOCALE_SWITCHER 設成 true 就好，翻譯與切換功能都還在）。 --}}
@@ -166,10 +165,9 @@
                 <h6 class="offcanvas-title">選單</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
             </div>
-            <div class="offcanvas-body">
-                <div class="nav flex-column">
-                    @include('layouts.partials.nav-links', ['navId' => 'drawer'])
-                </div>
+            {{-- 手機版與桌面版都用「洋蔥式」選單（一層一層往內點，見 layouts/partials/nav-drilldown.blade.php）。 --}}
+            <div class="offcanvas-body p-0">
+                @include('layouts.partials.nav-drilldown', ['drillId' => 'drawer'])
             </div>
         </div>
 
@@ -203,8 +201,8 @@
         </div>
     @endauth
 
-    {{-- 可點的表格列：列表裡有 data-href 的 <tr>，點任何一格（或用 Tab 移到該列後按 Enter）就進入該筆的詳細頁；
-         點到列裡的按鈕、連結、表單欄位時照原本的功能，正在選取文字時也不跳頁。 --}}
+    {{-- 可點的表格列：表格檢視裡有 data-href 的 <tr>，點任何一格（或用 Tab 移到該列後按 Enter）就進入該筆的詳細頁；
+         點到列裡的按鈕、連結、表單欄位時照原本的功能，正在選取文字時也不跳頁。（清單檢視則是點一筆從右邊滑出詳細面板。） --}}
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('tr[data-href]').forEach(function (row) {
@@ -222,7 +220,30 @@
     </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    {{-- 洋蔥式版面的行為（表格卡片化、篩選與區塊收合），說明見 public/js/onion.js。 --}}
-    <script src="{{ asset('js/onion.js') }}?v={{ filemtime(public_path('js/onion.js')) }}"></script>
+    @auth
+        <script>
+            // 「返回」：上一頁是本站的頁面才用瀏覽器的上一頁；否則維持連結本身（回主控台）。
+            (function () {
+                var back = document.querySelector('[data-page-back]');
+                if (!back) { return; }
+                back.addEventListener('click', function (event) {
+                    var sameSite = false;
+                    try { sameSite = document.referrer !== '' && new URL(document.referrer).origin === location.origin; } catch (e) {}
+                    if (sameSite && history.length > 1) {
+                        event.preventDefault();
+                        history.back();
+                    }
+                });
+            })();
+        </script>
+    @endauth
+    {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
+    @include('layouts.partials.form-stepper')
+    {{-- 篩選列的洋蔥式：一長排篩選欄位收成「篩選條件」摘要列，點開從右邊滑入、直向排列。 --}}
+    @include('layouts.partials.filter-onion')
+    {{-- 清單的洋蔥式檢視：列表頁的寬表格變成一列一列的簡短清單，點進去詳細內容從右邊滑入。 --}}
+    @include('layouts.partials.list-onion')
+    {{-- 讓列表頁剛好一個畫面：電腦版清單在固定外框內捲動，手機版一次只顯示放得下的幾筆並用上一頁／下一頁切換。 --}}
+    @include('layouts.partials.fit-screen')
 </body>
 </html>

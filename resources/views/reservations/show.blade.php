@@ -16,7 +16,6 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="h3 mb-0">預約詳細：{{ $reservation->class_name }}</h1>
-    <a href="{{ route('reservations.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
 </div>
 
 <div class="card mb-3">

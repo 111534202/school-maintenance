@@ -44,7 +44,7 @@ class DatabaseNamingConventionTest extends TestCase
     // 已經被取代的舊名稱：不准再出現（防止有人用舊名稱新增欄位）。
     private const RETIRED_NAMES = [
         'slug', 'username', 'room_code', 'room_name', 'room_type', 'reporter_id', 'assignee_note',
-        'original_name', 'disk_path', 'warranty_until', 'affects_class', 'device_category',
+        'original_name', 'disk_path', 'warranty_until', 'affects_class', 'device_category', 'period_no',
     ];
 
     // 例外：多型關聯與框架表的編號欄位沒有外鍵（見 DatabaseNormalizationTest）。
@@ -94,6 +94,16 @@ class DatabaseNamingConventionTest extends TestCase
             foreach (Schema::getColumnListing($table) as $column) {
                 $this->assertMatchesRegularExpression('/^[a-z][a-z0-9]*(_[a-z0-9]+)*$/', $column, "{$table}.{$column} 要用小寫英文加底線");
                 $this->assertNotContains($column, $banned, "{$table}.{$column} 不能叫這個名字（見 docs/資料庫命名規範與資料字典.md）");
+            }
+        }
+    }
+
+    // 序號（第幾個）寫完整單字 <名詞>_number（serial_number、period_number），不用 _no／_num 縮寫。
+    public function test_sequence_numbers_are_spelled_out(): void
+    {
+        foreach ($this->businessTables() as $table) {
+            foreach (Schema::getColumnListing($table) as $column) {
+                $this->assertDoesNotMatchRegularExpression('/_(no|num|seq)$/', $column, "{$table}.{$column}：序號請寫完整單字 <名詞>_number（見 docs/資料庫命名規範與資料字典.md）");
             }
         }
     }

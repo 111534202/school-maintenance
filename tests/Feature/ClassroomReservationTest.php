@@ -381,7 +381,7 @@ class ClassroomReservationTest extends TestCase
             'reservation_date' => $secondDate,
             'start_time' => '09:00',
             'end_time' => '10:00',
-            'period_no' => null,
+            'period_number' => null,
         ]);
 
         // 待核准預約有兩個日期：第一天沒有衝突，第二天才有衝突。
@@ -401,13 +401,13 @@ class ClassroomReservationTest extends TestCase
                 'reservation_date' => $firstDate,
                 'start_time' => '09:00',
                 'end_time' => '10:00',
-                'period_no' => 1,
+                'period_number' => 1,
             ],
             [
                 'reservation_date' => $secondDate,
                 'start_time' => '09:00',
                 'end_time' => '10:00',
-                'period_no' => 1,
+                'period_number' => 1,
             ],
         ]);
 
@@ -492,9 +492,9 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonPath('date', $date)
             // 第一列是早自習，接著第1節
             ->assertJsonPath('periods.0.label', '早自習')
-            ->assertJsonPath('periods.0.period_no', 0)
+            ->assertJsonPath('periods.0.period_number', 0)
             ->assertJsonPath('periods.0.start_time', '08:00')
-            ->assertJsonPath('periods.1.period_no', 1)
+            ->assertJsonPath('periods.1.period_number', 1)
             ->assertJsonPath('periods.1.label', '第1節')
             ->assertJsonPath('periods.1.start_time', '08:30')
             ->assertJsonPath('periods.1.end_time', '09:20')
@@ -588,7 +588,7 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonCount(7, 'days')
             ->assertJsonPath('days.0.date', $monday->toDateString())
             ->assertJsonPath('days.6.date', $monday->copy()->addDays(6)->toDateString())
-            ->assertJsonPath('days.0.periods.1.period_no', 1)
+            ->assertJsonPath('days.0.periods.1.period_number', 1)
             ->assertJsonPath('days.0.periods.1.start_time', '08:30');
     }
 
@@ -614,7 +614,7 @@ class ClassroomReservationTest extends TestCase
             'reservation_date' => $monday->toDateString(),
             'start_time' => '08:20',
             'end_time' => '08:40',
-            'period_no' => 1,
+            'period_number' => 1,
         ]);
 
         $approved = ClassroomReservation::create([
@@ -633,7 +633,7 @@ class ClassroomReservationTest extends TestCase
             'reservation_date' => $tuesday->toDateString(),
             'start_time' => '09:10',
             'end_time' => '09:30',
-            'period_no' => 2,
+            'period_number' => 2,
         ]);
 
         $this->getJson(route('reservations.timetable.week', [
@@ -756,8 +756,8 @@ class ClassroomReservationTest extends TestCase
             'start_time' => '13:10',
             'end_time' => '09:00',
             'slots' => [
-                ['reservation_date' => $day1, 'start_time' => '13:10', 'end_time' => '14:00', 'period_no' => 5],
-                ['reservation_date' => $day2, 'start_time' => '08:10', 'end_time' => '09:00', 'period_no' => 1],
+                ['reservation_date' => $day1, 'start_time' => '13:10', 'end_time' => '14:00', 'period_number' => 5],
+                ['reservation_date' => $day2, 'start_time' => '08:10', 'end_time' => '09:00', 'period_number' => 1],
             ],
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
 

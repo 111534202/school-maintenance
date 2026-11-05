@@ -119,8 +119,8 @@ class SmokeTest extends TestCase
                 continue;   // 不是完整的登入後頁面（轉址、下載檔案、權限不足…）就不檢查版面
             }
 
-            // 登入後的完整頁面：有載入洋蔥式版面（public/js/onion.js），而且沒有殘留的 Blade 語法。
-            foreach (['js/onion.js'] as $needle) {
+            // 登入後的完整頁面：有洋蔥式選單（抽屜裡唯一的一份）、有載入洋蔥式的分步驟表單／篩選／清單／一個畫面這幾組版面，而且沒有殘留的 Blade 語法。
+            foreach (['id="drill-drawer"'] as $needle) {
                 if (! str_contains($html, $needle)) {
                     $problems[] = "[$roleCode] $url 缺少洋蔥式版面 $needle";
                 }

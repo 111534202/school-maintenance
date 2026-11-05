@@ -20,12 +20,12 @@ class LocalTimetableProvider implements TimetableProvider
             $classroom,
             $courses
         ): array {
-            $key = $weekday . '.' . $classroom->classroom_code . '.' . $period['period_no'];
+            $key = $weekday . '.' . $classroom->classroom_code . '.' . $period['period_number'];
             $course = $courses[$key] ?? null;
 
             return [
-                'period_no' => $period['period_no'],
-                'label' => $period['label'] ?? ('第' . $period['period_no'] . '節'),
+                'period_number' => $period['period_number'],
+                'label' => $period['label'] ?? ('第' . $period['period_number'] . '節'),
                 'start_time' => $period['start_time'],
                 'end_time' => $period['end_time'],
                 'class_name' => $course['class_name'] ?? null,

@@ -17,6 +17,7 @@ return [
         'pending_reservations' => '空間預約待審核',
         'pending_repairs' => '待修數',
         'in_progress' => '維修中',
+        'overdue' => '逾時工單',
         'devices' => '設備總數',
         'users' => '用戶數量',
         'classrooms' => '教室數量',

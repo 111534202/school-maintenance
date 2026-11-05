@@ -25,7 +25,11 @@ use App\Models\RepairRequest;        // 報修單資料表模型
  *         description: '定期保養檢查時發現燈泡亮度低於標準值，建議更換。',
  *         deviceNote: 'A101 教室投影機',
  *         impactLevel: 'medium',
+ *         deviceId: $device->id,                   // 選填：設備主檔 devices.id（不是 device_code）
  *     );
+ *
+ * deviceId（王佑恩提出的需求）：傳了就在建單當下掛上設備關聯，設備履歷、設備入口頁才找得到這張報修單；
+ * 沒傳就維持原本的行為（device_id 是空的，只有 device_note 文字）。設備是否存在由外鍵約束把關。
  *
  * 回傳值是一張全新的 RepairRequest，狀態是「新報修」（pending），會直接出現在
  * 維修案件看板上，主管可以照一般報修單一樣派工，後續流程完全一樣。
@@ -47,6 +51,7 @@ class CreateRepairRequestFromMaintenanceNg
         string $description,
         ?string $deviceNote = null,
         string $impactLevel = 'medium',
+        ?int $deviceId = null,   // 放在最後面，原本的具名參數呼叫才不會壞
     ): RepairRequest {
         return RepairRequest::create([
             'title' => $title,
@@ -57,6 +62,7 @@ class CreateRepairRequestFromMaintenanceNg
             // 保養 NG 轉來的案件，先假設不影響上課（王佑恩若知道會影響上課，
             // 可以之後在呼叫時加一個參數傳進來，目前規格沒要求，先用預設值）。
             'is_class_affected' => false,
+            'device_id' => $deviceId,     // 有傳才有設備關聯；沒傳就是 null（和以前一樣）
             'device_note' => $deviceNote,
             'status' => RepairRequestStatus::Pending->value,   // 一律從「新報修」開始，後面照一般流程派工
         ]);

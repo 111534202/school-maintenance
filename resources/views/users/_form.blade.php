@@ -5,7 +5,7 @@
 @php($user = $user ?? null)
 
 {{-- 區塊一：帳號資料 --}}
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3" data-step="{{ __('users.form.section_account') }}">
     <div class="card-header bg-white form-section-title"><i class="bi bi-person-badge me-2"></i>{{ __('users.form.section_account') }}</div>
     <div class="card-body">
         <div class="row g-3">
@@ -42,7 +42,7 @@
 </div>
 
 {{-- 區塊二：聯絡與所屬 --}}
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3" data-step="{{ __('users.form.section_contact') }}">
     <div class="card-header bg-white form-section-title"><i class="bi bi-diagram-3 me-2"></i>{{ __('users.form.section_contact') }}</div>
     <div class="card-body">
         <div class="row g-3">
@@ -78,7 +78,7 @@
 {{-- 區塊三：登入密碼（只有新增時才在這裡設定；編輯時改用旁邊獨立的「重設密碼」，避免不小心改到密碼） --}}
 {{-- @unless：不是編輯（= 新增）時才顯示密碼欄位。 --}}
 @unless ($user)
-    <div class="card shadow-sm mb-3">
+    <div class="card shadow-sm mb-3" data-step="{{ __('users.form.section_password') }}">
         <div class="card-header bg-white form-section-title"><i class="bi bi-key me-2"></i>{{ __('users.form.section_password') }}</div>
         <div class="card-body">
             <div class="row g-3">

@@ -99,7 +99,16 @@
                     {{-- 逐筆列出設備；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($devices as $device)
                         <tr data-href="{{ route('devices.show', $device) }}">
-                            <td><a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a></td>
+                            <td>
+                                <a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a>
+                                {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
+                                @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
+                                    <a href="{{ route('repairs.index', ['device_id' => $device->id]) }}" class="d-block small text-danger text-decoration-none"
+                                        title="{{ __('devices.repeat_repair_hint') }}">
+                                        <i class="bi bi-arrow-repeat"></i> {{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}
+                                    </a>
+                                @endif
+                            </td>
                             <td>{{ $device->category->name ?? __('devices.no_value') }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
                             <td>{{ $device->classroom->name ?? __('devices.no_value') }}</td>

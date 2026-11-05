@@ -49,6 +49,7 @@ return [
         'edit' => 'Edit',
         'delete' => 'Delete',
         'back_to_list' => 'Back to List',
+        'back' => 'Back',
         'filter' => 'Filter',
         'clear_filter' => 'Clear Filter',
         'view' => 'View',

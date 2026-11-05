@@ -16,7 +16,7 @@ class ClassroomReservationSlot extends Model
         'reservation_date',
         'start_time',
         'end_time',
-        'period_no',
+        'period_number',
         'status',
         'rejection_reason',
     ];
@@ -25,7 +25,7 @@ class ClassroomReservationSlot extends Model
     {
         return [
             'reservation_date' => 'date',
-            'period_no' => 'integer',
+            'period_number' => 'integer',
         ];
     }
 
@@ -43,11 +43,11 @@ class ClassroomReservationSlot extends Model
     /** 節次名稱：0＝早自習、1～13＝第 N 節；沒有節次（例如午休或舊資料）回傳 null。 */
     public function periodLabel(): ?string
     {
-        if ($this->period_no === null) {
+        if ($this->period_number === null) {
             return null;
         }
 
-        return $this->period_no === 0 ? '早自習' : "第 {$this->period_no} 節";
+        return $this->period_number === 0 ? '早自習' : "第 {$this->period_number} 節";
     }
 
     /** 時段顯示文字：2026-11-03 09:30–10:20（第 2 節）。 */

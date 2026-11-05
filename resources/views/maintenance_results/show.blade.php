@@ -7,7 +7,6 @@
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">保養結果詳細</h1>
-        <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary btn-sm">返回工單</a>
     </div>
 
     <div class="card mb-3">

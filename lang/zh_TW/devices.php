@@ -18,6 +18,9 @@ return [
     'yes' => '是',
     'no' => '否',
     'core_badge' => '核心',
+    // 重複報修提醒：近 Device::REPEAT_REPAIR_DAYS 天報修次數達門檻時，顯示在設備主檔與報修看板上。
+    'repeat_repair_badge' => '近30天報修:count次',
+    'repeat_repair_hint' => '這台設備短期內多次報修，建議優先檢查或評估汰換',
     'no_department' => '未指定部門',
 
     // 篩選列的文字：欄位名稱、輸入框提示、「全部」選項。

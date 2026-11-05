@@ -17,6 +17,7 @@ return [
         'in_progress' => 'In Progress',
         'pending_review' => 'Awaiting Acceptance',
         'pending_reservations' => 'Reservations Awaiting Review',
+        'overdue' => 'Overdue Repairs',
         'devices' => 'Total Devices',
         'users' => 'Total Users',
         'classrooms' => 'Total Classrooms',

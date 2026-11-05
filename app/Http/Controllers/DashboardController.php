@@ -70,6 +70,8 @@ class DashboardController extends Controller
             $monthStart->copy(),
             $monthStart->copy()->endOfMonth(),
         );
+        // 「逾時工單」= 還沒結案、且已經超過預計處理時間的案件（見 RepairRequest::scopeOverdue）。
+        $overdueCount = RepairRequest::visibleTo($user)->overdue()->count();
 
         // 近 14 天每天新增幾張報修單（沒有的日子補 0，折線才不會斷）。
         $since = now()->subDays(13)->startOfDay();   // 13 天前的 00:00，加上今天剛好 14 天
@@ -100,6 +102,7 @@ class DashboardController extends Controller
             'monthlyRepairCount' => $monthlyRepairCount,
             'averageRepairHours' => $repairDurationStats['average_hours'],
             'repairDurationMissingCount' => $repairDurationStats['missing_hours_request_count'],
+            'overdueCount' => $overdueCount,
             'trend' => $trend,
             // 空間預約待審核：有預約管理權限的人算全部，其他人只算自己提出的（和預約列表看到的一致）。
             'pendingReservationCount' => ClassroomReservation::query()

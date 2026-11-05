@@ -5,11 +5,7 @@
 @section('content')
 <div class="container-fluid py-4">
     <div class="mb-4">
-        <a href="{{ route('reservations.index') }}" class="text-decoration-none">
-            <i class="bi bi-arrow-left me-1"></i>
-            返回預約列表
-        </a>
-        <h1 class="h3 mt-3 mb-1">新增空間預約</h1>
+        <h1 class="h3 mb-1">新增空間預約</h1>
         <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
     </div>
 
@@ -744,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ['reservation_date', item.date],
                 ['start_time', item.period.start_time],
                 ['end_time', item.period.end_time],
-                ['period_no', item.period.period_no]
+                ['period_number', item.period.period_number]
             ].forEach(function (field) {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -793,7 +789,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     // 節次名稱：早自習、第1節…、午休（後端課表設定提供 label；舊資料沒有就用「第 N 節」）。
     function periodLabel(period) {
-        return period.label || ('第' + period.period_no + '節');
+        return period.label || ('第' + period.period_number + '節');
     }
 
     // 使用者電腦目前的日期（YYYY-MM-DD）與時間（HH:MM），用來判斷哪些節次已經過去；送出時後端會再檢查一次。

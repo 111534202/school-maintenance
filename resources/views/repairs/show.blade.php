@@ -50,8 +50,6 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
-        <a class="btn btn-outline-secondary icon-btn flex-shrink-0" href="{{ route('repairs.index') }}"
-            title="{{ __('repair_requests.show.back_to_board') }}" aria-label="{{ __('repair_requests.show.back_to_board') }}"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     {{-- 版面：寬螢幕（992px 以上）左欄是設備資料與故障描述，右欄是派工與處理；
@@ -416,7 +414,7 @@
                 const tbody = table.createTBody();
                 data.days[0].periods.forEach(function (period, index) {
                     const row = tbody.insertRow();
-                    row.appendChild(cell((period.label || ('第 ' + period.period_no + ' 節')) + '\n' + period.start_time + '–' + period.end_time, 'text-nowrap table-light'));
+                    row.appendChild(cell((period.label || ('第 ' + period.period_number + ' 節')) + '\n' + period.start_time + '–' + period.end_time, 'text-nowrap table-light'));
 
                     data.days.forEach(function (day) {
                         const p = day.periods[index];
@@ -439,7 +437,7 @@
                             td = cell(label, cls + ' tt-free');
                             td.tabIndex = 0;
                             td.setAttribute('role', 'button');
-                            td.setAttribute('aria-label', day.date + ' ' + (p.label || ('第 ' + p.period_no + ' 節')) + ' ' + p.start_time + '，選這個時間');
+                            td.setAttribute('aria-label', day.date + ' ' + (p.label || ('第 ' + p.period_number + ' 節')) + ' ' + p.start_time + '，選這個時間');
                             const choose = function () {
                                 if (targetInput) { targetInput.value = day.date + 'T' + p.start_time; }
                                 bootstrap.Modal.getInstance(modal).hide();

@@ -6,6 +6,7 @@ use App\Exports\RepairCostAnalysisExport;
 use App\Services\RepairCostAnalysisService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -69,6 +70,10 @@ class RepairCostAnalysisController extends Controller
         // 中文字型 Noto Sans TC 收錄六萬多個字，dompdf 讀取字型對照表（cmap）時會用掉超過
         // PHP 預設的 128MB，所以只在產生 PDF 這一次把記憶體上限提高到 512MB。
         ini_set('memory_limit', '512M');
+
+        // dompdf 會把字型對照表快取在 storage/fonts；這個資料夾不在版本控制裡（.gitignore），
+        // 全新複製下來的專案裡沒有，沒建好會直接 500，所以匯出前先確保它存在。
+        File::ensureDirectoryExists(storage_path('fonts'));
 
         $pdf = Pdf::loadView('repair-cost-analysis.pdf', $data)
             ->setPaper('a4', 'landscape');

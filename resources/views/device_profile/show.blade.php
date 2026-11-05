@@ -5,7 +5,6 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">設備履歷：{{ $device->device_code }}</h1>
-        <a href="{{ route('device-profile.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
     </div>
 
     <div class="card mb-3">

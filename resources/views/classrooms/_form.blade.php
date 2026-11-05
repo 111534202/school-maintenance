@@ -8,7 +8,7 @@
     @method('PUT')
 @endisset
 
-<div class="row g-3">
+<div class="row g-3" data-step="負責單位">
     <div class="col-md-6">
         <label for="department_id" class="form-label">{{ __('classrooms.form.department') }}</label>
         {{-- 部門下拉選單：選項來自部門主檔（只列啟用中的，但會保留這間教室目前已選的部門）。 --}}
@@ -34,6 +34,8 @@
             @endforeach
         </select>
     </div>
+</div>
+<div class="row g-3" data-step="位置">
     <div class="col-md-4">
         <label for="campus" class="form-label">{{ __('classrooms.form.campus') }}</label>
         {{-- 校區（必填）。 --}}
@@ -49,6 +51,8 @@
         {{-- 樓層（必填）。 --}}
         <input type="text" id="floor" name="floor" class="form-control @error('floor') is-invalid @enderror" value="{{ old('floor', $classroom->floor ?? '') }}" required>
     </div>
+</div>
+<div class="row g-3" data-step="教室資料">
     <div class="col-md-6">
         <label for="classroom_code" class="form-label">{{ __('classrooms.form.classroom_code') }}</label>
         {{-- 教室代碼：整個系統不可重複（後端驗證）。 --}}
