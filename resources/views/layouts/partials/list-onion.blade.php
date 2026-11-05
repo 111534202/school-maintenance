@@ -197,8 +197,15 @@
             toggle.addEventListener('click', function () { setMode(getMode() === 'list' ? 'table' : 'list'); views.forEach(function (v) { v.apply(); }); });
             // 表格包在卡片裡（.card、.tb-table-wrap）時，切換按鈕放在卡片外面的右上方，卡片裡只放清單或表格，
             // 不會在卡片頂端多出一條只有按鈕的空白；清單也貼齊卡片（樣式見 public/css/theme-b.css「4. 洋蔥式元件」）。
+            // 卡片有標題列（.card-header）時，切換按鈕放進標題列的右邊（跟「新增採購」這類按鈕排在一起）。
             var host = wrap.parentNode;
-            if (host.matches('.card, .tb-table-wrap') && host.firstElementChild === wrap) {
+            var header = wrap.previousElementSibling;
+            if (host.matches('.card') && header && header.classList.contains('card-header')) {
+                bar.className = 'onion-viewbar onion-viewbar-inline ms-auto';
+                var kids = header.children;
+                if (kids.length >= 2) { header.insertBefore(bar, kids[kids.length - 1]); } else { header.appendChild(bar); }
+                if (getComputedStyle(header).display !== 'flex') { header.classList.add('d-flex', 'flex-wrap', 'align-items-center', 'gap-2'); }
+            } else if (host.matches('.card, .tb-table-wrap') && host.firstElementChild === wrap) {
                 host.parentNode.insertBefore(bar, host);
             } else {
                 host.insertBefore(bar, wrap);
