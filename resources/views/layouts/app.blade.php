@@ -72,14 +72,18 @@
     <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
 </head>
 {{-- 頁面主體：暖白色背景（tb-body，見 theme-b.css）。 --}}
-<body class="tb-body">
+{{-- 網址帶 ?modal=1：這一頁是放在別頁對話框裡的表單（例如零件履歷的「修改採購」），只顯示內容，不顯示導覽列與選單。 --}}
+@php($embedded = request()->boolean('modal'))
+<body class="tb-body {{ $embedded ? 'tb-embedded' : '' }}">
+@unless ($embedded)
     {{-- 最上方的墨綠導覽列（tb-navbar，見 theme-b.css；捲動時固定在畫面最上方）。 --}}
     <nav class="navbar navbar-dark tb-navbar">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
-                {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
-                <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                {{-- 「漢堡」按鈕：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。
+                     寬螢幕（1200px 以上，d-xl-none）選單已經排在上方列（top-nav），就不顯示漢堡按鈕；比較窄的螢幕才用它。 --}}
+                <button class="btn btn-outline-light btn-sm flex-shrink-0 d-xl-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
@@ -92,7 +96,11 @@
                 @endunless
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
-            <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            {{-- 寬螢幕（1200px 以上）選單也直接排在上方列（top-nav），比較窄時只用漢堡選單。 --}}
+            @auth
+                @include('layouts.partials.top-nav')
+            @endauth
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
                      .env 的 APP_LOCALE_SWITCHER 設成 true 就好，翻譯與切換功能都還在）。 --}}
@@ -149,8 +157,9 @@
             </div>
         </div>
     </nav>
+@endunless
 
-    @if (config('app.locale_switcher'))
+    @if (config('app.locale_switcher') && ! $embedded)
         <script>
             document.getElementById('locale-select').addEventListener('change', function () {
                 window.location.href = this.value;
@@ -159,6 +168,7 @@
     @endif
 
     @auth
+        @unless ($embedded)
         {{-- 全站唯一的選單：預設收起來，點左上角的漢堡按鈕才從左邊滑出（所有螢幕大小都一樣，不再有固定的側邊欄）。 --}}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
             <div class="offcanvas-header">
@@ -170,9 +180,10 @@
                 @include('layouts.partials.nav-drilldown', ['drillId' => 'drawer'])
             </div>
         </div>
+        @endunless
 
         <div class="d-flex">
-            <div class="flex-grow-1 app-content p-3 p-md-4">
+            <div class="flex-grow-1 app-content {{ $embedded ? 'p-3' : 'p-3 p-md-4' }}">
                 {{-- 操作成功訊息（Controller 用 ->with('success', ...) 帶過來，只顯示一次）。 --}}
                 @if (session('success'))
                     <div class="alert alert-success">{{ session('success') }}</div>
@@ -238,7 +249,7 @@
             return input.files.length > max ? max : null;
         }
         function tooManyText(max) {
-            return max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件再上傳。' : '最多只能再選 ' + max + ' 個檔案，請重新選擇。';
+            return max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件。' : '最多只能再選 ' + max + ' 個檔案。';
         }
         function tooBig(input) {
             var limit = fileLimit(input);
@@ -248,41 +259,119 @@
             }
             return null;
         }
+        // 可以選多個檔案的欄位（multiple）：每次「選擇檔案」選到的會「加進」已選的清單，而不是取代；
+        // 欄位下方列出已選的檔案，每個都可以按 ✕ 拿掉。太大的檔案、超過數量的部分會跳出提示並略過。
+        var picked = new WeakMap();   // 每個欄位目前已選的檔案
+        function fileKey(f) { return f.name + '|' + f.size + '|' + f.lastModified; }
+        function setFiles(input, files) {
+            var dt = new DataTransfer();
+            files.forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+            picked.set(input, files);
+            renderList(input, files);
+        }
+        function renderList(input, files) {
+            var list = input._pickedList;
+            if (!list) {
+                list = document.createElement('ul');
+                list.className = 'list-unstyled small mt-2 mb-0 picked-files';
+                input.insertAdjacentElement('afterend', list);
+                input._pickedList = list;
+            }
+            list.innerHTML = '';
+            files.forEach(function (f, i) {
+                var li = document.createElement('li');
+                li.className = 'd-flex align-items-center gap-2 mb-1';
+                li.innerHTML = '<i class="bi bi-paperclip text-muted"></i><span class="text-truncate"></span><span class="text-muted"></span>' +
+                    '<button type="button" class="btn btn-link btn-sm p-0 text-danger ms-auto" aria-label="移除這個檔案"><i class="bi bi-x-lg"></i></button>';
+                li.children[1].textContent = f.name;
+                li.children[2].textContent = f.size >= 1048576 ? mb(f.size) : Math.max(1, Math.round(f.size / 1024)) + ' KB';
+                li.querySelector('button').addEventListener('click', function () {
+                    var rest = (picked.get(input) || []).slice();
+                    rest.splice(i, 1);
+                    setFiles(input, rest);
+                });
+                list.appendChild(li);
+            });
+            list.hidden = files.length === 0;
+        }
+        // 檔案欄位的錯誤用紅字顯示在欄位下方（已選清單的下面），不跳出視窗；空字串＝清掉錯誤。
+        function showFileError(input, text) {
+            var box = input._fileError;
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'text-danger small mt-1 file-error';
+                box.setAttribute('role', 'alert');
+                (input._pickedList || input).insertAdjacentElement('afterend', box);
+                input._fileError = box;
+            } else if (input._pickedList && box.previousElementSibling !== input._pickedList) {
+                input._pickedList.insertAdjacentElement('afterend', box);
+            }
+            box.innerHTML = '';
+            (Array.isArray(text) ? text : [text]).filter(Boolean).forEach(function (line) {
+                var d = document.createElement('div');
+                d.textContent = line;
+                box.appendChild(d);
+            });
+            box.hidden = !box.childNodes.length;
+            input.classList.toggle('is-invalid', !box.hidden);
+        }
         document.addEventListener('change', function (event) {
             var input = event.target;
             if (!input.matches || !input.matches('input[type=file]')) return;
+
+            if (input.multiple && window.DataTransfer) {
+                var current = (picked.get(input) || []).slice();
+                var known = current.map(fileKey);
+                var limit = fileLimit(input);
+                var max = input.hasAttribute('data-max-files') ? parseInt(input.getAttribute('data-max-files'), 10) : Infinity;
+                var messages = [];
+                Array.prototype.forEach.call(input.files, function (f) {
+                    if (known.indexOf(fileKey(f)) !== -1) return;   // 同一個檔案選兩次只算一次
+                    if (limit && f.size > limit) { messages.push('「' + f.name + '」有 ' + mb(f.size) + '，超過上限 ' + mb(limit) + '。'); return; }
+                    if (current.length >= max) { messages.push(max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件。' : '這裡最多只能放 ' + max + ' 個檔案。'); return; }
+                    current.push(f);
+                    known.push(fileKey(f));
+                });
+                setFiles(input, current);
+                showFileError(input, Array.from(new Set(messages)));
+                return;
+            }
+
             var big = tooBig(input);
             var many = tooMany(input);
             if (big) {
-                alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案（例如把照片縮小）。');
+                showFileError(input, '「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '，請改選較小的檔案（例如把照片縮小）。');
                 input.value = '';
             } else if (many !== null) {
-                alert(tooManyText(many));
+                showFileError(input, tooManyText(many));
                 input.value = '';
+            } else {
+                showFileError(input, '');
             }
         });
         document.addEventListener('submit', function (event) {
             var form = event.target;
             var total = 0;
             var inputs = form.querySelectorAll('input[type=file]');
+            function stop(input, text) {
+                event.preventDefault();
+                showFileError(input, text);
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             for (var i = 0; i < inputs.length; i++) {
                 var big = tooBig(inputs[i]);
                 if (big) {
-                    event.preventDefault();
-                    alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案。');
-                    return;
+                    return stop(inputs[i], '「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '，請改選較小的檔案。');
                 }
                 var many = tooMany(inputs[i]);
                 if (many !== null) {
-                    event.preventDefault();
-                    alert(tooManyText(many));
-                    return;
+                    return stop(inputs[i], tooManyText(many));
                 }
                 for (var k = 0; k < inputs[i].files.length; k++) total += inputs[i].files[k].size;
             }
             if (serverPost && total > serverPost * 0.95) {
-                event.preventDefault();
-                alert('這次選的檔案加起來有 ' + mb(total) + '，超過伺服器一次能收的 ' + mb(serverPost) + '。\n請減少檔案數量或改選較小的檔案。');
+                stop(inputs[inputs.length - 1], '這次選的檔案加起來有 ' + mb(total) + '，超過伺服器一次能收的 ' + mb(serverPost) + '，請減少檔案數量或改選較小的檔案。');
             }
         }, true);
     })();
@@ -314,5 +403,83 @@
     @include('layouts.partials.list-onion')
     {{-- 讓列表頁剛好一個畫面：電腦版清單在固定外框內捲動，手機版一次只顯示放得下的幾筆並用上一頁／下一頁切換。 --}}
     @include('layouts.partials.fit-screen')
+
+    {{-- 「在畫面中」開啟的表單（例如零件履歷的「新增採購」「修改」）：連結加上 data-modal-frame，點了不換頁，
+         而是在目前畫面中央的對話框裡打開（iframe 載入同一個網址，加上 ?modal=1 用精簡版面）。
+         送出成功後整頁跳到結果頁（App\Http\Middleware\EmbeddedModal）；按「取消」或點對話框外面就關掉。 --}}
+    @if ($embedded)
+        <script>
+        (function () {
+            if (window.parent === window) return;
+            function post(msg) { window.parent.postMessage(msg, window.location.origin); }
+            // 表單送出時帶著 modal=1，失敗時才會回到對話框裡的表單。
+            document.querySelectorAll('form').forEach(function (form) {
+                if (form.querySelector('input[name="modal"]')) return;
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden'; hidden.name = 'modal'; hidden.value = '1';
+                form.appendChild(hidden);
+            });
+            // 點一般連結（例如「取消」）：交給外面的頁面處理，對話框裡不換頁。
+            document.addEventListener('click', function (event) {
+                var a = event.target.closest && event.target.closest('a[href]');
+                if (!a || a.target === '_blank' || a.hasAttribute('data-bs-toggle') || a.getAttribute('href').charAt(0) === '#') return;
+                event.preventDefault();
+                post({ type: 'modal-navigate', url: a.href });
+            });
+            // 告訴外面的對話框內容有多高，對話框才不會出現兩層捲軸。
+            function size() { post({ type: 'modal-size', height: document.documentElement.scrollHeight }); }
+            window.addEventListener('load', size);
+            if (window.ResizeObserver) new ResizeObserver(size).observe(document.body);
+        })();
+        </script>
+    @else
+        <div class="modal fade" id="frameModal" tabindex="-1" aria-labelledby="frameModalTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="frameModalTitle"></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <iframe id="frameModalFrame" title="" style="width: 100%; height: 60vh; border: 0; display: block;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var modalEl = document.getElementById('frameModal');
+            var frame = document.getElementById('frameModalFrame');
+            var title = document.getElementById('frameModalTitle');
+            function modal() { return window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null; }
+            document.addEventListener('click', function (event) {
+                var a = event.target.closest && event.target.closest('a[data-modal-frame]');
+                if (!a || !modal() || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                event.preventDefault();
+                var url = new URL(a.href, window.location.href);
+                url.searchParams.set('modal', '1');
+                title.textContent = a.getAttribute('data-modal-title') || a.textContent.trim();
+                frame.title = title.textContent;
+                frame.style.height = '60vh';
+                frame.src = url.href;
+                modal().show();
+            });
+            window.addEventListener('message', function (event) {
+                if (event.origin !== window.location.origin || event.source !== frame.contentWindow || !event.data) return;
+                var data = event.data;
+                if (data.type === 'modal-size') {
+                    frame.style.height = Math.min(data.height + 4, window.innerHeight * 0.8) + 'px';
+                } else if (data.type === 'modal-done') {
+                    window.location.href = data.url;
+                } else if (data.type === 'modal-navigate') {
+                    var target = new URL(data.url, window.location.href);
+                    modal().hide();
+                    if (target.pathname !== window.location.pathname) window.location.href = target.href;
+                }
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () { frame.src = 'about:blank'; });
+        })();
+        </script>
+    @endif
 </body>
 </html>

@@ -9,7 +9,7 @@
             <h1 class="tb-title">零件庫存列表</h1>
             <p class="tb-subtitle">點選任一列查看零件履歷；庫存由採購紀錄與使用紀錄增減。</p>
         </div>
-        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary">
+        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary" data-modal-frame data-modal-title="新增零件">
             <i class="bi bi-plus-lg" aria-hidden="true"></i>新增零件
         </a>
     </div>

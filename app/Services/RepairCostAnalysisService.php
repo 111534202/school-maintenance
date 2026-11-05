@@ -31,7 +31,7 @@ class RepairCostAnalysisService
 
         $partUsages = (clone $usageQuery)
             ->with([
-                'part:id,name',
+                'part:id,name,unit',
                 'repairLog:id,repair_request_id,created_at',
                 'repairLog.repairRequest:id,title,status,device_id,device_note,classroom_id',
                 'repairLog.repairRequest.classroom:id,classroom_code,name',
@@ -77,7 +77,7 @@ class RepairCostAnalysisService
                     END
                 ) AS missing_price_count
             ')
-            ->with('part:id,name')
+            ->with('part:id,name,unit')
             ->groupBy('repair_part_usages.part_id')
             ->get();
 

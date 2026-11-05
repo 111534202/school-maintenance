@@ -72,6 +72,8 @@ class SidebarNavigationTest extends TestCase
     public function test_sections_appear_in_the_documented_order(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('admin', '系統管理員'));
+        // 只看漢堡選單（寬螢幕上方列的下拉選單也有同樣的連結，順序一樣，但不在這裡比）。
+        $html = substr($html, (int) strpos($html, 'id="drill-drawer"'));
 
         $positions = array_map(fn ($text) => strpos($html, $text), [
             'data-drill-open="master"', 'data-drill-open="work"', 'data-drill-open="maintenance"', 'data-drill-open="space"',

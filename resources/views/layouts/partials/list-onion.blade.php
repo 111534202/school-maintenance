@@ -1,5 +1,5 @@
 {{-- 清單的洋蔥式檢視：列表頁的寬表格自動變成一列一列的簡短清單（一眼看到每筆的重點，不用左右滑動），
-     點某一筆，詳細內容從右邊滑進來（有「返回」），每一欄的內容與原本的操作按鈕（編輯、刪除…）都在裡面。 --}}
+     點某一筆，詳細內容在畫面中央的對話框打開（右上角 ✕ 或點外面關掉），每一欄的內容與原本的操作按鈕（編輯、刪除…）都在裡面。 --}}
 {{-- 原本的表格仍然在網頁裡，只是預設收起來；右上角的按鈕可以切回表格檢視（每一張表各自記在這台瀏覽器）。
      不想套用的表格：在 <table> 加 data-no-onion。沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
 <style>
@@ -7,16 +7,19 @@
     .onion-item .onion-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .onion-item .onion-sub { display: block; font-size: .85rem; color: #6c757d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .onion-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 1059; }
+    /* 詳細內容：畫面中央的對話框（跟附件預覽一樣），內容太長時對話框裡面捲動。 */
     .onion-panel {
-        position: fixed; top: 0; right: 0; bottom: 0; width: min(100vw, 520px); background: #fff; z-index: 1060;
-        transform: translateX(100%); visibility: hidden; box-shadow: -6px 0 18px rgba(0,0,0,.15);
-        display: flex; flex-direction: column; transition: transform .25s ease, visibility 0s linear .25s;
+        position: fixed; top: 50%; left: 50%; width: min(94vw, 640px); max-height: 86vh; background: #fff; z-index: 1060;
+        border-radius: 1rem; box-shadow: 0 1rem 2.5rem rgba(0,0,0,.25); overflow: hidden;
+        transform: translate(-50%, -46%); opacity: 0; visibility: hidden;
+        display: flex; flex-direction: column; transition: transform .2s ease, opacity .2s ease, visibility 0s linear .2s;
     }
-    .onion-panel.is-open { transform: translateX(0); visibility: visible; transition: transform .25s ease, visibility 0s; }
-    .onion-panel-top { display: flex; align-items: center; gap: .25rem; padding: .35rem .5rem; border-bottom: 1px solid #dee2e6; }
-    .onion-panel-top .onion-back { border: 0; background: transparent; color: #0d6efd; display: inline-flex; align-items: center; gap: .15rem; min-height: 2.5rem; padding: 0 .5rem; font-size: 1rem; }
-    .onion-panel-top .onion-panel-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .onion-panel-body { overflow-y: auto; padding: 1rem; flex: 1 1 auto; }
+    .onion-panel.is-open { transform: translate(-50%, -50%); opacity: 1; visibility: visible; transition: transform .2s ease, opacity .2s ease, visibility 0s; }
+    .onion-panel-top { display: flex; align-items: center; gap: .5rem; padding: .75rem .75rem .75rem 1.25rem; border-bottom: 1px solid #dee2e6; }
+    .onion-panel-top .onion-panel-title { font-weight: 600; font-size: 1.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+    .onion-panel-top .onion-back { border: 0; background: transparent; color: #6c757d; display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; font-size: 1.1rem; flex-shrink: 0; }
+    .onion-panel-top .onion-back:hover { background: #f1f3f5; color: #212529; }
+    .onion-panel-body { overflow-y: auto; padding: 1rem 1.25rem 1.25rem; flex: 1 1 auto; }
     .onion-dl { margin: 0; }
     .onion-dl > div { padding: .6rem 0; border-bottom: 1px solid #eef0f2; }
     .onion-dl dt { font-size: .8rem; font-weight: 600; color: #6c757d; margin-bottom: .15rem; }
@@ -56,13 +59,14 @@
             panel.setAttribute('role', 'dialog');
             panel.setAttribute('aria-modal', 'true');
             panel.setAttribute('inert', '');
-            panel.innerHTML = '<div class="onion-panel-top"><button type="button" class="onion-back"><i class="bi bi-chevron-left"></i>返回</button><span class="onion-panel-title"></span></div>' +
+            panel.innerHTML = '<div class="onion-panel-top"><span class="onion-panel-title"></span><button type="button" class="onion-back" aria-label="關閉"><i class="bi bi-x-lg"></i></button></div>' +
                 '<div class="onion-panel-body"><dl class="onion-dl"></dl><div class="onion-actions"></div></div>';
             document.body.appendChild(overlay);
             document.body.appendChild(panel);
             overlay.addEventListener('click', closePanel);
             panel.querySelector('.onion-back').addEventListener('click', closePanel);
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel.classList.contains('is-open')) closePanel(); });
+            // 按 Esc 關掉詳細對話框；但如果上面還開著別的視窗（附件預覽、修改表單），Esc 只關那一個。
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel.classList.contains('is-open') && !(e.target.closest && e.target.closest('.modal')) && !document.querySelector('.modal.show')) closePanel(); });
         }
 
         function openPanel(data, trigger) {
@@ -82,7 +86,23 @@
                 open.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>查看詳細';
                 actions.appendChild(open);
             }
+            // 已經有「查看詳細」時，內容只是一個連到同一頁的連結（例如零件清單「其他」欄的「查看履歷」）就不再重複列出。
+            function onlyLinksToDetail(f) {
+                if (!data.href) return false;
+                var target = new URL(data.href, location.href).href;
+                var hasLink = false;
+                var onlyLinks = f.nodes.every(function (n) {
+                    if (n.nodeType === Node.TEXT_NODE) return !n.textContent.trim();
+                    if (n.nodeType !== Node.ELEMENT_NODE) return true;
+                    var links = n.matches('a[href]') ? [n] : Array.prototype.slice.call(n.querySelectorAll('a[href]'));
+                    if (!links.length || n.textContent.trim() !== links.map(function (a) { return a.textContent; }).join('').trim()) return false;
+                    hasLink = true;
+                    return links.every(function (a) { return a.href === target; });
+                });
+                return onlyLinks && hasLink;
+            }
             data.fields.forEach(function (f) {
+                if (onlyLinksToDetail(f)) return;
                 var row = document.createElement('div');
                 var dt = document.createElement('dt');
                 var dd = document.createElement('dd');
@@ -96,6 +116,8 @@
                 Array.prototype.forEach.call(cell.childNodes, function (n) {
                     var c = n.cloneNode(true);
                     if (c.nodeType !== 1) return;
+                    // 跟「查看詳細」連到同一頁的按鈕不重複放。
+                    if (data.href && c.matches('a[href]') && c.href === new URL(data.href, location.href).href) return;
                     c.removeAttribute('id');
                     // 只有圖示的按鈕補上文字（用它的 title），在面板裡才看得懂。
                     var btns = c.matches('.btn') ? [c] : Array.prototype.slice.call(c.querySelectorAll('.btn'));
@@ -184,7 +206,8 @@
                 chev.className = 'bi bi-chevron-right text-muted flex-shrink-0';
                 item.appendChild(chev);
                 item.addEventListener('click', function () {
-                    openPanel({ title: title, href: tr.getAttribute('data-href'), fields: main.filter(function (f) { return f.nodes.length; }), actions: actions }, item);
+                    // 對話框的標題：預設是這一筆的標題（第一欄）；表格有 data-onion-panel-title 時改用它（例如零件履歷的採購紀錄顯示零件名稱與規格）。
+                    openPanel({ title: table.getAttribute('data-onion-panel-title') || title, href: tr.getAttribute('data-href'), fields: main.filter(function (f) { return f.nodes.length; }), actions: actions }, item);
                 });
                 list.appendChild(item);
             });

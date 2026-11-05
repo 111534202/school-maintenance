@@ -13,7 +13,7 @@
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>基本資料</span>
             <div class="d-flex gap-2">
-                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary">修改基本資料</a>
+                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
                 <form method="POST" action="{{ route('parts.destroy', $part) }}" onsubmit="return confirm('確定要刪除這個零件嗎？採購紀錄也會一起刪除。');">
                     @csrf
                     @method('DELETE')
@@ -52,7 +52,7 @@
                 <dt class="col-sm-3">平均單價</dt>
                 <dd class="col-sm-9">
                     {{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}
-                    <span class="text-muted small">（目前庫存的加權平均；用料成本依先進先出，先扣最早買進的批次）</span>
+                    <span class="text-muted small">（用料成本依先進先出，先扣最早買進的批次）</span>
                 </dd>
             </dl>
         </div>
@@ -62,13 +62,14 @@
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>採購紀錄</span>
-            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-primary">新增採購</a>
+            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
         </div>
         @if ($purchases->isEmpty())
             <div class="card-body text-muted small">目前沒有採購紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
+                {{-- data-onion-panel-title：清單檢視點一筆時，對話框標題顯示零件名稱與規格（每一筆的日期在對話框內容裡）。 --}}
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}">
                     <thead class="table-light">
                         <tr>
                             <th class="text-nowrap">採購日期</th>
@@ -96,12 +97,12 @@
                                     @foreach ($purchase->attachments as $attachment)
                                         @php($attachmentNo = $purchase->attachments->count() > 1 ? ' ' . $loop->iteration : '')
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
-                                            data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}"
+                                            data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}" data-filename="{{ $attachment->file_name }}"
                                             data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件{{ $attachmentNo }}">
                                             <i class="bi bi-paperclip"></i> 附件{{ $attachmentNo }}
                                         </button>
                                     @endforeach
-                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改採購紀錄">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
                                             onsubmit="return confirm('確定要刪除這筆採購紀錄嗎？庫存會減少 {{ $purchase->quantity }}。');">
@@ -119,60 +120,8 @@
         @endif
     </div>
 
-    {{-- 附件預覽視窗：圖片直接顯示、PDF 用內嵌檢視器；其他格式提供下載連結。 --}}
-    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h5" id="attachmentModalTitle">附件</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
-                </div>
-                <div class="modal-body text-center bg-light" id="attachmentModalBody"></div>
-                <div class="modal-footer">
-                    <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟／下載</a>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const modal = document.getElementById('attachmentModal');
-        const body = document.getElementById('attachmentModalBody');
-
-        modal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const url = button.dataset.url;
-            const mime = button.dataset.mime || '';
-            document.getElementById('attachmentModalTitle').textContent = button.dataset.title;
-            document.getElementById('attachmentModalOpen').href = url;
-            body.innerHTML = '';
-
-            if (mime.startsWith('image/')) {
-                const img = document.createElement('img');
-                img.src = url;
-                img.alt = button.dataset.title;
-                img.className = 'img-fluid rounded';
-                img.style.maxHeight = '75vh';
-                body.appendChild(img);
-            } else if (mime === 'application/pdf') {
-                const frame = document.createElement('iframe');
-                frame.src = url;
-                frame.title = button.dataset.title;
-                frame.style.width = '100%';
-                frame.style.height = '75vh';
-                frame.style.border = '0';
-                body.appendChild(frame);
-            } else {
-                body.innerHTML = '<p class="text-muted my-4">這個檔案格式無法在這裡預覽，請按下方「在新分頁開啟／下載」。</p>';
-            }
-        });
-
-        // 關閉時清空，避免下次打開先閃過上一個附件。
-        modal.addEventListener('hidden.bs.modal', function () { body.innerHTML = ''; });
-    });
-    </script>
+    {{-- 附件預覽視窗（零件履歷與修改採購共用）：見 parts/_attachment-modal.blade.php。 --}}
+    @include('parts._attachment-modal')
 
     {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
     <div class="card mb-3">

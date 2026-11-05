@@ -150,7 +150,7 @@
                 <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有可檢視的零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem">
+                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="材料費明細">
                         <thead>
                             <tr>
                                 <th>維修紀錄日期</th>

@@ -2,7 +2,8 @@
 
 // 這個檔案是網站的「總開關」：決定有哪些路由檔、套用哪些中介層、怎麼處理錯誤。一般功能開發不需要改它。
 
-use App\Http\Middleware\CheckRole;                            // 舊的「依角色限制」中介層（目前沒有路由在用，見該檔說明）
+use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EmbeddedModal;                        // 「在畫面中」開啟的表單送出成功後，通知外面的頁面                            // 舊的「依角色限制」中介層（目前沒有路由在用，見該檔說明）
 use App\Http\Middleware\EnsureUserIsActive;                   // 檢查帳號是否啟用中的中介層
 use App\Http\Middleware\SetLocale;                            // 語言切換中介層
 use Illuminate\Foundation\Application;
@@ -22,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // i18n：每個網頁請求都套用使用者目前選的語言（存在 session 裡）。
         // append 代表「加在既有關卡的最後面」。
-        $middleware->web(append: [SetLocale::class]);
+        $middleware->web(append: [SetLocale::class, EmbeddedModal::class]);
 
         // 替中介層取短名字：路由裡寫 'role:admin' 就等於使用 CheckRole（目前沒有路由用到）；
         // 'active' 是「帳號必須啟用中」的檢查，套用在 routes/web.php 登入後的路由群組。

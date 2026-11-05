@@ -315,11 +315,12 @@ class PartProfileAndStockTest extends TestCase
         $path = $purchase->attachments->first()->file_path;
         Storage::disk('local')->assertExists($path);
 
-        // 履歷頁只顯示「附件」按鈕，不顯示檔名；按鈕帶著預覽用的網址與檔案類型。
+        // 履歷頁只顯示「附件」按鈕，不在頁面上直接列出檔名；按鈕帶著預覽用的網址、檔案類型與檔名（打開預覽時顯示在標題旁邊）。
         $this->get(route('parts.show', $part))
             ->assertSee('data-bs-target="#attachmentModal"', false)
             ->assertSee('data-mime="image/jpeg"', false)
-            ->assertDontSee('receipt-2026.jpg');
+            ->assertSee('data-filename="receipt-2026.jpg"', false)
+            ->assertDontSeeText('receipt-2026.jpg');
 
         $this->put(route('parts.purchases.update', [$part, $purchase]), [
             'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20, 'remove_invoice' => '1',

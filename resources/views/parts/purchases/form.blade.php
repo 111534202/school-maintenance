@@ -6,7 +6,7 @@
 
 @section('content')
     <h1 class="h3 mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
-    <p class="text-muted mb-3">{{ $part->displayName() }}　目前庫存 {{ $part->withUnit($part->current_stock) }}</p>
+    <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
     @if ($editing && $purchase->isUsed())
         <div class="alert alert-warning">
@@ -69,7 +69,9 @@
                     <ul class="list-unstyled small mb-2">
                         @foreach ($currentAttachments as $attachment)
                             <li class="d-flex flex-wrap align-items-center gap-3 mb-1">
-                                <a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener">附件 {{ $loop->iteration }}：查看</a>
+                                <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                    data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}" data-filename="{{ $attachment->file_name }}"
+                                    data-title="附件 {{ $loop->iteration }}">附件 {{ $loop->iteration }}：查看</button>
                                 <div class="form-check mb-0">
                                     <input class="form-check-input" type="checkbox" value="{{ $attachment->id }}" id="remove_attachment_{{ $attachment->id }}"
                                         name="remove_attachments[]" @checked(in_array($attachment->id, (array) old('remove_attachments', [])))>
@@ -127,4 +129,9 @@
             updateFileLimit();
         })();
     </script>
+
+    {{-- 修改時點「附件 n：查看」先在畫面中預覽（跟零件履歷一樣），不直接跳到新頁面。 --}}
+    @if ($editing)
+        @include('parts._attachment-modal')
+    @endif
 @endsection
