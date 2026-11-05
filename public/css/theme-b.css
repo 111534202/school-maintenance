@@ -358,7 +358,10 @@ body.tb-body {
    「表格檢視／清單檢視」切換鈕放在卡片外右上方（位置由 layouts/partials/list-onion.blade.php 決定）。 */
 .tb-body .card:has(> .onion-list), .tb-body .tb-table-wrap:has(> .onion-list) { overflow: hidden; }
 .tb-body .card > .onion-list, .tb-body .tb-table-wrap > .onion-list,
-.tb-body .modal .onion-list { margin-bottom: 0 !important; box-shadow: none !important; --bs-list-group-border-radius: 0; }
+.tb-body .modal .onion-list { margin-bottom: 0 !important; box-shadow: none !important; --bs-list-group-border-radius: 0; border-radius: 0; }
+/* 每一筆都不要自己的圓角（第一筆接在標題列下面時，左上、右上不會多出圓角）；外框的圓角由卡片負責。 */
+.tb-body .card > .onion-list > .onion-item, .tb-body .tb-table-wrap > .onion-list > .onion-item,
+.tb-body .modal .onion-list > .onion-item { border-radius: 0; }
 .tb-body .card > .onion-list > .onion-item, .tb-body .tb-table-wrap > .onion-list > .onion-item { border-left: 0; border-right: 0; padding: .8rem 1.1rem; }
 .tb-body .card > .onion-list > .onion-item:first-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:first-child { border-top: 0; }
 .tb-body .card > .onion-list > .onion-item:last-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:last-child { border-bottom: 0; }
