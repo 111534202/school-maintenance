@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Classroom;
-use App\Models\ClassroomReservation;
 use App\Models\ClassroomReservationSlot;
 use App\Models\RepairRequest;
 use App\Enums\RepairRequestStatus;
@@ -237,7 +236,7 @@ class TimetableController extends Controller
     {
         // 各時段的實際狀態：時段有自己的審核結果就用它，沒有就跟著整筆申請（見 ClassroomReservationSlot::effectiveStatus）。
         // 被拒絕的時段不顯示；部分核准的申請只顯示被同意的時段。
-        $slotReservations = ClassroomReservationSlot::query()
+        return ClassroomReservationSlot::query()
             ->whereDate('reservation_date', $dateString)
             ->whereHas('reservation', function ($query) use ($classroomId) {
                 $query->where('classroom_id', $classroomId)
@@ -254,18 +253,6 @@ class TimetableController extends Controller
                     'end_time' => $slot->end_time,
                     'status' => $slot->effectiveStatus(),
                 ];
-            });
-
-        // 相容尚未建立時段明細的舊資料。
-        $legacyReservations = ClassroomReservation::query()
-            ->where('classroom_id', $classroomId)
-            ->whereDate('reservation_date', $dateString)
-            ->whereIn('status', ['pending', 'approved'])
-            ->whereDoesntHave('slots')
-            ->get(['id', 'class_name', 'start_time', 'end_time', 'status']);
-
-        return $slotReservations
-            ->concat($legacyReservations)
-            ->sortBy('start_time')
+            })
             ->values();
     }}

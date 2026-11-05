@@ -8,6 +8,7 @@ use App\Models\RepairRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Concerns\InteractsWithRolesAndUsers;
+use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 /**
@@ -15,6 +16,7 @@ use Tests\TestCase;
  */
 class RepairDispatchTimetableTest extends TestCase
 {
+    use CreatesReservations;
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
@@ -41,7 +43,7 @@ class RepairDispatchTimetableTest extends TestCase
         Carbon::setTestNow('2026-11-02 08:00:00');   // 星期一
         $this->actingAs($this->makeUserWithRole('executive', '主管'));
         $room = $this->classroom(['reservation_status' => 'abnormal']);   // 設備異常的教室也要查得到
-        ClassroomReservation::create([
+        $this->makeReservation([
             'classroom_id' => $room->id, 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id, 'class_name' => '資二忠',
             'reservation_date' => '2026-11-03', 'start_time' => '09:10', 'end_time' => '10:00', 'status' => 'approved',
         ]);

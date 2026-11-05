@@ -7,6 +7,7 @@ use App\Models\ClassroomReservation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
+use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 /**
@@ -14,6 +15,7 @@ use Tests\TestCase;
  */
 class DashboardPendingReservationTest extends TestCase
 {
+    use CreatesReservations;
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
@@ -31,7 +33,7 @@ class DashboardPendingReservationTest extends TestCase
 
     private function reservation(User $requester, string $status, string $className): ClassroomReservation
     {
-        return ClassroomReservation::create([
+        return $this->makeReservation([
             'classroom_id' => $this->classroom->id,
             'requester_id' => $requester->id,
             'class_name' => $className,

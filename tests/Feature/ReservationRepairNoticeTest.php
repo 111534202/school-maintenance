@@ -11,6 +11,7 @@ use App\Services\ClassroomRepairNotices;
 use App\Services\DeviceStatusService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
+use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 /**
@@ -21,6 +22,7 @@ use Tests\TestCase;
  */
 class ReservationRepairNoticeTest extends TestCase
 {
+    use CreatesReservations;
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
@@ -151,7 +153,7 @@ class ReservationRepairNoticeTest extends TestCase
 
     public function test_pending_request_cannot_be_approved_while_a_core_device_is_being_repaired(): void
     {
-        $reservation = ClassroomReservation::create($this->payload($this->classroom) + ['requester_id' => auth()->id(), 'status' => 'pending']);
+        $reservation = $this->makeReservation($this->payload($this->classroom) + ['requester_id' => auth()->id(), 'status' => 'pending']);
         $projector = $this->makeDevice($this->classroom, 'DEV-0100', '投影機', core: true);
         RepairRequest::factory()->create(['device_id' => $projector->id, 'status' => 'in_progress']);
         DeviceStatusService::updateStatus($projector, 'repairing');   // 報修進入處理中時系統會這樣標記

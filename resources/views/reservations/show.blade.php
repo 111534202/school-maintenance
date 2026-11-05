@@ -74,7 +74,7 @@
 {{-- 預約時段：每個時段分別審核。未審核時，有預約管理權限的人可以在這裡逐一選擇同意或拒絕。 --}}
 <div class="card mb-3">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <span>預約時段（{{ $reservation->slots->count() ?: 1 }}）</span>
+        <span>預約時段（{{ $reservation->slots->count() }}）</span>
         @if ($canReview)
             <span class="small text-muted">每個時段都要選「同意」或「拒絕」才能送出；拒絕請填寫原因。</span>
         @endif
@@ -97,7 +97,8 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($reservation->slots as $slot)
+                {{-- 每筆申請至少有一個時段；使用時間只記在時段明細。 --}}
+                @foreach ($reservation->slots as $slot)
                     @php([$slotText, $slotColor] = $slotLabel($slot))
                     <tr>
                         <td class="text-nowrap">{{ $slot->reservation_date->format('Y-m-d') }}</td>
@@ -128,16 +129,7 @@
                             @endif
                         </td>
                     </tr>
-                @empty
-                    {{-- 舊資料沒有時段明細：顯示整筆申請的時間（審核時系統會自動補上時段）。 --}}
-                    <tr>
-                        <td class="text-nowrap">{{ $reservation->reservation_date->format('Y-m-d') }}</td>
-                        <td class="text-nowrap">{{ substr((string) $reservation->start_time, 0, 5) }}–{{ substr((string) $reservation->end_time, 0, 5) }}</td>
-                        <td>—</td>
-                        <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
-                        <td>{{ $reservation->rejection_reason ?? '—' }}</td>
-                    </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
