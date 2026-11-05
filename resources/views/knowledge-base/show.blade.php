@@ -11,8 +11,6 @@
         <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
             <h1 class="h4 mb-0">{{ $knowledgeBase->title }}</h1>
             <div class="d-inline-flex gap-1 flex-shrink-0">
-                <a class="btn btn-outline-secondary icon-btn" href="{{ route('knowledge-base.index') }}"
-                    title="{{ __('common.buttons.back_to_list') }}" aria-label="{{ __('common.buttons.back_to_list') }}"><i class="bi bi-arrow-left"></i></a>
                 {{-- 只有管理權限者看得到「編輯」按鈕。 --}}
                 @can('knowledge-base.manage')
                     <a class="btn btn-outline-primary icon-btn" href="{{ route('knowledge-base.edit', $knowledgeBase) }}"

@@ -5,11 +5,7 @@
 @section('content')
 <div class="container-fluid py-4">
     <div class="mb-4">
-        <a href="{{ route('reservations.index') }}" class="text-decoration-none">
-            <i class="bi bi-arrow-left me-1"></i>
-            返回預約列表
-        </a>
-        <h1 class="h3 mt-3 mb-1">新增空間預約</h1>
+        <h1 class="h3 mb-1">新增空間預約</h1>
         <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
     </div>
 

@@ -50,8 +50,6 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
-        <a class="btn btn-outline-secondary icon-btn flex-shrink-0" href="{{ route('repairs.index') }}"
-            title="{{ __('repair_requests.show.back_to_board') }}" aria-label="{{ __('repair_requests.show.back_to_board') }}"><i class="bi bi-arrow-left"></i></a>
     </div>
 
     <div class="row g-3">

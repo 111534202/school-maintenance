@@ -81,9 +81,10 @@
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
-                     點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回主控台。 --}}
+                     點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回父頁（清單頁或所屬的工單，規則見 App\Support\BackLink），再不行回主控台。
+                     各頁面不再自己放返回連結，返回只放在這裡（守門測試：BackLinkTest）。 --}}
                 @unless (request()->routeIs('dashboard'))
-                    <a href="{{ route('dashboard') }}" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back aria-label="{{ __('common.buttons.back') }}">
+                    <a href="{{ \App\Support\BackLink::url(request()->route()) }}" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back aria-label="{{ __('common.buttons.back') }}">
                         <i class="bi bi-chevron-left"></i><span class="d-none d-sm-inline ms-1">{{ __('common.buttons.back') }}</span>
                     </a>
                 @endunless

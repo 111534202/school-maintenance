@@ -5,7 +5,6 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="h3 mb-0">AI 預防保養設定</h1>
-        <a href="{{ route('preventive-candidates.index') }}" class="btn btn-outline-secondary btn-sm">返回候選列表</a>
     </div>
 
     <form method="POST" action="{{ route('ai-settings.update') }}" class="card" style="max-width: 640px;">

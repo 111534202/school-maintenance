@@ -13,7 +13,6 @@
                     <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
                 @endcan
             @endif
-            <a href="{{ route('maintenance-orders.index') }}" class="btn btn-outline-secondary btn-sm">返回列表</a>
         </div>
     </div>
 
