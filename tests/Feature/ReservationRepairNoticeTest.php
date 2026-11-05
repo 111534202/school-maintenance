@@ -167,4 +167,20 @@ class ReservationRepairNoticeTest extends TestCase
         $this->post(route('reservations.approve', $reservation))->assertSessionHas('error');
         $this->assertSame('pending', $reservation->fresh()->status);
     }
+
+    public function test_classroom_options_are_coloured_by_repair_status(): void
+    {
+        $repairing = $this->makeClassroom('B201');
+        $suspended = $this->makeClassroom('C301');
+        $printer = $this->makeDevice($repairing, 'DEV-0003', '印表機');
+        RepairRequest::factory()->create(['device_id' => $printer->id, 'status' => 'pending']);
+        DeviceStatusService::updateStatus($this->makeDevice($suspended, 'DEV-0100', '投影機', core: true), 'repairing');
+
+        $html = $this->get(route('reservations.create'))->assertOk()->getContent();
+
+        // 紅＝暫停預約、黃＝有設備在報修、黑＝正常（沒有額外顏色）。
+        $this->assertMatchesRegularExpression('/text-danger fw-semibold"\s+data-tone="text-danger fw-semibold"\s+role="option"\s+data-id="' . $suspended->id . '"/', $html);
+        $this->assertMatchesRegularExpression('/room-has-repair fw-semibold"\s+data-tone="room-has-repair fw-semibold"\s+role="option"\s+data-id="' . $repairing->id . '"/', $html);
+        $this->assertMatchesRegularExpression('/data-tone=""\s+role="option"\s+data-id="' . $this->classroom->id . '"/', $html);
+    }
 }

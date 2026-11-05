@@ -99,9 +99,16 @@
                                 style="display: none; max-height: 240px; overflow-y: auto;"
                             >
                                 @foreach ($classrooms as $classroom)
+                                    @php
+                                        // 選項文字顏色：紅＝暫停預約（核心設備維修中）；黃＝有設備在報修；黑＝正常。
+                                        $roomTone = in_array($classroom->id, $suspendedIds, true)
+                                            ? 'text-danger fw-semibold'
+                                            : (! empty($repairNotices[$classroom->id]) ? 'room-has-repair fw-semibold' : '');
+                                    @endphp
                                     <button
                                         type="button"
-                                        class="list-group-item list-group-item-action text-start"
+                                        class="list-group-item list-group-item-action text-start {{ $roomTone }}"
+                                        data-tone="{{ $roomTone }}"
                                         role="option"
                                         data-id="{{ $classroom->id }}"
                                         data-search="{{ $classroom->name }} {{ $classroom->classroom_code }}"
@@ -224,6 +231,10 @@
     </div>
 </div>
 
+<style>
+    /* 有設備在報修的教室：深黃色字（Bootstrap 的亮黃色在白底上看不清楚）。 */
+    .room-has-repair { color: #b07800 !important; }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('classroom_search');
@@ -268,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateRepairNotice() {
         updateSubmitState();
+        applyRoomTone();
         if (!repairNotice) {
             return;
         }
@@ -348,6 +360,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         changingClassroom = false;
         previousClassroom = null;
+    }
+
+    // 輸入框顯示的教室名稱也跟選項同色（紅／黃／黑）。
+    function applyRoomTone() {
+        const selected = options.find(function (option) {
+            return option.dataset.id === classroomInput.value;
+        });
+        searchInput.classList.remove('text-danger', 'room-has-repair', 'fw-semibold');
+        if (selected && selected.dataset.tone) {
+            searchInput.classList.add.apply(searchInput.classList, selected.dataset.tone.split(' '));
+        }
     }
 
     function selectClassroom(option) {
@@ -767,6 +790,19 @@ document.addEventListener('DOMContentLoaded', function () {
         step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
         classNameInput.focus({ preventScroll: true });
     });
+    // 'YYYY-MM-DD' 加減天數（用 UTC 計算，避免時區造成日期偏移一天）。
+    function shiftDate(dateString, days) {
+        const parts = dateString.split('-').map(Number);
+        const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+        return date.toISOString().slice(0, 10);
+    }
+
+    // 換到指定日期並重新查詢課表（已選取的時段會清空）。
+    function goToDate(dateString) {
+        dateInput.value = dateString;
+        timetableButton.click();
+    }
+
     function renderTimetable(data) {
         timetableResult.replaceChildren();
         selectedPeriods.length = 0;
@@ -776,13 +812,37 @@ document.addEventListener('DOMContentLoaded', function () {
         timetableResult.hidden = false;
 
         const weekdayNames = ['星期一', '星期二', '星期三', '星期四', '星期五'];
-        const heading = addScheduleText(
-            timetableResult,
-            'h6',
-            data.classroom.name + '（' + data.classroom.classroom_code + '）　' +
-                data.week_start + ' ～ ' + data.week_end,
-            'mb-2'
-        );
+        // 週切換：上一週／下一週（和報修派工的課表視窗相同），切換後直接重新查詢。
+        const weekNav = document.createElement('div');
+        weekNav.className = 'd-flex flex-wrap align-items-center gap-2 mb-2';
+        const prevWeek = document.createElement('button');
+        prevWeek.type = 'button';
+        prevWeek.className = 'btn btn-sm btn-outline-secondary';
+        prevWeek.innerHTML = '<i class="bi bi-chevron-left"></i> 上一週';
+        const nextWeek = document.createElement('button');
+        nextWeek.type = 'button';
+        nextWeek.className = 'btn btn-sm btn-outline-secondary';
+        nextWeek.innerHTML = '下一週 <i class="bi bi-chevron-right"></i>';
+        const heading = document.createElement('h6');
+        heading.className = 'mb-0 mx-1';
+        heading.textContent = data.classroom.name + '（' + data.classroom.classroom_code + '）　' +
+            data.week_start + ' ～ ' + data.week_end;
+        weekNav.append(prevWeek, heading, nextWeek);
+        timetableResult.appendChild(weekNav);
+
+        const earliest = dateInput.min || '';
+        // 本週（含今天）以前的週不能查詢：上一週跳到今天以前時改跳到今天，整週都在過去就停用。
+        prevWeek.disabled = Boolean(earliest) && data.week_start <= earliest;
+        prevWeek.addEventListener('click', function () {
+            let target = shiftDate(data.selected_date, -7);
+            if (earliest && target < earliest) {
+                target = earliest;
+            }
+            goToDate(target);
+        });
+        nextWeek.addEventListener('click', function () {
+            goToDate(shiftDate(data.selected_date, 7));
+        });
 
         addScheduleText(
             timetableResult,
