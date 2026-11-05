@@ -42,6 +42,8 @@
         ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null],
         // 空間預約待審核：點了進到只列「未審核」的預約列表。
         ['label' => __('dashboard.cards.pending_reservations'), 'value' => $pendingReservationCount, 'unit' => __('dashboard.cards.unit_reservations'), 'icon' => 'bi-calendar-check', 'color' => 'primary', 'url' => route('reservations.index', ['status' => 'pending']), 'note' => null],
+        // 逾時工單：還沒結案、且已經超過預計處理時間（沒填預計時間的不算），紅色提醒主管該催進度了。
+        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['overdue' => 1]), 'note' => null],
     ];
     // 下面三張卡片依權限才加入：Controller 沒算（null）就代表這個人沒有對應主檔的權限。
     if ($deviceTotal !== null) {

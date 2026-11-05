@@ -110,6 +110,27 @@ class RepairRequest extends Model
         });
     }
 
+    /**
+     * 只撈「已逾時」的案件：還沒結案，且預計處理時間已經過了。沒填預計處理時間
+     * （scheduled_at 是 null，例如還沒派工）的案件不算逾時，因為根本沒有期限可比較。
+     * 主控台「逾時工單」卡片與看板的 ?overdue=1 篩選都用它，數字才會一致。
+     */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query
+            ->where('status', '!=', RepairRequestStatus::Completed->value)
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', now());
+    }
+
+    /** 這張案件現在是不是已經逾時（給看板單筆顯示用，邏輯跟 scopeOverdue 一致）。 */
+    public function getIsOverdueAttribute(): bool
+    {
+        return $this->status !== RepairRequestStatus::Completed
+            && $this->scheduled_at !== null
+            && $this->scheduled_at->isPast();
+    }
+
     /** 這張報修單是報修哪一台真實設備（掃描設備條碼建立的報修單才會有值）。 */
     public function device(): BelongsTo
     {

@@ -18,6 +18,10 @@ return [
     'yes' => 'Yes',
     'no' => 'No',
     'core_badge' => 'Core',
+    // Repeat-repair notice: shown on the device list and repair board when the repair count in the last
+    // Device::REPEAT_REPAIR_DAYS days reaches the threshold.
+    'repeat_repair_badge' => ':count repairs in 30 days',
+    'repeat_repair_hint' => 'This device has been repaired repeatedly recently — consider inspecting it or planning a replacement',
     'no_department' => 'No department',
 
     'filter' => [

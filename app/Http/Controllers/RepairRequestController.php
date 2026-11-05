@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;                      // 報修單狀態列舉（新報修／已派工／處理中／待驗收／已結案）
 use App\Models\Classroom;                               // 教室資料表的模型（看板篩選列的教室下拉選單）
-use App\Models\Device;                                  // 設備資料表的模型
+use App\Models\Device;                                  // 設備資料表的模型（重複報修判斷門檻 Device::REPEAT_REPAIR_DAYS/THRESHOLD）
 use App\Models\KnowledgeBase;                           // 知識庫文章的模型
 use App\Models\RepairRequest;                           // 報修單資料表的模型
 use App\Models\User;                                    // 用戶資料表的模型
@@ -57,7 +57,14 @@ class RepairRequestController extends Controller
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
             ->visibleTo($request->user())
             // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
-            ->with(['device.classroom', 'classroom', 'assignedTechnician'])
+            // 設備另外帶上「近 30 天這台設備被報修幾次」，看板才能直接標示重複報修的設備（不用再連去設備主檔才看得到）。
+            ->with([
+                'device' => fn ($query) => $query->with('classroom')
+                    ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
+                        ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))]),
+                'classroom',
+                'assignedTechnician',
+            ])
             // 設備／教室篩選（教室主檔與設備主檔的連結會帶這兩個參數過來）：
             //   ?device_id=   只看這台設備的報修單；
             //   ?classroom_id= 只看這間教室的報修單：報修單的設備地點是這間教室，或報修的設備現在在這間教室。
@@ -67,6 +74,8 @@ class RepairRequestController extends Controller
                 ->orWhereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id')))))
             // 狀態篩選：有帶 ?status= 才套用。
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
+            ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
             // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
             ->when($request->filled('assignee'), fn ($query) => $query->whereHas(
                 'assignedTechnician',

@@ -5,16 +5,14 @@ namespace Tests\Feature;
 // use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-// Laravel 預設附的範例測試：確認網站首頁能正常回應；可以保留或刪除。
+// Laravel 預設附的範例測試：網站首頁（網址 /）現在直接導向登入頁，所以確認的是這個導向。
 class ExampleTest extends TestCase
 {
     /**
      * A basic test example.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_the_home_page_redirects_to_the_login_page(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('login'));
     }
 }

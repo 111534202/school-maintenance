@@ -33,6 +33,11 @@ class Device extends Model
     // 新增狀態時：這裡加代碼 → lang/各語言資料夾/devices.php 加顯示名稱 → lang/各語言資料夾/dashboard.php 的 device_status 也加。
     public const STATUSES = ['normal', 'repairing', 'retired', 'disabled'];
 
+    // 「重複報修」的判斷基準：同一台設備在這段天數內被報修達到這個次數（含現在這一張），
+    // 列表／看板就會特別標示提醒，這種設備通常比單次故障更值得優先檢查或考慮汰換。
+    public const REPEAT_REPAIR_DAYS = 30;
+    public const REPEAT_REPAIR_THRESHOLD = 2;
+
     /** 狀態的顯示名稱（中文／英文依目前語言），翻譯檔沒有的代碼就原樣顯示。 */
     public static function statusLabel(?string $status): string
     {

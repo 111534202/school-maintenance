@@ -47,9 +47,9 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// 網站首頁（網址 /）：Laravel 預設的歡迎頁。
+// 網站首頁（網址 /）：直接導向登入頁，避免外人直接開啟網址時看到 Laravel 預設歡迎頁。
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 // i18n 語言切換：把選的語言存進 session，然後導回原本那一頁。
