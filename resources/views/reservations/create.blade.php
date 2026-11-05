@@ -743,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ['reservation_date', item.date],
                 ['start_time', item.period.start_time],
                 ['end_time', item.period.end_time],
-                ['period_no', item.period.period_no]
+                ['period_number', item.period.period_number]
             ].forEach(function (field) {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -771,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             groupedByDate[item.date].push(
-                '第 ' + item.period.period_no + ' 節'
+                '第 ' + item.period.period_number + ' 節'
             );
         });
 
@@ -884,7 +884,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         periods.forEach(function (basePeriod, periodIndex) {
             const row = document.createElement('tr');
-            addScheduleText(row, 'th', '第 ' + basePeriod.period_no + ' 節', 'text-nowrap');
+            addScheduleText(row, 'th', '第 ' + basePeriod.period_number + ' 節', 'text-nowrap');
             addScheduleText(
                 row,
                 'td',
@@ -1034,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
 
                                 groupedByDate[item.date].push(
-                                    '第 ' + item.period.period_no + ' 節'
+                                    '第 ' + item.period.period_number + ' 節'
                                 );
                             });
 

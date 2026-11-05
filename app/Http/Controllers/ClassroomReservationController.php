@@ -54,7 +54,7 @@ class ClassroomReservationController extends Controller
                 'reservation_date' => $reservation->reservation_date->toDateString(),
                 'start_time' => $reservation->start_time,
                 'end_time' => $reservation->end_time,
-                'period_no' => null,
+                'period_number' => null,
             ]);
         }
 
@@ -146,7 +146,7 @@ class ClassroomReservationController extends Controller
             'slots.*.reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'slots.*.start_time' => ['required', 'date_format:H:i'],
             'slots.*.end_time' => ['required', 'date_format:H:i'],
-            'slots.*.period_no' => ['nullable', 'integer', 'min:1'],
+            'slots.*.period_number' => ['nullable', 'integer', 'min:1'],
             'purpose' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -154,7 +154,7 @@ class ClassroomReservationController extends Controller
             'reservation_date' => $validated['reservation_date'],
             'start_time' => $validated['start_time'],
             'end_time' => $validated['end_time'],
-            'period_no' => null,
+            'period_number' => null,
         ]];
 
         $uniqueSlots = [];
@@ -242,7 +242,7 @@ class ClassroomReservationController extends Controller
                     'reservation_date' => $slot['reservation_date'],
                     'start_time' => $slot['start_time'],
                     'end_time' => $slot['end_time'],
-                    'period_no' => $slot['period_no'] ?? null,
+                    'period_number' => $slot['period_number'] ?? null,
                 ]);
             }
 

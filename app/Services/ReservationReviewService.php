@@ -87,7 +87,7 @@ class ReservationReviewService
                     'reservation_date' => $locked->reservation_date->toDateString(),
                     'start_time' => $locked->start_time,
                     'end_time' => $locked->end_time,
-                    'period_no' => null,
+                    'period_number' => null,
                 ]);
             }
             $slots = $locked->slots()->get();

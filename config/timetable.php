@@ -13,14 +13,14 @@ return [
     | 測試節次時間；實際上課時間確認後，只需修改此處。
     */
     'periods' => [
-        ['period_no' => 1, 'start_time' => '08:10', 'end_time' => '09:00'],
-        ['period_no' => 2, 'start_time' => '09:10', 'end_time' => '10:00'],
-        ['period_no' => 3, 'start_time' => '10:10', 'end_time' => '11:00'],
-        ['period_no' => 4, 'start_time' => '11:10', 'end_time' => '12:00'],
-        ['period_no' => 5, 'start_time' => '13:10', 'end_time' => '14:00'],
-        ['period_no' => 6, 'start_time' => '14:10', 'end_time' => '15:00'],
-        ['period_no' => 7, 'start_time' => '15:10', 'end_time' => '16:00'],
-        ['period_no' => 8, 'start_time' => '16:10', 'end_time' => '17:00'],
+        ['period_number' => 1, 'start_time' => '08:10', 'end_time' => '09:00'],
+        ['period_number' => 2, 'start_time' => '09:10', 'end_time' => '10:00'],
+        ['period_number' => 3, 'start_time' => '10:10', 'end_time' => '11:00'],
+        ['period_number' => 4, 'start_time' => '11:10', 'end_time' => '12:00'],
+        ['period_number' => 5, 'start_time' => '13:10', 'end_time' => '14:00'],
+        ['period_number' => 6, 'start_time' => '14:10', 'end_time' => '15:00'],
+        ['period_number' => 7, 'start_time' => '15:10', 'end_time' => '16:00'],
+        ['period_number' => 8, 'start_time' => '16:10', 'end_time' => '17:00'],
     ],
 
     /*

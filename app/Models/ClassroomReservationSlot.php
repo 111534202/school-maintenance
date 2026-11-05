@@ -16,7 +16,7 @@ class ClassroomReservationSlot extends Model
         'reservation_date',
         'start_time',
         'end_time',
-        'period_no',
+        'period_number',
         'status',
         'rejection_reason',
     ];
@@ -25,7 +25,7 @@ class ClassroomReservationSlot extends Model
     {
         return [
             'reservation_date' => 'date',
-            'period_no' => 'integer',
+            'period_number' => 'integer',
         ];
     }
 
@@ -44,6 +44,6 @@ class ClassroomReservationSlot extends Model
     public function label(): string
     {
         return $this->reservation_date->format('Y-m-d') . ' ' . substr((string) $this->start_time, 0, 5) . '–' . substr((string) $this->end_time, 0, 5)
-            . ($this->period_no ? "（第 {$this->period_no} 節）" : '');
+            . ($this->period_number ? "（第 {$this->period_number} 節）" : '');
     }
 }
