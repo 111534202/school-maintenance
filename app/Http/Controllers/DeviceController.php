@@ -37,6 +37,10 @@ class DeviceController extends Controller
             ->withCount(['repairRequests as open_repairs_count' => fn ($repairs) => $repairs
                 ->visibleTo($user)
                 ->where('status', '!=', RepairRequestStatus::Completed->value)])
+            // 近 N 天報修次數（不分狀態、不分誰看得到，因為這是在看「這台設備本身」的故障頻率，
+            // 不是在看「這個用戶能不能看」）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
+            ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
+                ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');
                 // 設備編號、資產編號、品牌、型號任一個包含關鍵字就算符合；括號包起來避免「或」影響其他篩選。

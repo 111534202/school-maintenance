@@ -127,6 +127,12 @@
                                     @if ($repairRequest->device?->classroom)
                                         <div class="small text-muted">{{ $repairRequest->device->classroom->classroom_code }} {{ $repairRequest->device->classroom->name }}</div>
                                     @endif
+                                    {{-- 重複報修提醒：這台設備近 30 天報修達到門檻次數，看板上就能直接看出來，不用再切去設備主檔查。 --}}
+                                    @if (($repairRequest->device->recent_repairs_count ?? 0) >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
+                                        <div class="small text-danger" title="{{ __('devices.repeat_repair_hint') }}">
+                                            <i class="bi bi-arrow-repeat"></i> {{ __('devices.repeat_repair_badge', ['count' => $repairRequest->device->recent_repairs_count]) }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="text-center">
                                     <span class="badge {{ $impactBadge }}">{{ __('repair_requests.impact_level.' . $repairRequest->impact_level) }}</span>
