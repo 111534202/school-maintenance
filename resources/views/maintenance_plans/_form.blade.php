@@ -1,5 +1,6 @@
 @csrf
 
+<div data-step="基本資料">
 <div class="mb-3">
     <label for="name" class="form-label">計畫名稱 <span class="text-danger">*</span></label>
     <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
@@ -21,8 +22,9 @@
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror
 </div>
+</div>
 
-<div class="row">
+<div class="row" data-step="保養週期">
     <div class="col-md-6 mb-3">
         <label for="cycle_days" class="form-label">保養週期（天） <span class="text-danger">*</span></label>
         <input type="number" name="cycle_days" id="cycle_days" min="1" max="3650"
@@ -44,6 +46,7 @@
     </div>
 </div>
 
+<div data-step="保養項目與啟用">
 <div class="mb-3">
     <label class="form-label">保養項目（可複選） <span class="text-danger">*</span></label>
     <div class="border rounded p-3 @error('item_ids') is-invalid @enderror" style="max-height: 260px; overflow-y: auto;">
@@ -76,6 +79,7 @@
     <input type="checkbox" name="is_active" id="is_active" class="form-check-input" value="1"
         {{ old('is_active', $plan->is_active) ? 'checked' : '' }}>
     <label for="is_active" class="form-check-label">啟用</label>
+</div>
 </div>
 
 <button type="submit" class="btn btn-primary">儲存</button>

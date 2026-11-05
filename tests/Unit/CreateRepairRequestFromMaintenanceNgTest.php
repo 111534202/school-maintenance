@@ -3,6 +3,9 @@
 namespace Tests\Unit;
 
 use App\Actions\CreateRepairRequestFromMaintenanceNg;
+use App\Models\Classroom;
+use App\Models\Device;
+use App\Models\DeviceCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,5 +40,46 @@ class CreateRepairRequestFromMaintenanceNgTest extends TestCase
             'id' => $repairRequest->id,
             'device_note' => 'A101 教室投影機',
         ]);
+    }
+
+    // 輔助方法：建立一台設備（設備履歷用 repair_requests.device_id 找這台設備的報修單）。
+    private function makeDevice(): Device
+    {
+        $category = DeviceCategory::create(['name' => '投影機']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室']);
+
+        return Device::create(['device_code' => 'DEV-A101-01', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
+    }
+
+    // 有帶 deviceId：建單當下就掛上設備關聯，報修單查得到、設備也查得到這張單。
+    public function test_links_the_device_when_a_device_id_is_given(): void
+    {
+        $device = $this->makeDevice();
+
+        $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(
+            sourceLabel: 'maintenance_result:124',
+            title: '投影機保養檢查 NG',
+            description: '風扇異音。',
+            deviceNote: 'A101 教室投影機',
+            impactLevel: 'medium',
+            deviceId: $device->id,
+        );
+
+        $this->assertSame($device->id, $repairRequest->device_id);
+        $this->assertDatabaseHas('repair_requests', ['id' => $repairRequest->id, 'device_id' => $device->id]);
+        $this->assertTrue($device->repairRequests()->whereKey($repairRequest->id)->exists());
+    }
+
+    // 沒帶 deviceId：和以前一模一樣，device_id 是空的（向下相容）。
+    public function test_device_id_stays_empty_when_no_device_id_is_given(): void
+    {
+        $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(
+            sourceLabel: 'maintenance_result:125',
+            title: '投影機保養檢查 NG',
+            description: '風扇異音。',
+        );
+
+        $this->assertNull($repairRequest->device_id);
+        $this->assertDatabaseHas('repair_requests', ['id' => $repairRequest->id, 'device_id' => null]);
     }
 }

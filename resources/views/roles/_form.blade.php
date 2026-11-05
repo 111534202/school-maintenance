@@ -11,7 +11,7 @@
     $checked = old('permissions', $role?->effectivePermissions() ?? []);
 @endphp
 
-<div class="card shadow-sm mb-3">
+<div class="card shadow-sm mb-3" data-step="{{ __('roles.form.section_basic') }}">
     <div class="card-header bg-white form-section-title"><i class="bi bi-person-badge me-2"></i>{{ __('roles.form.section_basic') }}</div>
     <div class="card-body">
         {{-- 編輯系統內建身分時，顯示提醒：代碼與刪除受限，但名稱、說明、權限可以調整。 --}}
@@ -34,6 +34,7 @@
     </div>
 </div>
 
+<div data-step="{{ __('roles.form.section_permissions') }}">
 <h2 class="h6 text-muted mb-1"><i class="bi bi-toggles me-2"></i>{{ __('roles.form.section_permissions') }}</h2>
 <p class="text-muted small">{{ $isAdminRole ? __('roles.form.admin_notice') : __('roles.form.permissions_hint') }}</p>
 
@@ -73,6 +74,7 @@
         </ul>
     </div>
 @endforeach
+</div>
 
 <div class="d-flex justify-content-end gap-2 mb-4">
     <a class="btn btn-outline-secondary" href="{{ route('roles.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
