@@ -115,6 +115,15 @@ class DrilldownNavigationTest extends TestCase
         $this->assertStringContainsString('id="sidebarOffcanvas"', $html);
     }
 
+    // 選單只放在漢堡抽屜裡，所以漢堡按鈕在任何螢幕寬度都要看得到：不能帶 d-lg-none 之類「大螢幕隱藏」的類別，否則電腦版就沒有選單入口。
+    public function test_the_hamburger_button_is_visible_at_every_screen_width(): void
+    {
+        $html = $this->page('admin');
+
+        $this->assertSame(1, preg_match('/<button[^>]*data-bs-target="#sidebarOffcanvas"[^>]*>/', $html, $button));
+        $this->assertDoesNotMatchRegularExpression('/\bd-(sm|md|lg|xl|xxl)-none\b|\bd-none\b/', $button[0]);
+    }
+
     public function test_group_containing_current_page_is_opened_by_default(): void
     {
         $html = $this->page('admin', 'maintenance-orders.index');

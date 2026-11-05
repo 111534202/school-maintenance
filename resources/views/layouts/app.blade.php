@@ -44,11 +44,9 @@
         .form-section-title { font-size: 0.95rem; font-weight: 600; color: #495057; }
         /* 選單抽屜：寬度固定 280px（Bootstrap 預設 400px 在桌面太寬）；窄螢幕時最多佔 85% 寬度。 */
         #sidebarOffcanvas { --bs-offcanvas-width: min(280px, 85vw); }
-        /* 桌面側邊欄至少撐到視窗底部（扣掉頂部列 56px）。 */
-        .app-sidebar { min-height: calc(100vh - 56px); }
         /* 選單連結平常是深灰色，目前所在頁面（.active）是藍底白字。 */
-        .app-sidebar .nav-link, .offcanvas .nav-link { color: #495057; }
-        .app-sidebar .nav-link.active, .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
+        .offcanvas .nav-link { color: #495057; }
+        .offcanvas .nav-link.active { color: #fff; background-color: #0d6efd; }
         /* 讓內容區可以比內容窄，否則寬表格會把整個頁面撐開（水平捲動交給表格自己處理）。 */
         .app-content { min-width: 0; }
         @media (max-width: 575.98px) {
@@ -68,7 +66,7 @@
         /* 選單裡可展開的群組（主檔）：箭頭展開時翻轉，子項目縮排並用左邊線標示層級。 */
         .nav-group-toggle .nav-chevron { transition: transform .2s; }
         .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
-        .app-sidebar .nav-group-toggle, .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
+        .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
 </head>
 {{-- 頁面主體：淺灰色背景。 --}}
@@ -78,8 +76,8 @@
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
-                {{-- 手機／平板才出現的「漢堡」按鈕：點了會打開下面的 #sidebarOffcanvas 側邊選單（桌面版用左邊固定的側邊欄）。 --}}
-                <button class="btn btn-outline-light btn-sm d-lg-none flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。 --}}
+                <button class="btn btn-outline-light btn-sm flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
             @endauth
@@ -151,7 +149,7 @@
     @endif
 
     @auth
-        {{-- 手機與平板的滑出側邊選單（< lg 才會出現按鈕觸發；桌面版改用左邊的固定側邊欄）。 --}}
+        {{-- 全站唯一的選單：預設收起來，點左上角的漢堡按鈕才從左邊滑出（所有螢幕大小都一樣，不再有固定的側邊欄）。 --}}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
             <div class="offcanvas-header">
                 <h6 class="offcanvas-title">選單</h6>
