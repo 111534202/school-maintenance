@@ -22,8 +22,8 @@
                 <dt class="col-sm-3">設備 / 類別</dt>
                 <dd class="col-sm-9">
                     {{ $order->categoryName() ?? '—' }}
-                    @if ($order->device_id)
-                        <span class="text-muted">（設備編號：{{ $order->device_id }}）</span>
+                    @if ($order->device)
+                        <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $order->device) }}">{{ $order->device->device_code }}</a>）</span>
                     @endif
                 </dd>
 
@@ -53,7 +53,7 @@
                     <dt class="col-sm-3">轉報修狀態</dt>
                     <dd class="col-sm-9">
                         @if ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
-                            <span class="badge text-bg-warning">待轉報修（報修模組併入後自動建立）</span>
+                            <span class="badge text-bg-warning">待轉報修（尚未建立報修單）</span>
                         @elseif ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
                             <span class="badge text-bg-success">已轉報修</span>
                             @if (\Illuminate\Support\Facades\Route::has('repairs.show'))
