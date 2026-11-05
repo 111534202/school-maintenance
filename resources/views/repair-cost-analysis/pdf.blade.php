@@ -212,7 +212,7 @@
                 <tr>
                     <td>{{ $item->part?->name ?? '零件資料不存在' }}</td>
                     <td class="number">
-                        {{ number_format((int) $item->total_quantity) }}
+                        {{ number_format((int) $item->total_quantity) }} {{ $item->part?->unit }}
                     </td>
                     <td class="number">
                         NT$ {{ number_format((float) $item->known_subtotal, 2) }}
@@ -285,7 +285,7 @@
                     <td>{{ $deviceLabel }}</td>
                     <td>{{ $locationLabel }}</td>
                     <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
-                    <td class="number">{{ number_format((int) $usage->quantity) }}</td>
+                    <td class="number">{{ number_format((int) $usage->quantity) }} {{ $usage->part?->unit }}</td>
                     <td class="number">
                         @if ($priceMissing)
                             缺少單價

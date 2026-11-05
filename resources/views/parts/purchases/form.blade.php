@@ -40,7 +40,7 @@
                 @error('vendor_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            <div class="row g-3 mb-3">
+            <div class="row g-3">
                 <div class="col-sm-6">
                     <label for="quantity" class="form-label">數量 <span class="text-danger">*</span></label>
                     <input type="number" id="quantity" name="quantity" min="1" required @readonly($locked)
@@ -56,24 +56,37 @@
                     @error('unit_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
+            {{-- 總價提示緊貼在數量／單價下面（跟附件欄位下方的說明一樣的間距）。 --}}
             <div class="form-text mb-3" id="totalHint">總價＝數量×單價，系統自動計算。</div>
 
-            @php($currentAttachment = $editing ? $purchase->attachments->first() : null)
+            {{-- 附件：一個檔案最多 2 MB、一筆最多 5 個（上限在 PartPurchaseController 的 MAX_FILE_KB、MAX_ATTACHMENTS）。
+                 修改時，原本的附件各自可以勾選刪除；新選的檔案加在後面。 --}}
+            @php($maxAttachments = \App\Http\Controllers\PartPurchaseController::MAX_ATTACHMENTS)
+            @php($currentAttachments = $editing ? $purchase->attachments : collect())
             <div class="mb-3">
-                <label for="invoice" class="form-label">附件</label>
-                @if ($currentAttachment)
-                    <div class="d-flex flex-wrap align-items-center gap-3 mb-2 small">
-                        <span>目前已有附件：<a href="{{ route('attachments.show', $currentAttachment) }}" target="_blank" rel="noopener">查看</a></span>
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="checkbox" value="1" id="remove_invoice" name="remove_invoice" @checked(old('remove_invoice'))>
-                            <label class="form-check-label text-danger" for="remove_invoice">刪除目前的附件</label>
-                        </div>
-                    </div>
+                <label for="invoices" class="form-label">附件 <span class="text-muted small ms-1">發票、收據等，PDF 或圖片</span></label>
+                @if ($currentAttachments->isNotEmpty())
+                    <ul class="list-unstyled small mb-2">
+                        @foreach ($currentAttachments as $attachment)
+                            <li class="d-flex flex-wrap align-items-center gap-3 mb-1">
+                                <a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener">附件 {{ $loop->iteration }}：查看</a>
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox" value="{{ $attachment->id }}" id="remove_attachment_{{ $attachment->id }}"
+                                        name="remove_attachments[]" @checked(in_array($attachment->id, (array) old('remove_attachments', [])))>
+                                    <label class="form-check-label text-danger" for="remove_attachment_{{ $attachment->id }}">刪除</label>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
                 @endif
-                <input type="file" id="invoice" name="invoice" accept=".pdf,.jpg,.jpeg,.png" data-max-mb="10"
-                    class="form-control @error('invoice') is-invalid @enderror">
-                <div class="form-text">發票、收據等，PDF 或圖片，最多 10 MB。@if ($currentAttachment)上傳新檔案會取代目前的附件。@endif</div>
-                @error('invoice')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <input type="file" id="invoices" name="invoices[]" multiple accept=".pdf,.jpg,.jpeg,.png"
+                    data-max-mb="2" data-max-files="{{ $maxAttachments - $currentAttachments->count() }}" data-max-files-total="{{ $maxAttachments }}"
+                    class="form-control @error('invoices') is-invalid @enderror @error('invoices.*') is-invalid @enderror">
+                <div class="form-text">一個檔案上限 2 MB，一筆最多 {{ $maxAttachments }} 個檔案。</div>
+                @error('invoices')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @foreach ($errors->get('invoices.*') as $messages)
+                    <div class="invalid-feedback">{{ $messages[0] }}</div>
+                @endforeach
             </div>
 
             <div class="mb-4">
@@ -102,6 +115,16 @@
             qty.addEventListener('input', update);
             price.addEventListener('input', update);
             if (qty.value && price.value) update();
+
+            // 還能再上傳幾個附件：上限－（原本的附件－勾選刪除的）；版面底部的檢查會用 data-max-files。
+            const files = document.getElementById('invoices');
+            const removes = document.querySelectorAll('input[name="remove_attachments[]"]');
+            function updateFileLimit() {
+                const kept = removes.length - Array.prototype.filter.call(removes, function (c) { return c.checked; }).length;
+                files.dataset.maxFiles = String(parseInt(files.dataset.maxFilesTotal, 10) - kept);
+            }
+            removes.forEach(function (c) { c.addEventListener('change', updateFileLimit); });
+            updateFileLimit();
         })();
     </script>
 @endsection

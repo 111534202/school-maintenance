@@ -74,6 +74,14 @@
             var actions = panel.querySelector('.onion-actions');
             dl.innerHTML = '';
             actions.innerHTML = '';
+            // 這一列在表格裡可以點進詳細頁（<tr data-href>）：面板最前面放「查看詳細」，清單檢視才也進得去。
+            if (data.href) {
+                var open = document.createElement('a');
+                open.className = 'btn btn-primary';
+                open.href = data.href;
+                open.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>查看詳細';
+                actions.appendChild(open);
+            }
             data.fields.forEach(function (f) {
                 var row = document.createElement('div');
                 var dt = document.createElement('dt');
@@ -176,7 +184,7 @@
                 chev.className = 'bi bi-chevron-right text-muted flex-shrink-0';
                 item.appendChild(chev);
                 item.addEventListener('click', function () {
-                    openPanel({ title: title, fields: main.filter(function (f) { return f.nodes.length; }), actions: actions }, item);
+                    openPanel({ title: title, href: tr.getAttribute('data-href'), fields: main.filter(function (f) { return f.nodes.length; }), actions: actions }, item);
                 });
                 list.appendChild(item);
             });
@@ -204,7 +212,12 @@
             // 切換按鈕放進標題列的右邊（跟「新增採購」這類按鈕排在一起）。
             var host = wrap.parentNode;
             var header = wrap.previousElementSibling;
-            if (host.matches('.card, .tb-table-wrap') && header && (header.classList.contains('card-header') || header.hasAttribute('data-onion-header'))) {
+            // 表格放在卡片內文（.card-body）的最上面、卡片有標題列時（例如報修詳細頁的「材料費明細」），切換按鈕也放進標題列。
+            if (host.matches('.card-body') && host.firstElementChild === wrap && host.previousElementSibling
+                && host.previousElementSibling.classList.contains('card-header')) {
+                header = host.previousElementSibling;
+            }
+            if (host.matches('.card, .tb-table-wrap, .card-body') && header && (header.classList.contains('card-header') || header.hasAttribute('data-onion-header'))) {
                 bar.className = 'onion-viewbar onion-viewbar-inline ms-auto';
                 var kids = header.children;
                 if (kids.length >= 2) { header.insertBefore(bar, kids[kids.length - 1]); } else { header.appendChild(bar); }

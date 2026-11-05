@@ -231,6 +231,15 @@
             if (own && serverFile) return Math.min(own, serverFile);
             return own || serverFile;
         }
+        // 欄位有 data-max-files（例如零件採購一筆最多 5 個附件）時，選太多個也先擋下來。
+        function tooMany(input) {
+            if (!input.hasAttribute('data-max-files') || !input.files) return null;
+            var max = parseInt(input.getAttribute('data-max-files'), 10);
+            return input.files.length > max ? max : null;
+        }
+        function tooManyText(max) {
+            return max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件再上傳。' : '最多只能再選 ' + max + ' 個檔案，請重新選擇。';
+        }
         function tooBig(input) {
             var limit = fileLimit(input);
             if (!limit || !input.files) return null;
@@ -243,8 +252,12 @@
             var input = event.target;
             if (!input.matches || !input.matches('input[type=file]')) return;
             var big = tooBig(input);
+            var many = tooMany(input);
             if (big) {
                 alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案（例如把照片縮小）。');
+                input.value = '';
+            } else if (many !== null) {
+                alert(tooManyText(many));
                 input.value = '';
             }
         });
@@ -257,6 +270,12 @@
                 if (big) {
                     event.preventDefault();
                     alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案。');
+                    return;
+                }
+                var many = tooMany(inputs[i]);
+                if (many !== null) {
+                    event.preventDefault();
+                    alert(tooManyText(many));
                     return;
                 }
                 for (var k = 0; k < inputs[i].files.length; k++) total += inputs[i].files[k].size;

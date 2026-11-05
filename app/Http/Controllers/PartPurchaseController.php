@@ -18,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  */
 class PartPurchaseController extends Controller
 {
+    /** 一筆採購最多幾個附件、每個檔案最大幾 KB（2 MB）。畫面上的說明文字與檢查也用這兩個值。 */
+    public const MAX_ATTACHMENTS = 5;
+
+    public const MAX_FILE_KB = 2048;
+
     public function __construct(private PartStockService $stock, private AttachmentUploader $uploader)
     {
     }
@@ -33,7 +38,7 @@ class PartPurchaseController extends Controller
 
         $purchase = DB::transaction(function () use ($request, $part, $validated) {
             $purchase = $this->stock->receive($part, $this->purchaseData($validated));
-            $this->storeInvoice($request, $purchase);
+            $this->storeInvoices($request, $purchase);
 
             return $purchase;
         });
@@ -57,15 +62,20 @@ class PartPurchaseController extends Controller
 
         $validated = $this->validated($request);
 
-        try {
-            DB::transaction(function () use ($request, $purchase, $validated) {
-                $this->stock->update($purchase, $this->purchaseData($validated));
+        // 附件總數：原本的－勾選刪除的＋新上傳的，不能超過上限。
+        $removeIds = $request->boolean('remove_invoice')
+            ? $purchase->attachments()->pluck('id')->all()
+            : array_map('intval', (array) $request->input('remove_attachments', []));
+        $keep = $purchase->attachments()->whereNotIn('id', $removeIds)->count();
+        if ($keep + count($this->uploadedFiles($request)) > self::MAX_ATTACHMENTS) {
+            return back()->withInput()->withErrors(['invoices' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件；目前保留 ' . $keep . ' 個，請先勾選刪除一些再上傳。']);
+        }
 
-                if ($request->hasFile('invoice')) {
-                    $this->storeInvoice($request, $purchase, replace: true);   // 上傳新檔案：取代原本的附件
-                } elseif ($request->boolean('remove_invoice')) {
-                    $purchase->deleteAttachments();                             // 勾選「刪除目前的附件」
-                }
+        try {
+            DB::transaction(function () use ($request, $purchase, $validated, $removeIds) {
+                $this->stock->update($purchase, $this->purchaseData($validated));
+                $purchase->deleteAttachments($removeIds);   // 勾選「刪除」的附件
+                $this->storeInvoices($request, $purchase);  // 新上傳的附件加在後面
             });
         } catch (DomainException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -101,11 +111,20 @@ class PartPurchaseController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['required', 'integer', 'min:0'],
             'note' => ['nullable', 'string', 'max:255'],
-            // 附件（發票、收據等）：一個檔案，PDF 或圖片，最多 10 MB。
-            'invoice' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            // 附件（發票、收據等）：PDF 或圖片，一個檔案最多 2 MB，一筆最多 5 個。
+            // invoices[] 是畫面上的多檔欄位；invoice（單一檔案）保留給舊的寫法。
+            'invoices' => ['nullable', 'array', 'max:' . self::MAX_ATTACHMENTS],
+            'invoices.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:' . self::MAX_FILE_KB],
+            'invoice' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . self::MAX_FILE_KB],
             'remove_invoice' => ['nullable', 'boolean'],
+            'remove_attachments' => ['nullable', 'array'],
+            'remove_attachments.*' => ['integer'],
         ], [
             'purchase_date.before_or_equal' => '採購日期不能晚於今天。',
+            'invoices.max' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件。',
+            'invoices.*.max' => '每個附件最多 2 MB。',
+            'invoices.*.mimes' => '附件只能是 PDF 或圖片（JPG、PNG）。',
+            'invoice.max' => '每個附件最多 2 MB。',
         ]);
     }
 
@@ -120,17 +139,18 @@ class PartPurchaseController extends Controller
         ];
     }
 
-    /** 儲存附件；修改時上傳新檔案會取代舊的附件。 */
-    private function storeInvoice(Request $request, PartPurchase $purchase, bool $replace = false): void
+    /** 這次上傳的檔案（多檔欄位 invoices[] 與舊的單檔欄位 invoice 合在一起）。 */
+    private function uploadedFiles(Request $request): array
     {
-        if (! $request->hasFile('invoice')) {
-            return;
-        }
+        return array_values(array_filter([...(array) $request->file('invoices', []), $request->file('invoice')]));
+    }
 
-        if ($replace) {
-            $purchase->deleteAttachments();
+    /** 儲存新上傳的附件（加在原本的附件後面）。 */
+    private function storeInvoices(Request $request, PartPurchase $purchase): void
+    {
+        $files = $this->uploadedFiles($request);
+        if ($files !== []) {
+            $this->uploader->storeMany($purchase, $files);
         }
-
-        $this->uploader->storeMany($purchase, [$request->file('invoice')]);
     }
 }

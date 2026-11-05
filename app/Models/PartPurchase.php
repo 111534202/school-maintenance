@@ -63,10 +63,17 @@ class PartPurchase extends Model
         return $this->morphMany(Attachment::class, 'attachable');
     }
 
-    /** 刪除這筆採購的附件：資料列和硬碟上的檔案一起刪掉，不留下沒人用的檔案。 */
-    public function deleteAttachments(): void
+    /** 刪除這筆採購的附件（不給編號＝全部；給編號＝只刪那幾個）：資料列和硬碟上的檔案一起刪掉，不留下沒人用的檔案。 */
+    public function deleteAttachments(?array $ids = null): void
     {
-        foreach ($this->attachments()->get() as $attachment) {
+        if ($ids === []) {
+            return;
+        }
+        $query = $this->attachments();
+        if ($ids !== null) {
+            $query->whereIn('id', $ids);
+        }
+        foreach ($query->get() as $attachment) {
             if ($disk = $attachment->storageDisk()) {
                 Storage::disk($disk)->delete($attachment->file_path);
             }

@@ -296,7 +296,7 @@
                                     <tr>
                                         <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
                                         <td>#{{ $log->id }}</td>
-                                        <td class="text-end">{{ $usage->quantity }}</td>
+                                        <td class="text-end text-nowrap">{{ $usage->quantity }} {{ $usage->part?->unit }}</td>
                                         <td class="text-end">
                                             @if ($usage->unit_price === null)
                                                 <span class="text-danger">缺少單價</span>

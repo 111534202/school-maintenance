@@ -89,7 +89,7 @@
                             <tr>
                                 <td>{{ $usage->part?->part_code ?? '—' }}</td>
                                 <td>{{ $usage->part?->name ?? '零件資料不存在' }}@if ($usage->part?->specification)（{{ $usage->part->specification }}）@endif</td>
-                                <td class="text-end">{{ $usage->quantity }}</td>
+                                <td class="text-end text-nowrap">{{ $usage->quantity }} {{ $usage->part?->unit }}</td>
                                 <td class="text-end">{{ $usage->unit_price === null ? '缺少單價' : 'NT$ ' . number_format($usage->unit_price) }}</td>
                                 <td class="text-end">{{ $usage->unit_price === null ? '—' : 'NT$ ' . number_format($usage->quantity * $usage->unit_price) }}</td>
                             </tr>

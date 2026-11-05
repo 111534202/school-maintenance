@@ -86,20 +86,21 @@
                             <tr>
                                 <td class="text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
                                 <td>{{ $purchase->vendor_name ?? '—' }}</td>
-                                <td class="text-end">{{ $purchase->quantity }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($purchase->quantity) }}</td>
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->unit_price) }}</td>
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->totalPrice()) }}</td>
-                                <td class="text-end">{{ $purchase->remaining_quantity }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($purchase->remaining_quantity) }}</td>
                                 <td>{{ $purchase->note ?? '—' }}</td>
                                 <td class="text-end text-nowrap">
                                     {{-- 附件：在目前畫面用視窗預覽（圖片、PDF），不會另開分頁。 --}}
-                                    @if ($attachment = $purchase->attachments->first())
+                                    @foreach ($purchase->attachments as $attachment)
+                                        @php($attachmentNo = $purchase->attachments->count() > 1 ? ' ' . $loop->iteration : '')
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
                                             data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}"
-                                            data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
-                                            <i class="bi bi-paperclip"></i> 附件
+                                            data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件{{ $attachmentNo }}">
+                                            <i class="bi bi-paperclip"></i> 附件{{ $attachmentNo }}
                                         </button>
-                                    @endif
+                                    @endforeach
                                     <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"

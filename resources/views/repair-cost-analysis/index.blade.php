@@ -93,7 +93,7 @@
                         <div class="tb-bar-track" aria-hidden="true"><div class="tb-bar-fill" style="width: {{ $barWidth }}%"></div></div>
                         <div class="text-end fw-bold tb-num">NT$ {{ number_format($item->known_subtotal) }}</div>
                         <div class="text-end tb-note tb-num">
-                            共 {{ number_format($item->total_quantity) }}
+                            共 {{ number_format($item->total_quantity) }} {{ $item->part?->unit }}
                             @if ((int) $item->missing_price_count > 0)
                                 <span class="tb-c-danger d-block">缺少單價 {{ number_format($item->missing_price_count) }} 筆</span>
                             @endif
@@ -120,7 +120,7 @@
                             @foreach ($partUsageSummary as $item)
                                 <tr>
                                     <td>{{ $item->part?->name ?? '零件資料不存在' }}</td>
-                                    <td class="text-end tb-num">{{ number_format($item->total_quantity) }}</td>
+                                    <td class="text-end tb-num text-nowrap">{{ number_format($item->total_quantity) }} {{ $item->part?->unit }}</td>
                                     <td class="text-end tb-num">NT$ {{ number_format($item->known_subtotal) }}</td>
                                     <td class="text-end tb-num">
                                         @if ((int) $item->missing_price_count > 0)
@@ -208,7 +208,7 @@
                                     <td>{{ $deviceLabel }}</td>
                                     <td>{{ $locationLabel }}</td>
                                     <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
-                                    <td class="text-end">{{ number_format($usage->quantity) }}</td>
+                                    <td class="text-end text-nowrap">{{ number_format($usage->quantity) }} {{ $usage->part?->unit }}</td>
                                     <td class="text-end">
                                         @if ($usage->unit_price === null)
                                             <span class="text-danger">缺少單價</span>

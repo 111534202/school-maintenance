@@ -139,6 +139,24 @@ class PartProfileAndStockTest extends TestCase
         $this->getJson(route('parts.check-code', ['code' => '']))->assertJson(['available' => true]);
     }
 
+    /** 零件編號也不能跟設備主檔的設備編號重複，並說明是跟零件還是設備重複。 */
+    public function test_a_code_already_used_as_a_device_code_is_refused_and_says_so(): void
+    {
+        $this->loginAsAnyUser();
+        $this->makeDevice('DEV-0100');
+        $this->makePart(['part_code' => 'HDMI-2M']);
+
+        $this->getJson(route('parts.check-code', ['code' => 'dev-0100']))
+            ->assertJson(['available' => false])
+            ->assertJsonFragment(['message' => '「dev-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
+        $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))
+            ->assertJson(['available' => false]);
+        $this->assertStringContainsString('零件', $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))->json('message'));
+
+        $this->post(route('parts.store'), ['part_code' => 'DEV-0100', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasErrors(['part_code' => '「DEV-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
+    }
+
     public function test_unit_is_required_and_shown_with_stock_quantities(): void
     {
         $this->loginAsAnyUser();
@@ -310,6 +328,44 @@ class PartProfileAndStockTest extends TestCase
         $this->assertCount(0, $purchase->fresh()->attachments);
         Storage::disk('local')->assertMissing($path);
         $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
+    }
+
+    /** 一筆採購最多 5 個附件，每個 2 MB；修改時可以只刪其中幾個、再加新的。 */
+    public function test_a_purchase_keeps_up_to_five_attachments_of_two_megabytes_each(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+        $base = ['purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20];
+
+        $this->post(route('parts.purchases.store', $part), $base + [
+            'invoices' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->create('b.pdf', 100, 'application/pdf')],
+        ])->assertSessionHasNoErrors();
+        $purchase = PartPurchase::firstOrFail();
+        $this->assertCount(2, $purchase->attachments);
+
+        // 超過 2 MB 的檔案不收。
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'invoices' => [UploadedFile::fake()->create('big.pdf', 2049, 'application/pdf')],
+        ])->assertSessionHasErrors('invoices.0');
+
+        // 已有 2 個，再加 4 個會超過 5 個。
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 4)),
+        ])->assertSessionHasErrors('invoices');
+        $this->assertCount(2, $purchase->fresh()->attachments);
+
+        // 勾選刪除第一個，再加 3 個：剛好 4 個。
+        $first = $purchase->attachments->first();
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'remove_attachments' => [$first->id],
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 3)),
+        ])->assertSessionHasNoErrors();
+        $this->assertCount(4, $purchase->fresh()->attachments);
+        $this->assertNull($purchase->fresh()->attachments->firstWhere('id', $first->id));
+
+        // 履歷頁每個附件各一顆按鈕。
+        $this->get(route('parts.show', $part))->assertSee('附件 4');
     }
 
     public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void

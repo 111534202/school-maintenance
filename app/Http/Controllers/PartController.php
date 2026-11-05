@@ -186,15 +186,17 @@ class PartController extends Controller
             return response()->json(['available' => false, 'message' => '零件編號只能用英文字母、數字、「-」、「_」、「.」，最多 20 個字。']);
         }
 
-        return Part::codeTaken($code, $ignoreId)
-            ? response()->json(['available' => false, 'message' => "零件編號「{$code}」已經被使用，請換一個。"])
+        $conflict = Part::codeConflict($code, $ignoreId);
+
+        return $conflict
+            ? response()->json(['available' => false, 'message' => "{$conflict}，請換一個。"])
             : response()->json(['available' => true, 'message' => "零件編號「{$code}」可以使用。"]);
     }
 
     /** 零件編號允許的字元：英文字母、數字、- _ .（會印在標籤或表單上，所以不允許空白與特殊符號）。 */
     private const CODE_PATTERN = '/^[A-Za-z0-9._-]+$/';
 
-    /** 零件編號的驗證規則：格式、長度，以及不可和其他零件重複（大小寫視為相同）。 */
+    /** 零件編號的驗證規則：格式、長度，以及不可和其他零件編號、設備編號重複（大小寫視為相同）。 */
     private function codeRules(?int $ignoreId, bool $required): array
     {
         return [
@@ -203,8 +205,8 @@ class PartController extends Controller
             'max:20',
             'regex:' . self::CODE_PATTERN,
             function (string $attribute, mixed $value, \Closure $fail) use ($ignoreId) {
-                if (filled($value) && Part::codeTaken($value, $ignoreId)) {
-                    $fail("零件編號「{$value}」已經被使用，請換一個。");
+                if (filled($value) && ($conflict = Part::codeConflict($value, $ignoreId))) {
+                    $fail("{$conflict}，請換一個。");
                 }
             },
         ];
