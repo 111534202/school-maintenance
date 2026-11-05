@@ -218,6 +218,56 @@
         });
     });
     </script>
+    {{-- 上傳檔案的大小檢查：選檔時與送出前先檢查，超過就跳出提示，不會送到伺服器才出錯（The POST data is too large）。
+         每個檔案的上限：欄位的 data-max-mb（跟後端驗證一致，例如零件採購附件 10 MB），以及伺服器的 upload_max_filesize，取較小的；
+         一次送出的全部檔案加起來不能超過伺服器的 post_max_size。伺服器的兩個值見 App\Support\UploadLimit（在 php.ini 設定）。 --}}
+    <script>
+    (function () {
+        var serverFile = {{ \App\Support\UploadLimit::fileBytes() }};
+        var serverPost = {{ \App\Support\UploadLimit::postBytes() }};
+        function mb(bytes) { return (Math.round(bytes / 1048576 * 10) / 10) + ' MB'; }
+        function fileLimit(input) {
+            var own = parseFloat(input.getAttribute('data-max-mb') || '0') * 1048576;
+            if (own && serverFile) return Math.min(own, serverFile);
+            return own || serverFile;
+        }
+        function tooBig(input) {
+            var limit = fileLimit(input);
+            if (!limit || !input.files) return null;
+            for (var i = 0; i < input.files.length; i++) {
+                if (input.files[i].size > limit) return { file: input.files[i], limit: limit };
+            }
+            return null;
+        }
+        document.addEventListener('change', function (event) {
+            var input = event.target;
+            if (!input.matches || !input.matches('input[type=file]')) return;
+            var big = tooBig(input);
+            if (big) {
+                alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案（例如把照片縮小）。');
+                input.value = '';
+            }
+        });
+        document.addEventListener('submit', function (event) {
+            var form = event.target;
+            var total = 0;
+            var inputs = form.querySelectorAll('input[type=file]');
+            for (var i = 0; i < inputs.length; i++) {
+                var big = tooBig(inputs[i]);
+                if (big) {
+                    event.preventDefault();
+                    alert('「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '。\n請改選較小的檔案。');
+                    return;
+                }
+                for (var k = 0; k < inputs[i].files.length; k++) total += inputs[i].files[k].size;
+            }
+            if (serverPost && total > serverPost * 0.95) {
+                event.preventDefault();
+                alert('這次選的檔案加起來有 ' + mb(total) + '，超過伺服器一次能收的 ' + mb(serverPost) + '。\n請減少檔案數量或改選較小的檔案。');
+            }
+        }, true);
+    })();
+    </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @auth

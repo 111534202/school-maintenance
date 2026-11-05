@@ -106,7 +106,8 @@
             <details>
                 <summary class="tb-note" style="cursor: pointer">以表格檢視</summary>
                 <div class="table-responsive mt-2">
-                    <table class="tb-table">
+                    {{-- 這張是「以表格檢視」本身，不轉成洋蔥式清單。 --}}
+                    <table class="tb-table" data-no-onion>
                         <thead>
                             <tr>
                                 <th>備品名稱</th>
@@ -140,12 +141,13 @@
     </section>
 
     {{-- 零件使用明細。 --}}
+    {{-- 標題列（data-onion-header）：洋蔥式的「表格／清單檢視」切換鈕會放在它的右邊，清單接在標題列下方（跟零件履歷的採購紀錄一樣）。 --}}
     <section class="tb-table-wrap" aria-labelledby="detailTitle">
-        <h2 id="detailTitle" class="tb-section-title" style="padding: 20px 24px 12px">材料費明細</h2>
-
-        <div>
+        <div class="tb-section-head" data-onion-header>
+            <h2 id="detailTitle" class="tb-section-title">材料費明細</h2>
+        </div>
             @if ($partUsages->isEmpty())
-                <p class="tb-note" style="padding: 0 24px 20px">此日期範圍內沒有可檢視的零件使用紀錄。</p>
+                <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有可檢視的零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
                     <table class="tb-table tb-table-hover" style="font-size: 0.9rem">
@@ -227,7 +229,6 @@
                     </table>
                 </div>
             @endif
-        </div>
     </section>
 </div>
 @endsection

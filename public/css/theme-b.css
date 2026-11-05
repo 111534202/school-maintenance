@@ -371,3 +371,5 @@ body.tb-body {
 .tb > .onion-viewbar { margin-bottom: calc(-22px + .5rem) !important; }
 /* 卡片有標題列時，切換鈕放在標題列右邊；這時清單的第一筆緊接在標題列下面。 */
 .tb-body .onion-viewbar-inline .btn { padding: .15rem .6rem; font-size: .8rem; }
+/* 風格 B 區塊的標題列（例如成本分析報表的「材料費明細」）：標題在左、洋蔥式的切換鈕在右，下面一條分隔線。 */
+.tb-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 24px; border-bottom: 1px solid var(--tb-border); }

@@ -147,7 +147,8 @@
                             id="attachments"
                             name="attachments[]"
                             multiple
-                            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm">
+                            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm"
+                            data-max-mb="20">
 
                         <div class="form-text">
                             最多 5 個附件，每個檔案不超過 20 MB。

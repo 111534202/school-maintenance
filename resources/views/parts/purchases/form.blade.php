@@ -70,7 +70,7 @@
                         </div>
                     </div>
                 @endif
-                <input type="file" id="invoice" name="invoice" accept=".pdf,.jpg,.jpeg,.png"
+                <input type="file" id="invoice" name="invoice" accept=".pdf,.jpg,.jpeg,.png" data-max-mb="10"
                     class="form-control @error('invoice') is-invalid @enderror">
                 <div class="form-text">發票、收據等，PDF 或圖片，最多 10 MB。@if ($currentAttachment)上傳新檔案會取代目前的附件。@endif</div>
                 @error('invoice')<div class="invalid-feedback">{{ $message }}</div>@enderror

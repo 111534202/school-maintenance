@@ -1,6 +1,6 @@
 {{-- 清單的洋蔥式檢視：列表頁的寬表格自動變成一列一列的簡短清單（一眼看到每筆的重點，不用左右滑動），
      點某一筆，詳細內容從右邊滑進來（有「返回」），每一欄的內容與原本的操作按鈕（編輯、刪除…）都在裡面。 --}}
-{{-- 原本的表格仍然在網頁裡，只是預設收起來；右上角的按鈕可以切回表格檢視（選擇會記在這台瀏覽器）。
+{{-- 原本的表格仍然在網頁裡，只是預設收起來；右上角的按鈕可以切回表格檢視（每一張表各自記在這台瀏覽器）。
      不想套用的表格：在 <table> 加 data-no-onion。沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
 <style>
     .onion-item { text-align: left; min-height: 3.25rem; }
@@ -30,8 +30,11 @@
         var panel, overlay, lastFocus;
         var views = [];
 
-        function getMode() { try { return localStorage.getItem(KEY) === 'table' ? 'table' : 'list'; } catch (e) { return 'list'; } }
-        function setMode(m) { try { localStorage.setItem(KEY, m); } catch (e) { /* 這台瀏覽器不能存設定就算了 */ } }
+        // 每一張表格各自記住「清單／表格」：同一頁有好幾張表（例如零件履歷的採購紀錄與使用紀錄）時，切換一張只影響那一張。
+        // 記憶的鍵＝頁面路徑（網址裡的編號換成 *，所以每個零件的履歷頁共用同一組設定）＋這張表在頁面上的順序。
+        function keyFor(index) { return KEY + ':' + location.pathname.replace(/\/\d+(?=\/|$)/g, '/*') + '#' + index; }
+        function getMode(key) { try { return localStorage.getItem(key) === 'table' ? 'table' : 'list'; } catch (e) { return 'list'; } }
+        function setMode(key, m) { try { localStorage.setItem(key, m); } catch (e) { /* 這台瀏覽器不能存設定就算了 */ } }
         // 把一格拆成「主要文字」和「備註」（徽章不算；小字、灰字算備註），清單的標題才不會擠成一長串。
         function split(td) {
             var c = td.cloneNode(true);
@@ -116,7 +119,7 @@
         }
 
         // ---- 把一張表格變成清單 ----
-        function build(wrap, table) {
+        function build(wrap, table, key) {
             if (table.hasAttribute('data-no-onion') || table.querySelector('table')) return;
             var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), text);
             if (heads.length < 3) return;
@@ -187,20 +190,21 @@
             bar.appendChild(toggle);
 
             function apply() {
-                var mode = getMode();
+                var mode = getMode(key);
                 wrap.hidden = mode === 'list';
                 list.hidden = mode === 'table';
                 toggle.innerHTML = mode === 'list' ? '<i class="bi bi-table me-1"></i>表格檢視' : '<i class="bi bi-list-ul me-1"></i>清單檢視';
                 toggle.setAttribute('title', mode === 'list' ? '切換成完整表格（可以左右捲動看全部欄位）' : '切換成一列一列的清單');
             }
-            // 同一頁有好幾張表時，切換一張就全部一起切。
-            toggle.addEventListener('click', function () { setMode(getMode() === 'list' ? 'table' : 'list'); views.forEach(function (v) { v.apply(); }); });
+            // 只切換這一張表。
+            toggle.addEventListener('click', function () { setMode(key, getMode(key) === 'list' ? 'table' : 'list'); apply(); });
             // 表格包在卡片裡（.card、.tb-table-wrap）時，切換按鈕放在卡片外面的右上方，卡片裡只放清單或表格，
             // 不會在卡片頂端多出一條只有按鈕的空白；清單也貼齊卡片（樣式見 public/css/theme-b.css「4. 洋蔥式元件」）。
-            // 卡片有標題列（.card-header）時，切換按鈕放進標題列的右邊（跟「新增採購」這類按鈕排在一起）。
+            // 卡片有標題列（.card-header，或風格 B 頁面標了 data-onion-header 的標題列）時，
+            // 切換按鈕放進標題列的右邊（跟「新增採購」這類按鈕排在一起）。
             var host = wrap.parentNode;
             var header = wrap.previousElementSibling;
-            if (host.matches('.card') && header && header.classList.contains('card-header')) {
+            if (host.matches('.card, .tb-table-wrap') && header && (header.classList.contains('card-header') || header.hasAttribute('data-onion-header'))) {
                 bar.className = 'onion-viewbar onion-viewbar-inline ms-auto';
                 var kids = header.children;
                 if (kids.length >= 2) { header.insertBefore(bar, kids[kids.length - 1]); } else { header.appendChild(bar); }
@@ -214,10 +218,10 @@
             return { apply: apply };
         }
 
-        document.querySelectorAll('.table-responsive').forEach(function (wrap) {
+        document.querySelectorAll('.table-responsive').forEach(function (wrap, index) {
             var table = wrap.querySelector('table');
             if (!table) return;
-            var v = build(wrap, table);
+            var v = build(wrap, table, keyFor(index));
             if (v) { v.apply(); views.push(v); }
         });
     })();
