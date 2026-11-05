@@ -298,3 +298,58 @@ body.tb-body {
 /* 可點的表格列：有 data-href 的 <tr> 點任何一格（或按 Enter）都進入詳細頁（行為見 layouts/app.blade.php 底部的程式）。 */
 .tb-body tr[data-href] { cursor: pointer; }
 .tb-body tr[data-href]:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+
+/* ================= 4. 洋蔥式元件換成風格 B 配色 ================= */
+/* 洋蔥式的清單詳細面板、篩選面板、分步驟表單、選單（layouts/partials/*-onion、form-stepper、nav-drilldown）與主控台功能入口，
+   原本用 Bootstrap 藍；這裡統一換成墨綠，圓角與留白跟其他頁面一致。行為都在各自的檔案，這裡只管顏色與外觀。 */
+
+/* 返回鍵（清單面板、篩選面板、選單第二層） */
+.tb-body .onion-panel-top .onion-back,
+.tb-body .fo-top .fo-back,
+.tb-body .drill-top .drill-back { color: var(--tb-accent); font-weight: 500; }
+.tb-body .onion-panel-top, .tb-body .fo-top, .tb-body .drill-top { border-bottom-color: var(--tb-border); }
+.tb-body .onion-panel-title, .tb-body .fo-top .fo-title, .tb-body .drill-top .drill-title { font-family: 'Noto Serif TC', serif; }
+
+/* 滑出面板：暖白底、左側圓角 */
+.tb-body .onion-panel, .tb-body .fo-panel { background: var(--tb-surface); border-radius: 18px 0 0 18px; }
+.tb-body .onion-dl > div { border-bottom-color: #EFEAE0; }
+.tb-body .onion-dl dt { color: var(--tb-muted); }
+
+/* 簡短清單：每一筆的標題與滑過底色 */
+.tb-body .onion-list { border-radius: 14px; }
+.tb-body .onion-item:hover, .tb-body .onion-item:focus-visible { background: var(--tb-accent-faint); }
+.tb-body .onion-item .onion-sub { color: var(--tb-muted); }
+
+/* 篩選摘要列的小標籤與數字 */
+.tb-body .fo-bar .fo-chip { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
+.tb-body .fo-bar .badge.text-bg-primary { background-color: var(--tb-accent) !important; }
+
+/* 分步驟表單 */
+.tb-body .stepper-pill { border-color: var(--tb-border); }
+.tb-body .stepper-pill.is-active { border-color: var(--tb-accent); color: var(--tb-accent); background: var(--tb-accent-faint); }
+.tb-body .stepper-pill.is-active .stepper-num { background: var(--tb-accent); }
+.tb-body .stepper-pill.is-done .stepper-num { background: #8BB39E; }
+.tb-body .stepper-bar { background: #EAE5DA; }
+.tb-body .stepper-bar > span { background: var(--tb-accent); }
+
+/* 漢堡選單（洋蔥式，一層一層往內點） */
+.tb-body .offcanvas { background: var(--tb-surface); }
+.tb-body .offcanvas-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.tb-body .drill-item { border-bottom-color: #EFEAE0; }
+.tb-body .drill-item:hover, .tb-body .drill-item:focus-visible { background: var(--tb-accent-faint); }
+.tb-body .drill-item.active { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
+.tb-body .drill-item.active .bi:first-child { color: var(--tb-accent); }
+.tb-body .drill-item.has-active { box-shadow: inset 3px 0 0 var(--tb-accent); }
+
+/* 主控台：功能入口圖示與數字卡片的圓形圖示 */
+.tb-body .entry-tile { border: 1px solid var(--tb-border) !important; border-radius: 16px; box-shadow: none !important; }
+.tb-body .entry-tile:hover, .tb-body .entry-tile:focus-visible { border-color: #B9CFC2 !important; }
+.tb-body .entry-icon { background: var(--tb-accent-soft); color: var(--tb-accent); }
+.tb-body .kpi-icon.text-bg-primary { background-color: var(--tb-accent) !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-info { background-color: #5E9C82 !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-success { background-color: var(--tb-accent-dark) !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-secondary { background-color: #A39E92 !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-warning { background-color: #E3B04B !important; color: #3D2C00 !important; }
+.tb-body .kpi-icon.text-bg-danger { background-color: var(--tb-danger) !important; color: #fff !important; }
+/* 手機寬度：滑出面板佔滿整個畫面，不留圓角。 */
+@media (max-width: 575.98px) { .tb-body .onion-panel, .tb-body .fo-panel { border-radius: 0; } }

@@ -23,25 +23,26 @@
     @endphp
     <div class="card shadow-sm mb-3">
         <div class="card-body py-3">
-            <form method="GET" action="{{ route('knowledge-base.index') }}" class="row g-2 align-items-end" role="search">
-                <div class="col-12 col-md">
+            {{-- 搜尋列：用全站共用的 filter-bar，洋蔥式會收成「篩選條件」摘要列，點開從右邊滑出（見 layouts/partials/filter-onion）。 --}}
+            <form method="GET" action="{{ route('knowledge-base.index') }}" class="filter-bar" role="search">
+                <div>
                     <label for="kb-keyword" class="form-label small mb-1">{{ __('knowledge_base.search.keyword') }}</label>
-                    <input type="search" id="kb-keyword" name="keyword" class="form-control" value="{{ $keyword }}"
+                    <input type="search" id="kb-keyword" name="keyword" class="form-control form-control-sm" style="width: 18rem;" value="{{ $keyword }}"
                         placeholder="{{ __('knowledge_base.search.placeholder') }}">
                 </div>
-                <div class="col-12 col-md-3">
+                <div>
                     <label for="kb-category" class="form-label small mb-1">{{ __('knowledge_base.search.category') }}</label>
-                    <select id="kb-category" name="category" class="form-select">
+                    <select id="kb-category" name="category" class="form-select form-select-sm" style="width: 10rem;">
                         <option value="">{{ __('knowledge_base.search.all_categories') }}</option>
                         @foreach ($categories as $option)
                             <option value="{{ $option }}" @selected($category === $option)>{{ $option }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-auto d-flex gap-2">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>{{ __('knowledge_base.search.submit') }}</button>
+                <div class="d-inline-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>{{ __('knowledge_base.search.submit') }}</button>
                     @if ($searching)
-                        <a href="{{ route('knowledge-base.index') }}" class="btn btn-outline-secondary">{{ __('knowledge_base.search.clear') }}</a>
+                        <a href="{{ route('knowledge-base.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('knowledge_base.search.clear') }}</a>
                     @endif
                 </div>
             </form>

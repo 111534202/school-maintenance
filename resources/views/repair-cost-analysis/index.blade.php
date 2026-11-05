@@ -21,18 +21,20 @@
     </div>
 
     {{-- 日期篩選：兩個日期都不填時，檢視全部日期。 --}}
-    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="tb-card tb-card-pad tb-form-row">
+    {{-- 篩選列：用全站共用的 filter-bar，洋蔥式會收成「篩選條件」摘要列，點開從右邊滑出（見 layouts/partials/filter-onion）。 --}}
+    <div class="tb-card tb-card-pad">
+    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row">
         <div class="tb-field">
-            <label for="start_date" class="tb-label">開始日期</label>
-            <input type="date" id="start_date" name="start_date" class="tb-input" value="{{ $startDate ?? '' }}">
+            <label for="start_date" class="form-label small mb-1">開始日期</label>
+            <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
         </div>
         <div class="tb-field">
-            <label for="end_date" class="tb-label">結束日期</label>
-            <input type="date" id="end_date" name="end_date" class="tb-input" value="{{ $endDate ?? '' }}">
+            <label for="end_date" class="form-label small mb-1">結束日期</label>
+            <input type="date" id="end_date" name="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}">
         </div>
         <div class="tb-field">
-            <label for="status" class="tb-label">案件狀態</label>
-            <select id="status" name="status" class="tb-select">
+            <label for="status" class="form-label small mb-1">案件狀態</label>
+            <select id="status" name="status" class="form-select form-select-sm">
                 <option value="" @selected(($status ?? '') === '')>全部狀態</option>
                 <option value="pending" @selected(($status ?? '') === 'pending')>待處理</option>
                 <option value="assigned" @selected(($status ?? '') === 'assigned')>已指派</option>
@@ -41,21 +43,12 @@
                 <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
             </select>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <button type="submit" class="tb-btn tb-btn-primary"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
-            <a href="{{ route('repair-cost-analysis.index') }}" class="tb-btn tb-btn-outline">清除篩選</a>
+        <div class="d-inline-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1" aria-hidden="true"></i>查詢</button>
+            <a href="{{ route('repair-cost-analysis.index') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center">清除篩選</a>
         </div>
-
-        @if ($errors->any())
-            <div class="alert alert-danger w-100 mb-0" role="alert">
-                <ul class="mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
     </form>
+    </div>
 
     {{-- 成本摘要：缺少單價時，只呈現已知成本，不把缺價當成零元。 --}}
     <div class="tb-card tb-stat-band">
