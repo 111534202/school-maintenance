@@ -95,6 +95,8 @@ class RepairCostAnalysisController extends Controller
                 'nullable',
                 'in:pending,assigned,in_progress,pending_review,completed',
             ],
+            // 報廢損失：include＝一起顯示（預設）、exclude＝不顯示。
+            'scraps' => ['nullable', 'in:include,exclude'],
         ]);
 
         $startDate = $filters['start_date'] ?? null;

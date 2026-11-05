@@ -194,6 +194,7 @@ body.tb-body {
 
 /* 一張卡片裡分三格的統計列 */
 .tb-stat-band { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tb-stat-band.tb-stat-band-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }   /* 成本分析加上「報廢損失」時是四格 */
 .tb-stat-band > div { padding: 22px 26px; }
 .tb-stat-band > div + div { border-left: 1px solid #EFEAE0; }
 
@@ -279,7 +280,7 @@ body.tb-body {
 /* 手機寬度：統計卡改成單欄、橫條圖每列換行。 */
 @media (max-width: 767.98px) {
     .tb-title { font-size: 1.6rem; }
-    .tb-stat-band { grid-template-columns: minmax(0, 1fr); }
+    .tb-stat-band, .tb-stat-band.tb-stat-band-4 { grid-template-columns: minmax(0, 1fr); }
     /* 統計卡在手機上仍排成一列三格，只縮小字與留白，避免佔掉整個畫面。 */
     .tb-stats { gap: 8px; }
     .tb-stat, .tb .tb-stat.is-active { padding: 10px 12px; border-radius: 14px; }

@@ -58,11 +58,62 @@
         </div>
     </div>
 
+    {{-- 卡片順序：使用紀錄 → 採購紀錄 → 報廢紀錄。 --}}
+    {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span>使用紀錄</span>
+            <span class="text-muted small">共使用 {{ $part->withUnit($usages->sum('quantity')) }}</span>
+        </div>
+        @if ($usages->isEmpty())
+            <div class="card-body text-muted small">目前沒有使用紀錄。</div>
+        @else
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>來源</th>
+                            <th class="text-nowrap">單號</th>
+                            <th>狀態</th>
+                            <th class="text-nowrap">使用日期</th>
+                            <th>執行人</th>
+                            <th class="text-end text-nowrap">數量</th>
+                            <th class="text-end text-nowrap">單價</th>
+                            <th class="text-end text-nowrap">小計</th>
+                            <th class="text-nowrap">扣用批次</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($usages as $usage)
+                            <tr>
+                                <td><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
+                                <td class="text-nowrap">
+                                    @if ($usage['link'])
+                                        <a href="{{ $usage['link'] }}">{{ $usage['reference_label'] }}</a>
+                                    @else
+                                        {{ $usage['reference_label'] }}
+                                    @endif
+                                </td>
+                                <td>{{ $usage['status'] ?? '—' }}</td>
+                                <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
+                                <td>{{ $usage['executor'] ?? '—' }}</td>
+                                <td class="text-end">{{ $usage['quantity'] }}</td>
+                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '缺少單價' : 'NT$ ' . number_format($usage['unit_price']) }}</td>
+                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '—' : 'NT$ ' . number_format($usage['quantity'] * $usage['unit_price']) }}</td>
+                                <td class="text-nowrap">{{ $usage['batch'] ? $usage['batch']->purchase_date->format('Y-m-d') . ' 採購' : '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     {{-- 採購紀錄：每一筆是一個進貨批次。新增會增加庫存；已被用過的批次不能改數量、單價，也不能刪除。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>採購紀錄</span>
-            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
+            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
         </div>
         @if ($purchases->isEmpty())
             <div class="card-body text-muted small">目前沒有採購紀錄。</div>
@@ -123,48 +174,63 @@
     {{-- 附件預覽視窗（零件履歷與修改採購共用）：見 parts/_attachment-modal.blade.php。 --}}
     @include('parts._attachment-modal')
 
-    {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
+    {{-- 報廢紀錄：零件還沒用就壞掉、過期或遺失時登記，從庫存扣掉（先進先出，跟用料一樣）。
+         報廢損失＝扣到的各批數量×那一批的單價。登記錯了可以「取消報廢」，數量加回原本的批次。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>使用紀錄</span>
-            <span class="text-muted small">共使用 {{ $part->withUnit($usages->sum('quantity')) }}</span>
+            {{-- 標題旁邊直接寫共報廢多少、損失多少；右邊是「登記報廢」。 --}}
+            <span>
+                報廢紀錄
+                @if ($scraps->isNotEmpty())
+                    <span class="text-muted small ms-2">共報廢 {{ $part->withUnit($scraps->sum('quantity')) }}，損失 NT$ {{ number_format($scraps->sum(fn ($scrap) => $scrap->lossAmount())) }}</span>
+                @endif
+            </span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-outline-danger" data-modal-frame data-modal-title="登記報廢">登記報廢</a>
+            </div>
         </div>
-        @if ($usages->isEmpty())
-            <div class="card-body text-muted small">目前沒有使用紀錄。</div>
+        @if ($scraps->isEmpty())
+            <div class="card-body text-muted small">目前沒有報廢紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="報廢紀錄">
                     <thead class="table-light">
                         <tr>
-                            <th>來源</th>
-                            <th class="text-nowrap">單號</th>
-                            <th>狀態</th>
-                            <th class="text-nowrap">使用日期</th>
-                            <th>執行人</th>
+                            <th class="text-nowrap">報廢日期</th>
+                            <th>原因</th>
                             <th class="text-end text-nowrap">數量</th>
-                            <th class="text-end text-nowrap">單價</th>
-                            <th class="text-end text-nowrap">小計</th>
+                            <th class="text-end text-nowrap">損失金額</th>
                             <th class="text-nowrap">扣用批次</th>
+                            <th>登記人</th>
+                            <th>備註</th>
+                            <th class="text-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($usages as $usage)
+                        @foreach ($scraps as $scrap)
                             <tr>
-                                <td><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
-                                <td class="text-nowrap">
-                                    @if ($usage['link'])
-                                        <a href="{{ $usage['link'] }}">{{ $usage['reference_label'] }}</a>
-                                    @else
-                                        {{ $usage['reference_label'] }}
-                                    @endif
+                                <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
+                                <td>{{ $scrap->reason }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($scrap->quantity) }}</td>
+                                <td class="text-end text-nowrap">
+                                    NT$ {{ number_format($scrap->lossAmount()) }}
+                                    @if ($scrap->hasMissingPrice())<small class="text-muted">（部分缺少單價）</small>@endif
                                 </td>
-                                <td>{{ $usage['status'] ?? '—' }}</td>
-                                <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
-                                <td>{{ $usage['executor'] ?? '—' }}</td>
-                                <td class="text-end">{{ $usage['quantity'] }}</td>
-                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '缺少單價' : 'NT$ ' . number_format($usage['unit_price']) }}</td>
-                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '—' : 'NT$ ' . number_format($usage['quantity'] * $usage['unit_price']) }}</td>
-                                <td class="text-nowrap">{{ $usage['batch'] ? $usage['batch']->purchase_date->format('Y-m-d') . ' 採購' : '—' }}</td>
+                                <td class="text-nowrap">
+                                    @foreach ($scrap->batches as $batch)
+                                        <div>{{ $batch->purchase ? $batch->purchase->purchase_date->format('Y-m-d') . ' 採購' : '—' }} × {{ $batch->quantity }}</div>
+                                    @endforeach
+                                </td>
+                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                                <td>{{ $scrap->note ?? '—' }}</td>
+                                <td class="text-nowrap">
+                                    <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
+                                        onsubmit="return confirm('確定要取消這筆報廢嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">取消報廢</button>
+                                    </form>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

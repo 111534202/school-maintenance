@@ -4,11 +4,12 @@ namespace App\Services;
 
 use App\Models\Part;
 use App\Models\PartPurchase;
+use App\Models\PartScrap;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 零件庫存的唯一進出口：進貨（採購紀錄）與用料（維修、保養）都要經過這裡，
+ * 零件庫存的唯一進出口：進貨（採購紀錄）、用料（維修、保養）與報廢都要經過這裡，
  * 才能讓「零件的目前庫存」永遠等於「各採購批次的剩餘數量加總」。
  *
  * 成本計算採先進先出（FIFO）：用料時先扣最早買進、還有剩的批次。
@@ -55,7 +56,7 @@ class PartStockService
 
             $changesAmount = (int) $data['quantity'] !== $locked->quantity || (int) $data['unit_price'] !== $locked->unit_price;
             if ($changesAmount && $locked->isUsed()) {
-                throw new DomainException('這一批已經有 ' . $locked->usedQuantity() . ' 個被維修或保養用掉，不能再修改數量與單價（日期、廠商、備註仍可修改）。');
+                throw new DomainException('這一批已經有 ' . $locked->usedQuantity() . ' 個被維修、保養用掉或報廢，不能再修改數量與單價（日期、廠商、備註仍可修改）。');
             }
 
             $difference = (int) $data['quantity'] - $locked->quantity;
@@ -85,7 +86,7 @@ class PartStockService
             Part::query()->whereKey($locked->part_id)->lockForUpdate()->first();
 
             if ($locked->isUsed()) {
-                throw new DomainException('這一批已經有 ' . $locked->usedQuantity() . ' 個被維修或保養用掉，不能刪除。');
+                throw new DomainException('這一批已經有 ' . $locked->usedQuantity() . ' 個被維修、保養用掉或報廢，不能刪除。');
             }
 
             Part::query()->whereKey($locked->part_id)->decrement('current_stock', $locked->quantity);
@@ -147,6 +148,53 @@ class PartStockService
             $locked->decrement('current_stock', $quantity);
 
             return $allocations;
+        });
+    }
+
+    /**
+     * 報廢：跟用料一樣依先進先出從各批次扣除，並記下扣了哪幾批（報廢損失用當時的單價計算）。
+     *
+     * @param  array{scrap_date: string, quantity: int, reason: string, note?: ?string}  $data
+     *
+     * @throws DomainException 目前庫存不足
+     */
+    public function scrap(Part $part, array $data, ?int $recordedBy): PartScrap
+    {
+        return DB::transaction(function () use ($part, $data, $recordedBy) {
+            $allocations = $this->consume($part, (int) $data['quantity']);
+
+            $scrap = PartScrap::create([
+                'part_id' => $part->id,
+                'scrap_date' => $data['scrap_date'],
+                'quantity' => (int) $data['quantity'],
+                'reason' => $data['reason'],
+                'note' => $data['note'] ?? null,
+                'recorded_by' => $recordedBy,
+            ]);
+            $scrap->batches()->createMany($allocations);
+
+            return $scrap;
+        });
+    }
+
+    /**
+     * 取消報廢（登記錯了）：把數量加回當初扣的批次與目前庫存，再刪除這筆報廢紀錄。
+     * 當初扣的批次如果已經被刪除（理論上不會，用過的批次不能刪），那部分只加回目前庫存。
+     */
+    public function restoreScrap(PartScrap $scrap): void
+    {
+        DB::transaction(function () use ($scrap) {
+            Part::query()->whereKey($scrap->part_id)->lockForUpdate()->first();
+            $locked = PartScrap::query()->whereKey($scrap->id)->lockForUpdate()->firstOrFail();
+
+            foreach ($locked->batches as $batch) {
+                if ($batch->part_purchase_id) {
+                    PartPurchase::query()->whereKey($batch->part_purchase_id)->increment('remaining_quantity', $batch->quantity);
+                }
+            }
+
+            Part::query()->whereKey($locked->part_id)->increment('current_stock', $locked->quantity);
+            $locked->delete();   // 批次明細跟著刪除（外鍵 cascade）
         });
     }
 }

@@ -10,7 +10,7 @@
 
     @if ($editing && $purchase->isUsed())
         <div class="alert alert-warning">
-            這一批已經有 {{ $purchase->usedQuantity() }} 個被維修或保養用掉，數量與單價不能再修改；日期、廠商、備註與發票仍可修改。
+            這一批已經有 {{ $purchase->usedQuantity() }} 個被維修、保養用掉或報廢，數量與單價不能再修改；日期、廠商、備註與發票仍可修改。
         </div>
     @endif
 

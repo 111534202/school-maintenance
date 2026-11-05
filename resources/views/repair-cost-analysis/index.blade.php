@@ -11,10 +11,10 @@
         </div>
 
         <div class="tb-actions">
-            <a href="{{ route('repair-cost-analysis.export.excel', request()->only(['start_date', 'end_date', 'status'])) }}" class="tb-btn tb-btn-outline">
+            <a href="{{ route('repair-cost-analysis.export.excel', request()->only(['start_date', 'end_date', 'status', 'scraps'])) }}" class="tb-btn tb-btn-outline">
                 <i class="bi bi-file-earmark-excel" style="color: #1D6B3F" aria-hidden="true"></i>匯出 Excel
             </a>
-            <a href="{{ route('repair-cost-analysis.export.pdf', request()->only(['start_date', 'end_date', 'status'])) }}" class="tb-btn tb-btn-outline">
+            <a href="{{ route('repair-cost-analysis.export.pdf', request()->only(['start_date', 'end_date', 'status', 'scraps'])) }}" class="tb-btn tb-btn-outline">
                 <i class="bi bi-file-earmark-pdf" style="color: #A3301F" aria-hidden="true"></i>匯出 PDF
             </a>
         </div>
@@ -43,6 +43,15 @@
                 <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
             </select>
         </div>
+        {{-- 報廢損失：零件沒用就壞掉、過期或遺失的損失（依報廢日期，不受案件狀態影響）。 --}}
+        <div class="tb-field">
+            <label for="scraps" class="form-label small mb-1">報廢損失</label>
+            <select id="scraps" name="scraps" class="form-select form-select-sm">
+                {{-- 預設（空白）＝一起顯示，所以沒改這一欄時不會算成一個篩選條件。 --}}
+                <option value="" @selected($includeScraps)>一起顯示</option>
+                <option value="exclude" @selected(! $includeScraps)>不顯示</option>
+            </select>
+        </div>
         <div class="d-inline-flex gap-2">
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1" aria-hidden="true"></i>查詢</button>
             <a href="{{ route('repair-cost-analysis.index') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center">清除篩選</a>
@@ -51,7 +60,7 @@
     </div>
 
     {{-- 成本摘要：缺少單價時，只呈現已知成本，不把缺價當成零元。 --}}
-    <div class="tb-card tb-stat-band">
+    <div class="tb-card tb-stat-band {{ $includeScraps ? 'tb-stat-band-4' : '' }}">
         <div>
             <div class="tb-stat-label">已知材料費小計</div>
             <div class="tb-stat-value tb-c-accent tb-num">NT$ {{ number_format($knownSubtotal) }}</div>
@@ -66,6 +75,13 @@
                 <div class="tb-stat-note tb-c-accent"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>目前篩選範圍內沒有缺少單價的明細。</div>
             @endif
         </div>
+        @if ($includeScraps)
+            <div>
+                <div class="tb-stat-label">報廢損失</div>
+                <div class="tb-stat-value tb-num {{ $scrapLoss > 0 ? 'tb-c-danger' : '' }}">NT$ {{ number_format($scrapLoss) }}</div>
+                <div class="tb-stat-note">共 {{ number_format($scrapCount) }} 筆報廢；材料費＋報廢損失 NT$ {{ number_format($totalCost) }}。</div>
+            </div>
+        @endif
         <div>
             <div class="tb-stat-label">涉及維修案件數</div>
             <div class="tb-stat-value tb-num">{{ number_format($repairRequestCount) }} 件</div>
@@ -230,5 +246,49 @@
                 </div>
             @endif
     </section>
+
+    {{-- 報廢明細（篩選「報廢損失：一起顯示」時才有）：依報廢日期篩選；損失金額＝扣到的各批數量×那一批的單價。 --}}
+    @if ($includeScraps)
+        <section class="tb-table-wrap" aria-labelledby="scrapTitle">
+            <div class="tb-section-head" data-onion-header>
+                <div class="d-flex flex-wrap align-items-baseline gap-2">
+                    <h2 id="scrapTitle" class="tb-section-title">報廢明細</h2>
+                    <span class="tb-note">共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss) }}</span>
+                </div>
+            </div>
+            @if ($scraps->isEmpty())
+                <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有報廢紀錄。</p>
+            @else
+                <div class="table-responsive">
+                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="報廢明細">
+                        <thead>
+                            <tr>
+                                <th>報廢日期</th>
+                                <th>零件名稱</th>
+                                <th>原因</th>
+                                <th class="text-end">數量</th>
+                                <th class="text-end">損失金額</th>
+                                <th>登記人</th>
+                                <th>備註</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($scraps as $scrap)
+                                <tr @if ($scrap->part) data-href="{{ route('parts.show', $scrap->part) }}" @endif>
+                                    <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
+                                    <td>{{ $scrap->part?->name ?? '零件資料不存在' }}{{ $scrap->part?->specification ? '（' . $scrap->part->specification . '）' : '' }}</td>
+                                    <td>{{ $scrap->reason }}</td>
+                                    <td class="text-end text-nowrap">{{ number_format($scrap->quantity) }} {{ $scrap->part?->unit }}</td>
+                                    <td class="text-end text-nowrap"><span class="fw-bold">NT$ {{ number_format($scrap->lossAmount()) }}</span></td>
+                                    <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                                    <td>{{ $scrap->note ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </section>
+    @endif
 </div>
 @endsection

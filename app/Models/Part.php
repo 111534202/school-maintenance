@@ -186,4 +186,10 @@ class Part extends Model
     {
         return $this->hasMany(MaintenancePartUsage::class, 'part_id');
     }
+
+    /** 報廢紀錄（沒用就壞掉、過期、遺失而從庫存扣掉的）。 */
+    public function scraps(): HasMany
+    {
+        return $this->hasMany(PartScrap::class);
+    }
 }

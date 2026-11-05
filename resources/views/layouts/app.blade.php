@@ -426,10 +426,12 @@
                 event.preventDefault();
                 post({ type: 'modal-navigate', url: a.href });
             });
-            // 告訴外面的對話框內容有多高，對話框才不會出現兩層捲軸。
-            function size() { post({ type: 'modal-size', height: document.documentElement.scrollHeight }); }
+            // 告訴外面的對話框「表單內容」有多高（量內容本身，不是整個頁面；頁面高度會被對話框撐開，量它會留下一大段空白），
+            // 對話框就剛好到「儲存／取消」那一列為止，也不會出現兩層捲軸。
+            var content = document.querySelector('.app-content') || document.body;
+            function size() { post({ type: 'modal-size', height: Math.ceil(content.getBoundingClientRect().bottom + window.scrollY) }); }
             window.addEventListener('load', size);
-            if (window.ResizeObserver) new ResizeObserver(size).observe(document.body);
+            if (window.ResizeObserver) new ResizeObserver(size).observe(content);
         })();
         </script>
     @else
@@ -441,7 +443,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
                     </div>
                     <div class="modal-body p-0">
-                        <iframe id="frameModalFrame" title="" style="width: 100%; height: 60vh; border: 0; display: block;"></iframe>
+                        <iframe id="frameModalFrame" title="" style="width: 100%; height: 240px; border: 0; display: block;"></iframe>
                     </div>
                 </div>
             </div>
@@ -460,7 +462,7 @@
                 url.searchParams.set('modal', '1');
                 title.textContent = a.getAttribute('data-modal-title') || a.textContent.trim();
                 frame.title = title.textContent;
-                frame.style.height = '60vh';
+                frame.style.height = '240px';   // 先用小的高度，表單載入後依內容高度調整（見 modal-size）
                 frame.src = url.href;
                 modal().show();
             });
@@ -468,7 +470,8 @@
                 if (event.origin !== window.location.origin || event.source !== frame.contentWindow || !event.data) return;
                 var data = event.data;
                 if (data.type === 'modal-size') {
-                    frame.style.height = Math.min(data.height + 4, window.innerHeight * 0.8) + 'px';
+                    // 最高到瀏覽器視窗扣掉對話框標題與上下留白；比較高的表單在對話框裡捲動。
+                    frame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
                 } else if (data.type === 'modal-done') {
                     window.location.href = data.url;
                 } else if (data.type === 'modal-navigate') {

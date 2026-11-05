@@ -40,6 +40,7 @@ use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
 use App\Http\Controllers\PartController;
 use App\Http\Controllers\PartPurchaseController;
+use App\Http\Controllers\PartScrapController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RepairCostAnalysisController;
@@ -239,6 +240,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
+        // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。
+        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store', 'destroy']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。

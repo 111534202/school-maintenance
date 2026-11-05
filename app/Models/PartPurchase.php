@@ -40,7 +40,7 @@ class PartPurchase extends Model
         return $this->quantity * $this->unit_price;
     }
 
-    /** 已經被用掉的數量。 */
+    /** 已經被用掉的數量（維修、保養用料與報廢都算）。 */
     public function usedQuantity(): int
     {
         return $this->quantity - $this->remaining_quantity;

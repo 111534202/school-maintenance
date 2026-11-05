@@ -124,7 +124,10 @@ class PartController extends Controller
 
         $usages = $repairUsages->concat($maintenanceUsages)->sortByDesc('used_at')->values();
 
-        return view('parts.show', compact('part', 'purchases', 'usages'));
+        // 報廢紀錄：新的在上面；batches 用來算報廢損失。
+        $scraps = $part->scraps()->with(['batches.purchase', 'recorder'])->orderByDesc('scrap_date')->orderByDesc('id')->get();
+
+        return view('parts.show', compact('part', 'purchases', 'usages', 'scraps'));
     }
 
     public function edit(Part $part)
@@ -148,12 +151,12 @@ class PartController extends Controller
             ->with('success', '零件基本資料已更新。');
     }
 
-    /** 刪除零件：已經被維修或保養用過的零件不能刪除（用料紀錄要留著）。 */
+    /** 刪除零件：已經被維修、保養用過或有報廢紀錄的零件不能刪除（紀錄要留著）。 */
     public function destroy(Part $part)
     {
-        if ($part->repairPartUsages()->exists() || $part->maintenancePartUsages()->exists()) {
+        if ($part->repairPartUsages()->exists() || $part->maintenancePartUsages()->exists() || $part->scraps()->exists()) {
             return redirect()->route('parts.show', $part)
-                ->with('error', "零件 {$part->part_code} 已經有維修或保養使用紀錄，不能刪除。");
+                ->with('error', "零件 {$part->part_code} 已經有維修、保養使用或報廢紀錄，不能刪除。");
         }
 
         DB::transaction(function () use ($part) {
