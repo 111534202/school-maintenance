@@ -180,7 +180,7 @@
 
             // 切換「清單／表格」的小按鈕。
             var bar = document.createElement('div');
-            bar.className = 'd-flex justify-content-end mb-2';
+            bar.className = 'd-flex justify-content-end mb-2 onion-viewbar';
             var toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'btn btn-sm btn-outline-secondary';
@@ -195,8 +195,15 @@
             }
             // 同一頁有好幾張表時，切換一張就全部一起切。
             toggle.addEventListener('click', function () { setMode(getMode() === 'list' ? 'table' : 'list'); views.forEach(function (v) { v.apply(); }); });
-            wrap.parentNode.insertBefore(bar, wrap);
-            wrap.parentNode.insertBefore(list, wrap.nextSibling);
+            // 表格包在卡片裡（.card、.tb-table-wrap）時，切換按鈕放在卡片外面的右上方，卡片裡只放清單或表格，
+            // 不會在卡片頂端多出一條只有按鈕的空白；清單也貼齊卡片（樣式見 public/css/theme-b.css「4. 洋蔥式元件」）。
+            var host = wrap.parentNode;
+            if (host.matches('.card, .tb-table-wrap') && host.firstElementChild === wrap) {
+                host.parentNode.insertBefore(bar, host);
+            } else {
+                host.insertBefore(bar, wrap);
+            }
+            host.insertBefore(list, wrap.nextSibling);
             return { apply: apply };
         }
 

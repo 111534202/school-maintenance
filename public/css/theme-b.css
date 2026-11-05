@@ -353,3 +353,16 @@ body.tb-body {
 .tb-body .kpi-icon.text-bg-danger { background-color: var(--tb-danger) !important; color: #fff !important; }
 /* 手機寬度：滑出面板佔滿整個畫面，不留圓角。 */
 @media (max-width: 575.98px) { .tb-body .onion-panel, .tb-body .fo-panel { border-radius: 0; } }
+
+/* 洋蔥式清單放在卡片裡（.card、.tb-table-wrap）：清單貼齊卡片，不再自己多一層框線與陰影（避免「卡片裡又一張卡片」），
+   「表格檢視／清單檢視」切換鈕放在卡片外右上方（位置由 layouts/partials/list-onion.blade.php 決定）。 */
+.tb-body .card:has(> .onion-list), .tb-body .tb-table-wrap:has(> .onion-list) { overflow: hidden; }
+.tb-body .card > .onion-list, .tb-body .tb-table-wrap > .onion-list,
+.tb-body .modal .onion-list { margin-bottom: 0 !important; box-shadow: none !important; --bs-list-group-border-radius: 0; }
+.tb-body .card > .onion-list > .onion-item, .tb-body .tb-table-wrap > .onion-list > .onion-item { border-left: 0; border-right: 0; padding: .8rem 1.1rem; }
+.tb-body .card > .onion-list > .onion-item:first-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:first-child { border-top: 0; }
+.tb-body .card > .onion-list > .onion-item:last-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:last-child { border-bottom: 0; }
+.tb-body .onion-viewbar .btn { border-radius: 999px; background: var(--tb-surface); border-color: var(--tb-border); color: var(--tb-muted); }
+.tb-body .onion-viewbar .btn:hover { border-color: var(--tb-accent); color: var(--tb-accent); background: var(--tb-accent-faint); }
+/* 風格 B 頁面（.tb）每個區塊之間固定空 22px；切換鈕跟下面的清單是一組，拉近一點。 */
+.tb > .onion-viewbar { margin-bottom: calc(-22px + .5rem) !important; }
