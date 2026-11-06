@@ -58,7 +58,8 @@
                 {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
                 {{-- 點這一行的任何地方都會進入零件履歷（也可以用 Tab 移到該行後按 Enter）。 --}}
                 {{-- 欄寬：標了 fit 的欄位只佔內容需要的寬度，剩下的空間都給「品牌／型號」。 --}}
-                <table class="tb-table tb-table-hover part-rows table-fit" data-onion-primary="1,2">
+                {{-- data-onion-panel-title：清單檢視點一筆時，對話框標題固定顯示「零件庫存」。 --}}
+                <table class="tb-table tb-table-hover part-rows table-fit" data-onion-primary="1,2" data-onion-panel-title="零件庫存">
                     <thead>
                         <tr>
                             <th class="fit">零件編號</th>

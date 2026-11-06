@@ -8,12 +8,6 @@
     <h1 class="h3 mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
-    @if ($editing && $purchase->isUsed())
-        <div class="alert alert-warning">
-            這一批已經有 {{ $purchase->usedQuantity() }} 個被維修、保養用掉或報廢，數量與單價不能再修改；日期、廠商、備註與發票仍可修改。
-        </div>
-    @endif
-
     <div class="card p-4" style="max-width: 560px;">
         <form method="POST" enctype="multipart/form-data"
             action="{{ $editing ? route('parts.purchases.update', [$part, $purchase]) : route('parts.purchases.store', $part) }}">
@@ -44,20 +38,26 @@
                 <div class="col-sm-6">
                     <label for="quantity" class="form-label">數量 <span class="text-danger">*</span></label>
                     <input type="number" id="quantity" name="quantity" min="1" required @readonly($locked)
-                        class="form-control @error('quantity') is-invalid @enderror"
+                        class="form-control @if ($locked) bg-body-secondary @endif @error('quantity') is-invalid @enderror"
                         value="{{ old('quantity', $purchase->quantity) }}">
                     @error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-sm-6">
                     <label for="unit_price" class="form-label">單價（元） <span class="text-danger">*</span></label>
                     <input type="number" id="unit_price" name="unit_price" min="0" required @readonly($locked)
-                        class="form-control @error('unit_price') is-invalid @enderror"
+                        class="form-control @if ($locked) bg-body-secondary @endif @error('unit_price') is-invalid @enderror"
                         value="{{ old('unit_price', $purchase->unit_price) }}">
                     @error('unit_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
-            {{-- 總價提示緊貼在數量／單價下面（跟附件欄位下方的說明一樣的間距）。 --}}
-            <div class="form-text mb-3" id="totalHint">總價＝數量×單價，系統自動計算。</div>
+            {{-- 總價提示緊貼在數量／單價下面（跟附件欄位下方的說明一樣的間距）。
+                 這一批已被用掉或報廢時：數量、單價變成灰底唯讀（跟「修改零件基本資料」的目前庫存一樣），原因顯示在總價下面。 --}}
+            <div class="form-text {{ $locked ? '' : 'mb-3' }}" id="totalHint">總價＝數量×單價，系統自動計算。</div>
+            @if ($locked)
+                <div class="form-text text-warning-emphasis mb-3">
+                    <i class="bi bi-lock"></i> 這批已有 {{ $purchase->usedQuantity() }} 個被維修、保養用掉或報廢，數量與單價不可再修改。
+                </div>
+            @endif
 
             {{-- 附件：一個檔案最多 2 MB、一筆最多 5 個（上限在 PartPurchaseController 的 MAX_FILE_KB、MAX_ATTACHMENTS）。
                  修改時，原本的附件各自可以勾選刪除；新選的檔案加在後面。 --}}

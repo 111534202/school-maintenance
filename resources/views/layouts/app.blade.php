@@ -184,13 +184,19 @@
 
         <div class="d-flex">
             <div class="flex-grow-1 app-content {{ $embedded ? 'p-3' : 'p-3 p-md-4' }}">
-                {{-- 操作成功訊息（Controller 用 ->with('success', ...) 帶過來，只顯示一次）。 --}}
+                {{-- 操作成功訊息（Controller 用 ->with('success', ...) 帶過來，只顯示一次）；右邊的 ✕ 可以手動關閉。 --}}
                 @if (session('success'))
-                    <div class="alert alert-success">{{ session('success') }}</div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                    </div>
                 @endif
                 {{-- 操作失敗訊息（Controller 用 ->with('error', ...) 帶過來）。 --}}
                 @if (session('error') && !request()->routeIs('reservations.index'))
-                    <div class="alert alert-danger">{{ session('error') }}</div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                    </div>
                 @endif
                 {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡。 --}}
                 @if ($errors->any())

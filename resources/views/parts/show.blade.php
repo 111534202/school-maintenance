@@ -9,6 +9,8 @@
 
     {{-- 基本資料：修改基本資料、刪除零件都在這裡（權限與零件庫存相同）。 --}}
     @php($average = $part->averageUnitPrice())
+    {{-- 清單檢視點一筆時的對話框標題：零件名稱（規格）＋ 哪一種紀錄。 --}}
+    @php($panelName = $part->name . ($part->specification ? '（' . $part->specification . '）' : ''))
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span>基本資料</span>
@@ -69,7 +71,7 @@
             <div class="card-body text-muted small">目前沒有使用紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}使用紀錄">
                     <thead class="table-light">
                         <tr>
                             <th>來源</th>
@@ -119,8 +121,7 @@
             <div class="card-body text-muted small">目前沒有採購紀錄。</div>
         @else
             <div class="table-responsive">
-                {{-- data-onion-panel-title：清單檢視點一筆時，對話框標題顯示零件名稱與規格（每一筆的日期在對話框內容裡）。 --}}
-                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}採購紀錄">
                     <thead class="table-light">
                         <tr>
                             <th class="text-nowrap">採購日期</th>
@@ -193,7 +194,7 @@
             <div class="card-body text-muted small">目前沒有報廢紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="報廢紀錄">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄">
                     <thead class="table-light">
                         <tr>
                             <th class="text-nowrap">報廢日期</th>

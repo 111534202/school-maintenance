@@ -17,7 +17,8 @@
             <div class="mb-4">
                 <label class="form-label">目前庫存</label>
                 <input type="text" class="form-control" value="{{ $part->withUnit($part->current_stock) }}" disabled>
-                <div class="form-text">庫存由「採購紀錄」（進貨）與維修、保養用料自動計算，不能直接修改。</div>
+                {{-- 跟「修改採購紀錄」鎖定數量、單價時的說明同樣顏色與鎖頭圖示。 --}}
+                <div class="form-text text-warning-emphasis"><i class="bi bi-lock"></i> 庫存由採購與報廢紀錄、維修、保養用料自動計算</div>
             </div>
 
             <button type="submit" class="btn btn-primary">儲存</button>
