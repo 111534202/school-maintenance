@@ -479,7 +479,10 @@
                     // 最高到瀏覽器視窗扣掉對話框標題與上下留白；比較高的表單在對話框裡捲動。
                     frame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
                 } else if (data.type === 'modal-done') {
-                    window.location.href = data.url;
+                    // 回到同一個列表頁（例如在預約列表審核完）：保留目前的篩選（?status=pending）。
+                    var done = new URL(data.url, window.location.href);
+                    if (done.pathname === window.location.pathname && !done.search) done.search = window.location.search;
+                    window.location.href = done.href;
                 } else if (data.type === 'modal-navigate') {
                     var target = new URL(data.url, window.location.href);
                     modal().hide();

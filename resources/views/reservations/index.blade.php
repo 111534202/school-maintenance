@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '空間預約')
+@section('title', '空間申請')
 
 @section('content')
 @php
@@ -9,14 +9,9 @@
 <div class="tb">
     <div class="tb-header">
         <div>
-            <h1 class="tb-title">空間預約</h1>
-            <p class="tb-subtitle">查看預約申請，或提出新的教室借用申請。</p>
+            <h1 class="tb-title">空間申請</h1>
+            <p class="tb-subtitle">查看教室借用申請；點一筆可以看預約詳細並審核。要提出新的申請請到「空間預約」。</p>
         </div>
-
-        <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-primary">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>
-            新增預約
-        </a>
     </div>
 
     @if (session('error'))
@@ -62,42 +57,15 @@
         <div class="tb-card tb-empty">
             <i class="bi bi-calendar-x" aria-hidden="true"></i>
             <h2 class="h5 mt-3" style="color: var(--tb-text)">目前沒有預約紀錄</h2>
-            <p class="mb-3">可以點選「新增預約」提出申請。</p>
-            <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-outline">新增預約</a>
+            <p class="mb-3">可以到「空間預約」提出申請。</p>
+            <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-outline">前往空間預約</a>
         </div>
     @else
-        {{-- 每筆申請一張卡片，點整張卡片進入預約詳細頁（預約日期、時段、用途、審核結果都在詳細頁）。
+        {{-- 每筆申請一張卡片，點整張卡片在畫面中的對話框打開「預約詳細」（data-modal-frame；可以直接核准／拒絕）。
              卡片在窄螢幕會自動換行排列，不需要表格的手機版轉換。 --}}
         <section class="tb-list" aria-label="預約申請列表">
             @foreach ($reservations as $reservation)
-                @php
-                    $requesterName = $reservation->requester?->name ?? '使用者資料不存在';
-                @endphp
-                <a href="{{ route('reservations.show', $reservation) }}" class="tb-list-card"
-                    aria-label="查看 {{ $reservation->class_name }} 的預約申請（{{ $reservation->isReviewed() ? '已審核' : '未審核' }}）">
-                    <span class="tb-avatar tb-avatar-lg" aria-hidden="true">{{ mb_substr($requesterName, 0, 1) }}</span>
-                    <span class="tb-list-main">
-                        <span class="tb-list-label">申請班級</span>
-                        <span class="tb-list-title">{{ $reservation->class_name }}</span>
-                    </span>
-                    <span class="tb-list-meta">
-                        <span class="tb-list-label">申請人</span>
-                        <span>{{ $requesterName }}</span>
-                    </span>
-                    <span class="tb-list-meta">
-                        <span class="tb-list-label">申請時間</span>
-                        <span class="tb-num">{{ $reservation->created_at?->format('Y-m-d H:i') }}</span>
-                    </span>
-                    <span class="tb-list-status">
-                        <span class="tb-list-label">申請狀態</span>
-                        @if ($reservation->isReviewed())
-                            <span class="tb-pill tb-pill-ok">已審核</span>
-                        @else
-                            <span class="tb-pill tb-pill-warn">未審核</span>
-                        @endif
-                    </span>
-                    <i class="bi bi-chevron-right tb-list-arrow" aria-hidden="true"></i>
-                </a>
+                @include('reservations._list-card', ['reservation' => $reservation])
             @endforeach
         </section>
 

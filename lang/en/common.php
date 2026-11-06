@@ -25,6 +25,7 @@ return [
         'device_profile' => 'Device History',
         'preventive_ai' => 'AI Preventive Maintenance',
         'reservations' => 'Space Reservations',
+        'reservation_requests' => 'Space Requests',
         'parts' => 'Parts Inventory',
         'cost_analysis' => 'Cost Analysis Report',
         'users' => 'User Master',

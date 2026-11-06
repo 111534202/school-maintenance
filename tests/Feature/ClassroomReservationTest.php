@@ -52,10 +52,11 @@ class ClassroomReservationTest extends TestCase
         ], $overrides);
     }
 
-    public function test_user_can_view_reservation_page_and_create_form(): void
+    /** 一般使用者：可以進「空間預約」；「空間申請」（全部申請與審核）只給有預約管理權限的人，選單也不顯示。 */
+    public function test_user_can_view_reservation_page_but_not_the_request_list(): void
     {
-        $this->get(route('reservations.index'))->assertOk();
-        $this->get(route('reservations.create'))->assertOk();
+        $this->get(route('reservations.create'))->assertOk()->assertSee('我的申請')->assertDontSee('空間申請');
+        $this->get(route('reservations.index'))->assertForbidden();
     }
 
 
@@ -86,7 +87,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
 
         $this->post(route('reservations.store'), $this->payload($classroom))
-            ->assertRedirect(route('reservations.index'))
+            ->assertRedirect(route('reservations.create') . '#my-requests')
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('classroom_reservations', [
@@ -97,7 +98,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_user_can_only_see_their_own_reservations(): void
+    public function test_my_requests_only_lists_the_users_own_reservations(): void
     {
         $classroom = $this->makeClassroom();
 
@@ -118,8 +119,10 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->get(route('reservations.index'))
+        // 「我的申請」只列自己提出的申請。
+        $this->get(route('reservations.create'))
             ->assertOk()
+            ->assertSee('href="' . route('reservations.show', $own) . '"', false)
             ->assertSee($own->class_name)
             ->assertDontSee('二年乙班');
     }
@@ -319,7 +322,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_approval_is_rejected_when_another_approved_reservation_overlaps(): void
+    public function test_request_overlapping_an_approved_reservation_is_rejected_automatically(): void
     {
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
@@ -346,18 +349,19 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
+        // 和已核准的時段重疊：不用再操作，整筆自動拒絕（審核人是系統）。
         $this->post(route('reservations.approve', $pending))
             ->assertRedirect(route('reservations.index'))
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('classroom_reservations', [
             'id' => $pending->id,
-            'status' => 'pending',
+            'status' => 'rejected',
             'reviewed_by' => null,
         ]);
     }
 
-    public function test_approval_is_rejected_when_a_later_date_slot_overlaps(): void
+    public function test_request_whose_later_date_overlaps_is_rejected_as_a_whole(): void
     {
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
@@ -417,12 +421,13 @@ class ClassroomReservationTest extends TestCase
             ->assertRedirect(route('reservations.index'))
             ->assertSessionHas('error');
 
+        // 只要有一天重疊就整筆自動拒絕，第一天也不保留。
         $this->assertDatabaseHas('classroom_reservations', [
             'id' => $pending->id,
-            'status' => 'pending',
+            'status' => 'rejected',
             'reviewed_by' => null,
-            'reviewed_at' => null,
         ]);
+        $this->assertSame(['rejected', 'rejected'], $pending->fresh('slots')->slots->pluck('status')->all());
     }
     public function test_approval_is_rejected_when_classroom_becomes_abnormal(): void
     {
@@ -455,7 +460,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_rejection_reason_is_required(): void
+    public function test_rejection_reason_is_optional(): void
     {
         $classroom = $this->makeClassroom();
         $this->loginAsAnyUser();
@@ -466,17 +471,14 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->from(route('reservations.index'))
-            ->post(route('reservations.reject', $reservation), [
-                'rejection_reason' => '',
-            ])
+        $this->post(route('reservations.reject', $reservation), ['rejection_reason' => ''])
             ->assertRedirect(route('reservations.index'))
-            ->assertSessionHasErrors('rejection_reason');
+            ->assertSessionHas('success', '預約已拒絕。');
 
         $this->assertDatabaseHas('classroom_reservations', [
             'id' => $reservation->id,
-            'status' => 'pending',
-            'reviewed_by' => null,
+            'status' => 'rejected',
+            'rejection_reason' => null,
         ]);
     }
 

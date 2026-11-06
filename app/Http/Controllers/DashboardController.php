@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Enums\RepairRequestStatus;   // 報修單狀態的列舉（新報修、已派工、處理中、待驗收、已結案）
 use App\Models\Classroom;            // 教室資料表模型
 use App\Models\ClassroomReservation; // 空間預約申請資料表模型
+use App\Services\ReservationReviewService; // 空間預約審核（自動拒絕過期申請）
 use App\Models\Device;               // 設備資料表模型
 use App\Models\RepairRequest;        // 報修單資料表模型
 use App\Models\Role;                 // 身分資料表模型
@@ -87,6 +88,9 @@ class DashboardController extends Controller
 
         // 先放「大家都看得到」的報修資料；需要權限的欄位先設成 null，下面有權限才填。
         // 畫面用「是不是 null」決定要不要顯示對應的卡片與圖表。
+        // 空間預約：時間已過或和已核准時段重疊的待審核申請，先自動拒絕（排程沒開時也能保持正確）。
+        app(ReservationReviewService::class)->sweep();
+
         $data = [
             'repairStatuses' => $repairStatuses,
             'openCount' => $openCount,
@@ -105,6 +109,7 @@ class DashboardController extends Controller
             'overdueCount' => $overdueCount,
             'trend' => $trend,
             // 空間預約待審核：有預約管理權限的人算全部，其他人只算自己提出的（和預約列表看到的一致）。
+            // 時間已到還沒審核的申請在上面已先自動拒絕，數字才不會把過期的算進去。
             'pendingReservationCount' => ClassroomReservation::query()
                 ->where('status', ClassroomReservation::STATUS_PENDING)
                 ->when(! $user->hasPermission('reservations.manage'), fn ($q) => $q->where('requester_id', $user->id))

@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 預約申請裡的一個時段。每個時段分別審核：status 是這個時段的結果（approved／rejected），
- * 空白代表跟著整筆申請的狀態（還沒審核、或是改成分時段審核以前的舊資料）。
+ * 預約申請裡的一個時段。status 是這個時段的結果（approved／rejected）；現在一筆申請整筆審核，所有時段結果相同，
+ * 只有以前分時段審核的舊資料會不同。空白代表跟著整筆申請的狀態（還沒審核，或更早的舊資料）。
  */
 class ClassroomReservationSlot extends Model
 {
@@ -50,12 +50,18 @@ class ClassroomReservationSlot extends Model
         return $this->period_number === 0 ? '早自習' : "第 {$this->period_number} 節";
     }
 
-    /** 時段顯示文字：2026-11-03 09:30–10:20（第 2 節）。 */
+    /**
+     * 時段顯示文字：2026-11-03 第 2 節。畫面只顯示日期與節次；起訖時間仍然記在資料裡（用來判斷重疊、時間是否已過）。
+     * 沒有節次的時段（例如午休或舊資料）才顯示起訖時間：2026-11-03 12:10–13:00。
+     */
     public function label(): string
     {
-        $period = $this->periodLabel();
+        return $this->reservation_date->format('Y-m-d') . ' ' . $this->periodOrTime();
+    }
 
-        return $this->reservation_date->format('Y-m-d') . ' ' . substr((string) $this->start_time, 0, 5) . '–' . substr((string) $this->end_time, 0, 5)
-            . ($period ? "（{$period}）" : '');
+    /** 節次（第 2 節）；沒有節次時用起訖時間代替。 */
+    public function periodOrTime(): string
+    {
+        return $this->periodLabel() ?? (substr((string) $this->start_time, 0, 5) . '–' . substr((string) $this->end_time, 0, 5));
     }
 }

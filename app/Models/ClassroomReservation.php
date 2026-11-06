@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * 教室預約申請。一筆申請可以有多個時段（slots），每個時段分別審核。
+ * 教室預約申請。一筆申請可以有多個時段（slots），但只能整筆核准或整筆拒絕（見 ReservationReviewService）。
  * 使用時間（日期、開始、結束）只記在時段明細（classroom_reservation_slots），申請本身不另存一份
  * （2026-11-05 依 docs/待確認/預約時間重複儲存_劉家芸.md 方案 A 移除）；要「最早的時段」用 firstSlot()。
- * status 是整筆申請的彙總：pending 未審核；approved 全部同意；rejected 全部拒絕；partially_approved 部分同意。
+ * status 是整筆申請的彙總：pending 未審核；approved 全部同意；rejected 全部拒絕；partially_approved 部分同意（只會出現在以前可以分時段審核時的舊資料）。
  */
 class ClassroomReservation extends Model
 {

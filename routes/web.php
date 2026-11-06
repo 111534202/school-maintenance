@@ -206,7 +206,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/', [ClassroomReservationController::class, 'store'])
             ->name('store');
 
-        // 核准預約
+        // 核准預約（整筆；一筆申請不能只同意其中幾節）
         Route::post('/{reservation}/approve', [
             ClassroomReservationController::class,
             'approve',
@@ -217,9 +217,6 @@ Route::middleware(['auth', 'active'])->group(function () {
             ClassroomReservationController::class,
             'reject',
         ])->name('reject');
-
-        // 分時段審核（每個時段同意或拒絕）
-        Route::post('/{reservation}/review', [ClassroomReservationController::class, 'review'])->name('review');
 
         // 預約詳細頁（放最後，避免 /timetable、/create 被當成預約編號）
         Route::get('/{reservation}', [ClassroomReservationController::class, 'show'])

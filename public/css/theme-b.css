@@ -238,25 +238,44 @@ body.tb-body {
     color: var(--tb-accent); font-weight: 700;
 }
 
-/* 卡片式列表（空間預約）：一筆一張卡片，整張可點；窄螢幕自動換行。 */
-.tb-list { display: flex; flex-direction: column; gap: 12px; }
+/* 卡片式列表（空間申請、我的申請）：一筆一張卡片，整張可點。
+   寬的時候排成一列：班級方塊｜申請班級｜申請人（或教室）｜申請時間｜申請狀態 ＋「>」。
+   變窄（列表寬度 760px 以下）：第二行左邊是申請時間，申請狀態排在申請人下面；「>」永遠跟在申請狀態旁邊。 */
+.tb-list { display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
 .tb a.tb-list-card, .tb-list-card {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;
+    display: grid; align-items: center; gap: 12px 28px;
+    grid-template-columns: auto minmax(0, 1fr) minmax(110px, auto) minmax(150px, auto) auto;
+    grid-template-areas: "avatar main person time end";
     background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px;
     padding: 16px 22px; color: inherit; text-decoration: none;
 }
 .tb a.tb-list-card:hover { border-color: #B9CFC2; background: #FDFCF9; color: inherit; }
 .tb a.tb-list-card:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
-.tb-list-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; }
-.tb-list-meta { flex: 0 1 auto; display: flex; flex-direction: column; min-width: 110px; }
-.tb-list-status { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 80px; }
+.tb-lc-avatar { grid-area: avatar; }
+.tb-lc-main { grid-area: main; }
+.tb-lc-person { grid-area: person; }
+.tb-lc-time { grid-area: time; }
+.tb-lc-end { grid-area: end; display: flex; align-items: center; gap: 14px; justify-self: start; }
+.tb-list-main { min-width: 0; display: flex; flex-direction: column; }
+.tb-list-meta { display: flex; flex-direction: column; min-width: 0; }
+.tb-list-status { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 80px; }
 .tb-list-label { font-size: 0.75rem; color: var(--tb-muted); letter-spacing: 0.04em; }
-.tb-list-title { font-size: 1.1rem; font-weight: 700; }
+.tb-list-title { font-size: 1.1rem; font-weight: 700; overflow-wrap: anywhere; }
 .tb-list-arrow { color: var(--tb-muted); flex: 0 0 auto; }
 .tb-avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 1.05rem; }
-@media (max-width: 575.98px) {
-    .tb-list-card { gap: 10px 18px; padding: 14px 16px; }
-    .tb-list-arrow { display: none; }
+.tb-pill-info { background: #E3EEF7; color: #24507A; }
+@container (max-width: 760px) {
+    .tb a.tb-list-card, .tb-list-card {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "avatar main person" "time time end";
+        gap: 10px 18px; padding: 14px 16px;
+    }
+}
+@container (max-width: 400px) {
+    .tb a.tb-list-card, .tb-list-card {
+        grid-template-areas: "avatar main main" "person person end" "time time end";
+    }
+    .tb-lc-end { align-self: center; }
 }
 
 /* 低庫存提示列 */

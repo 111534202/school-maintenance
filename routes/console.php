@@ -3,6 +3,7 @@
 // 這裡放「自訂的終端機指令」（php artisan xxx）與排程（Schedule）。
 // 範例指令 inspire 是 Laravel 預設附的；保養/AI 模組（王佑恩）的排程在檔案下方。
 
+use App\Console\Commands\ExpirePendingReservations;
 use App\Console\Commands\GenerateDueMaintenanceOrders;
 use App\Console\Commands\ScanPreventiveCandidates;
 use Illuminate\Foundation\Inspiring;          // 產生勵志名言的內建工具
@@ -40,5 +41,15 @@ Schedule::command(GenerateDueMaintenanceOrders::class)
 Schedule::command(ScanPreventiveCandidates::class)
     ->dailyAt('02:00')
     ->name('ai:scan-preventive')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * 空間預約：時段已經開始還沒審核的申請，整筆自動拒絕（劉家芸）。
+ * 每分鐘檢查一次；就算沒開排程，預約列表、詳細頁與主控台打開時也會先檢查。
+ */
+Schedule::command(ExpirePendingReservations::class)
+    ->everyMinute()
+    ->name('reservations:expire-pending')
     ->withoutOverlapping()
     ->onOneServer();
