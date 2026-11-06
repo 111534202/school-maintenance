@@ -153,9 +153,9 @@ class ReservationReviewTest extends TestCase
         $this->assertNull($a->reviewed_by);
         $this->assertNotNull($a->reviewed_at);
         $this->assertSame(['rejected', 'rejected'], $a->slots->pluck('status')->all());
-        $this->assertStringContainsString('已核准給「B 班」', $a->rejection_reason);
+        $this->assertSame('因為' . now()->addDays(4)->format('Y-m-d') . ' 09:30–10:20 已核准給B 班，整筆申請自動拒絕。', $a->rejection_reason);
 
-        $this->get(route('reservations.show', $a))->assertSee('系統自動')->assertSee('已核准給「B 班」')->assertDontSee('拒絕原因（選填）');
+        $this->get(route('reservations.show', $a))->assertSee('系統自動')->assertSee('已核准給B 班，整筆申請自動拒絕。')->assertDontSee('拒絕原因（選填）');
 
         // 不重疊的 C 不受影響。
         $this->assertSame('pending', $c->fresh()->status);
@@ -175,7 +175,8 @@ class ReservationReviewTest extends TestCase
         $this->assertSame('rejected', $reservation->status);
         $this->assertNull($reservation->reviewed_by);
         $this->assertSame(['rejected', 'rejected'], $reservation->slots->pluck('status')->all());
-        $this->assertStringContainsString('已核准給「已核准班級」', $reservation->rejection_reason);
+        $this->assertStringStartsWith('因為', $reservation->rejection_reason);
+        $this->assertStringContainsString('已核准給已核准班級，整筆申請自動拒絕。', $reservation->rejection_reason);
 
         $this->get(route('reservations.show', $reservation))->assertSee('系統自動')->assertDontSee('拒絕原因（選填）');
     }

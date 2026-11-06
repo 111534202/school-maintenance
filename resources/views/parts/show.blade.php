@@ -4,7 +4,8 @@
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">零件履歷：{{ $part->displayName() }}</h1>
+        {{-- 窄的時候只在「零件履歷：」後面換行，零件編號與名稱整段放到下一行。 --}}
+        <h1 class="h3 mb-0">零件履歷：<span class="d-inline-block">{{ $part->displayName() }}</span></h1>
     </div>
 
     {{-- 基本資料：修改基本資料、刪除零件都在這裡（權限與零件庫存相同）。 --}}

@@ -271,7 +271,7 @@ class ReservationReviewService
     /** @param array{slot: string, class_name: string} $conflict */
     private function conflictReason(array $conflict): string
     {
-        return '時段 ' . $conflict['slot'] . ' 已核准給「' . $conflict['class_name'] . '」，整筆申請自動拒絕。';
+        return '因為' . $conflict['slot'] . ' 已核准給' . $conflict['class_name'] . '，整筆申請自動拒絕。';
     }
 
     private function expiredReason(?ClassroomReservationSlot $slot): string

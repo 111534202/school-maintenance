@@ -38,9 +38,10 @@
         </div>
     @endif
 
-    <form method="GET" action="{{ route('parts.index') }}" class="tb-form-row" role="search">
+    {{-- 搜尋框和「搜尋」按鈕不論寬窄都在同一行（tb-form-row-nowrap）。 --}}
+    <form method="GET" action="{{ route('parts.index') }}" class="tb-form-row tb-form-row-nowrap" role="search">
         <label for="keyword" class="visually-hidden">搜尋（零件編號／名稱／規格／品牌／型號）</label>
-        <input type="text" name="keyword" id="keyword" class="tb-input tb-input-pill" style="flex: 1 1 320px; min-width: 0"
+        <input type="text" name="keyword" id="keyword" class="tb-input tb-input-pill" style="flex: 1 1 0; min-width: 0"
             value="{{ request('keyword') }}" placeholder="搜尋零件編號、名稱、規格、品牌或型號，例如 PART-1 或 HDMI">
         <button type="submit" class="tb-btn tb-btn-dark">搜尋</button>
         @if (request()->filled('keyword'))

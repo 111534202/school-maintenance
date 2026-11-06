@@ -242,11 +242,16 @@
 
 <style>
     /* 第一步「教室／日期／查詢課表」：寬度不夠時換行，不用左右滑動。 */
-    #reservation_query_row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; }
+    /* 教室一段、「日期＋查詢課表」一段；寬度不夠時教室自己一行，日期和「查詢課表」永遠在同一行，按鈕靠最右邊。 */
+    #reservation_query_row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; container-type: inline-size; }
     #reservation_query_row > .rq-classroom { flex: 1 1 240px; min-width: 0; }
-    #reservation_query_row > .rq-date { flex: 0 1 190px; min-width: 150px; }
-    /* 「查詢課表」永遠靠最右邊：換行後跟日期同一行時也推到右邊。 */
-    #reservation_query_row > .rq-controls { flex: 0 0 auto; margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; }
+    #reservation_query_row > .rq-date-group { flex: 1 1 300px; min-width: 0; display: flex; align-items: flex-end; gap: 0.5rem; }
+    .rq-date-group > .rq-date { flex: 0 1 190px; min-width: 0; }
+    .rq-date-group > .rq-controls { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; }
+    /* 很窄的時候（手機）「查詢課表」縮小一點，跟日期擠得下同一行。 */
+    @container (max-width: 360px) {
+        #timetable_query { padding: 0.3rem 0.75rem; font-size: 0.875rem; }
+    }
     #timetable_status { margin: -0.5rem 0 0.75rem; }
     #timetable_status:empty { display: none; }
 
@@ -256,6 +261,9 @@
     .tt-weeknav .tt-prev { grid-area: prev; justify-self: start; }
     .tt-weeknav .tt-next { grid-area: next; justify-self: end; }
     .tt-weeknav .tt-head { grid-area: head; margin: 0 0.25rem; }
+    /* 教室與週次各自不拆開：要換行時只會在「教室」和「日期～日期」之間換行。 */
+    .tt-weeknav .tt-head > span { display: inline-block; white-space: nowrap; }
+    .tt-weeknav .tt-head > span + span { margin-left: 1em; }
     @container (max-width: 640px) {
         .tt-weeknav { grid-template-columns: auto 1fr auto; grid-template-areas: "head head head" "prev . next"; justify-content: stretch; }
         .tt-weeknav .tt-head { margin: 0; text-align: center; }
@@ -264,7 +272,7 @@
     /* 課表：跟著畫面寬度等比例縮小字型與留白，欄位平均分配，不用左右滑動。 */
     .tt-fit { container-type: inline-size; }
     .tt-fit table { width: 100%; table-layout: fixed; margin-bottom: 0; font-size: clamp(0.6rem, 1.45cqi, 1rem); }
-    .tt-fit th, .tt-fit td { padding: clamp(2px, 0.7cqi, 0.5rem) !important; white-space: normal !important; overflow-wrap: anywhere; }
+    .tt-fit th, .tt-fit td { vertical-align: middle; padding: clamp(2px, 0.7cqi, 0.5rem) !important; white-space: normal !important; overflow-wrap: anywhere; }
     .tt-fit th:first-child { width: 11%; }
     .tt-fit th { text-align: center; }   /* 左邊的節次與時間也置中，跟其他格子一致 */
     .tt-fit .badge { font-size: 0.8em; white-space: normal; }
@@ -612,7 +620,10 @@ document.addEventListener('DOMContentLoaded', function () {
     queryControls.className = 'rq-controls';
     timetableButton.style.whiteSpace = 'nowrap';
 
-    queryRow.append(classroomColumn, dateColumn, queryControls);
+    const dateGroup = document.createElement('div');
+    dateGroup.className = 'rq-date-group';
+    dateGroup.append(dateColumn, queryControls);
+    queryRow.append(classroomColumn, dateGroup);
     cardBody.insertBefore(queryRow, timetableResult);
     cardBody.insertBefore(timetableStatus, timetableResult);   // 錯誤紅字在那一列下面
     // 報修提醒放在「教室／日期／查詢課表」那一列的下面。
@@ -875,8 +886,12 @@ document.addEventListener('DOMContentLoaded', function () {
         nextWeek.innerHTML = '下一週 <i class="bi bi-chevron-right"></i>';
         const heading = document.createElement('h6');
         heading.className = 'mb-0 tt-head';
-        heading.textContent = data.classroom.name + '（' + data.classroom.classroom_code + '）　' +
-            data.week_start + ' ～ ' + data.week_end;
+        // 教室、週次分成兩段（.tt-head > span），窄的時候整段換到下一行，不會把日期拆開。
+        const headRoom = document.createElement('span');
+        headRoom.textContent = data.classroom.name + '（' + data.classroom.classroom_code + '）';
+        const headWeek = document.createElement('span');
+        headWeek.textContent = data.week_start + ' ～ ' + data.week_end;
+        heading.append(headRoom, headWeek);
         weekNav.append(prevWeek, heading, nextWeek);
         timetableResult.appendChild(weekNav);
 

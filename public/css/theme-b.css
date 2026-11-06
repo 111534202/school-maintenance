@@ -208,6 +208,8 @@ body.tb-body {
 .tb-label { font-size: 0.875rem; color: var(--tb-muted); }
 .tb-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 180px; }
 .tb-form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.tb-form-row.tb-form-row-nowrap { flex-wrap: nowrap; gap: 10px; }
+.tb-form-row-nowrap > .tb-btn { flex: 0 0 auto; }
 
 /* ---- 標籤 ---- */
 .tb-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8125rem; font-weight: 500; white-space: nowrap; }
