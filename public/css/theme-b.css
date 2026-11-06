@@ -266,6 +266,12 @@ body.tb-body {
 .tb-list-arrow { color: var(--tb-muted); flex: 0 0 auto; }
 .tb-avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 1.05rem; }
 .tb-pill-info { background: #E3EEF7; color: #24507A; }
+/* 一大張卡片的版本（空間申請、我的申請）：只有外框四角是圓角，每一筆之間用細線分隔。 */
+.tb-list.tb-list-grouped { gap: 0; background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px; overflow: hidden; }
+.tb-list-grouped a.tb-list-card, .tb .tb-list-grouped a.tb-list-card { border: 0; border-radius: 0; border-top: 1px solid var(--tb-border); }
+.tb-list-grouped a.tb-list-card:first-child, .tb .tb-list-grouped a.tb-list-card:first-child { border-top: 0; }
+.tb .tb-list-grouped a.tb-list-card:hover { border-color: var(--tb-border); background: #F4F8F5; }
+.tb .tb-list-grouped a.tb-list-card:focus-visible { outline-offset: -2px; }
 @container (max-width: 760px) {
     .tb a.tb-list-card, .tb-list-card {
         grid-template-columns: auto minmax(0, 1fr) auto;

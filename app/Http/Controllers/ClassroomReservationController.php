@@ -15,7 +15,7 @@ class ClassroomReservationController extends Controller
     /**
      * 空間申請（預約列表，只有預約管理權限的人看得到）：只列送出時間、申請人、申請班級、申請狀態（已審核／未審核），
      * 點一筆在畫面中的對話框打開「預約詳細」（可直接核准／拒絕）。
-     * 一般使用者只看自己的申請；有預約管理權限的人可以查看全部申請。
+     * 上方可以搜尋，下方分頁（每頁 15 筆，左邊顯示第幾筆、共幾筆，右邊切換頁數）。
      */
     public function index(Request $request, ReservationReviewService $reviewService)
     {
@@ -29,7 +29,24 @@ class ClassroomReservationController extends Controller
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")   // 未審核的排前面
             ->orderByDesc('created_at');
 
-        // 列表上方三張統計卡：全部／未審核／已審核（範圍和列表相同，篩選前計算）。
+        // 搜尋：申請狀態、送出日期、教室、申請班級、申請人、申請時段（日期）。統計卡的數字也跟著搜尋條件。
+        $search = $request->validate([
+            'result' => ['nullable', 'in:pending,approved,rejected,partially_approved'],
+            'submitted_on' => ['nullable', 'date_format:Y-m-d'],
+            'classroom_id' => ['nullable', 'integer'],
+            'class_name' => ['nullable', 'string', 'max:100'],
+            'requester' => ['nullable', 'string', 'max:100'],
+            'slot_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $query
+            ->when($search['result'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($search['submitted_on'] ?? null, fn ($q, $v) => $q->whereDate('created_at', $v))
+            ->when($search['classroom_id'] ?? null, fn ($q, $v) => $q->where('classroom_id', $v))
+            ->when($search['class_name'] ?? null, fn ($q, $v) => $q->where('class_name', 'like', '%' . $v . '%'))
+            ->when($search['requester'] ?? null, fn ($q, $v) => $q->whereHas('requester', fn ($u) => $u->where('name', 'like', '%' . $v . '%')))
+            ->when($search['slot_date'] ?? null, fn ($q, $v) => $q->whereHas('slots', fn ($slot) => $slot->whereDate('reservation_date', $v)));
+
+        // 列表上方三張統計卡：全部／未審核／已審核（套用搜尋條件後、統計卡篩選前計算）。
         $counts = [
             'all' => (clone $query)->count(),
             'pending' => (clone $query)->where('status', ClassroomReservation::STATUS_PENDING)->count(),
@@ -46,7 +63,9 @@ class ClassroomReservationController extends Controller
 
         $reservations = $query->paginate(15)->withQueryString();
 
-        return view('reservations.index', compact('reservations', 'counts'));
+        $classrooms = Classroom::query()->orderBy('classroom_code')->get(['id', 'name', 'classroom_code']);
+
+        return view('reservations.index', compact('reservations', 'counts', 'classrooms'));
     }
 
     /**

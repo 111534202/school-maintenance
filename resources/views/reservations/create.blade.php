@@ -230,7 +230,7 @@
         @if ($myReservations->isEmpty())
             <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>
         @else
-            <div class="tb-list">
+            <div class="tb-list tb-list-grouped">
                 @foreach ($myReservations as $reservation)
                     @include('reservations._list-card', ['reservation' => $reservation, 'showResult' => true])
                 @endforeach

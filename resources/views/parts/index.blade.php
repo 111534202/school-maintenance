@@ -59,8 +59,9 @@
                 {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
                 {{-- 點這一行的任何地方都會進入零件履歷（也可以用 Tab 移到該行後按 Enter）。 --}}
                 {{-- 欄寬：標了 fit 的欄位只佔內容需要的寬度，剩下的空間都給「品牌／型號」。 --}}
-                {{-- data-onion-panel-title：清單檢視點一筆時，對話框標題固定顯示「零件庫存」。 --}}
-                <table class="tb-table tb-table-hover part-rows table-fit" data-onion-primary="1,2" data-onion-panel-title="零件庫存">
+                {{-- data-onion-panel-title：清單點一筆時，對話框標題固定顯示「零件庫存」。
+                     data-onion-list-only：固定清單檢視，不提供「表格檢視」切換。 --}}
+                <table class="tb-table tb-table-hover part-rows table-fit" data-onion-primary="1,2" data-onion-panel-title="零件庫存" data-onion-list-only>
                     <thead>
                         <tr>
                             <th class="fit">零件編號</th>
@@ -102,8 +103,17 @@
         </div>
 
         <div>{{ $parts->links() }}</div>
+
+        {{-- 匯出：先打開預覽視窗，勾選要匯出的欄位與零件，再選 Excel 或 PDF。 --}}
+        <div class="d-flex justify-content-end">
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#partsExportModal">
+                <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+            </button>
+        </div>
     @endif
 </div>
+
+    @include('parts._export-modal')
 
     {{-- 低庫存品項視窗：列出所有「目前庫存低於安全庫存」的零件，點一行可進入零件履歷。 --}}
     <div class="modal fade" id="lowStockModal" tabindex="-1" aria-labelledby="lowStockModalTitle" aria-hidden="true">

@@ -236,4 +236,37 @@ class ReservationReviewTest extends TestCase
         $this->actingAs($this->applicant)->post(route('reservations.approve', $reservation))->assertForbidden();
         $this->assertSame('pending', $reservation->fresh()->status);
     }
+
+    public function test_request_list_can_be_searched_and_shows_chinese_pagination(): void
+    {
+        $other = $this->makeUserWithRole('teacher', '教師', ['name' => '王小明']);
+        $this->request([[3, '09:00', '10:00']], ['class_name' => '資五孝']);
+        $this->request([[5, '09:00', '10:00']], ['class_name' => '一年甲班', 'requester_id' => $other->id, 'status' => 'approved']);
+        $date = now()->addDays(5)->format('Y-m-d');
+
+        $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
+
+        $this->get(route('reservations.index'))
+            ->assertOk()
+            ->assertSee('tb-list tb-list-grouped', false)
+            ->assertSee('顯示第 1 到 2 筆，共 2 筆');
+
+        $this->get(route('reservations.index', ['class_name' => '資五']))->assertSee('資五孝')->assertDontSee('一年甲班');
+        $this->get(route('reservations.index', ['requester' => '小明']))->assertSee('一年甲班')->assertDontSee('資五孝');
+        $this->get(route('reservations.index', ['result' => 'approved']))->assertSee('一年甲班')->assertDontSee('資五孝');
+        $this->get(route('reservations.index', ['slot_date' => $date]))->assertSee('一年甲班')->assertDontSee('資五孝');
+        $this->get(route('reservations.index', ['classroom_id' => $this->classroom->id, 'submitted_on' => now()->format('Y-m-d')]))
+            ->assertSee('資五孝')->assertSee('一年甲班');
+        $this->get(route('reservations.index', ['class_name' => '不存在']))->assertSee('找不到符合搜尋條件的申請');
+
+        // 統計卡數字跟著搜尋條件，切換統計卡時保留搜尋條件。
+        $this->get(route('reservations.index', ['class_name' => '資五']))
+            ->assertSee('href="' . e(route('reservations.index', ['class_name' => '資五', 'status' => 'pending'])) . '"', false);
+
+        // 超過 15 筆時有分頁，摘要文字也是中文。
+        foreach (range(1, 15) as $i) {
+            $this->request([[3, '09:00', '10:00']], ['class_name' => '加班' . $i]);
+        }
+        $this->get(route('reservations.index'))->assertSee('顯示第')->assertSee('筆，共')->assertDontSee('Showing')->assertDontSee('results');
+    }
 }

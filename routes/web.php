@@ -235,6 +235,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         // 即時檢查零件編號是否重複（要放在 resource 前面，否則 check-code 會被當成零件編號）。
         Route::get('parts/check-code', [PartController::class, 'checkCode'])->name('parts.check-code');
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
+        // 零件清單匯出（excel／pdf）：預覽視窗勾選的零件與欄位
+        Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel', 'pdf'])->name('parts.export');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
         // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。

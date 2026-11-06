@@ -1,7 +1,8 @@
 {{-- 清單的洋蔥式檢視：列表頁的寬表格自動變成一列一列的簡短清單（一眼看到每筆的重點，不用左右滑動），
      點某一筆，詳細內容在畫面中央的對話框打開（右上角 ✕ 或點外面關掉），每一欄的內容與原本的操作按鈕（編輯、刪除…）都在裡面。 --}}
 {{-- 原本的表格仍然在網頁裡，只是預設收起來；右上角的按鈕可以切回表格檢視（每一張表各自記在這台瀏覽器）。
-     不想套用的表格：在 <table> 加 data-no-onion。沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
+     不想套用的表格：在 <table> 加 data-no-onion。只要清單、不要「表格檢視」切換按鈕：在 <table> 加 data-onion-list-only。
+     沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
 <style>
     .onion-item { text-align: left; min-height: 3.25rem; }
     .onion-item .onion-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -220,8 +221,10 @@
             toggle.className = 'btn btn-sm btn-outline-secondary';
             bar.appendChild(toggle);
 
+            // data-onion-list-only：固定清單檢視，不顯示切換按鈕。
+            var listOnly = table.hasAttribute('data-onion-list-only');
             function apply() {
-                var mode = getMode(key);
+                var mode = listOnly ? 'list' : getMode(key);
                 wrap.hidden = mode === 'list';
                 list.hidden = mode === 'table';
                 toggle.innerHTML = mode === 'list' ? '<i class="bi bi-table me-1"></i>表格檢視' : '<i class="bi bi-list-ul me-1"></i>清單檢視';
@@ -234,6 +237,10 @@
             // 卡片有標題列（.card-header，或風格 B 頁面標了 data-onion-header 的標題列）時，
             // 切換按鈕放進標題列的右邊（跟「新增採購」這類按鈕排在一起）。
             var host = wrap.parentNode;
+            if (listOnly) {
+                host.insertBefore(list, wrap.nextSibling);
+                return { apply: apply };
+            }
             var header = wrap.previousElementSibling;
             // 表格放在卡片內文（.card-body）的最上面、卡片有標題列時（例如報修詳細頁的「材料費明細」），切換按鈕也放進標題列。
             if (host.matches('.card-body') && host.firstElementChild === wrap && host.previousElementSibling

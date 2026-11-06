@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Exports\LowStockPartsExport;
+use App\Exports\PartsExport;
 use App\Models\Part;
+use App\Support\PartExportColumns;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\File;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +23,60 @@ class PartController extends Controller
     /** 零件庫存列表：可依零件編號、名稱、規格、品牌、型號搜尋。 */
     public function index(Request $request)
     {
-        $parts = Part::query()
+        $parts = $this->searchQuery($request)
+            ->paginate(20)
+            ->withQueryString();
+
+        // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
+        $lowStockParts = $this->lowStockParts();
+
+        // 「匯出 Excel／PDF」預覽視窗用：符合目前搜尋的全部零件（不分頁）。
+        $exportParts = $this->searchQuery($request)->get();
+
+        return view('parts.index', compact('parts', 'lowStockParts', 'exportParts'));
+    }
+
+    /**
+     * 匯出零件清單（Excel 或 PDF）：只匯出預覽視窗裡勾選的零件（ids[]）與欄位（columns[]），
+     * 零件範圍不超出目前的搜尋條件（keyword）。
+     */
+    public function export(Request $request, string $format)
+    {
+        abort_unless(in_array($format, ['excel', 'pdf'], true), 404);
+
+        $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'columns' => ['required', 'array', 'min:1'],
+            'columns.*' => ['string'],
+        ], [
+            'ids.required' => '請至少勾選一個零件。',
+            'columns.required' => '請至少勾選一個欄位。',
+        ]);
+
+        $parts = $this->searchQuery($request)->whereIn('id', $request->input('ids'))->get();
+        $columns = PartExportColumns::pick($request->input('columns'));
+        $fileName = 'parts-' . now()->format('Y-m-d-His');
+
+        if ($format === 'excel') {
+            return Excel::download(new PartsExport($parts, $columns), $fileName . '.xlsx');
+        }
+
+        // 中文字型 Noto Sans TC 讀取時需要較多記憶體（同成本分析報表 PDF）。
+        ini_set('memory_limit', '512M');
+        File::ensureDirectoryExists(storage_path('fonts'));
+
+        return Pdf::loadView('parts.export-pdf', [
+            'rows' => $parts->map(fn (Part $part) => PartExportColumns::values($part)),
+            'columns' => $columns,
+            'keyword' => $request->input('keyword'),
+        ])->setPaper('a4', 'landscape')->download($fileName . '.pdf');
+    }
+
+    /** 列表與匯出共用的查詢：關鍵字搜尋零件編號、名稱、規格、品牌、型號，依新增順序排列。 */
+    private function searchQuery(Request $request)
+    {
+        return Part::query()
             ->withStockValue()
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = '%' . $request->string('keyword') . '%';
@@ -31,14 +88,7 @@ class PartController extends Controller
                         ->orWhere('model', 'like', $keyword);
                 });
             })
-            ->orderBy('id')   // 依新增順序（也就是零件編號順序）
-            ->paginate(20)
-            ->withQueryString();
-
-        // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
-        $lowStockParts = $this->lowStockParts();
-
-        return view('parts.index', compact('parts', 'lowStockParts'));
+            ->orderBy('id');   // 依新增順序（也就是零件編號順序）
     }
 
     /** 匯出目前低庫存品項的 Excel（內容與低庫存視窗相同）。 */
