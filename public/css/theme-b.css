@@ -1,0 +1,371 @@
+/*
+ * 風格 B「校園溫和」：暖白底、墨綠主色、標題用思源宋體、大圓角卡片與膠囊按鈕。
+ * 由共用版型 layouts/app.blade.php 載入，分兩部分：
+ * 1. 全站（body.tb-body）：上方墨綠導覽列、暖白底、Bootstrap 主色換成墨綠、卡片／表格／按鈕的圓角與配色，
+ *    所有組員的頁面都會一起套用（沿用 Bootstrap 的 class，不必改各頁的程式）。
+ * 2. 頁面元件（.tb 底下的 tb-* class）：空間預約、零件庫存列表、成本分析報表三頁重新排版時使用。
+ * 想退回原本的樣式：layouts/app.blade.php 拿掉這個檔案的 <link>、把 tb-navbar／tb-body 換回 bg-dark／bg-light。
+ */
+:root {
+    --tb-bg: #F7F5F0;
+    --tb-surface: #FFFFFF;
+    --tb-border: #E7E1D6;
+    --tb-border-strong: #E0D9CC;
+    --tb-text: #2B2A26;
+    --tb-muted: #6B675E;
+    --tb-accent: #2F6B4F;
+    --tb-accent-dark: #214D39;
+    --tb-accent-soft: #E5EFE8;
+    --tb-accent-faint: #EEF4F0;
+    --tb-warn-bg: #FBEFD5;
+    --tb-warn-text: #7A4F00;
+    --tb-danger: #A3301F;
+    --tb-danger-bg: #FDF1EF;
+    --tb-danger-border: #F1CFC9;
+    --tb-zebra: #FBFAF6;
+}
+
+/* ================= 1. 全站 ================= */
+body.tb-body {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    background-color: var(--tb-bg);
+    color: var(--tb-text);
+    --bs-primary: #2F6B4F;
+    --bs-primary-rgb: 47, 107, 79;
+    --bs-link-color: #2F6B4F;
+    --bs-link-color-rgb: 47, 107, 79;
+    --bs-link-hover-color: #214D39;
+    --bs-link-hover-color-rgb: 33, 77, 57;
+    --bs-border-color: #E7E1D6;
+    --bs-secondary-color: #6B675E;
+    --bs-tertiary-bg: #FBFAF6;
+    --bs-border-radius: 0.6rem;
+    --bs-border-radius-lg: 1rem;
+    --bs-focus-ring-color: rgba(47, 107, 79, 0.25);
+}
+
+/* 上方導覽列：墨綠底、網站名稱用宋體。 */
+.tb-navbar { background-color: var(--tb-accent); }
+/* 導覽列固定在畫面最上方：往下捲動時仍然看得到（sticky：跟著頁面排版，捲到頂端才固定，不會蓋住頁面開頭的內容）。
+   z-index 1030 與 Bootstrap 的 sticky-top 相同：比一般內容高，但比側邊抽屜（1045）與彈出視窗（1055）低。 */
+.tb-navbar { position: sticky; top: 0; z-index: 1030; box-shadow: 0 2px 6px rgba(20, 40, 30, 0.12); }
+.tb-navbar .navbar-brand { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.04em; }
+
+/* 上方列的選單（寬螢幕）：淡綠白字，目前所在的區塊半透明白底。 */
+.tb-topnav .nav-link { color: #DDEBE3; padding: 0.5rem 0.85rem !important; border-radius: 10px; font-size: 0.95rem; white-space: nowrap; }
+.tb-topnav .nav-link:hover, .tb-topnav .nav-link:focus-visible, .tb-topnav .nav-link.show { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.1); }
+.tb-topnav .nav-link.active { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.18); font-weight: 700; }
+/* 導覽列沒有用 navbar-expand，Bootstrap 預設會讓下拉選單撐開導覽列（position: static），這裡改回浮在下方。 */
+.tb-topnav .dropdown-menu { position: absolute; margin-top: 6px; border: 1px solid var(--tb-border); padding: 6px; }
+.tb-topnav .dropdown-item { border-radius: 8px; padding: 8px 12px; }
+/* 滑鼠停在區塊上就展開下拉選單（有滑鼠的寬螢幕；觸控與鍵盤仍可點擊開啟）。
+   ::before 在選單上方補一塊透明區域，滑鼠從標題移到選單時不會因為中間的空隙而收起來。 */
+@media (hover: hover) and (min-width: 1200px) {
+    .tb-topnav .dropdown:hover > .dropdown-menu { display: block; top: 100%; left: 0; }
+    .tb-topnav .dropdown:hover > .nav-link { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.1); }
+    .tb-topnav .dropdown-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+}
+/* （原本這裡有 .tb-navbar 的上下留白 0.6rem，會讓頂端列變成 59px；已拿掉，見檔尾第 5 節） */
+
+/* 側邊選單：目前所在頁面改成墨綠底。 */
+.tb-body .offcanvas .nav-link.active { background-color: var(--tb-accent); color: #FFFFFF; }
+.tb-body .offcanvas .nav-link:not(.active):hover { background-color: var(--tb-accent-faint); color: var(--tb-accent-dark); }
+.tb-body .offcanvas .nav-link { border-radius: 10px; }
+.tb-body .offcanvas-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+
+/* 各頁標題（<h1>）用宋體。 */
+.tb-body .app-content h1 { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.02em; }
+
+/* 按鈕：膠囊形；主要按鈕墨綠。 */
+.tb-body .btn { --bs-btn-border-radius: 999px; }   /* 用變數設定，按鈕群組、輸入群組裡相鄰的邊仍會是直角 */
+.tb-body .btn-primary {
+    --bs-btn-bg: #2F6B4F; --bs-btn-border-color: #2F6B4F;
+    --bs-btn-hover-bg: #214D39; --bs-btn-hover-border-color: #214D39;
+    --bs-btn-active-bg: #1B4130; --bs-btn-active-border-color: #1B4130;
+    --bs-btn-disabled-bg: #2F6B4F; --bs-btn-disabled-border-color: #2F6B4F;
+    --bs-btn-focus-shadow-rgb: 47, 107, 79;
+}
+.tb-body .btn-outline-primary {
+    --bs-btn-color: #2F6B4F; --bs-btn-border-color: #2F6B4F;
+    --bs-btn-hover-bg: #2F6B4F; --bs-btn-hover-border-color: #2F6B4F;
+    --bs-btn-active-bg: #214D39; --bs-btn-active-border-color: #214D39;
+    --bs-btn-disabled-color: #2F6B4F; --bs-btn-disabled-border-color: #2F6B4F;
+    --bs-btn-focus-shadow-rgb: 47, 107, 79;
+}
+
+/* 卡片：大圓角、暖色邊框、陰影放輕。 */
+.tb-body .card {
+    --bs-card-border-color: #E7E1D6;
+    --bs-card-border-radius: 16px;
+    --bs-card-inner-border-radius: 15px;
+    --bs-card-cap-bg: #FFFFFF;
+}
+.tb-body .shadow-sm { box-shadow: 0 1px 2px rgba(60, 50, 30, 0.06) !important; }
+
+/* 表格：表頭暖米色、滑過列淡綠。 */
+.tb-body .table { --bs-table-hover-bg: #EEF4F0; --bs-table-border-color: #EFEAE0; }
+.tb-body .table-light { --bs-table-bg: #F3EFE6; --bs-table-color: #2B2A26; --bs-table-border-color: #E7E1D6; }
+.tb-body .table > thead th { font-weight: 700; }
+
+/* 列表表格的外框改成圓角（桌面寬度；手機版由 onion 轉成卡片，不套用）。
+   - 表格直接放在卡片裡（.card > .table-responsive）：沿用卡片圓角，把表格最外圈的框線拿掉，避免和卡片框線疊成兩條。
+   - 表格沒有包卡片（只有 .table-responsive）：外面補一個白底圓角框。 */
+@media (min-width: 768px) {
+    /* 只有貼著卡片上緣／下緣的那一側才圓角；表格上方有卡片標題（card-header）時上緣維持直角，表頭底色才不會缺角。 */
+    .tb-body .app-content .card > .table-responsive:first-child { border-top-left-radius: var(--bs-card-inner-border-radius); border-top-right-radius: var(--bs-card-inner-border-radius); }
+    .tb-body .app-content .card > .table-responsive:last-child { border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius); }
+    .tb-body .app-content .table-responsive:not(.card .table-responsive):not(.modal .table-responsive):not(.tb .table-responsive) {
+        background: #FFFFFF; border: 1px solid #E7E1D6; border-radius: 16px; margin-bottom: 1rem;
+    }
+    .tb-body .app-content .table-responsive:not(.modal .table-responsive) > .table { margin-bottom: 0; }
+    .tb-body .app-content .table-responsive:not(.modal .table-responsive) > .table-bordered { border-style: hidden; }
+}
+
+/* 表單：聚焦時墨綠框。 */
+.tb-body .form-control:focus, .tb-body .form-select:focus {
+    border-color: #2F6B4F; box-shadow: 0 0 0 0.25rem rgba(47, 107, 79, 0.2);
+}
+.tb-body .form-check-input:checked { background-color: #2F6B4F; border-color: #2F6B4F; }
+
+/* 其他會用到主色的 Bootstrap 元件。 */
+.tb-body .pagination { --bs-pagination-color: #2F6B4F; --bs-pagination-hover-color: #214D39; --bs-pagination-active-bg: #2F6B4F; --bs-pagination-active-border-color: #2F6B4F; --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(47, 107, 79, 0.2); }
+.tb-body .nav-pills { --bs-nav-pills-link-active-bg: #2F6B4F; }
+.tb-body .app-content .nav-link { --bs-nav-link-color: #2F6B4F; --bs-nav-link-hover-color: #214D39; }
+.tb-body .list-group { --bs-list-group-active-bg: #2F6B4F; --bs-list-group-active-border-color: #2F6B4F; }
+.tb-body .dropdown-menu { --bs-dropdown-link-active-bg: #2F6B4F; --bs-dropdown-border-radius: 12px; }
+.tb-body .progress, .tb-body .progress-stacked { --bs-progress-bar-bg: #2F6B4F; }
+.tb-body .modal { --bs-modal-border-radius: 18px; }
+.tb-body .modal-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+
+/* ================= 2. 頁面元件（.tb） ================= */
+
+.tb {
+    font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    color: var(--tb-text);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding-bottom: 24px;
+}
+.tb a { color: var(--tb-accent); }
+.tb a:hover { color: var(--tb-accent-dark); }
+
+/* ---- 頁首 ---- */
+.tb-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; }
+.tb-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
+.tb-subtitle { margin: 6px 0 0; color: var(--tb-muted); font-size: 1rem; line-height: 1.7; }
+.tb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---- 按鈕（膠囊形） ---- */
+.tb .tb-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 46px; padding: 0 22px; border-radius: 999px;
+    font-size: 1rem; font-weight: 500; text-decoration: none; cursor: pointer;
+    border: 1px solid transparent; line-height: 1.2; white-space: nowrap;
+}
+.tb .tb-btn-primary { background: var(--tb-accent); color: #FFFFFF; }
+.tb .tb-btn-primary:hover { background: var(--tb-accent-dark); color: #FFFFFF; }
+.tb .tb-btn-outline { background: var(--tb-surface); color: var(--tb-text); border-color: #CFC7B8; }
+.tb .tb-btn-outline:hover { background: var(--tb-accent-faint); color: var(--tb-text); }
+.tb .tb-btn-dark { background: var(--tb-text); color: #FFFFFF; }
+.tb .tb-btn-dark:hover { background: #000000; color: #FFFFFF; }
+.tb .tb-btn-danger-outline { background: var(--tb-surface); color: var(--tb-danger); border-color: var(--tb-danger); }
+.tb .tb-btn-danger-outline:hover { background: var(--tb-danger-bg); color: var(--tb-danger); }
+.tb .tb-btn-sm { min-height: 36px; padding: 0 14px; font-size: 0.875rem; }
+
+/* ---- 卡片 ---- */
+.tb-card { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; }
+.tb-card-pad { padding: 20px 24px; }
+.tb-section-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 1.3rem; font-weight: 700; }
+.tb-note { color: var(--tb-muted); font-size: 0.875rem; margin: 0; }
+
+/* 統計卡（可點的用 <a>；選取中的加 .is-active） */
+.tb-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.tb-stat { display: block; text-decoration: none; color: inherit; background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; padding: 18px 22px; }
+.tb a.tb-stat { color: inherit; }
+.tb a.tb-stat:hover { border-color: #B9CFC2; color: inherit; }
+.tb .tb-stat.is-active { border: 2px solid var(--tb-accent); padding: 17px 21px; }
+.tb-stat-label { font-size: 0.875rem; color: var(--tb-muted); }
+.tb-stat-value { font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+.tb-stat-note { font-size: 0.8125rem; color: var(--tb-muted); margin-top: 4px; }
+.tb-c-accent { color: var(--tb-accent); }
+.tb-c-warn { color: #8A5A00; }
+.tb-c-danger { color: var(--tb-danger); }
+
+/* 一張卡片裡分三格的統計列 */
+.tb-stat-band { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tb-stat-band > div { padding: 22px 26px; }
+.tb-stat-band > div + div { border-left: 1px solid #EFEAE0; }
+
+/* ---- 表單 ---- */
+.tb .tb-input, .tb .tb-select {
+    min-height: 46px; border: 1px solid var(--tb-border-strong); border-radius: 12px;
+    padding: 0 14px; font: inherit; font-size: 0.95rem; background: var(--tb-surface); color: var(--tb-text);
+}
+.tb .tb-input:focus, .tb .tb-select:focus { outline: 2px solid var(--tb-accent); outline-offset: 1px; border-color: var(--tb-accent); }
+.tb .tb-input-pill { border-radius: 999px; padding: 0 22px; }
+.tb-label { font-size: 0.875rem; color: var(--tb-muted); }
+.tb-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 180px; }
+.tb-form-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+
+/* ---- 標籤 ---- */
+.tb-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8125rem; font-weight: 500; white-space: nowrap; }
+.tb-pill-warn { background: var(--tb-warn-bg); color: var(--tb-warn-text); }
+.tb-pill-ok { background: var(--tb-accent-soft); color: #24553E; }
+.tb-pill-danger { background: var(--tb-danger-bg); color: var(--tb-danger); font-weight: 700; }
+
+/* ---- 表格 ---- */
+.tb-table-wrap { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; overflow: hidden; }
+.tb .tb-table { width: 100%; margin: 0; border-collapse: collapse; font-size: 0.95rem; color: var(--tb-text); }
+.tb .tb-table > thead > tr > th {
+    padding: 15px 20px; font-weight: 700; text-align: left; white-space: nowrap;
+    border-bottom: 2px solid var(--tb-border); background: var(--tb-surface);
+}
+.tb .tb-table > tbody > tr > td { padding: 14px 20px; vertical-align: middle; border: 0; }
+.tb .tb-table > tbody > tr:nth-child(even) > td { background: var(--tb-zebra); }
+.tb .tb-table.tb-table-hover > tbody > tr:hover > td { background: var(--tb-accent-faint); }
+.tb .tb-table .text-end { text-align: right; }
+.tb .tb-table .text-center { text-align: center; }
+.tb-num { font-variant-numeric: tabular-nums; }
+.tb-code { font-weight: 700; color: var(--tb-accent); white-space: nowrap; }
+.tb-muted { color: var(--tb-muted); }
+
+/* 申請人頭像（名字第一個字） */
+.tb-avatar {
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    width: 36px; height: 36px; border-radius: 10px; background: var(--tb-accent-faint);
+    color: var(--tb-accent); font-weight: 700;
+}
+
+/* 卡片式列表（空間預約）：一筆一張卡片，整張可點；窄螢幕自動換行。 */
+.tb-list { display: flex; flex-direction: column; gap: 12px; }
+.tb a.tb-list-card, .tb-list-card {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;
+    background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px;
+    padding: 16px 22px; color: inherit; text-decoration: none;
+}
+.tb a.tb-list-card:hover { border-color: #B9CFC2; background: #FDFCF9; color: inherit; }
+.tb a.tb-list-card:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.tb-list-main { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; }
+.tb-list-meta { flex: 0 1 auto; display: flex; flex-direction: column; min-width: 110px; }
+.tb-list-status { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 80px; }
+.tb-list-label { font-size: 0.75rem; color: var(--tb-muted); letter-spacing: 0.04em; }
+.tb-list-title { font-size: 1.1rem; font-weight: 700; }
+.tb-list-arrow { color: var(--tb-muted); flex: 0 0 auto; }
+.tb-avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 1.05rem; }
+@media (max-width: 575.98px) {
+    .tb-list-card { gap: 10px 18px; padding: 14px 16px; }
+    .tb-list-arrow { display: none; }
+}
+
+/* 低庫存提示列 */
+.tb-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; background: var(--tb-danger-bg); border: 1px solid var(--tb-danger-border); border-radius: 18px; padding: 16px 22px; }
+.tb-alert-icon { width: 40px; height: 40px; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--tb-danger); font-size: 1.2rem; }
+.tb-alert-title { font-weight: 700; color: #8E2A1B; }
+
+/* 橫條圖（備品使用彙總） */
+.tb-bars { display: flex; flex-direction: column; gap: 14px; }
+.tb-bar-row { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr) 130px 120px; align-items: center; gap: 16px; }
+.tb-bar-track { height: 12px; background: #F1EDE4; border-radius: 999px; overflow: hidden; }
+.tb-bar-fill { height: 100%; border-radius: 999px; background: var(--tb-accent); }
+
+/* 空狀態 */
+.tb-empty { text-align: center; padding: 48px 16px; color: var(--tb-muted); }
+.tb-empty i { font-size: 2.2rem; }
+
+/* 分頁連結跟著換主色 */
+.tb .pagination { --bs-pagination-active-bg: var(--tb-accent); --bs-pagination-active-border-color: var(--tb-accent); --bs-pagination-color: var(--tb-accent); }
+
+/* 手機寬度：統計卡改成單欄、橫條圖每列換行。 */
+@media (max-width: 767.98px) {
+    .tb-title { font-size: 1.6rem; }
+    .tb-stat-band { grid-template-columns: minmax(0, 1fr); }
+    /* 統計卡在手機上仍排成一列三格，只縮小字與留白，避免佔掉整個畫面。 */
+    .tb-stats { gap: 8px; }
+    .tb-stat, .tb .tb-stat.is-active { padding: 10px 12px; border-radius: 14px; }
+    .tb .tb-stat.is-active { padding: 9px 11px; }
+    .tb-stat-value { font-size: 1.5rem; }
+    .tb-stat-band > div + div { border-left: 0; border-top: 1px solid #EFEAE0; }
+    .tb-bar-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .tb-bar-row .tb-bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ================= 3. 全站共用的小調整 ================= */
+
+/* 新增／編輯表單、詳細頁（.page-narrow）原本限制最大寬度 880px，大螢幕右邊會空一大塊；改成跟列表頁一樣滿版。 */
+.tb-body .page-narrow { max-width: none; }
+
+/* 可點的表格列：有 data-href 的 <tr> 點任何一格（或按 Enter）都進入詳細頁（行為見 layouts/app.blade.php 底部的程式）。 */
+.tb-body tr[data-href] { cursor: pointer; }
+.tb-body tr[data-href]:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+
+/* ================= 4. 洋蔥式元件換成風格 B 配色 ================= */
+/* 洋蔥式的清單詳細面板、篩選面板、分步驟表單、選單（layouts/partials/*-onion、form-stepper、nav-drilldown）與主控台功能入口，
+   原本用 Bootstrap 藍；這裡統一換成墨綠，圓角與留白跟其他頁面一致。行為都在各自的檔案，這裡只管顏色與外觀。 */
+
+/* 返回鍵（清單面板、篩選面板、選單第二層） */
+.tb-body .onion-panel-top .onion-back,
+.tb-body .fo-top .fo-back,
+.tb-body .drill-top .drill-back { color: var(--tb-accent); font-weight: 500; }
+.tb-body .onion-panel-top, .tb-body .fo-top, .tb-body .drill-top { border-bottom-color: var(--tb-border); }
+.tb-body .onion-panel-title, .tb-body .fo-top .fo-title, .tb-body .drill-top .drill-title { font-family: 'Noto Serif TC', serif; }
+
+/* 滑出面板：暖白底、左側圓角 */
+.tb-body .onion-panel, .tb-body .fo-panel { background: var(--tb-surface); border-radius: 18px 0 0 18px; }
+.tb-body .onion-dl > div { border-bottom-color: #EFEAE0; }
+.tb-body .onion-dl dt { color: var(--tb-muted); }
+
+/* 簡短清單：每一筆的標題與滑過底色 */
+.tb-body .onion-list { border-radius: 14px; }
+.tb-body .onion-item:hover, .tb-body .onion-item:focus-visible { background: var(--tb-accent-faint); }
+.tb-body .onion-item .onion-sub { color: var(--tb-muted); }
+
+/* 篩選摘要列的小標籤與數字 */
+.tb-body .fo-bar .fo-chip { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
+.tb-body .fo-bar .badge.text-bg-primary { background-color: var(--tb-accent) !important; }
+
+/* 分步驟表單 */
+.tb-body .stepper-pill { border-color: var(--tb-border); }
+.tb-body .stepper-pill.is-active { border-color: var(--tb-accent); color: var(--tb-accent); background: var(--tb-accent-faint); }
+.tb-body .stepper-pill.is-active .stepper-num { background: var(--tb-accent); }
+.tb-body .stepper-pill.is-done .stepper-num { background: #8BB39E; }
+.tb-body .stepper-bar { background: #EAE5DA; }
+.tb-body .stepper-bar > span { background: var(--tb-accent); }
+
+/* 漢堡選單（洋蔥式，一層一層往內點） */
+.tb-body .offcanvas { background: var(--tb-surface); }
+.tb-body .offcanvas-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.tb-body .drill-item { border-bottom-color: #EFEAE0; }
+.tb-body .drill-item:hover, .tb-body .drill-item:focus-visible { background: var(--tb-accent-faint); }
+.tb-body .drill-item.active { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
+.tb-body .drill-item.active .bi:first-child { color: var(--tb-accent); }
+.tb-body .drill-item.has-active { box-shadow: inset 3px 0 0 var(--tb-accent); }
+
+/* 主控台：功能入口圖示與數字卡片的圓形圖示 */
+.tb-body .entry-tile { border: 1px solid var(--tb-border) !important; border-radius: 16px; box-shadow: none !important; }
+.tb-body .entry-tile:hover, .tb-body .entry-tile:focus-visible { border-color: #B9CFC2 !important; }
+.tb-body .entry-icon { background: var(--tb-accent-soft); color: var(--tb-accent); }
+.tb-body .kpi-icon.text-bg-primary { background-color: var(--tb-accent) !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-info { background-color: #5E9C82 !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-success { background-color: var(--tb-accent-dark) !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-secondary { background-color: #A39E92 !important; color: #fff !important; }
+.tb-body .kpi-icon.text-bg-warning { background-color: #E3B04B !important; color: #3D2C00 !important; }
+.tb-body .kpi-icon.text-bg-danger { background-color: var(--tb-danger) !important; color: #fff !important; }
+/* 手機寬度：滑出面板佔滿整個畫面，不留圓角。 */
+@media (max-width: 575.98px) { .tb-body .onion-panel, .tb-body .fo-panel { border-radius: 0; } }
+
+/* ================= 5. 與洋蔥式版面相容（合併時新增；洋蔥的檔案本身一個字都沒改）================= */
+/* 頂端列高度維持 Bootstrap 預設（56px）：王佑恩的「一個畫面」（layouts/partials/fit-screen）以這個高度計算清單能放幾筆，
+   她原本加大的上下留白會多出 3px，列表頁就多出捲動、手機版冒出分頁器。 */
+.tb-navbar { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+/* 手機寬度：她的頁首／提示／搜尋列壓縮到洋蔥清單一個畫面放得下（桌面版維持她原本的設計）。 */
+@media (max-width: 575.98px) {
+    .tb { gap: 12px; padding-bottom: 12px; }
+    .tb-header { flex-wrap: nowrap; gap: 10px; }
+    .tb-title { font-size: 1.5rem; }
+    .tb-subtitle { display: none; }
+    .tb-alert { padding: 10px 14px; gap: 8px 12px; }
+    .tb-alert .tb-note, .tb-alert-icon { display: none; }
+    .tb-form-row { flex-wrap: nowrap; gap: 8px; }
+    .tb-form-row .tb-input { flex: 1 1 auto !important; }
+}

@@ -68,11 +68,16 @@
         .nav-group-toggle[aria-expanded="true"] .nav-chevron { transform: rotate(180deg); }
         .offcanvas .nav-group-toggle { color: #495057; cursor: pointer; }
     </style>
+    {{-- 全站風格 B「校園溫和」：墨綠導覽列、暖白底、思源黑體／宋體、Bootstrap 主色換成墨綠（說明見 public/css/theme-b.css 開頭）。
+         只換外觀（顏色、圓角、字型）；版面結構與洋蔥式元件的行為不受影響。 --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+    <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
 </head>
-{{-- 頁面主體：淺灰色背景。 --}}
-<body class="bg-light">
-    {{-- 最上方的深色導覽列。 --}}
-    <nav class="navbar navbar-dark bg-dark">
+{{-- 頁面主體：暖白色背景（tb-body，見 theme-b.css）。 --}}
+<body class="tb-body">
+    {{-- 最上方的墨綠導覽列（tb-navbar，見 theme-b.css）。 --}}
+    <nav class="navbar navbar-dark tb-navbar">
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
@@ -199,6 +204,23 @@
         </div>
     @endauth
 
+    {{-- 可點的表格列：列表裡有 data-href 的 <tr>，點任何一格（或用 Tab 移到該列後按 Enter）就進入該筆的詳細頁；
+         點到列裡的按鈕、連結、表單欄位時照原本的功能，正在選取文字時也不跳頁。 --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('tr[data-href]').forEach(function (row) {
+            if (!row.hasAttribute('tabindex')) { row.tabIndex = 0; }
+            row.addEventListener('click', function (event) {
+                if (event.defaultPrevented || event.target.closest('a, button, input, select, textarea, label, form')) { return; }
+                if (window.getSelection().toString()) { return; }
+                window.location.href = row.dataset.href;
+            });
+            row.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' && event.target === row) { window.location.href = row.dataset.href; }
+            });
+        });
+    });
+    </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @auth

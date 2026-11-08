@@ -51,9 +51,10 @@ class RepairDispatchTimetableTest extends TestCase
 
         $response->assertJsonPath('week_start', '2026-11-02')
             ->assertJsonPath('week_end', '2026-11-06')
-            ->assertJsonPath('days.0.periods.0.is_class', true)             // 星期一第 1 節有課
-            ->assertJsonPath('days.0.periods.2.is_class', false)            // 星期一第 3 節空堂
-            ->assertJsonPath('days.1.periods.1.reservations.0.status', 'approved');   // 星期二第 2 節已被預約
+            ->assertJsonPath('days.0.periods.0.label', '早自習')            // 第一列是早自習
+            ->assertJsonPath('days.0.periods.1.is_class', true)             // 星期一第 1 節有課
+            ->assertJsonPath('days.0.periods.3.is_class', false)            // 星期一第 3 節空堂
+            ->assertJsonPath('days.1.periods.2.reservations.0.status', 'approved');   // 星期二第 2 節（09:30–10:20）已被預約
         Carbon::setTestNow();
     }
 

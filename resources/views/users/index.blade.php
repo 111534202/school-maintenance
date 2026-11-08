@@ -100,7 +100,8 @@
                             {{-- 先算出「這一列是不是目前登入的自己」，等下用來停用自己的刪除／停用按鈕。 --}}
                             @php($isSelf = $user->id === auth()->id())
                             {{-- 已刪除（軟刪除）的用戶整列用灰色背景標示。 --}}
-                            <tr class="{{ $user->trashed() ? 'table-secondary' : '' }}">
+                            {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）；已刪除的用戶只能還原，沒有編輯頁。 --}}
+                            <tr class="{{ $user->trashed() ? 'table-secondary' : '' }}" @unless ($user->trashed()) data-href="{{ route('users.edit', $user) }}" @endunless>
                                 <td>
                                     <span class="fw-semibold">{{ $user->account ?? '—' }}</span>
                                     {{-- 標出「這是你自己」的徽章。 --}}

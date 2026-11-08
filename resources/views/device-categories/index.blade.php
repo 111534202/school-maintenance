@@ -49,7 +49,8 @@
                 <tbody>
                     {{-- 逐筆列出類別；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($categories as $category)
-                        <tr>
+                        {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
+                        <tr data-href="{{ route('device-categories.edit', $category) }}">
                             <td>{{ $category->name }}</td>
                             {{-- 這個類別底下有幾台設備（Controller 用 withCount 先算好）。 --}}
                             <td class="text-center">{{ $category->devices_count }}</td>

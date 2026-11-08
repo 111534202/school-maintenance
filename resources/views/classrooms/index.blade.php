@@ -86,7 +86,8 @@
                     {{-- @forelse：逐筆列出教室；一筆都沒有時改顯示下面 @empty 的「尚無教室資料」。 --}}
                     @forelse ($classrooms as $classroom)
                         {{-- 有異常設備的教室整列用淡紅色標示，一眼就能看出是哪間教室。 --}}
-                        <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}">
+                        {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
+                        <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}" data-href="{{ route('classrooms.edit', $classroom) }}">
                             <td>{{ $classroom->classroom_code }}</td>
                             <td>{{ $classroom->name }}</td>
                             <td>{{ $classroom->department->name ?? __('classrooms.no_value') }}</td>

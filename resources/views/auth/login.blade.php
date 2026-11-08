@@ -8,14 +8,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登入 - 學校設備維保電子化系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {{-- 跟登入後的頁面同一套風格 B（墨綠主色、暖白底、思源黑體／宋體），見 public/css/theme-b.css。 --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+    <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
+    <style>
+        /* 登入頁：上方一條墨綠色的網站名稱列，下方暖白底置中一張圓角卡片。 */
+        .login-band { background: var(--tb-accent); color: #FFFFFF; padding: 14px 24px; }
+        .login-band .brand { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
+        .login-card { width: 100%; max-width: 420px; border-radius: 20px; }
+        .login-title { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.02em; }
+        .login-card .form-control { min-height: 46px; }
+        .login-card .btn-primary { min-height: 48px; font-size: 1.05rem; }
+    </style>
 </head>
-<body class="bg-light">
+<body class="tb-body">
+    <div class="login-band"><span class="brand">學校設備維保電子化系統</span></div>
     {{-- 整個畫面垂直、水平置中，把登入卡片放在螢幕正中間。 --}}
-    <div class="container d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+    <div class="container d-flex align-items-center justify-content-center py-5" style="min-height: calc(100vh - 60px);">
         {{-- 登入卡片：手機上佔滿寬度，大螢幕最寬 400px。 --}}
-        <div class="card shadow-sm" style="width: 100%; max-width: 400px;">
-            <div class="card-body p-4">
-                <h4 class="card-title text-center mb-4">學校設備維保電子化系統</h4>
+        <div class="card shadow-sm login-card">
+            <div class="card-body p-4 p-sm-5">
+                <h1 class="h3 login-title text-center mb-1">登入</h1>
+                <p class="text-center text-muted mb-4">請使用學校帳號登入</p>
 
                 {{-- 登入失敗或欄位沒填時，把錯誤訊息顯示在這裡。 --}}
                 @if ($errors->any())

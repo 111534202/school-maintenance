@@ -490,12 +490,19 @@ class ClassroomReservationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('classroom.id', $classroom->id)
             ->assertJsonPath('date', $date)
-            ->assertJsonPath('periods.0.period_number', 1)
-            ->assertJsonPath('periods.0.start_time', '08:10')
-            ->assertJsonPath('periods.0.end_time', '09:00')
-            ->assertJsonPath('periods.0.is_class', true)
-            ->assertJsonPath('periods.0.class_name', '資一忠')
-            ->assertJsonPath('periods.0.course_name', '資訊科技');
+            // 第一列是早自習，接著第1節
+            ->assertJsonPath('periods.0.label', '早自習')
+            ->assertJsonPath('periods.0.period_number', 0)
+            ->assertJsonPath('periods.0.start_time', '08:00')
+            ->assertJsonPath('periods.1.period_number', 1)
+            ->assertJsonPath('periods.1.label', '第1節')
+            ->assertJsonPath('periods.1.start_time', '08:30')
+            ->assertJsonPath('periods.1.end_time', '09:20')
+            ->assertJsonPath('periods.1.is_class', true)
+            ->assertJsonPath('periods.1.class_name', '資一忠')
+            ->assertJsonPath('periods.1.course_name', '資訊科技')
+            ->assertJsonPath('periods.5.label', '午休')
+            ->assertJsonCount(15, 'periods');
     }
 
     public function test_timetable_endpoint_includes_pending_reservations(): void
@@ -519,10 +526,11 @@ class ClassroomReservationTest extends TestCase
             'date' => $date,
         ]))
             ->assertOk()
-            ->assertJsonPath('periods.0.reservations.0.class_name', '測試預約班級')
-            ->assertJsonPath('periods.0.reservations.0.status', 'pending')
-            ->assertJsonPath('periods.0.reservations.0.start_time', '08:20')
-            ->assertJsonPath('periods.0.reservations.0.end_time', '08:40');
+            // 08:20–08:40 落在第1節（08:30–09:20），第1節是 periods.1（periods.0 是早自習）
+            ->assertJsonPath('periods.1.reservations.0.class_name', '測試預約班級')
+            ->assertJsonPath('periods.1.reservations.0.status', 'pending')
+            ->assertJsonPath('periods.1.reservations.0.start_time', '08:20')
+            ->assertJsonPath('periods.1.reservations.0.end_time', '08:40');
     }
 
     /** 停用的教室查不到課表；暫停預約（設備異常）的教室仍可查詢課表。 */
@@ -562,7 +570,7 @@ class ClassroomReservationTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_timetable_week_endpoint_returns_monday_to_friday(): void
+    public function test_timetable_week_endpoint_returns_monday_to_sunday(): void
     {
         $classroom = $this->makeClassroom('IT-301');
         $selectedDate = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY)->addDays(2);
@@ -576,12 +584,12 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonPath('classroom.id', $classroom->id)
             ->assertJsonPath('selected_date', $selectedDate->toDateString())
             ->assertJsonPath('week_start', $monday->toDateString())
-            ->assertJsonPath('week_end', $monday->copy()->addDays(4)->toDateString())
-            ->assertJsonCount(5, 'days')
+            ->assertJsonPath('week_end', $monday->copy()->addDays(6)->toDateString())
+            ->assertJsonCount(7, 'days')
             ->assertJsonPath('days.0.date', $monday->toDateString())
-            ->assertJsonPath('days.4.date', $monday->copy()->addDays(4)->toDateString())
-            ->assertJsonPath('days.0.periods.0.period_number', 1)
-            ->assertJsonPath('days.0.periods.0.start_time', '08:10');
+            ->assertJsonPath('days.6.date', $monday->copy()->addDays(6)->toDateString())
+            ->assertJsonPath('days.0.periods.1.period_number', 1)
+            ->assertJsonPath('days.0.periods.1.start_time', '08:30');
     }
 
     public function test_timetable_week_endpoint_includes_pending_and_approved_slots(): void
@@ -633,8 +641,9 @@ class ClassroomReservationTest extends TestCase
             'date' => $monday->copy()->addDays(2)->toDateString(),
         ]))
             ->assertOk()
-            ->assertJsonPath('days.0.periods.0.reservations.0.class_name', '待審核週課表班級')
-            ->assertJsonPath('days.0.periods.0.reservations.0.status', 'pending')
+            // periods.0 是早自習；08:20–08:40 在第1節（periods.1），09:10–09:30 也落在第1節（08:30–09:20）
+            ->assertJsonPath('days.0.periods.1.reservations.0.class_name', '待審核週課表班級')
+            ->assertJsonPath('days.0.periods.1.reservations.0.status', 'pending')
             ->assertJsonPath('days.1.periods.1.reservations.0.class_name', '已核准週課表班級')
             ->assertJsonPath('days.1.periods.1.reservations.0.status', 'approved');
     }
@@ -643,12 +652,12 @@ class ClassroomReservationTest extends TestCase
     {
         $classroom = $this->makeClassroom('IT-301');
         $monday = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY);
-        $outsideDate = $monday->copy()->addDays(5);
+        $outsideDate = $monday->copy()->addDays(7);   // 下一週的星期一（週課表現在包含星期六、日）
 
         ClassroomReservation::create([
             ...$this->payload($classroom, [
                 'reservation_date' => $outsideDate->toDateString(),
-                'class_name' => '週末預約不應出現',
+                'class_name' => '下週預約不應出現',
                 'start_time' => '08:20',
                 'end_time' => '08:40',
             ]),
@@ -661,13 +670,13 @@ class ClassroomReservationTest extends TestCase
             'date' => $monday->toDateString(),
         ]));
 
-        $response->assertOk()->assertJsonCount(5, 'days');
+        $response->assertOk()->assertJsonCount(7, 'days');
 
         foreach ($response->json('days') as $day) {
             foreach ($day['periods'] as $period) {
                 foreach ($period['reservations'] as $reservation) {
                     $this->assertNotSame(
-                        '週末預約不應出現',
+                        '下週預約不應出現',
                         $reservation['class_name']
                     );
                 }
@@ -726,5 +735,53 @@ class ClassroomReservationTest extends TestCase
             'classroom_id' => $abnormal->id,
             'date' => $date,
         ]))->assertOk();
+    }
+
+    /**
+     * 跨日一次申請多個時段：第一天選下午、第二天選第一節。
+     * 申請本身的開始／結束取最早的那一節，不能拿第一天下午的開始配第二天早上的結束（以前會被誤判成結束早於開始）。
+     */
+    public function test_slots_across_two_days_can_be_submitted_together(): void
+    {
+        $classroom = $this->makeClassroom();
+        $day1 = now()->addDays(15)->toDateString();
+        $day2 = now()->addDays(16)->toDateString();
+
+        $this->post(route('reservations.store'), [
+            'classroom_id' => $classroom->id,
+            'class_name' => '一年甲班',
+            'purpose' => '跨日活動',
+            // 畫面舊版送出的代表時間：第一天的開始＋第二天的結束
+            'reservation_date' => $day1,
+            'start_time' => '13:10',
+            'end_time' => '09:00',
+            'slots' => [
+                ['reservation_date' => $day1, 'start_time' => '13:10', 'end_time' => '14:00', 'period_number' => 5],
+                ['reservation_date' => $day2, 'start_time' => '08:10', 'end_time' => '09:00', 'period_number' => 1],
+            ],
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $reservation = ClassroomReservation::query()->sole();
+        $this->assertSame($day1, $reservation->reservation_date->toDateString());
+        $this->assertSame('13:10', substr((string) $reservation->start_time, 0, 5));
+        $this->assertSame('14:00', substr((string) $reservation->end_time, 0, 5));
+        $this->assertSame(2, $reservation->slots()->count());
+    }
+
+    /** 今天已經開始的節次不能預約；今天稍晚的節次可以。 */
+    public function test_a_period_that_has_already_started_today_cannot_be_reserved(): void
+    {
+        $classroom = $this->makeClassroom();
+        $this->travelTo(now()->setTime(13, 0));
+        $today = now()->toDateString();
+
+        $this->post(route('reservations.store'), $this->payload($classroom, [
+            'reservation_date' => $today, 'start_time' => '10:10', 'end_time' => '11:00',
+        ]))->assertSessionHas('error');
+        $this->assertDatabaseCount('classroom_reservations', 0);
+
+        $this->post(route('reservations.store'), $this->payload($classroom, [
+            'reservation_date' => $today, 'start_time' => '13:10', 'end_time' => '14:00',
+        ]))->assertSessionHas('success');
     }
 }

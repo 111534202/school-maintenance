@@ -113,7 +113,8 @@
                                 // 影響程度 → 徽章顏色：輕微綠、中等黃、嚴重紅；未知值用灰色。
                                 $impactBadge = ['low' => 'text-bg-success', 'medium' => 'text-bg-warning', 'high' => 'text-bg-danger'][$repairRequest->impact_level] ?? 'text-bg-secondary';
                             @endphp
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入案件詳細頁（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('repairs.show', $repairRequest) }}">
                                 <td><a href="{{ route('repairs.show', $repairRequest) }}" class="text-decoration-none">{{ $repairRequest->title }}</a></td>
                                 {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的設備地點，沒有就用設備所在教室）。 --}}
                                 @php($rowClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom)

@@ -25,6 +25,7 @@ class LocalTimetableProvider implements TimetableProvider
 
             return [
                 'period_number' => $period['period_number'],
+                'label' => $period['label'] ?? ('第' . $period['period_number'] . '節'),
                 'start_time' => $period['start_time'],
                 'end_time' => $period['end_time'],
                 'class_name' => $course['class_name'] ?? null,

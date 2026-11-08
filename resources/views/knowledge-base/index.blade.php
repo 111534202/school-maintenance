@@ -17,9 +17,44 @@
         @endcan
     </div>
 
+    {{-- 搜尋：關鍵字比對標題、分類、故障現象與排除步驟；也可以只看某一個分類。 --}}
+    @php
+        $searching = $keyword !== '' || $category !== '';
+    @endphp
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            {{-- 搜尋列：用全站共用的 filter-bar，洋蔥式會收成「篩選條件」摘要列，點開從右邊滑出（見 layouts/partials/filter-onion）。 --}}
+            <form method="GET" action="{{ route('knowledge-base.index') }}" class="filter-bar" role="search">
+                <div>
+                    <label for="kb-keyword" class="form-label small mb-1">{{ __('knowledge_base.search.keyword') }}</label>
+                    <input type="search" id="kb-keyword" name="keyword" class="form-control form-control-sm" style="width: 18rem;" value="{{ $keyword }}"
+                        placeholder="{{ __('knowledge_base.search.placeholder') }}">
+                </div>
+                <div>
+                    <label for="kb-category" class="form-label small mb-1">{{ __('knowledge_base.search.category') }}</label>
+                    <select id="kb-category" name="category" class="form-select form-select-sm" style="width: 10rem;">
+                        <option value="">{{ __('knowledge_base.search.all_categories') }}</option>
+                        @foreach ($categories as $option)
+                            <option value="{{ $option }}" @selected($category === $option)>{{ $option }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="d-inline-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>{{ __('knowledge_base.search.submit') }}</button>
+                    @if ($searching)
+                        <a href="{{ route('knowledge-base.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('knowledge_base.search.clear') }}</a>
+                    @endif
+                </div>
+            </form>
+            @if ($searching)
+                <div class="small text-muted mt-2">{{ __('knowledge_base.search.result_count', ['count' => $knowledgeBaseEntries->total()]) }}</div>
+            @endif
+        </div>
+    </div>
+
     {{-- 沒有任何文章時顯示提示；否則顯示表格。 --}}
     @if ($knowledgeBaseEntries->isEmpty())
-        <div class="alert alert-info mb-0">{{ __('knowledge_base.empty_list') }}</div>
+        <div class="alert alert-info mb-0">{{ $searching ? __('knowledge_base.search.no_results') : __('knowledge_base.empty_list') }}</div>
     @else
         <div class="card shadow-sm">
             <div class="table-responsive">
@@ -37,7 +72,8 @@
                     <tbody>
                         {{-- 逐一列出每篇文章。 --}}
                         @foreach ($knowledgeBaseEntries as $entry)
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入文章（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('knowledge-base.show', $entry) }}">
                                 <td><a href="{{ route('knowledge-base.show', $entry) }}" class="text-decoration-none">{{ $entry->title }}</a></td>
                                 <td>{{ $entry->category ?? __('knowledge_base.uncategorized') }}</td>
                                 <td class="text-center">

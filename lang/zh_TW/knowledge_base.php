@@ -7,6 +7,17 @@ return [
     'index_heading' => '自助排除知識庫',
     'add_entry' => '新增項目',
     'empty_list' => '目前還沒有任何知識庫項目。',
+    // 列表頁的搜尋列。
+    'search' => [
+        'keyword' => '搜尋',
+        'placeholder' => '輸入關鍵字，例如：投影機、沒有畫面、網路',
+        'category' => '分類',
+        'all_categories' => '全部分類',
+        'submit' => '搜尋',
+        'clear' => '清除',
+        'result_count' => '找到 :count 筆。',
+        'no_results' => '找不到符合的項目，可以換個關鍵字，或直接前往報修。',
+    ],
 
     // 知識庫列表表格欄位標題。
     'table' => [

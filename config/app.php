@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // 透過 HTTPS 通道（Cloudflare Tunnel、ngrok）分享網站時，在 .env 設 TRUSTED_PROXIES=*，
+    // 網站才會相信通道傳來的「外面其實是 https」，產生 https 的連結與樣式檔網址（見 AppServiceProvider）。
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

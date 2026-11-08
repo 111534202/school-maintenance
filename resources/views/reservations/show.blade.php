@@ -102,7 +102,7 @@
                     <tr>
                         <td class="text-nowrap">{{ $slot->reservation_date->format('Y-m-d') }}</td>
                         <td class="text-nowrap">{{ substr((string) $slot->start_time, 0, 5) }}–{{ substr((string) $slot->end_time, 0, 5) }}</td>
-                        <td class="text-nowrap">{{ $slot->period_number ? '第 ' . $slot->period_number . ' 節' : '—' }}</td>
+                        <td class="text-nowrap">{{ $slot->periodLabel() ?? '—' }}</td>
                         <td class="text-nowrap">
                             @if ($canReview)
                                 @php($old = old("decisions.{$slot->id}.decision"))

@@ -26,6 +26,13 @@ class ClassroomReservationController extends Controller
             $query->where('requester_id', $request->user()->id);
         }
 
+        // 列表上方三張統計卡：全部／未審核／已審核（範圍和列表相同，篩選前計算）。
+        $counts = [
+            'all' => (clone $query)->count(),
+            'pending' => (clone $query)->where('status', ClassroomReservation::STATUS_PENDING)->count(),
+        ];
+        $counts['reviewed'] = $counts['all'] - $counts['pending'];
+
         // 申請狀態篩選：pending＝未審核（主控台「空間預約待審核」卡片連過來）；reviewed＝已審核。
         $status = $request->query('status');
         if ($status === 'pending') {
@@ -36,7 +43,7 @@ class ClassroomReservationController extends Controller
 
         $reservations = $query->paginate(15)->withQueryString();
 
-        return view('reservations.index', compact('reservations'));
+        return view('reservations.index', compact('reservations', 'counts'));
     }
 
     /**
@@ -115,23 +122,22 @@ class ClassroomReservationController extends Controller
     {
         $submittedSlots = $request->input('slots');
 
+        // 一次選多個時段（可跨日）時，申請本身的日期／開始／結束只是「代表時段」：
+        // 一律取最早的那一個時段（同一天內的開始與結束），不能拿第一個時段的開始配最後一個時段的結束，
+        // 否則跨日選取（例如 11/17 下午＋11/18 第一節）會被誤判成「結束時間早於開始時間」。
         if (is_array($submittedSlots) && count($submittedSlots) > 0) {
-            $firstSlot = reset($submittedSlots);
+            $validSlots = array_values(array_filter($submittedSlots, fn ($slot) => is_array($slot)
+                && is_string($slot['reservation_date'] ?? null)
+                && is_string($slot['start_time'] ?? null)));
 
-            if (is_array($firstSlot)) {
+            if ($validSlots !== []) {
+                usort($validSlots, fn ($a, $b) => [$a['reservation_date'], $a['start_time']] <=> [$b['reservation_date'], $b['start_time']]);
+                $firstSlot = $validSlots[0];
+
                 $request->merge([
-                    'reservation_date' => $request->input(
-                        'reservation_date',
-                        $firstSlot['reservation_date'] ?? null
-                    ),
-                    'start_time' => $request->input(
-                        'start_time',
-                        $firstSlot['start_time'] ?? null
-                    ),
-                    'end_time' => $request->input(
-                        'end_time',
-                        $firstSlot['end_time'] ?? null
-                    ),
+                    'reservation_date' => $firstSlot['reservation_date'],
+                    'start_time' => $firstSlot['start_time'],
+                    'end_time' => $firstSlot['end_time'] ?? null,
                 ]);
             }
         }
@@ -146,7 +152,7 @@ class ClassroomReservationController extends Controller
             'slots.*.reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'slots.*.start_time' => ['required', 'date_format:H:i'],
             'slots.*.end_time' => ['required', 'date_format:H:i'],
-            'slots.*.period_number' => ['nullable', 'integer', 'min:1'],
+            'slots.*.period_number' => ['nullable', 'integer', 'min:0'],   // 早自習為 0、午休為空
             'purpose' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -160,12 +166,22 @@ class ClassroomReservationController extends Controller
         $uniqueSlots = [];
 
         foreach ($slots as $slot) {
+            // 不能預約已經開始（或已經過去）的時段：今天的節次，開始時間必須晚於現在。
+            if (
+                $slot['reservation_date'] === now()->toDateString()
+                && substr((string) $slot['start_time'], 0, 5) <= now()->format('H:i')
+            ) {
+                return back()
+                    ->withInput()
+                    ->with('error', '不能預約已經過去的時段（' . $slot['reservation_date'] . ' ' . substr((string) $slot['start_time'], 0, 5) . '），請重新選擇。');
+            }
+
             if (
                 strtotime($slot['end_time']) <= strtotime($slot['start_time'])
             ) {
                 return back()
                     ->withInput()
-                    ->with('error', 'Each time slot must end after it starts.');
+                    ->with('error', '每個時段的結束時間都必須晚於開始時間。');
             }
 
             $key = implode('|', [
@@ -177,7 +193,7 @@ class ClassroomReservationController extends Controller
             if (isset($uniqueSlots[$key])) {
                 return back()
                     ->withInput()
-                    ->with('error', 'Duplicate time slots were selected. Please review your selection.');
+                    ->with('error', '選到重複的時段，請重新確認。');
             }
 
             $uniqueSlots[$key] = $slot;
@@ -264,7 +280,7 @@ class ClassroomReservationController extends Controller
         if ($result['type'] === 'unavailable') {
             return back()
                 ->withInput()
-                ->with('error', 'The classroom is unavailable or is not accepting reservations.');
+                ->with('error', '這間教室目前已停用，無法預約。');
         }
 
         if ($result['type'] === 'suspended') {

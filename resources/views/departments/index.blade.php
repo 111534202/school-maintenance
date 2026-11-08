@@ -69,7 +69,8 @@
                     <tbody>
                         {{-- 逐一列出每個部門，每個部門一列。 --}}
                         @foreach ($departments as $department)
-                            <tr>
+                            {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
+                            <tr data-href="{{ route('departments.edit', $department) }}">
                                 <td>{{ $department->department_code ?? '—' }}</td>
                                 <td class="fw-semibold">{{ $department->name }}</td>
                                 <td>{{ $department->description ?? '—' }}</td>

@@ -10,8 +10,10 @@ use App\Services\AI\RuleBasedPredictionService;
 use App\Services\Timetable\LocalTimetableProvider;
 use App\Services\Timetable\TimetableProvider;   // 規則式 AI 預測實作（王佑恩，第 4 週）
 use App\Support\PermissionCatalog;           // 權限清單
+use Illuminate\Http\Middleware\TrustProxies; // 信任反向代理（HTTPS 通道）傳來的 X-Forwarded-* 標頭
 use Illuminate\Pagination\Paginator;         // 分頁元件的設定
 use Illuminate\Support\Facades\Gate;         // 權限判斷（Gate）
+use Illuminate\Support\Facades\URL;          // 網址產生設定（HTTPS 通道時強制 https）
 use Illuminate\Support\Facades\View;         // 畫面相關設定（這裡用 composer 預先準備資料）
 use Illuminate\Support\ServiceProvider;      // 所有「服務提供者」的父類別
 
@@ -55,6 +57,19 @@ class AppServiceProvider extends ServiceProvider
         // 全站已使用 Bootstrap 5，分頁元件也要用 Bootstrap 樣式，
         // 否則 Laravel 預設的 Tailwind 分頁在沒有 Tailwind CSS 時會破版（箭頭變超大）。
         Paginator::useBootstrapFive();
+
+        // 用 HTTPS 通道分享網站（.env 的 TRUSTED_PROXIES，見 config/app.php）：採信通道的 X-Forwarded-Proto，
+        // 讓 asset()、route() 產生 https 網址；否則瀏覽器會擋下 http 的樣式檔，畫面跑版。
+        // 寫在這裡而不是 bootstrap/app.php，是因為那裡執行時 .env 還沒載入、讀不到設定。
+        if ($trustedProxies = config('app.trusted_proxies')) {
+            TrustProxies::at($trustedProxies === '*' ? '*' : array_map('trim', explode(',', $trustedProxies)));
+
+            // 保險：有些通道不一定會帶 X-Forwarded-Proto。只要不是從本機（localhost）開啟，就一律產生 https 網址；
+            // 自己用 http://localhost:8000 開的時候不受影響。
+            if (! $this->app->runningInConsole() && ! in_array(request()->getHost(), ['localhost', '127.0.0.1', '::1'], true)) {
+                URL::forceScheme('https');
+            }
+        }
 
         // 把權限清單裡的每個權限註冊成 Gate，之後全站用同一種寫法判斷權限：
         // 路由 ->middleware('can:users.manage')、畫面 @can('users.manage')、程式 $user->can('...')。
