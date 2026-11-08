@@ -136,6 +136,16 @@ class DrilldownNavigationTest extends TestCase
         }
     }
 
+    // 點頂端列的網站名稱可以回到主控台（任何頁面都一樣；沒登入的畫面只是標題，不是連結）。
+    public function test_the_site_title_links_back_to_the_dashboard_when_signed_in(): void
+    {
+        foreach (['dashboard', 'users.index', 'reservations.index'] as $route) {
+            $this->assertStringContainsString('<a href="'.route('dashboard').'" class="navbar-brand', $this->page('admin', $route), "{$route} 的網站名稱沒有連到主控台");
+        }
+
+        $this->get(route('login'))->assertOk()->assertDontSee('<a href="'.route('dashboard').'" class="navbar-brand', false);
+    }
+
     public function test_group_containing_current_page_is_opened_by_default(): void
     {
         $html = $this->page('admin', 'maintenance-orders.index');

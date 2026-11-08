@@ -95,7 +95,12 @@
                 @endunless
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
-            <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            {{-- 已登入時，點網站名稱回到主控台（沒登入就只是標題）。 --}}
+            @auth
+                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;" data-site-title>{{ __('common.site_title') }}</a>
+            @else
+                <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            @endauth
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
                      .env 的 APP_LOCALE_SWITCHER 設成 true 就好，翻譯與切換功能都還在）。 --}}
