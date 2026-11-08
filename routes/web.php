@@ -237,6 +237,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
         // 零件清單匯出（excel／pdf）：預覽視窗勾選的零件與欄位
         Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel', 'pdf'])->name('parts.export');
+        // 零件庫存列表點一筆：在畫面中的對話框顯示零件基本資料（再按「查看詳細」進零件履歷）
+        Route::get('parts/{part}/summary', [PartController::class, 'summary'])->name('parts.summary');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
         // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。

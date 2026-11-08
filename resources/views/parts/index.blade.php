@@ -54,55 +54,19 @@
             {{ request()->filled('keyword') ? '找不到符合的零件。' : '目前沒有零件資料。' }}
         </div>
     @else
-        <div class="tb-table-wrap">
-            <div class="table-responsive">
-                {{-- 平均單價：目前庫存各採購批次的加權平均（用料成本採先進先出，詳見零件履歷）。 --}}
-                {{-- 點這一行的任何地方都會進入零件履歷（也可以用 Tab 移到該行後按 Enter）。 --}}
-                {{-- 欄寬：標了 fit 的欄位只佔內容需要的寬度，剩下的空間都給「品牌／型號」。 --}}
-                {{-- data-onion-panel-title：清單點一筆時，對話框標題固定顯示「零件庫存」。
-                     data-onion-list-only：固定清單檢視，不提供「表格檢視」切換。 --}}
-                <table class="tb-table tb-table-hover part-rows table-fit" data-onion-primary="1,2" data-onion-panel-title="零件庫存" data-onion-list-only>
-                    <thead>
-                        <tr>
-                            <th class="fit">零件編號</th>
-                            <th class="fit">名稱</th>
-                            <th class="fit">規格</th>
-                            <th>品牌／型號</th>
-                            <th class="fit text-end">平均單價</th>
-                            <th class="fit text-end">目前庫存</th>
-                            <th class="fit text-end">安全庫存</th>
-                            <th class="fit text-center">其他</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($parts as $part)
-                            @php($average = $part->averageUnitPrice())
-                            <tr class="part-row" data-href="{{ route('parts.show', $part) }}" tabindex="0" role="link" aria-label="查看 {{ $part->part_code }} {{ $part->name }} 的零件履歷">
-                                <td class="tb-code">{{ $part->part_code }}</td>
-                                <td>{{ $part->name }}</td>
-                                <td>{{ $part->specification ?? '—' }}</td>
-                                <td class="tb-muted">{{ $part->brandModel() ?? '—' }}</td>
-                                <td class="text-end text-nowrap tb-num">{{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}</td>
-                                <td class="text-end text-nowrap tb-num">
-                                    @if ($part->isLowStock())
-                                        <span class="tb-pill tb-pill-danger me-1">⚠ 低庫存</span>
-                                        <span class="fw-bold tb-c-danger">{{ $part->withUnit($part->current_stock) }}</span>
-                                    @else
-                                        <span class="fw-medium">{{ $part->withUnit($part->current_stock) }}</span>
-                                    @endif
-                                </td>
-                                <td class="text-end text-nowrap tb-num tb-muted">{{ $part->withUnit($part->safety_stock) }}</td>
-                                <td class="text-center text-nowrap">
-                                    <a href="{{ route('parts.show', $part) }}" class="tb-pill tb-pill-ok text-decoration-none">查看履歷</a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        {{-- 零件放在同一張大卡片裡（tb-list-grouped，只有外框四角是圓角），一筆一列；點一列進入零件履歷。 --}}
+        <section class="tb-list tb-list-grouped" aria-label="零件列表">
+            @foreach ($parts as $part)
+                @include('parts._list-card', ['part' => $part])
+            @endforeach
+        </section>
 
-        <div>{{ $parts->links() }}</div>
+        {{-- 分頁：左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數；只有一頁時也顯示筆數。 --}}
+        @if ($parts->hasPages())
+            <div>{{ $parts->links() }}</div>
+        @else
+            <p class="small text-muted mb-0">顯示第 {{ $parts->firstItem() }} 到 {{ $parts->lastItem() }} 筆，共 {{ $parts->total() }} 筆</p>
+        @endif
 
         {{-- 匯出：先打開預覽視窗，勾選要匯出的欄位與零件，再選 Excel 或 PDF。 --}}
         <div class="d-flex justify-content-end">
@@ -113,7 +77,8 @@
     @endif
 </div>
 
-    @include('parts._export-modal')
+    @include('parts._export-modal', ['modalId' => 'partsExportModal', 'modalTitle' => '匯出零件清單', 'exportParts' => $exportParts, 'withKeyword' => true])
+    @include('parts._export-modal', ['modalId' => 'lowStockExportModal', 'modalTitle' => '匯出低庫存品項', 'exportParts' => $lowStockParts, 'withKeyword' => false])
 
     {{-- 低庫存品項視窗：列出所有「目前庫存低於安全庫存」的零件，點一行可進入零件履歷。 --}}
     <div class="modal fade" id="lowStockModal" tabindex="-1" aria-labelledby="lowStockModalTitle" aria-hidden="true">
@@ -127,39 +92,22 @@
                     @if ($lowStockParts->isEmpty())
                         <p class="text-muted text-center my-4">目前沒有低庫存的零件。</p>
                     @else
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover align-middle mb-0 part-rows">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="text-nowrap">零件編號</th>
-                                        <th>名稱</th>
-                                        <th>規格</th>
-                                        <th>品牌／型號</th>
-                                        <th class="text-end text-nowrap">目前庫存</th>
-                                        <th class="text-end text-nowrap">安全庫存</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($lowStockParts as $part)
-                                        <tr class="part-row" data-href="{{ route('parts.show', $part) }}" tabindex="0" role="link" aria-label="查看 {{ $part->part_code }} {{ $part->name }} 的零件履歷">
-                                            <td class="text-nowrap">{{ $part->part_code }}</td>
-                                            <td>{{ $part->name }}</td>
-                                            <td>{{ $part->specification ?? '—' }}</td>
-                                            <td>{{ $part->brandModel() ?? '—' }}</td>
-                                            <td class="text-end text-nowrap text-danger fw-semibold">{{ $part->withUnit($part->current_stock) }}</td>
-                                            <td class="text-end text-nowrap">{{ $part->withUnit($part->safety_stock) }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        {{-- 跟零件庫存列表一樣的清單（沒有表格檢視）；點一列進入零件履歷。 --}}
+                        <div class="tb low-stock-list">
+                            <div class="tb-list tb-list-grouped">
+                                @foreach ($lowStockParts as $part)
+                                    @include('parts._list-card', ['part' => $part])
+                                @endforeach
+                            </div>
                         </div>
                     @endif
                 </div>
                 <div class="modal-footer">
+                    {{-- 匯出 Excel／PDF：換到預覽視窗（只含低庫存品項），可勾選要匯出的欄位與零件。 --}}
                     @if ($lowStockParts->isNotEmpty())
-                        <a href="{{ route('parts.low-stock.export') }}" class="btn btn-sm btn-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>匯出 Excel
-                        </a>
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#lowStockExportModal">
+                            <i class="bi bi-download me-1" aria-hidden="true"></i>匯出 Excel／PDF
+                        </button>
                     @endif
                 </div>
             </div>
@@ -167,24 +115,6 @@
     </div>
 
     <style>
-        .part-row { cursor: pointer; }
-        /* 桌面寬度：fit 欄位縮到剛好放得下內容，表格仍拉滿畫面，多出的寬度由「品牌／型號」吃掉；手機版仍由 onion 版面改成卡片式。 */
-        @media (min-width: 768px) { .table-fit th.fit { width: 1%; white-space: nowrap; } }
-        .part-row:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+        .low-stock-list { gap: 0; padding-bottom: 0; }
     </style>
-    <script>
-    // 整行可點：點任何一格（或按 Enter）都進入該零件的履歷；點到行內的按鈕、連結時照按鈕本身的功能。
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.part-row').forEach(function (row) {
-            row.addEventListener('click', function (event) {
-                if (event.target.closest('a, button, input, select, textarea')) { return; }
-                if (window.getSelection().toString()) { return; }   // 正在選取文字時不跳頁
-                window.location.href = row.dataset.href;
-            });
-            row.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') { window.location.href = row.dataset.href; }
-            });
-        });
-    });
-    </script>
 @endsection

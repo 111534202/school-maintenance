@@ -210,16 +210,20 @@ class PartProfileAndStockTest extends TestCase
             ->assertOk()
             ->assertSee('查看目前低庫存品項')
             ->assertSee('目前低庫存品項（1）')
-            ->assertSee('data-href="' . route('parts.show', $low) . '"', false)
+            ->assertSee('href="' . route('parts.summary', $low) . '" class="tb-list-card tb-part-card" data-modal-frame data-modal-title="零件庫存"', false)
+            ->assertDontSee('href="' . route('parts.show', $low) . '" class="tb-list-card', false)   // 不會直接跳到零件履歷
             ->getContent();
 
-        // 低庫存視窗裡只有 LOW-1。
+        // 低庫存視窗裡只有 LOW-1，而且是清單（沒有表格檢視）。
         $modal = substr($html, strpos($html, 'id="lowStockModal"'));
+        $modal = substr($modal, 0, strpos($modal, 'id="lowStockExportModal"') ?: strlen($modal));
         $this->assertStringContainsString('LOW-1', $modal);
         $this->assertStringNotContainsString('OK-1', $modal);
+        $this->assertStringNotContainsString('<table', $modal);
 
-        // 列表上「低庫存」標籤在數量前面。
-        $this->assertMatchesRegularExpression('/低庫存<\/span>\s*(<span[^>]*>)?\s*2/u', $html);
+        // 列表：低庫存顯示「低庫存」，其他顯示「庫存充足」。
+        $this->assertStringContainsString('<span class="tb-pill tb-pill-danger">⚠ 低庫存</span>', $html);
+        $this->assertStringContainsString('<span class="tb-pill tb-pill-ok">庫存充足</span>', $html);
     }
 
     public function test_low_stock_parts_can_be_exported_to_excel(): void
@@ -231,7 +235,13 @@ class PartProfileAndStockTest extends TestCase
         $enough = $this->makePart(['part_code' => 'OK-1', 'safety_stock' => 1]);
         $this->buy($enough, '2026-10-10', 9, 20);
 
-        $this->get(route('parts.index'))->assertSee(route('parts.low-stock.export'), false);
+        // 低庫存視窗的「匯出 Excel／PDF」打開只含低庫存品項的預覽視窗（可勾選欄位與零件）。
+        $html = $this->get(route('parts.index'))->assertSee('data-bs-target="#lowStockExportModal"', false)->getContent();
+        $preview = substr($html, strpos($html, 'id="lowStockExportModal"'));
+        $this->assertStringContainsString('name="ids[]" value="' . $low->id . '"', $preview);
+        $this->assertStringNotContainsString('name="ids[]" value="' . $enough->id . '"', $preview);
+
+        // 原本的低庫存 Excel 網址仍可使用。
         $this->get(route('parts.low-stock.export'))->assertOk();
 
         \Maatwebsite\Excel\Facades\Excel::matchByRegex();

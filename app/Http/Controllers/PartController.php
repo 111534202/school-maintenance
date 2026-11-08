@@ -24,7 +24,7 @@ class PartController extends Controller
     public function index(Request $request)
     {
         $parts = $this->searchQuery($request)
-            ->paginate(20)
+            ->paginate(15)
             ->withQueryString();
 
         // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
@@ -136,6 +136,15 @@ class PartController extends Controller
     }
 
     /** 零件履歷：基本資料、採購紀錄、使用紀錄（維修與保養）。 */
+    /**
+     * 零件庫存列表／低庫存視窗點一筆時，在畫面中的對話框（標題「零件庫存」）顯示的基本資料；
+     * 按「查看詳細」才進入零件履歷。版面與空間申請的「預約詳細」相同。
+     */
+    public function summary(Part $part)
+    {
+        return view('parts.summary', ['part' => $part, 'values' => PartExportColumns::values($part)]);
+    }
+
     public function show(Part $part)
     {
         $part->loadMissing('purchases.attachments');

@@ -268,6 +268,13 @@ body.tb-body {
 .tb-list-arrow { color: var(--tb-muted); flex: 0 0 auto; }
 .tb-avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 1.05rem; }
 .tb-pill-info { background: #E3EEF7; color: #24507A; }
+/* 零件卡片（零件庫存列表、低庫存視窗）：零件編號在左，名稱｜規格｜庫存狀態 ＋「>」靠右（跟空間申請一樣）。 */
+.tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, auto) minmax(130px, auto) auto;
+    grid-template-areas: "main name spec end";
+}
+.tb-lc-name { grid-area: name; }
+.tb-lc-spec { grid-area: spec; }
 /* 一大張卡片的版本（空間申請、我的申請）：只有外框四角是圓角，每一筆之間用細線分隔。 */
 .tb-list.tb-list-grouped { gap: 0; background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px; overflow: hidden; }
 .tb-list-grouped a.tb-list-card, .tb .tb-list-grouped a.tb-list-card { border: 0; border-radius: 0; border-top: 1px solid var(--tb-border); }
@@ -281,9 +288,19 @@ body.tb-body {
         gap: 10px 18px; padding: 14px 16px;
     }
 }
+@container (max-width: 760px) {
+    .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+        grid-template-areas: "main main end" "name spec end";
+    }
+}
 @container (max-width: 400px) {
     .tb a.tb-list-card, .tb-list-card {
         grid-template-areas: "avatar main main" "person person end" "time time end";
+    }
+    .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "main end" "name end" "spec end";
     }
     .tb-lc-end { align-self: center; }
 }

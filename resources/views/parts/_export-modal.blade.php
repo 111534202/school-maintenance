@@ -1,15 +1,16 @@
 {{-- 零件清單匯出視窗：先預覽，勾選要留下的欄位（上方）與零件（每一列左邊），再按「匯出 Excel」或「匯出 PDF」。
-     零件範圍＝目前搜尋條件下的全部零件（不分頁）；欄位與零件履歷「基本資料」相同。 --}}
+     零件範圍＝$exportParts（零件庫存列表：目前搜尋條件下的全部零件，不分頁；低庫存視窗：全部低庫存品項）；
+     欄位與零件履歷「基本資料」相同。$modalId 讓同一頁可以放兩個（零件清單、低庫存品項）。 --}}
 @php($exportColumns = \App\Support\PartExportColumns::COLUMNS)
-<div class="modal fade" id="partsExportModal" tabindex="-1" aria-labelledby="partsExportTitle" aria-hidden="true">
+<div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}Title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <form method="GET" action="{{ route('parts.export', 'excel') }}" class="modal-content" id="partsExportForm">
+        <form method="GET" action="{{ route('parts.export', 'excel') }}" class="modal-content parts-export-form" id="{{ $modalId }}Form">
             <div class="modal-header">
-                <h2 class="modal-title h5" id="partsExportTitle">匯出零件清單</h2>
+                <h2 class="modal-title h5" id="{{ $modalId }}Title">{{ $modalTitle }}</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
             </div>
             <div class="modal-body">
-                @if (request()->filled('keyword'))
+                @if ($withKeyword && request()->filled('keyword'))
                     <input type="hidden" name="keyword" value="{{ request('keyword') }}">
                     <p class="small text-muted">目前搜尋「{{ request('keyword') }}」，只列出符合的零件。</p>
                 @endif
@@ -19,8 +20,8 @@
                     <div class="d-flex flex-wrap gap-3">
                         @foreach ($exportColumns as $key => $label)
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="columns[]" value="{{ $key }}" id="export_col_{{ $key }}" data-export-col="{{ $key }}" checked>
-                                <label class="form-check-label" for="export_col_{{ $key }}">{{ $label }}</label>
+                                <input class="form-check-input" type="checkbox" name="columns[]" value="{{ $key }}" id="{{ $modalId }}_col_{{ $key }}" data-export-col="{{ $key }}" checked>
+                                <label class="form-check-label" for="{{ $modalId }}_col_{{ $key }}">{{ $label }}</label>
                             </div>
                         @endforeach
                     </div>
@@ -28,7 +29,7 @@
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                     <span class="fw-semibold">預覽</span>
-                    <span class="small text-muted" id="partsExportSummary" aria-live="polite"></span>
+                    <span class="small text-muted" data-export-summary aria-live="polite"></span>
                 </div>
                 <div class="table-responsive">
                     {{-- data-no-onion：這張是預覽用的表格，不要變成清單。 --}}
@@ -36,7 +37,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="text-center" style="width: 2.5rem;">
-                                    <input class="form-check-input" type="checkbox" id="partsExportAll" checked aria-label="全選／全不選零件">
+                                    <input class="form-check-input" type="checkbox" data-export-all checked aria-label="全選／全不選零件">
                                 </th>
                                 @foreach ($exportColumns as $key => $label)
                                     <th class="text-nowrap {{ in_array($key, \App\Support\PartExportColumns::NUMERIC, true) ? 'text-end' : '' }}" data-export-cell="{{ $key }}">{{ $label }}</th>
@@ -72,13 +73,12 @@
     </div>
 </div>
 
+@once
 <script>
-    // 匯出預覽：取消勾選的欄位在預覽裡隱藏；沒有勾選任何欄位或零件時不能匯出。
-    (function () {
-        var form = document.getElementById('partsExportForm');
-        if (!form) return;
-        var all = document.getElementById('partsExportAll');
-        var summary = document.getElementById('partsExportSummary');
+    // 匯出預覽（每個 .parts-export-form 各自運作）：取消勾選的欄位在預覽裡隱藏；沒有勾選任何欄位或零件時不能匯出。
+    document.addEventListener('DOMContentLoaded', function () { document.querySelectorAll('.parts-export-form').forEach(function (form) {
+        var all = form.querySelector('[data-export-all]');
+        var summary = form.querySelector('[data-export-summary]');
         var rows = Array.prototype.slice.call(form.querySelectorAll('[data-export-row]'));
         var cols = Array.prototype.slice.call(form.querySelectorAll('[data-export-col]'));
 
@@ -97,5 +97,6 @@
         all.addEventListener('change', function () { rows.forEach(function (r) { r.checked = all.checked; }); refresh(); });
         form.addEventListener('change', refresh);
         refresh();
-    })();
+    }); });
 </script>
+@endonce

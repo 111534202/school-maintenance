@@ -475,6 +475,13 @@
                 frame.title = title.textContent;
                 frame.style.height = '240px';   // 先用小的高度，表單載入後依內容高度調整（見 modal-size）
                 frame.src = url.href;
+                // 從另一個已打開的視窗裡點（例如低庫存品項視窗）：先關掉那個視窗，再打開這個。
+                var host = a.closest('.modal.show');
+                if (host && host !== modalEl) {
+                    host.addEventListener('hidden.bs.modal', function () { modal().show(); }, { once: true });
+                    window.bootstrap.Modal.getOrCreateInstance(host).hide();
+                    return;
+                }
                 modal().show();
             });
             window.addEventListener('message', function (event) {
