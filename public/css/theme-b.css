@@ -65,7 +65,9 @@ body.tb-body {
     .tb-topnav .dropdown:hover > .nav-link { color: #FFFFFF; background-color: rgba(255, 255, 255, 0.1); }
     .tb-topnav .dropdown-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
 }
-.tb-navbar { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+/* 頂端列高度固定為 Bootstrap 預設的 56px（上下各 0.5rem）：洋蔥的「一個畫面」（fit-screen）以這個高度計算清單能放幾筆，
+   多出幾 px 就會讓列表頁多出捲動。同步自 integrate/all（彭仕衡 ff4af8d）。 */
+.tb-navbar { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 
 /* 側邊選單：目前所在頁面改成墨綠底。 */
 .tb-body .offcanvas .nav-link.active { background-color: var(--tb-accent); color: #FFFFFF; }

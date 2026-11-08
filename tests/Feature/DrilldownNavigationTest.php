@@ -145,6 +145,25 @@ class DrilldownNavigationTest extends TestCase
         }
     }
 
+    // 點頂端列的網站名稱可以回到主控台（任何頁面都一樣；沒登入的畫面只是標題，不是連結）。同步自 integrate/all（5cc43ed）。
+    public function test_the_site_title_links_back_to_the_dashboard_when_signed_in(): void
+    {
+        foreach (['dashboard', 'users.index', 'reservations.index', 'parts.index'] as $route) {
+            $this->assertStringContainsString('<a href="'.route('dashboard').'" class="navbar-brand', $this->page('admin', $route), "{$route} 的網站名稱沒有連到主控台");
+        }
+
+        $this->get(route('login'))->assertOk()->assertDontSee('<a href="'.route('dashboard').'" class="navbar-brand', false);
+    }
+
+    // 頂端列高度固定 56px：上下留白各 0.5rem（Bootstrap 預設），洋蔥的「一個畫面」以這個高度計算清單能放幾筆。
+    public function test_the_top_bar_keeps_the_fixed_56px_height(): void
+    {
+        $css = file_get_contents(public_path('css/theme-b.css'));
+
+        $this->assertStringContainsString('.tb-navbar { padding-top: 0.5rem; padding-bottom: 0.5rem; }', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.tb-navbar\s*\{[^}]*padding-(top|bottom):\s*(?!0\.5rem)[0-9.]+rem/', $css, '頂端列的上下留白被改成 0.5rem 以外的值，高度就不是 56px');
+    }
+
     public function test_group_containing_current_page_is_opened_by_default(): void
     {
         $html = $this->page('admin', 'maintenance-orders.index');

@@ -96,7 +96,12 @@
                 @endunless
             @endauth
             {{-- 網站名稱（左側標題）。 --}}
-            <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            {{-- 已登入時，點網站名稱回到主控台（沒登入就只是標題）。同步自 integrate/all（彭仕衡 5cc43ed）。 --}}
+            @auth
+                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;" data-site-title>{{ __('common.site_title') }}</a>
+            @else
+                <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+            @endauth
             {{-- 寬螢幕（1200px 以上）選單也直接排在上方列（top-nav），比較窄時只用漢堡選單。 --}}
             @auth
                 @include('layouts.partials.top-nav')
