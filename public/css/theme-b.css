@@ -295,7 +295,7 @@ body.tb-body {
 
 /* 橫條圖（備品使用彙總） */
 .tb-bars { display: flex; flex-direction: column; gap: 14px; }
-.tb-bar-row { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr) 130px 120px; align-items: center; gap: 16px; }
+.tb-bar-row { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr) auto; align-items: center; gap: 16px; }
 .tb-bar-track { height: 12px; background: #F1EDE4; border-radius: 999px; overflow: hidden; }
 .tb-bar-fill { height: 100%; border-radius: 999px; background: var(--tb-accent); }
 

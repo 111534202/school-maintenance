@@ -10,20 +10,12 @@
             <p class="tb-subtitle">依維修紀錄建立時間統計備品材料成本；單價為扣料當下該批採購的單價。</p>
         </div>
 
-        <div class="tb-actions">
-            <a href="{{ route('repair-cost-analysis.export.excel', request()->only(['start_date', 'end_date', 'status', 'scraps'])) }}" class="tb-btn tb-btn-outline">
-                <i class="bi bi-file-earmark-excel" style="color: #1D6B3F" aria-hidden="true"></i>匯出 Excel
-            </a>
-            <a href="{{ route('repair-cost-analysis.export.pdf', request()->only(['start_date', 'end_date', 'status', 'scraps'])) }}" class="tb-btn tb-btn-outline">
-                <i class="bi bi-file-earmark-pdf" style="color: #A3301F" aria-hidden="true"></i>匯出 PDF
-            </a>
-        </div>
     </div>
 
-    {{-- 日期篩選：兩個日期都不填時，檢視全部日期。 --}}
-    {{-- 篩選列：用全站共用的 filter-bar，洋蔥式會收成「篩選條件」摘要列，點開從右邊滑出（見 layouts/partials/filter-onion）。 --}}
+    {{-- 篩選：直接顯示在頁面上（data-no-onion：不收成右邊滑出的「篩選條件」面板）；寬度不夠時自動換行，不用左右滑動。
+         兩個日期都不填時，檢視全部日期。 --}}
     <div class="tb-card tb-card-pad">
-    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row">
+    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row cost-filter" data-no-onion>
         <div class="tb-field">
             <label for="start_date" class="form-label small mb-1">開始日期</label>
             <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
@@ -107,57 +99,25 @@
                     <div class="tb-bar-row">
                         <div class="fw-medium">{{ $item->part?->name ?? '零件資料不存在' }}</div>
                         <div class="tb-bar-track" aria-hidden="true"><div class="tb-bar-fill" style="width: {{ $barWidth }}%"></div></div>
-                        <div class="text-end fw-bold tb-num">NT$ {{ number_format($item->known_subtotal) }}</div>
-                        <div class="text-end tb-note tb-num">
-                            共 {{ number_format($item->total_quantity) }} {{ $item->part?->unit }}
+                        {{-- 金額與「共 N 條」固定排在一起（數量在金額右邊）。 --}}
+                        <div class="tb-bar-value tb-num">
+                            <span class="fw-bold">NT$ {{ number_format($item->known_subtotal) }}</span>
+                            <span class="tb-note">共 {{ number_format($item->total_quantity) }} {{ $item->part?->unit }}</span>
                             @if ((int) $item->missing_price_count > 0)
-                                <span class="tb-c-danger d-block">缺少單價 {{ number_format($item->missing_price_count) }} 筆</span>
+                                <span class="tb-c-danger tb-bar-missing">缺少單價 {{ number_format($item->missing_price_count) }} 筆</span>
                             @endif
                         </div>
                     </div>
                 @endforeach
             </div>
 
-            {{-- 同樣的數字也用表格列出，方便對照與螢幕報讀。 --}}
-            <details>
-                <summary class="tb-note" style="cursor: pointer">以表格檢視</summary>
-                <div class="table-responsive mt-2">
-                    {{-- 這張是「以表格檢視」本身，不轉成洋蔥式清單。 --}}
-                    <table class="tb-table" data-no-onion>
-                        <thead>
-                            <tr>
-                                <th>備品名稱</th>
-                                <th class="text-end">使用總數量</th>
-                                <th class="text-end">已知材料費小計</th>
-                                <th class="text-end">缺少單價明細數</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($partUsageSummary as $item)
-                                <tr>
-                                    <td>{{ $item->part?->name ?? '零件資料不存在' }}</td>
-                                    <td class="text-end tb-num text-nowrap">{{ number_format($item->total_quantity) }} {{ $item->part?->unit }}</td>
-                                    <td class="text-end tb-num">NT$ {{ number_format($item->known_subtotal) }}</td>
-                                    <td class="text-end tb-num">
-                                        @if ((int) $item->missing_price_count > 0)
-                                            <span class="tb-c-danger">{{ number_format($item->missing_price_count) }} 筆</span>
-                                        @else
-                                            0 筆
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </details>
 
             <p class="tb-note">使用總數量包含缺少歷史單價的明細；已知材料費小計只計算有歷史單價的明細。</p>
         @endif
     </section>
 
     {{-- 零件使用明細。 --}}
-    {{-- 標題列（data-onion-header）：洋蔥式的「表格／清單檢視」切換鈕會放在它的右邊，清單接在標題列下方（跟零件履歷的採購紀錄一樣）。 --}}
+    {{-- 固定清單（data-onion-list-only，不提供表格檢視）；清單接在標題列下方。 --}}
     <section class="tb-table-wrap" aria-labelledby="detailTitle">
         <div class="tb-section-head" data-onion-header>
             <h2 id="detailTitle" class="tb-section-title">材料費明細</h2>
@@ -166,7 +126,7 @@
                 <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有可檢視的零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="材料費明細">
+                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="材料費明細" data-onion-list-only>
                         <thead>
                             <tr>
                                 <th>維修紀錄日期</th>
@@ -260,7 +220,7 @@
                 <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有報廢紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="報廢明細">
+                    <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="報廢明細" data-onion-list-only>
                         <thead>
                             <tr>
                                 <th>報廢日期</th>
@@ -290,5 +250,24 @@
             @endif
         </section>
     @endif
+
+    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊與欄位，再選 Excel 或 PDF（跟零件庫存列表一樣）。 --}}
+    <div class="d-flex justify-content-end">
+        <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#costExportModal">
+            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+        </button>
+    </div>
 </div>
+
+@include('repair-cost-analysis._export-modal')
+
+<style>
+    /* 篩選欄位放得下就排成一列，不夠寬時換行（不用左右滑動）。 */
+    .cost-filter.filter-bar { flex-wrap: wrap; overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+    .cost-filter.filter-bar > .tb-field { flex: 1 1 160px; min-width: 0; }
+    .cost-filter.filter-bar > .d-inline-flex { flex: 0 0 auto; }
+    /* 備品使用彙總：金額右邊緊接著「共 N 條」。 */
+    .tb-bar-value { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; column-gap: 12px; text-align: right; }
+    .tb-bar-value .tb-bar-missing { flex-basis: 100%; font-size: 0.85rem; }
+</style>
 @endsection

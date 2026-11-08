@@ -6,8 +6,7 @@
 @php
     $currentStatus = request('status');
     // 目前的搜尋條件（切換統計卡時保留）。
-    $search = array_filter(request()->only(['result', 'submitted_on', 'classroom_id', 'class_name', 'requester', 'slot_date']), 'filled');
-    $resultLabels = ['pending' => '待審核', 'approved' => '已核准', 'rejected' => '已拒絕', 'partially_approved' => '部分核准'];
+    $search = array_filter(request()->only(['keyword']), 'filled');
 @endphp
 <div class="tb">
     <div class="tb-header">
@@ -35,52 +34,19 @@
         </div>
     @endif
 
-    {{-- 搜尋：申請狀態、送出時間（日期）、教室、申請班級、申請人、申請時段（日期）。
-         直接顯示在頁面上（data-no-onion：不收成「篩選條件」摘要列）。 --}}
-    <form method="GET" action="{{ route('reservations.index') }}" class="tb-card reservation-search" data-no-onion role="search" aria-label="搜尋空間申請">
+    {{-- 搜尋：跟零件庫存一樣只有一個輸入框，自己輸入任何一段文字（申請狀態、送出時間、教室、申請班級、申請人、申請時段）。
+         搜尋框和按鈕不論寬窄都在同一行。 --}}
+    <form method="GET" action="{{ route('reservations.index') }}" class="tb-form-row tb-form-row-nowrap" role="search">
         @if (in_array($currentStatus, ['pending', 'reviewed'], true))
             <input type="hidden" name="status" value="{{ $currentStatus }}">
         @endif
-        <div class="rs-field">
-            <label for="rs_result" class="form-label">申請狀態</label>
-            <select name="result" id="rs_result" class="form-select form-select-sm">
-                <option value="">全部</option>
-                @foreach ($resultLabels as $value => $label)
-                    <option value="{{ $value }}" @selected(request('result') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="rs-field">
-            <label for="rs_submitted_on" class="form-label">送出時間</label>
-            <input type="date" name="submitted_on" id="rs_submitted_on" class="form-control form-control-sm" value="{{ request('submitted_on') }}">
-        </div>
-        <div class="rs-field">
-            <label for="rs_classroom" class="form-label">教室</label>
-            <select name="classroom_id" id="rs_classroom" class="form-select form-select-sm">
-                <option value="">全部</option>
-                @foreach ($classrooms as $classroom)
-                    <option value="{{ $classroom->id }}" @selected((string) request('classroom_id') === (string) $classroom->id)>{{ $classroom->name }}（{{ $classroom->classroom_code }}）</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="rs-field">
-            <label for="rs_class_name" class="form-label">申請班級</label>
-            <input type="text" name="class_name" id="rs_class_name" class="form-control form-control-sm" value="{{ request('class_name') }}" placeholder="班級名稱">
-        </div>
-        <div class="rs-field">
-            <label for="rs_requester" class="form-label">申請人</label>
-            <input type="text" name="requester" id="rs_requester" class="form-control form-control-sm" value="{{ request('requester') }}" placeholder="姓名">
-        </div>
-        <div class="rs-field">
-            <label for="rs_slot_date" class="form-label">申請時段</label>
-            <input type="date" name="slot_date" id="rs_slot_date" class="form-control form-control-sm" value="{{ request('slot_date') }}">
-        </div>
-        <div class="rs-actions">
-            <button type="submit" class="btn btn-sm btn-success">搜尋</button>
-            @if ($search)
-                <a href="{{ route('reservations.index', array_filter(['status' => in_array($currentStatus, ['pending', 'reviewed'], true) ? $currentStatus : null])) }}" class="btn btn-sm btn-outline-secondary">清除</a>
-            @endif
-        </div>
+        <label for="keyword" class="visually-hidden">搜尋（申請狀態／送出時間／教室／申請班級／申請人／申請時段）</label>
+        <input type="text" name="keyword" id="keyword" class="tb-input tb-input-pill" style="flex: 1 1 0; min-width: 0"
+            value="{{ request('keyword') }}" placeholder="搜尋申請狀態、送出時間、教室、申請班級、申請人或申請時段，例如 待審核、2026-11-06、第 6 節">
+        <button type="submit" class="tb-btn tb-btn-dark">搜尋</button>
+        @if ($search)
+            <a href="{{ route('reservations.index', array_filter(['status' => in_array($currentStatus, ['pending', 'reviewed'], true) ? $currentStatus : null])) }}" class="tb-btn tb-btn-outline">清除</a>
+        @endif
     </form>
 
     {{-- 申請狀態篩選：三張統計卡同時是篩選按鈕（保留上面的搜尋條件）；主控台「空間預約待審核」卡片會連到「未審核」。 --}}
@@ -131,10 +97,4 @@
     @endif
 </div>
 
-<style>
-    .reservation-search { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1rem; padding: 18px 22px; }
-    .reservation-search .rs-field { flex: 1 1 150px; min-width: 0; }
-    .reservation-search .form-label { font-size: 0.85rem; margin-bottom: 0.25rem; }
-    .reservation-search .rs-actions { display: flex; gap: 0.5rem; flex: 0 0 auto; }
-</style>
 @endsection

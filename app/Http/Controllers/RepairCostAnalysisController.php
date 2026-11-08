@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\CostReportSelectedExport;
 use App\Exports\RepairCostAnalysisExport;
+use App\Support\CostReportSections;
 use App\Services\RepairCostAnalysisService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -32,6 +34,9 @@ class RepairCostAnalysisController extends Controller
             $filters
         );
 
+        // 「匯出 Excel／PDF」預覽視窗：各區塊的欄位與資料（跟匯出的內容相同）。
+        $data['exportSections'] = CostReportSections::build($data);
+
         return view('repair-cost-analysis.index', $data);
     }
 
@@ -48,6 +53,11 @@ class RepairCostAnalysisController extends Controller
         );
 
         $fileName = 'repair-cost-analysis-' . now()->format('Y-m-d-His') . '.xlsx';
+
+        // 從預覽視窗送出：只匯出勾選的區塊與欄位；直接開網址（沒有 sections）時維持完整匯出。
+        if ($request->has('sections')) {
+            return Excel::download(new CostReportSelectedExport($this->selectedSections($request, $data)), $fileName);
+        }
 
         return Excel::download(
             new RepairCostAnalysisExport($data),
@@ -75,12 +85,41 @@ class RepairCostAnalysisController extends Controller
         // 全新複製下來的專案裡沒有，沒建好會直接 500，所以匯出前先確保它存在。
         File::ensureDirectoryExists(storage_path('fonts'));
 
-        $pdf = Pdf::loadView('repair-cost-analysis.pdf', $data)
-            ->setPaper('a4', 'landscape');
+        $pdf = $request->has('sections')
+            ? Pdf::loadView('repair-cost-analysis.pdf-selected', $data + ['sections' => $this->selectedSections($request, $data)])
+            : Pdf::loadView('repair-cost-analysis.pdf', $data);
+        $pdf->setPaper('a4', 'landscape');
 
         $fileName = 'repair-cost-analysis-' . now()->format('Y-m-d-His') . '.pdf';
 
         return $pdf->download($fileName);
+    }
+
+    /**
+     * 預覽視窗勾選的區塊（sections[]）與各區塊的欄位（cols[區塊][] = 欄位索引）。
+     * 至少要勾一個區塊，而且勾選的區塊至少要有一個欄位。
+     */
+    private function selectedSections(Request $request, array $data): array
+    {
+        $request->validate([
+            'sections' => ['required', 'array', 'min:1'],
+            'sections.*' => ['string', 'in:summary,parts,details,scraps'],
+            'cols' => ['nullable', 'array'],
+        ], [
+            'sections.required' => '請至少勾選一個要匯出的區塊。',
+        ]);
+
+        $picked = CostReportSections::pick(
+            CostReportSections::build($data),
+            $request->input('sections', []),
+            $request->input('cols', [])
+        );
+
+        if (! $picked) {
+            throw ValidationException::withMessages(['cols' => '請至少勾選一個要匯出的欄位。']);
+        }
+
+        return $picked;
     }
 
     /**

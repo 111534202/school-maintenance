@@ -29,22 +29,9 @@ class ClassroomReservationController extends Controller
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")   // 未審核的排前面
             ->orderByDesc('created_at');
 
-        // 搜尋：申請狀態、送出日期、教室、申請班級、申請人、申請時段（日期）。統計卡的數字也跟著搜尋條件。
-        $search = $request->validate([
-            'result' => ['nullable', 'in:pending,approved,rejected,partially_approved'],
-            'submitted_on' => ['nullable', 'date_format:Y-m-d'],
-            'classroom_id' => ['nullable', 'integer'],
-            'class_name' => ['nullable', 'string', 'max:100'],
-            'requester' => ['nullable', 'string', 'max:100'],
-            'slot_date' => ['nullable', 'date_format:Y-m-d'],
-        ]);
-        $query
-            ->when($search['result'] ?? null, fn ($q, $v) => $q->where('status', $v))
-            ->when($search['submitted_on'] ?? null, fn ($q, $v) => $q->whereDate('created_at', $v))
-            ->when($search['classroom_id'] ?? null, fn ($q, $v) => $q->where('classroom_id', $v))
-            ->when($search['class_name'] ?? null, fn ($q, $v) => $q->where('class_name', 'like', '%' . $v . '%'))
-            ->when($search['requester'] ?? null, fn ($q, $v) => $q->whereHas('requester', fn ($u) => $u->where('name', 'like', '%' . $v . '%')))
-            ->when($search['slot_date'] ?? null, fn ($q, $v) => $q->whereHas('slots', fn ($slot) => $slot->whereDate('reservation_date', $v)));
+        // 搜尋：一個輸入框，可以輸入申請狀態、送出時間、教室、申請班級、申請人、申請時段（日期或節次）的任何一段文字。
+        $request->validate(['keyword' => ['nullable', 'string', 'max:100']]);
+        $this->applyKeyword($query, trim((string) $request->input('keyword')));
 
         // 列表上方三張統計卡：全部／未審核／已審核（套用搜尋條件後、統計卡篩選前計算）。
         $counts = [
@@ -63,9 +50,47 @@ class ClassroomReservationController extends Controller
 
         $reservations = $query->paginate(15)->withQueryString();
 
-        $classrooms = Classroom::query()->orderBy('classroom_code')->get(['id', 'name', 'classroom_code']);
+        return view('reservations.index', compact('reservations', 'counts'));
+    }
 
-        return view('reservations.index', compact('reservations', 'counts', 'classrooms'));
+    /**
+     * 空間申請的關鍵字搜尋（符合任一項就列出）：
+     * 申請狀態（待審核／未審核、已核准、已拒絕、部分核准、已審核）、送出時間（2026-11-06、2026/11/06 13:24）、
+     * 教室名稱或代碼、申請班級、申請人、申請時段（日期，或「第 6 節」「早自習」）。
+     */
+    private function applyKeyword($query, string $keyword): void
+    {
+        if ($keyword === '') {
+            return;
+        }
+
+        $like = '%' . $keyword . '%';
+        $dateLike = '%' . str_replace('/', '-', $keyword) . '%';   // 2026/11/06 也能找
+        $statuses = collect([
+            ClassroomReservation::STATUS_PENDING => ['待審核', '未審核'],
+            ClassroomReservation::STATUS_APPROVED => ['已核准', '核准', '已審核'],
+            ClassroomReservation::STATUS_REJECTED => ['已拒絕', '拒絕', '已審核'],
+            ClassroomReservation::STATUS_PARTIALLY_APPROVED => ['部分核准', '已審核'],
+        ])->filter(fn ($words) => collect($words)->contains(fn ($word) => str_contains($word, $keyword) || str_contains($keyword, $word)))->keys()->all();
+        $period = match (true) {
+            str_contains($keyword, '早自習') => 0,
+            (bool) preg_match('/第\s*(\d+)\s*節/u', $keyword, $m) => (int) $m[1],
+            default => null,
+        };
+
+        $query->where(function ($q) use ($like, $dateLike, $statuses, $period) {
+            $q->where('class_name', 'like', $like)
+                ->orWhere('created_at', 'like', $dateLike)
+                ->orWhereHas('requester', fn ($u) => $u->where('name', 'like', $like))
+                ->orWhereHas('classroom', fn ($c) => $c->where('name', 'like', $like)->orWhere('classroom_code', 'like', $like))
+                ->orWhereHas('slots', fn ($slot) => $slot->where('reservation_date', 'like', $dateLike));
+            if ($statuses) {
+                $q->orWhereIn('status', $statuses);
+            }
+            if ($period !== null) {
+                $q->orWhereHas('slots', fn ($slot) => $slot->where('period_number', $period));
+            }
+        });
     }
 
     /**

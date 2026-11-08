@@ -251,17 +251,25 @@ class ReservationReviewTest extends TestCase
             ->assertSee('tb-list tb-list-grouped', false)
             ->assertSee('顯示第 1 到 2 筆，共 2 筆');
 
-        $this->get(route('reservations.index', ['class_name' => '資五']))->assertSee('資五孝')->assertDontSee('一年甲班');
-        $this->get(route('reservations.index', ['requester' => '小明']))->assertSee('一年甲班')->assertDontSee('資五孝');
-        $this->get(route('reservations.index', ['result' => 'approved']))->assertSee('一年甲班')->assertDontSee('資五孝');
-        $this->get(route('reservations.index', ['slot_date' => $date]))->assertSee('一年甲班')->assertDontSee('資五孝');
-        $this->get(route('reservations.index', ['classroom_id' => $this->classroom->id, 'submitted_on' => now()->format('Y-m-d')]))
-            ->assertSee('資五孝')->assertSee('一年甲班');
-        $this->get(route('reservations.index', ['class_name' => '不存在']))->assertSee('找不到符合搜尋條件的申請');
+        // 一個輸入框：申請班級、申請人、申請狀態、申請時段（日期或節次）、送出時間、教室都找得到。
+        $find = fn (string $keyword) => $this->get(route('reservations.index', ['keyword' => $keyword]));
+        $find('資五')->assertSee('資五孝')->assertDontSee('一年甲班');
+        $find('小明')->assertSee('一年甲班')->assertDontSee('資五孝');
+        $find('已核准')->assertSee('一年甲班')->assertDontSee('資五孝');
+        $find('待審核')->assertSee('資五孝')->assertDontSee('一年甲班');
+        $find($date)->assertSee('一年甲班')->assertDontSee('資五孝');
+        $find(str_replace('-', '/', $date))->assertSee('一年甲班')->assertDontSee('資五孝');
+        $find(now()->format('Y-m-d'))->assertSee('資五孝')->assertSee('一年甲班');   // 送出時間
+        $find('A101')->assertSee('資五孝')->assertSee('一年甲班');                    // 教室代碼
+        $find('不存在')->assertSee('找不到符合搜尋條件的申請');
+
+        $period = $this->request([[6, '13:10', '14:00']], ['class_name' => '節次班']);
+        $period->slots[0]->update(['period_number' => 6]);
+        $find('第 6 節')->assertSee('節次班')->assertDontSee('資五孝');
 
         // 統計卡數字跟著搜尋條件，切換統計卡時保留搜尋條件。
-        $this->get(route('reservations.index', ['class_name' => '資五']))
-            ->assertSee('href="' . e(route('reservations.index', ['class_name' => '資五', 'status' => 'pending'])) . '"', false);
+        $this->get(route('reservations.index', ['keyword' => '資五']))
+            ->assertSee('href="' . e(route('reservations.index', ['keyword' => '資五', 'status' => 'pending'])) . '"', false);
 
         // 超過 15 筆時有分頁，摘要文字也是中文。
         foreach (range(1, 15) as $i) {
