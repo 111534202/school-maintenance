@@ -55,48 +55,15 @@ class CostReportSections
         return $sections;
     }
 
-    /**
-     * 只留下勾選的區塊與欄位（$columns：區塊代號 => 欄位索引）。
-     *
-     * @param  array<int, string>  $keys
-     * @param  array<string, array<int, int|string>>  $columns
-     */
+    /** 只留下勾選的區塊與欄位（見 ExportSections::pick）。 */
     public static function pick(array $sections, array $keys, array $columns): array
     {
-        $picked = [];
-
-        foreach ($sections as $key => $section) {
-            if (! in_array($key, $keys, true)) {
-                continue;
-            }
-
-            $indexes = array_values(array_filter(
-                array_map('intval', $columns[$key] ?? []),
-                fn (int $i) => array_key_exists($i, $section['headings'])
-            ));
-            sort($indexes);
-            if (! $indexes) {
-                continue;
-            }
-
-            $picked[$key] = [
-                'title' => $section['title'],
-                'headings' => array_map(fn ($i) => $section['headings'][$i], $indexes),
-                'rows' => array_map(fn ($row) => array_map(fn ($i) => $row[$i] ?? '', $indexes), $section['rows']),
-                'numeric' => array_keys(array_filter($indexes, fn ($i) => in_array($i, $section['numeric'], true))),
-            ];
-        }
-
-        return $picked;
+        return ExportSections::pick($sections, $keys, $columns);
     }
 
-    /** 畫面與 PDF 的顯示文字：數字加千分位（最多兩位小數），其他照原樣。 */
+    /** 顯示文字（見 ExportSections::display）。 */
     public static function display(mixed $value): string
     {
-        if (is_int($value) || is_float($value)) {
-            return rtrim(rtrim(number_format((float) $value, 2), '0'), '.');
-        }
-
-        return (string) $value;
+        return ExportSections::display($value);
     }
 }

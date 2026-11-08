@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Exports\CostReportSelectedExport;
+use App\Exports\SectionsExport;
 use App\Models\Part;
 use App\Models\RepairLog;
 use App\Models\RepairPartUsage;
@@ -61,7 +61,7 @@ class CostReportSelectedExportTest extends TestCase
         $this->assertSame(['備品名稱', '已知材料費小計'], $picked['parts']['headings']);
         $this->assertSame([1], $picked['parts']['numeric']);
 
-        $sheets = (new CostReportSelectedExport($picked))->sheets();
+        $sheets = (new SectionsExport($picked))->sheets();
         $this->assertCount(1, $sheets);
         $this->assertSame('備品使用彙總', $sheets[0]->title());
         $this->assertContains(['HDMI 線', 120.0], $sheets[0]->array());

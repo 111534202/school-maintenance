@@ -159,13 +159,14 @@
 
                                 <tr>
                                     <td class="tb-num text-nowrap">
-                                        {{ $usage->repairLog?->created_at?->format('Y-m-d H:i') ?? '—' }}
+                                        {{ $usage->repairLog?->created_at?->format('Y-m-d') ?? '—' }}
                                     </td>
                                     <td>
                                         @if ($repairRequest)
                                             <div class="fw-bold">{{ $repairRequest->title }}</div>
+                                            {{-- 點「案件 #8」到報修單（跟零件履歷的使用紀錄一樣）。 --}}
                                             <small class="tb-muted">
-                                                案件 #{{ $repairRequest->id }}
+                                                <a href="{{ route('repairs.show', $repairRequest) }}">案件 #{{ $repairRequest->id }}</a>
                                                 · 維修紀錄 #{{ $usage->repair_log_id }}
                                             </small>
                                         @else
@@ -259,7 +260,15 @@
     </div>
 </div>
 
-@include('repair-cost-analysis._export-modal')
+@include('exports._sections-modal', [
+    'modalId' => 'costExportModal',
+    'modalTitle' => '匯出成本分析報表',
+    'excelUrl' => route('repair-cost-analysis.export.excel'),
+    'pdfUrl' => route('repair-cost-analysis.export.pdf'),
+    'hidden' => request()->only(['start_date', 'end_date', 'status', 'scraps']),
+    'note' => '範圍跟著目前的篩選：' . ($startDate ?: '不限') . ' 至 ' . ($endDate ?: '不限') . '；勾選要匯出的區塊與欄位，取消勾選的欄位在預覽裡會隱藏。',
+    'sections' => $exportSections,
+])
 
 <style>
     /* 篩選欄位放得下就排成一列，不夠寬時換行（不用左右滑動）。 */

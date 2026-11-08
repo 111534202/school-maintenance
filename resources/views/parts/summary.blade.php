@@ -7,13 +7,14 @@
 @php($inModal = request()->boolean('modal'))
 
 {{-- 零件庫存（基本資料）：零件庫存列表或低庫存視窗點一筆時，在畫面中的對話框（標題「零件庫存」）裡打開這一頁（?modal=1）。
-     版面與空間申請的「預約詳細」相同：名稱與內容放得下就左右並排，放不下才上下排列。按「查看詳細」進零件履歷。 --}}
+     名稱與內容固定左右並排（跟零件履歷的基本資料一樣）。按「查看詳細」進零件履歷。 --}}
 @unless ($inModal)
     <h1 class="h3 mb-3">零件庫存</h1>
 @endunless
 
 <div class="{{ $inModal ? '' : 'card p-4' }}" style="max-width: 720px;">
-    <dl class="mb-0 reservation-detail" id="partSummary">
+    {{-- 名稱與內容固定同一行（.tb-dl）；零件編號、名稱、規格固定字數超過以「…」結尾，品牌/型號太長換行。 --}}
+    <dl class="tb-dl mb-0" id="partSummary">
         <dt>庫存狀態</dt>
         <dd>
             @if ($part->isLowStock())
@@ -25,7 +26,14 @@
 
         @foreach (\App\Support\PartExportColumns::COLUMNS as $key => $label)
             <dt>{{ $label }}</dt>
-            <dd class="{{ in_array($key, ['name', 'specification', 'brand_model'], true) ? 'rd-wrap' : '' }} {{ $key === 'current_stock' && $part->isLowStock() ? 'text-danger fw-semibold' : '' }}">{{ $values[$key] }}</dd>
+            @php($clip = ['part_code' => 'tb-clip-code', 'name' => 'tb-clip-name', 'specification' => 'tb-clip-spec'][$key] ?? null)
+            <dd class="{{ $key === 'brand_model' ? 'tb-dl-wrap' : '' }} {{ $key === 'current_stock' && $part->isLowStock() ? 'text-danger fw-semibold' : '' }}">
+                @if ($clip)
+                    <span class="tb-clip {{ $clip }}" title="{{ $values[$key] }}">{{ $values[$key] }}</span>
+                @else
+                    {{ $values[$key] }}
+                @endif
+            </dd>
         @endforeach
     </dl>
 
@@ -36,28 +44,4 @@
     </div>
 </div>
 
-<style>
-    .reservation-detail { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.5rem 2.5rem; }
-    .reservation-detail dt { font-weight: 700; }
-    .reservation-detail dd { margin: 0; min-width: 0; white-space: nowrap; }
-    .reservation-detail dd.rd-wrap { white-space: normal; overflow-wrap: anywhere; }
-    .reservation-detail.is-stacked { grid-template-columns: minmax(0, 1fr); gap: 0; }
-    .reservation-detail.is-stacked dt:not(:first-child) { margin-top: 0.75rem; }
-    .reservation-detail.is-stacked dd { white-space: normal; }
-</style>
-<script>
-    // 有一項內容（名稱、規格、品牌型號以外）在這個寬度放不下時，才改成名稱在上、內容在下。
-    (function () {
-        var dl = document.getElementById('partSummary');
-        function layout() {
-            dl.classList.remove('is-stacked');
-            var tooWide = Array.prototype.some.call(dl.querySelectorAll('dd:not(.rd-wrap)'), function (dd) {
-                return dd.scrollWidth > dd.clientWidth + 1;
-            });
-            dl.classList.toggle('is-stacked', tooWide);
-        }
-        layout();
-        window.addEventListener('resize', layout);
-    })();
-</script>
 @endsection

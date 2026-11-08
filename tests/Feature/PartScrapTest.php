@@ -60,7 +60,8 @@ class PartScrapTest extends TestCase
             ->assertSee('報廢紀錄')
             ->assertSee('損壞')
             ->assertSee('接頭斷裂')
-            ->assertSee('共報廢 3 條，損失 NT$ 70');
+            ->assertSee('共報廢 3 條')
+            ->assertDontSee('共報廢 3 條，損失');
     }
 
     public function test_scrapping_more_than_the_stock_or_without_a_reason_is_refused(): void

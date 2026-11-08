@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\CostReportSelectedExport;
+use App\Exports\SectionsExport;
 use App\Exports\RepairCostAnalysisExport;
 use App\Support\CostReportSections;
 use App\Services\RepairCostAnalysisService;
@@ -56,7 +56,7 @@ class RepairCostAnalysisController extends Controller
 
         // 從預覽視窗送出：只匯出勾選的區塊與欄位；直接開網址（沒有 sections）時維持完整匯出。
         if ($request->has('sections')) {
-            return Excel::download(new CostReportSelectedExport($this->selectedSections($request, $data)), $fileName);
+            return Excel::download(new SectionsExport($this->selectedSections($request, $data)), $fileName);
         }
 
         return Excel::download(

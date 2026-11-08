@@ -15,7 +15,7 @@ class PartExportColumns
         'part_code' => '零件編號',
         'name' => '名稱',
         'specification' => '規格',
-        'brand_model' => '品牌／型號',
+        'brand_model' => '品牌/型號',
         'average_price' => '平均單價',
         'current_stock' => '目前庫存',
         'safety_stock' => '安全庫存',

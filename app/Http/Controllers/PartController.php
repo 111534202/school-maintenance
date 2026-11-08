@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Exports\LowStockPartsExport;
 use App\Exports\PartsExport;
+use App\Exports\SectionsExport;
+use App\Support\ExportSections;
+use App\Support\PartHistorySections;
 use App\Models\Part;
 use App\Support\PartExportColumns;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\File;
+use Illuminate\Validation\ValidationException;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -147,6 +151,61 @@ class PartController extends Controller
 
     public function show(Part $part)
     {
+        [$purchases, $usages, $scraps] = $this->history($part);
+
+        // 「匯出 Excel／PDF」預覽視窗：基本資料、使用紀錄、採購紀錄、報廢紀錄（跟匯出的內容相同）。
+        $exportSections = PartHistorySections::build($part, $usages, $purchases, $scraps);
+
+        return view('parts.show', compact('part', 'purchases', 'usages', 'scraps', 'exportSections'));
+    }
+
+    /**
+     * 匯出零件履歷（Excel 或 PDF）：只匯出預覽視窗勾選的區塊（sections[]）與欄位（cols[區塊][]）。
+     */
+    public function exportHistory(Request $request, Part $part, string $format)
+    {
+        abort_unless(in_array($format, ['excel', 'pdf'], true), 404);
+
+        $request->validate([
+            'sections' => ['required', 'array', 'min:1'],
+            'sections.*' => ['string', 'in:basic,usages,purchases,scraps'],
+            'cols' => ['nullable', 'array'],
+        ], [
+            'sections.required' => '請至少勾選一個要匯出的區塊。',
+        ]);
+
+        [$purchases, $usages, $scraps] = $this->history($part);
+        $sections = ExportSections::pick(
+            PartHistorySections::build($part, $usages, $purchases, $scraps),
+            $request->input('sections', []),
+            $request->input('cols', [])
+        );
+        if (! $sections) {
+            throw ValidationException::withMessages(['cols' => '請至少勾選一個要匯出的欄位。']);
+        }
+
+        $fileName = 'part-history-' . $part->part_code . '-' . now()->format('Y-m-d-His');
+        if ($format === 'excel') {
+            return Excel::download(new SectionsExport($sections), $fileName . '.xlsx');
+        }
+
+        ini_set('memory_limit', '512M');   // 中文字型需要較多記憶體（同成本分析報表 PDF）
+        File::ensureDirectoryExists(storage_path('fonts'));
+
+        return Pdf::loadView('exports.sections-pdf', [
+            'title' => '零件履歷：' . $part->displayName(),
+            'meta' => ['匯出時間：' . now()->format('Y-m-d H:i'), '目前庫存：' . $part->withUnit($part->current_stock) . '　安全庫存：' . $part->withUnit($part->safety_stock)],
+            'sections' => $sections,
+        ])->setPaper('a4', 'landscape')->download($fileName . '.pdf');
+    }
+
+    /**
+     * 零件履歷的三種紀錄（頁面與匯出共用）：採購紀錄、使用紀錄（維修＋保養，新的在上面）、報廢紀錄。
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: \Illuminate\Support\Collection, 2: \Illuminate\Support\Collection}
+     */
+    private function history(Part $part): array
+    {
         $part->loadMissing('purchases.attachments');
         $purchases = $part->purchases->sortByDesc(fn ($p) => $p->purchase_date->format('Ymd') . sprintf('%010d', $p->id))->values();   // 新的在上面
 
@@ -186,7 +245,7 @@ class PartController extends Controller
         // 報廢紀錄：新的在上面；batches 用來算報廢損失。
         $scraps = $part->scraps()->with(['batches.purchase', 'recorder'])->orderByDesc('scrap_date')->orderByDesc('id')->get();
 
-        return view('parts.show', compact('part', 'purchases', 'usages', 'scraps'));
+        return [$purchases, $usages, $scraps];
     }
 
     public function edit(Part $part)
@@ -258,6 +317,9 @@ class PartController extends Controller
     /** 零件編號允許的字元：英文字母、數字、- _ .（會印在標籤或表單上，所以不允許空白與特殊符號）。 */
     private const CODE_PATTERN = '/^[A-Za-z0-9._-]+$/';
 
+    /** 零件編號用在網址裡，這些和固定網址重複（或瀏覽器會改寫的「.」「..」）不能當編號。 */
+    private const RESERVED_CODES = ['create', 'check-code', 'low-stock', 'export', '.', '..'];
+
     /** 零件編號的驗證規則：格式、長度，以及不可和其他零件編號、設備編號重複（大小寫視為相同）。 */
     private function codeRules(?int $ignoreId, bool $required): array
     {
@@ -267,7 +329,10 @@ class PartController extends Controller
             'max:20',
             'regex:' . self::CODE_PATTERN,
             function (string $attribute, mixed $value, \Closure $fail) use ($ignoreId) {
-                if (filled($value) && ($conflict = Part::codeConflict($value, $ignoreId))) {
+                // 零件編號會出現在網址（/parts/編號），不能和固定的網址名稱一樣。
+                if (filled($value) && in_array(strtolower($value), self::RESERVED_CODES, true)) {
+                    $fail('這個零件編號是系統保留的名稱，請換一個。');
+                } elseif (filled($value) && ($conflict = Part::codeConflict($value, $ignoreId))) {
                     $fail("{$conflict}，請換一個。");
                 }
             },

@@ -9,8 +9,8 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-/** 成本分析報表選擇性匯出的一張工作表（一個區塊、勾選的欄位）。 */
-class CostReportSelectedSheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize, WithStyles
+/** 勾選區塊匯出的一張工作表（一個區塊、勾選的欄位）。 */
+class SectionsSheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize, WithStyles
 {
     public function __construct(private string $title, private array $headings, private array $rows)
     {

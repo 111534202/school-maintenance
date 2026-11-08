@@ -9,28 +9,35 @@
             <h1 class="tb-title">零件庫存列表</h1>
             <p class="tb-subtitle">點選任一列查看零件履歷；庫存由採購紀錄與使用紀錄增減。</p>
         </div>
-        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary" data-modal-frame data-modal-title="新增零件">
+        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary d-none d-sm-inline-flex" data-modal-frame data-modal-title="新增零件">
             <i class="bi bi-plus-lg" aria-hidden="true"></i>新增零件
         </a>
     </div>
 
-    {{-- 低庫存提示列：列出低於安全庫存的零件，按鈕開啟「目前低庫存品項」視窗（可匯出 Excel）。 --}}
+    {{-- 窄畫面（手機）：只留兩個按鈕排成一行——「新增零件」和「查看低庫存品項 N」（不顯示紅色提示卡片，功能相同）。 --}}
+    <div class="tb-narrow-actions d-flex d-sm-none">
+        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary" data-modal-frame data-modal-title="新增零件">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>新增零件
+        </a>
+        <button type="button" class="tb-btn {{ $lowStockParts->isNotEmpty() ? 'tb-btn-danger-outline' : 'tb-btn-outline' }}" data-bs-toggle="modal" data-bs-target="#lowStockModal">
+            查看低庫存品項
+            <span class="tb-pill {{ $lowStockParts->isNotEmpty() ? 'tb-pill-danger' : 'tb-pill-ok' }}" style="padding: 1px 9px">{{ $lowStockParts->count() }}</span>
+        </button>
+    </div>
+
+    {{-- 低庫存提示列（寬一點的畫面）：標題與「查看目前低庫存品項」按鈕排在同一行；按鈕開啟視窗（可預覽匯出 Excel／PDF）。 --}}
     @if ($lowStockParts->isNotEmpty())
-        <div class="tb-alert" role="status">
+        <div class="tb-alert d-none d-sm-flex" role="status">
             <div class="tb-alert-icon" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></div>
-            <div style="flex: 1 1 300px; min-width: 0">
-                <div class="tb-alert-title">有 {{ $lowStockParts->count() }} 項零件低於安全庫存</div>
-                <div class="tb-note mt-1">
-                    {{ $lowStockParts->take(3)->map(fn ($p) => $p->part_code . ' ' . $p->name . ($p->specification ? '（' . $p->specification . '）' : ''))->join('、') }}{{ $lowStockParts->count() > 3 ? ' 等' : '' }}
-                </div>
-            </div>
+            {{-- 只顯示幾項低於安全庫存；是哪些零件請按右邊的按鈕查看（不在這裡列出，標題與按鈕才能排在同一行）。 --}}
+            <div class="tb-alert-title" style="flex: 1 1 auto; min-width: 0">有 {{ $lowStockParts->count() }} 項零件低於安全庫存</div>
             <button type="button" class="tb-btn tb-btn-danger-outline" data-bs-toggle="modal" data-bs-target="#lowStockModal">
                 查看目前低庫存品項
                 <span class="tb-pill tb-pill-danger" style="padding: 1px 9px">{{ $lowStockParts->count() }}</span>
             </button>
         </div>
     @else
-        <div class="d-flex flex-wrap align-items-center gap-3">
+        <div class="d-none d-sm-flex flex-wrap align-items-center gap-3">
             <span class="tb-note"><i class="bi bi-check-circle me-1 tb-c-accent" aria-hidden="true"></i>目前沒有低於安全庫存的零件。</span>
             <button type="button" class="tb-btn tb-btn-outline tb-btn-sm" data-bs-toggle="modal" data-bs-target="#lowStockModal">
                 查看目前低庫存品項 <span class="tb-muted">{{ $lowStockParts->count() }}</span>

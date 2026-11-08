@@ -109,11 +109,13 @@ class PartProfileAndStockTest extends TestCase
         $this->buy($part, '2026-10-10', 2, 20);
 
         $this->put(route('parts.update', $part), ['part_code' => 'HDMI-1M', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
-            ->assertRedirect(route('parts.show', $part));
+            ->assertRedirect(route('parts.show', $part->fresh()));
 
+        // 網址用零件編號，改編號後網址跟著變（/parts/HDMI-1M）。
+        $this->assertSame(url('/parts/HDMI-1M'), route('parts.show', $part->fresh()));
         $this->assertSame('HDMI-1M', $part->fresh()->part_code);
         $this->assertSame(1, $part->fresh()->purchases()->count());
-        $this->get(route('parts.show', $part))->assertSee('零件履歷：HDMI-1M HDMI 線（1公尺）');
+        $this->get(route('parts.show', $part->fresh()))->assertSee('零件履歷：HDMI-1M HDMI 線（1公尺）');
     }
 
     public function test_the_code_must_use_allowed_characters_and_is_required_when_editing(): void
@@ -268,7 +270,7 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('parts.show', $part))
             ->assertOk()
             ->assertSee('零件履歷：PART-1 HDMI 線（1公尺）')
-            ->assertSee('Cable Master／HD-1M')
+            ->assertSee('Cable Master/HD-1M')
             ->assertSee('低庫存')
             ->assertSee('測試廠商')
             ->assertSee('NT$ 40')            // 總價＝2×20
@@ -529,5 +531,20 @@ class PartProfileAndStockTest extends TestCase
         $this->delete(route('parts.destroy', $part))->assertRedirect(route('parts.index'));
         $this->assertDatabaseCount('parts', 0);
         $this->assertDatabaseCount('part_purchases', 0);
+    }
+
+    // 零件履歷網址用零件編號；舊的流水號網址仍然打得開；和固定網址重複的名稱不能當編號。
+    public function test_part_urls_use_the_part_code(): void
+    {
+        $this->actingAs($this->makeUserWithPermissions(['parts.manage']));
+        $part = $this->makePart();
+
+        $this->assertSame(url('/parts/' . $part->part_code), route('parts.show', $part));
+        $this->get('/parts/' . $part->part_code)->assertOk()->assertSee($part->name);
+        $this->get('/parts/' . $part->id)->assertOk()->assertSee($part->name);
+        $this->get('/parts/NO-SUCH-CODE')->assertNotFound();
+
+        $this->put(route('parts.update', $part), ['part_code' => 'create', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
+            ->assertSessionHasErrors('part_code');
     }
 }

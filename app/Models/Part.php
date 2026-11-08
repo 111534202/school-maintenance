@@ -123,15 +123,39 @@ class Part extends Model
     }
 
     /** 標題用的完整名稱：PART-1 HDMI 線（2公尺）。 */
+    /**
+     * 網址用零件編號（/parts/HDMI-2），不用流水號。
+     * 舊網址（/parts/1）仍可開：找不到這個編號、而且是數字時，再用流水號找。
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'part_code';
+    }
+
+    public function getRouteKey(): mixed
+    {
+        return $this->part_code ?? $this->getKey();
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        return static::where('part_code', $value)->first()
+            ?? (ctype_digit((string) $value) ? static::find($value) : null);
+    }
+
     public function displayName(): string
     {
         return trim($this->part_code . ' ' . $this->name . ($this->specification ? "（{$this->specification}）" : ''));
     }
 
-    /** 品牌／型號合併顯示；兩個都沒填就回傳 null。 */
+    /** 品牌/型號合併顯示（例如 Cable Master/HD-2M）；兩個都沒填就回傳 null。 */
     public function brandModel(): ?string
     {
-        $text = implode('／', array_filter([$this->brand, $this->model]));
+        $text = implode('/', array_filter([$this->brand, $this->model]));
 
         return $text === '' ? null : $text;
     }

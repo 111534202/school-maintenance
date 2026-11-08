@@ -141,7 +141,7 @@ class DrilldownNavigationTest extends TestCase
         foreach (['users.index', 'reservations.index', 'classrooms.index', 'repairs.index', 'maintenance-orders.index'] as $route) {
             $html = $this->page('admin', $route);
             $this->assertStringContainsString('data-page-back aria-label=', $html, "{$route} 缺少返回按鈕");
-            $this->assertStringContainsString('href="'.route('dashboard').'" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back', $html);
+            $this->assertStringContainsString('href="'.route('dashboard').'" class="btn btn-outline-light btn-sm tb-nav-btn flex-shrink-0" data-page-back', $html);
         }
     }
 
@@ -182,5 +182,13 @@ class DrilldownNavigationTest extends TestCase
 
         $this->assertDoesNotMatchRegularExpression('/drill-sub is-open/', $menu);
         $this->assertStringNotContainsString('drill-root is-pushed', $menu);
+    }
+
+    // 返回鍵和漢堡選單同樣高度（tb-nav-btn，寬窄畫面都套用）。
+    public function test_back_button_and_menu_button_share_the_same_size_class(): void
+    {
+        $html = $this->page('admin', 'users.index');
+        $this->assertMatchesRegularExpression('/class="[^"]*tb-nav-btn[^"]*"[^>]*data-bs-target="#sidebarOffcanvas"/', $html);
+        $this->assertMatchesRegularExpression('/class="[^"]*tb-nav-btn[^"]*"[^>]*data-page-back/', $html);
     }
 }

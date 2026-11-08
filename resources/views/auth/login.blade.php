@@ -15,9 +15,9 @@
     <style>
         /* 登入頁：上方一條墨綠色的網站名稱列，下方暖白底置中一張圓角卡片。 */
         .login-band { background: var(--tb-accent); color: #FFFFFF; padding: 14px 24px; }
-        .login-band .brand { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
+        .login-band .brand { font-family: var(--tb-font-heading, 'Noto Serif TC', serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
         .login-card { width: 100%; max-width: 420px; border-radius: 20px; }
-        .login-title { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.02em; }
+        .login-title { font-family: var(--tb-font-heading, 'Noto Serif TC', serif); font-weight: 700; letter-spacing: 0.02em; }
         .login-card .form-control { min-height: 46px; }
         .login-card .btn-primary { min-height: 48px; font-size: 1.05rem; }
     </style>

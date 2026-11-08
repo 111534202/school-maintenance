@@ -7,6 +7,21 @@
  * 想退回原本的樣式：layouts/app.blade.php 拿掉這個檔案的 <link>、把 tb-navbar／tb-body 換回 bg-dark／bg-light。
  */
 :root {
+    /* 字型與標題樣式統一在這裡設定：要換字型（例如把宋體換成新細明體）、換標題顏色或大小，只要改這幾行，
+       所有用到 var(--tb-font-heading)／.tb-section-title 的地方（導覽列網站名稱、頁面標題、區塊標題、彈出視窗標題…）都會一起變。 */
+    --tb-font-heading: 'Noto Serif TC', serif;
+    --tb-font-body: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    --tb-heading-color: var(--tb-text);
+    --tb-section-title-size: 1.3rem;
+    /* 卡片標題列下面那條分隔線的粗細（零件履歷、成本分析報表…所有卡片一起變）。 */
+    --tb-card-head-rule: 2px;
+    /* 清單卡片固定欄寬（以中文字數計，超過以「…」結尾）。 */
+    --tb-col-part-name: 11em;
+    --tb-col-part-spec: 5em;
+    --tb-col-requester: 4em;
+    --tb-col-classroom: 6em;
+    --tb-col-part-code: 12em;
+    --tb-col-unit: 4em;
     --tb-bg: #F7F5F0;
     --tb-surface: #FFFFFF;
     --tb-border: #E7E1D6;
@@ -26,8 +41,12 @@
 }
 
 /* ================= 1. 全站 ================= */
+/* 捲軸位置固定保留：洋蔥的詳細面板、篩選面板打開時會暫時關掉整頁捲軸，保留位置後版面寬度才不會跟著變。
+   Bootstrap 對話框打開時原本會在 body 右邊補上捲軸寬度，位置已經保留了就不用再補。 */
+html { scrollbar-gutter: stable; }
+body.tb-body.modal-open { padding-right: 0 !important; }
 body.tb-body {
-    font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    font-family: var(--tb-font-body);
     background-color: var(--tb-bg);
     color: var(--tb-text);
     --bs-primary: #2F6B4F;
@@ -49,7 +68,7 @@ body.tb-body {
 /* 導覽列固定在畫面最上方：往下捲動時仍然看得到（sticky：跟著頁面排版，捲到頂端才固定，不會蓋住頁面開頭的內容）。
    z-index 1030 與 Bootstrap 的 sticky-top 相同：比一般內容高，但比側邊抽屜（1045）與彈出視窗（1055）低。 */
 .tb-navbar { position: sticky; top: 0; z-index: 1030; box-shadow: 0 2px 6px rgba(20, 40, 30, 0.12); }
-.tb-navbar .navbar-brand { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.04em; }
+.tb-navbar .navbar-brand { font-family: var(--tb-font-heading); font-weight: 700; letter-spacing: 0.04em; }
 
 /* 上方列的選單（寬螢幕）：淡綠白字，目前所在的區塊半透明白底。 */
 .tb-topnav .nav-link { color: #DDEBE3; padding: 0.5rem 0.85rem !important; border-radius: 10px; font-size: 0.95rem; white-space: nowrap; }
@@ -68,15 +87,25 @@ body.tb-body {
 /* 頂端列高度固定為 Bootstrap 預設的 56px（上下各 0.5rem）：洋蔥的「一個畫面」（fit-screen）以這個高度計算清單能放幾筆，
    多出幾 px 就會讓列表頁多出捲動。同步自 integrate/all（彭仕衡 ff4af8d）。 */
 .tb-navbar { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+/* 漢堡選單、返回鍵固定同樣高度（和右邊的通知、登出圓鈕一樣，觸控裝置放大），寬窄畫面都一樣。 */
+.tb-navbar .tb-nav-btn { height: 2rem; display: inline-flex; align-items: center; justify-content: center; padding-top: 0; padding-bottom: 0; }
+.tb-navbar .tb-nav-btn-square { width: 2rem; padding: 0; }
+/* 窄畫面返回鍵只剩箭頭，也變成跟漢堡一樣的圓鈕。 */
+@media (max-width: 575.98px) { .tb-navbar .tb-nav-btn[data-page-back] { width: 2rem; padding: 0; } }
+@media (pointer: coarse) {
+    .tb-navbar .tb-nav-btn { height: 2.5rem; }
+    .tb-navbar .tb-nav-btn-square { width: 2.5rem; }
+}
+@media (pointer: coarse) and (max-width: 575.98px) { .tb-navbar .tb-nav-btn[data-page-back] { width: 2.5rem; } }
 
 /* 側邊選單：目前所在頁面改成墨綠底。 */
 .tb-body .offcanvas .nav-link.active { background-color: var(--tb-accent); color: #FFFFFF; }
 .tb-body .offcanvas .nav-link:not(.active):hover { background-color: var(--tb-accent-faint); color: var(--tb-accent-dark); }
 .tb-body .offcanvas .nav-link { border-radius: 10px; }
-.tb-body .offcanvas-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.tb-body .offcanvas-title { font-family: var(--tb-font-heading); font-weight: 700; }
 
 /* 各頁標題（<h1>）用宋體。 */
-.tb-body .app-content h1 { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.02em; }
+.tb-body .app-content h1 { font-family: var(--tb-font-heading); font-weight: 700; letter-spacing: 0.02em; }
 
 /* 按鈕：膠囊形；主要按鈕墨綠。 */
 .tb-body .btn { --bs-btn-border-radius: 999px; }   /* 用變數設定，按鈕群組、輸入群組裡相鄰的邊仍會是直角 */
@@ -137,12 +166,12 @@ body.tb-body {
 .tb-body .dropdown-menu { --bs-dropdown-link-active-bg: #2F6B4F; --bs-dropdown-border-radius: 12px; }
 .tb-body .progress, .tb-body .progress-stacked { --bs-progress-bar-bg: #2F6B4F; }
 .tb-body .modal { --bs-modal-border-radius: 18px; }
-.tb-body .modal-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.tb-body .modal-title { font-family: var(--tb-font-heading); font-weight: 700; }
 
 /* ================= 2. 頁面元件（.tb） ================= */
 
 .tb {
-    font-family: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    font-family: var(--tb-font-body);
     color: var(--tb-text);
     display: flex;
     flex-direction: column;
@@ -154,7 +183,7 @@ body.tb-body {
 
 /* ---- 頁首 ---- */
 .tb-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; }
-.tb-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
+.tb-title { margin: 0; font-family: var(--tb-font-heading); font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
 .tb-subtitle { margin: 6px 0 0; color: var(--tb-muted); font-size: 1rem; line-height: 1.7; }
 .tb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
@@ -178,7 +207,7 @@ body.tb-body {
 /* ---- 卡片 ---- */
 .tb-card { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; }
 .tb-card-pad { padding: 20px 24px; }
-.tb-section-title { margin: 0; font-family: 'Noto Serif TC', serif; font-size: 1.3rem; font-weight: 700; }
+.tb-section-title { margin: 0; font-family: var(--tb-font-heading); font-size: var(--tb-section-title-size); font-weight: 700; color: var(--tb-heading-color); }
 .tb-note { color: var(--tb-muted); font-size: 0.875rem; margin: 0; }
 
 /* 統計卡（可點的用 <a>；選取中的加 .is-active） */
@@ -188,7 +217,7 @@ body.tb-body {
 .tb a.tb-stat:hover { border-color: #B9CFC2; color: inherit; }
 .tb .tb-stat.is-active { border: 2px solid var(--tb-accent); padding: 17px 21px; }
 .tb-stat-label { font-size: 0.875rem; color: var(--tb-muted); }
-.tb-stat-value { font-family: 'Noto Serif TC', serif; font-size: 2rem; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+.tb-stat-value { font-family: var(--tb-font-heading); font-size: 2rem; font-weight: 700; margin-top: 4px; line-height: 1.2; }
 .tb-stat-note { font-size: 0.8125rem; color: var(--tb-muted); margin-top: 4px; }
 .tb-c-accent { color: var(--tb-accent); }
 .tb-c-warn { color: #8A5A00; }
@@ -248,7 +277,7 @@ body.tb-body {
 .tb-list { display: flex; flex-direction: column; gap: 12px; container-type: inline-size; }
 .tb a.tb-list-card, .tb-list-card {
     display: grid; align-items: center; gap: 12px 28px;
-    grid-template-columns: auto minmax(0, 1fr) minmax(110px, auto) minmax(150px, auto) auto;
+    grid-template-columns: auto minmax(0, 1fr) var(--tb-col-person, var(--tb-col-requester)) 175px 116px;
     grid-template-areas: "avatar main person time end";
     background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px;
     padding: 16px 22px; color: inherit; text-decoration: none;
@@ -270,10 +299,35 @@ body.tb-body {
 .tb-pill-info { background: #E3EEF7; color: #24507A; }
 /* 零件卡片（零件庫存列表、低庫存視窗）：零件編號在左，名稱｜規格｜庫存狀態 ＋「>」靠右（跟空間申請一樣）。 */
 .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
-    grid-template-columns: minmax(0, 1fr) minmax(130px, auto) minmax(130px, auto) auto;
+    grid-template-columns: minmax(0, 1fr) var(--tb-col-part-name) var(--tb-col-part-spec) 116px;
     grid-template-areas: "main name spec end";
 }
 .tb-lc-name { grid-area: name; }
+/* 固定欄寬的文字：超出欄寬時以「…」結尾，每一列才會對齊。字數在 :root 的 --tb-col-* 設定
+   （零件名稱 11 字、規格 5 字、申請人 4 字、教室 6 字）；變窄時欄位會變寬，所以文字本身也限制同樣字數。 */
+.tb-ellipsis { display: block; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tb-lc-name .tb-ellipsis { max-width: var(--tb-col-part-name); }
+.tb-lc-spec .tb-ellipsis { max-width: var(--tb-col-part-spec); }
+.tb-lc-person .tb-ellipsis { max-width: var(--tb-col-requester); }
+/* 我的申請：第二欄是教室（6 字）。 */
+.tb-list-card-mine { --tb-col-person: var(--tb-col-classroom); }
+/* 詳細資料（零件履歷的基本資料、零件庫存視窗）：名稱與內容固定同一行，不會變成上下兩行。
+   .tb-clip-* 固定字數（同上面 --tb-col-*），超過以「…」結尾；.tb-dl-wrap 不限字數，太長換行。 */
+.tb-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .5rem 2rem; align-items: baseline; }
+.tb-dl > dt { font-weight: 700; white-space: nowrap; }
+.tb-dl > dd { margin: 0; min-width: 0; }
+/* 窄畫面：內容固定靠右；寬畫面：內容緊接在名稱右邊。 */
+@media (max-width: 575.98px) { .tb-dl > dd { text-align: right; } .tb-dl .tb-clip { margin-left: auto; } }
+.tb-dl > dd.tb-dl-wrap { overflow-wrap: anywhere; }
+.tb-clip { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* 占滿整列的補充說明（例如平均單價下面的「用料成本依先進先出…」）：緊接在上一項下面、靠左（寬窄畫面都一樣）。 */
+.tb-dl > dd.tb-dl-full { grid-column: 1 / -1; margin-top: -.35rem; text-align: left; }
+.tb-clip-code { max-width: min(100%, var(--tb-col-part-code)); }
+.tb-clip-name { max-width: min(100%, var(--tb-col-part-name)); }
+.tb-clip-spec { max-width: min(100%, var(--tb-col-part-spec)); }
+.tb-clip-unit { max-width: min(100%, var(--tb-col-unit)); }
+@media (max-width: 575.98px) { .tb-dl { column-gap: 1.25rem; } }
+.tb-list-card-mine .tb-lc-person .tb-ellipsis { max-width: var(--tb-col-classroom); }
 .tb-lc-spec { grid-area: spec; }
 /* 一大張卡片的版本（空間申請、我的申請）：只有外框四角是圓角，每一筆之間用細線分隔。 */
 .tb-list.tb-list-grouped { gap: 0; background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px; overflow: hidden; }
@@ -281,12 +335,15 @@ body.tb-body {
 .tb-list-grouped a.tb-list-card:first-child, .tb .tb-list-grouped a.tb-list-card:first-child { border-top: 0; }
 .tb .tb-list-grouped a.tb-list-card:hover { border-color: var(--tb-border); background: #F4F8F5; }
 .tb .tb-list-grouped a.tb-list-card:focus-visible { outline-offset: -2px; }
+/* 變窄時（跟零件庫存一樣）：上排班級方塊＋申請班級，下排申請人｜送出時間，申請狀態＋「>」固定在最右邊、上下置中。 */
 @container (max-width: 760px) {
     .tb a.tb-list-card, .tb-list-card {
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        grid-template-areas: "avatar main person" "time time end";
+        grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
+        grid-template-areas: "avatar main main end" "person person time end";
         gap: 10px 18px; padding: 14px 16px;
     }
+    .tb-lc-end { align-self: center; }
+    .tb-time-year { display: none; }
 }
 @container (max-width: 760px) {
     .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
@@ -296,7 +353,8 @@ body.tb-body {
 }
 @container (max-width: 400px) {
     .tb a.tb-list-card, .tb-list-card {
-        grid-template-areas: "avatar main main" "person person end" "time time end";
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "avatar main end" "person person end" "time time end";
     }
     .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -306,9 +364,15 @@ body.tb-body {
 }
 
 /* 低庫存提示列 */
-.tb-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; background: var(--tb-danger-bg); border: 1px solid var(--tb-danger-border); border-radius: 18px; padding: 16px 22px; }
+.tb-alert { display: flex; flex-wrap: nowrap; align-items: center; gap: 12px 20px; background: var(--tb-danger-bg); border: 1px solid var(--tb-danger-border); border-radius: 18px; padding: 16px 22px; }
 .tb-alert-icon { width: 40px; height: 40px; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--tb-danger); font-size: 1.2rem; }
 .tb-alert-title { font-weight: 700; color: #8E2A1B; }
+.tb-alert > .tb-btn { flex: 0 0 auto; }
+/* 零件庫存列表窄畫面：「新增零件」「查看低庫存品項」兩個按鈕排一行（各占一半）。 */
+.tb-narrow-actions { gap: 10px; }
+.tb-narrow-actions > .tb-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 12px; padding-right: 12px; white-space: nowrap; }
+/* 手機寬度：拿掉左邊的圖示，讓標題與按鈕在同一行放得下。 */
+@media (max-width: 575.98px) { .tb-alert { padding: 12px 14px; gap: 10px; } .tb-alert .tb-alert-icon { display: none; } }
 
 /* 橫條圖（備品使用彙總） */
 .tb-bars { display: flex; flex-direction: column; gap: 14px; }
@@ -355,7 +419,7 @@ body.tb-body {
 .tb-body .fo-top .fo-back,
 .tb-body .drill-top .drill-back { color: var(--tb-accent); font-weight: 500; }
 .tb-body .onion-panel-top, .tb-body .fo-top, .tb-body .drill-top { border-bottom-color: var(--tb-border); }
-.tb-body .onion-panel-title, .tb-body .fo-top .fo-title, .tb-body .drill-top .drill-title { font-family: 'Noto Serif TC', serif; }
+.tb-body .onion-panel-title, .tb-body .fo-top .fo-title, .tb-body .drill-top .drill-title { font-family: var(--tb-font-heading); }
 
 /* 清單的詳細內容是畫面中央的對話框（四角圓角）；篩選面板從右邊滑出（左側圓角）。 */
 .tb-body .onion-panel { background: var(--tb-surface); border-radius: 18px; overflow: hidden; }   /* overflow：捲軸不會蓋掉右下角的圓角 */
@@ -384,7 +448,7 @@ body.tb-body {
 
 /* 漢堡選單（洋蔥式，一層一層往內點） */
 .tb-body .offcanvas { background: var(--tb-surface); }
-.tb-body .offcanvas-title { font-family: 'Noto Serif TC', serif; font-weight: 700; }
+.tb-body .offcanvas-title { font-family: var(--tb-font-heading); font-weight: 700; }
 .tb-body .drill-item { border-bottom-color: #EFEAE0; }
 .tb-body .drill-item:hover, .tb-body .drill-item:focus-visible { background: var(--tb-accent-faint); }
 .tb-body .drill-item.active { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
@@ -413,6 +477,8 @@ body.tb-body {
 .tb-body .card > .onion-list > .onion-item, .tb-body .tb-table-wrap > .onion-list > .onion-item,
 .tb-body .modal .onion-list > .onion-item { border-radius: 0; }
 .tb-body .card > .onion-list > .onion-item, .tb-body .tb-table-wrap > .onion-list > .onion-item { border-left: 0; border-right: 0; padding: .8rem 1.1rem; }
+/* 成本分析等 tb-table-wrap 裡的清單：左右留白跟區塊標題（.tb-section-head，24px）一樣，內容才會和標題對齊。 */
+.tb-body .tb-table-wrap > .onion-list > .onion-item { padding-left: 24px; padding-right: 24px; }
 .tb-body .card > .onion-list > .onion-item:first-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:first-child { border-top: 0; }
 .tb-body .card > .onion-list > .onion-item:last-child, .tb-body .tb-table-wrap > .onion-list > .onion-item:last-child { border-bottom: 0; }
 .tb-body .onion-viewbar .btn { border-radius: 999px; background: var(--tb-surface); border-color: var(--tb-border); color: var(--tb-muted); }
@@ -422,7 +488,11 @@ body.tb-body {
 /* 卡片有標題列時，切換鈕放在標題列右邊；這時清單的第一筆緊接在標題列下面。 */
 .tb-body .onion-viewbar-inline .btn { padding: .15rem .6rem; font-size: .8rem; }
 /* 風格 B 區塊的標題列（例如成本分析報表的「材料費明細」）：標題在左、洋蔥式的切換鈕在右，下面一條分隔線。 */
-.tb-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 24px; border-bottom: 1px solid var(--tb-border); }
+.tb-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 16px 24px; border-bottom: var(--tb-card-head-rule) solid var(--tb-border); }
+/* 卡片標題列下面的分隔線：所有卡片固定同樣粗細（--tb-card-head-rule）。
+   清單本身不再畫上框線，之前「使用紀錄」看起來比較粗，是標題列的線和清單的上框線疊在一起。 */
+.tb-body .card > .card-header { border-bottom: var(--tb-card-head-rule) solid var(--tb-border); }
+.tb-body .card > .onion-list, .tb-body .tb-table-wrap > .onion-list { border: 0; }
 
 /* 從詳細對話框裡再打開的視窗（附件預覽、修改採購…）要蓋在詳細對話框上面。 */
 .tb-body .modal { z-index: 1080; }
