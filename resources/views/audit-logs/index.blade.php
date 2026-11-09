@@ -11,11 +11,11 @@
         <h1 class="h4 mb-0"><i class="bi bi-clock-history me-2"></i>{{ __('audit.index_title') }}</h1>
     </div>
 
-    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
+    {{-- 篩選列：直接放在頁面上（data-no-onion：不收進右邊滑出的篩選面板），寬度不夠時自動換行。 --}}
     <div class="card shadow-sm mb-3">
         <div class="card-body py-3">
             {{-- 篩選表單：用 GET 送出，條件會出現在網址上；filter-bar 樣式讓欄位固定單行、不換行。 --}}
-            <form method="GET" action="{{ route('audit-logs.index') }}" class="filter-bar">
+            <form method="GET" action="{{ route('audit-logs.index') }}" class="filter-bar audit-filter" data-no-onion>
                 <div>
                     {{-- 使用者下拉選單：包含已被刪除的帳號（才查得到他們過去的操作）。 --}}
                     <label for="user_id" class="form-label small mb-1">{{ __('audit.filter.user') }}</label>
@@ -75,7 +75,8 @@
 
     <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,2,3">
+            {{-- 固定清單（data-onion-list-only，不提供表格檢視）：標題＝時間，副標題＝操作者 · 事件；點一筆看說明與詳細。 --}}
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,2,3" data-onion-list-only data-onion-panel-title="操作紀錄">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('audit.table.time') }}</th>
@@ -130,4 +131,13 @@
 
     {{-- 分頁按鈕（每頁 30 筆）。 --}}
     <div class="mt-3">{{ $logs->links() }}</div>
+
+    <style>
+        /* 篩選列放在頁面上：欄位平均分配寬度，放不下就換行（不再左右捲動）。 */
+        .audit-filter.filter-bar { flex-wrap: wrap; overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+        .audit-filter.filter-bar > div:not(.d-inline-flex) { flex: 1 1 150px; min-width: 0; }
+        .audit-filter.filter-bar > div:not(.d-inline-flex) .form-control,
+        .audit-filter.filter-bar > div:not(.d-inline-flex) .form-select { width: 100% !important; }
+        .audit-filter.filter-bar > .d-inline-flex { flex: 0 0 auto; align-self: flex-end; }
+    </style>
 @endsection

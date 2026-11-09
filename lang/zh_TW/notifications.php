@@ -7,4 +7,5 @@ return [
     'pending_dispatch' => ':count 張新報修待派工',
     'pending_review' => ':count 張工單待驗收',
     'assigned_to_me' => ':count 張指派給你的案件待處理',
+    'pending_reservations' => ':count 筆空間申請待審核',
 ];
