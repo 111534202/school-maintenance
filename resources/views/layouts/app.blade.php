@@ -159,6 +159,14 @@
                         <button type="submit" class="btn btn-outline-light btn-sm icon-btn" title="登出" aria-label="登出"><i class="bi bi-box-arrow-right"></i></button>
                     </form>
                 @endauth
+                @guest
+                    {{-- 免登入查詢課表頁：右上角放「登入」，登入後回到空間預約。 --}}
+                    @if (request()->routeIs('schedule'))
+                        <a href="{{ route('schedule.login') }}" class="btn btn-outline-light btn-sm tb-nav-btn px-3" data-login-required-ok>
+                            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>登入
+                        </a>
+                    @endif
+                @endguest
             </div>
         </div>
     </nav>

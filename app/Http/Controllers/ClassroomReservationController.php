@@ -147,6 +147,34 @@ class ClassroomReservationController extends Controller
     }
 
     /**
+     * 免登入查詢課表（GET /schedule）：沿用空間預約頁面，但不顯示「我的申請」、不能送出申請。
+     * 已登入的人直接導到空間預約。
+     */
+    public function browse(Request $request)
+    {
+        if ($request->user()) {
+            return redirect()->route('reservations.create');
+        }
+
+        $classrooms = Classroom::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // 報修提醒（黃色）與暫停預約（紅色）一樣顯示：讓人知道為什麼不能預約。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
+        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
+
+        return view('reservations.create', [
+            'classrooms' => $classrooms,
+            'repairNotices' => $repairNotices,
+            'suspendedIds' => $suspendedIds,
+            'myReservations' => null,
+            'guest' => true,
+        ]);
+    }
+
+    /**
      * 儲存預約申請，並檢查是否與既有申請撞期。
      */
     public function store(Request $request)

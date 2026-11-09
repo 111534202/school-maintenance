@@ -78,6 +78,22 @@ Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login'); 
 Route::post('/login', [LoginController::class, 'login']);                          // 送出帳號密碼
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');        // 登出
 
+// ---- 免登入查詢課表 ----
+// 登入頁的「查詢課表（免登入）」：和空間預約同一個頁面（reservations.create），只是不顯示「我的申請」、
+// 不能選時段送出（點了會跳出「若需預約請先登入」）。已登入的人直接導到空間預約。
+// 課表資料只有課程與「已預約／待審核」狀態，不帶出是哪一班預約的。
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/schedule', [ClassroomReservationController::class, 'browse'])->name('schedule');
+    Route::get('/schedule/timetable/week', [\App\Http\Controllers\TimetableController::class, 'publicWeek'])
+        ->name('schedule.timetable.week');
+    // 從查詢課表頁按「登入」：登入後直接回到空間預約。
+    Route::get('/schedule/login', function () {
+        session()->put('url.intended', route('reservations.create'));
+
+        return redirect()->route('login');
+    })->name('schedule.login');
+});
+
 // 權限一律用 `can:權限代碼` 保護（權限清單見 App\Support\PermissionCatalog，
 // 每個身分有哪些權限由「身分主檔」勾選決定；系統管理員永遠全開）。
 // 下面整個群組套用 'auth'：一定要先登入，沒登入會被導到登入頁；
