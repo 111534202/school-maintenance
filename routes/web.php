@@ -270,6 +270,15 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
     });
 
+    // 資料備份：需要 backups.manage（預設只有系統管理員）。每週日自動備份，也可手動備份、下載、還原。
+    Route::middleware('can:backups.manage')->prefix('backups')->name('backups.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BackupController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\BackupController::class, 'store'])->name('store');
+        Route::post('/settings', [\App\Http\Controllers\BackupController::class, 'settings'])->name('settings');
+        Route::get('/{name}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('download');
+        Route::post('/{name}/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('restore');
+    });
+
     // 操作紀錄：只能查看，需要 audit-logs.view 權限。
     Route::get('audit-logs', [AuditLogController::class, 'index'])
         ->middleware('can:audit-logs.view')->name('audit-logs.index');

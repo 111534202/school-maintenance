@@ -29,6 +29,7 @@ class PermissionCatalog
             'device-categories.manage',   // 設備類別主檔
             'devices.manage',             // 設備主檔
             'audit-logs.view',            // 查看操作紀錄
+            'backups.manage',             // 資料備份與還原（預設只有系統管理員）
         ],
         // 報修流程類
         'repair' => [

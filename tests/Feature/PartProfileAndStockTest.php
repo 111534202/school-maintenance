@@ -403,7 +403,8 @@ class PartProfileAndStockTest extends TestCase
         $this->loginAsAnyUser();
         $part = $this->makePart();
         $purchase = $this->buy($part, '2026-10-10', 3, 20);
-        app(PartStockService::class)->consume($part, 1);
+        // 用掉 1 個（報廢 1 個；依日期重新計算時要有真正的紀錄）。
+        app(PartStockService::class)->scrap($part, ['scrap_date' => '2026-10-11', 'quantity' => 1, 'reason' => '損壞'], null);
 
         $this->put(route('parts.purchases.update', [$part, $purchase]), [
             'purchase_date' => '2026-10-10', 'vendor_name' => '測試廠商', 'quantity' => 9, 'unit_price' => 20,

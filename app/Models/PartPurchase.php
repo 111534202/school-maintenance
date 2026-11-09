@@ -47,6 +47,12 @@ class PartPurchase extends Model
     }
 
     /** 這一批是否已經被用過（用過就不能改數量、單價，也不能刪除）。 */
+    /** 新增零件時填的期初庫存（不是真的採購）：重新計算先進先出時視為最早就有。 */
+    public function isOpeningStock(): bool
+    {
+        return $this->vendor_name === null && $this->note === '期初庫存';
+    }
+
     public function isUsed(): bool
     {
         return $this->usedQuantity() > 0;

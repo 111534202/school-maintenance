@@ -17,14 +17,22 @@
             @csrf
 
             <div class="row g-3">
-                <div class="col-sm-6">
+                <div class="col-sm-4">
                     <label for="scrap_date" class="form-label">報廢日期 <span class="text-danger">*</span></label>
                     <input type="date" id="scrap_date" name="scrap_date" max="{{ now()->toDateString() }}" required
                         class="form-control @error('scrap_date') is-invalid @enderror"
                         value="{{ old('scrap_date', now()->toDateString()) }}">
                     @error('scrap_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-                <div class="col-sm-6">
+                {{-- 時間：同一天的使用與報廢依時間先後扣批次（預設現在）。 --}}
+                <div class="col-sm-3">
+                    <label for="scrap_time" class="form-label">時間 <span class="text-danger">*</span></label>
+                    <input type="time" id="scrap_time" name="scrap_time" required
+                        class="form-control @error('scrap_time') is-invalid @enderror"
+                        value="{{ old('scrap_time', now()->format('H:i')) }}">
+                    @error('scrap_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-sm-5">
                     <label for="quantity" class="form-label">報廢數量 <span class="text-danger">*</span></label>
                     <div class="input-group has-validation">
                         <input type="number" id="quantity" name="quantity" min="1" max="{{ max(1, $part->current_stock) }}" required
@@ -36,7 +44,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-text mb-3">目前庫存 {{ $part->withUnit($part->current_stock) }}；報廢後從最早買進的批次扣除（先進先出）。</div>
+            <div class="form-text mb-3">目前庫存 {{ $part->withUnit($part->current_stock) }}；報廢後依日期與時間，從當時最早買進的批次扣除（先進先出）。</div>
 
             <div class="mb-3">
                 <label for="reason" class="form-label">報廢原因 <span class="text-danger">*</span></label>

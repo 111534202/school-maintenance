@@ -29,12 +29,14 @@ class PartScrapController extends Controller
     {
         $validated = $request->validate([
             'scrap_date' => ['required', 'date', 'before_or_equal:today'],
+            'scrap_time' => ['nullable', 'date_format:H:i'],
             'quantity' => ['required', 'integer', 'min:1', 'max:' . max(1, $part->current_stock)],
             'reason' => ['required', 'string', 'max:50'],
             'note' => ['nullable', 'string', 'max:255'],
         ], [
             'scrap_date.required' => '請填寫報廢日期。',
             'scrap_date.before_or_equal' => '報廢日期不能晚於今天。',
+            'scrap_time.date_format' => '時間格式不正確。',
             'quantity.required' => '請填寫報廢數量。',
             'quantity.min' => '報廢數量至少要 1。',
             'quantity.max' => "報廢數量不能超過目前庫存（{$part->withUnit($part->current_stock)}）。",
@@ -48,6 +50,7 @@ class PartScrapController extends Controller
         } catch (DomainException $exception) {
             return back()->withInput()->withErrors(['quantity' => $exception->getMessage()]);
         }
+        // （依日期重新計算後庫存不足的錯誤，畫面會用彈出視窗顯示，見 layouts/app。）
 
         AuditLogger::log('created', $scrap, $validated, "零件報廢：{$part->part_code} {$part->name} × {$scrap->quantity}（{$scrap->reason}）");
 

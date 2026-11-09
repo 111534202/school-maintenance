@@ -19,6 +19,7 @@ class PartScrap extends Model
     protected $fillable = [
         'part_id',
         'scrap_date',
+        'scrap_time',   // 報廢時間（同一天的使用與報廢依時間排先後；舊資料可能是空的）
         'quantity',
         'reason',
         'note',

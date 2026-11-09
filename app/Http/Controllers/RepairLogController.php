@@ -158,6 +158,16 @@ class RepairLogController extends Controller
                             ...$allocation,
                         ]);
                     }
+
+                    // 依日期重新計算先進先出（開始處理時間比較早時，可能改扣更早的批次）；
+                    // 若會讓某一筆在當時庫存不足，整筆維修紀錄都不會寫入。
+                    try {
+                        app(PartStockService::class)->rebuild($part);
+                    } catch (DomainException $exception) {
+                        throw ValidationException::withMessages([
+                            "part_usages.{$index}.quantity" => $exception->getMessage(),
+                        ]);
+                    }
                 }
 
                 // 附件仍交由既有服務處理。

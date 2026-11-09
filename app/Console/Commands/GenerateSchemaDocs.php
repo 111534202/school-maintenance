@@ -128,7 +128,7 @@ class GenerateSchemaDocs extends Command
         'attachable_type' => '附件所屬資料類型（多型）', 'attachable_id' => '附件所屬資料編號（多型）', 'file_path' => '檔案儲存路徑（私有磁碟）', 'file_name' => '原始檔名（使用者上傳時的檔名）', 'mime_type' => '檔案類型', 'size_bytes' => '檔案大小（位元組）',
         'user_id' => '操作人（users.id）', 'action' => '操作動作', 'loggable_type' => '被操作資料類型（多型）', 'loggable_id' => '被操作資料編號（多型）', 'changes' => '變更內容（JSON 快照）',
         'part_code' => '零件編號（唯一，可自訂；未填時自動產生 PART-順序數字）', 'unit' => '單位（條、個、片…）', 'purchase_date' => '採購日期', 'vendor_name' => '廠商名稱', 'remaining_quantity' => '批次剩餘數量', 'part_purchase_id' => '扣用的採購批次（part_purchases.id）', 'maintenance_result_id' => '所屬保養結果', 'specification' => '規格', 'unit_price' => '單價', 'current_stock' => '目前庫存', 'safety_stock' => '安全庫存', 'repair_log_id' => '所屬維修紀錄', 'part_id' => '零件（parts.id）', 'quantity' => '使用數量',
-        'scrap_date' => '報廢日期', 'reason' => '原因', 'recorded_by' => '登記人（users.id）', 'part_scrap_id' => '所屬報廢紀錄（part_scraps.id）',
+        'scrap_date' => '報廢日期', 'scrap_time' => '報廢時間（同一天依時間先後扣批次）', 'reason' => '原因', 'recorded_by' => '登記人（users.id）', 'part_scrap_id' => '所屬報廢紀錄（part_scraps.id）',
         'class_name' => '班級名稱', 'reservation_date' => '預約日期', 'start_time' => '開始時間', 'end_time' => '結束時間', 'reviewed_by' => '審核人（users.id）', 'reviewed_at' => '審核時間', 'purpose' => '用途',
         'key' => '參數名稱', 'value' => '參數值', 'risk_score' => '風險分數（0～1）', 'threshold' => '當時的門檻', 'algorithm' => '評分演算法版本', 'explanation' => '評分明細（JSON 快照）', 'features' => '輸入特徵（JSON 快照）',
         'decided_by' => '審核人（users.id）', 'decided_at' => '審核時間', 'decision_note' => '審核備註',

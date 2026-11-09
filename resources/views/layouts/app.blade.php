@@ -439,6 +439,22 @@
         dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close('cancel'); });
     })();
     </script>
+    {{-- 零件依日期重新計算先進先出後「某一筆當時庫存不足」被擋下時，用彈出視窗提醒（訊息以「錯誤，請重新確認：」開頭；
+         不論是放在欄位錯誤還是頁面錯誤訊息裡都會抓到）。 --}}
+    @if ($stockTimelineMessage = \App\Exceptions\PartStockTimelineException::pendingMessage($errors ?? null))
+        <dialog id="stockTimelineDialog" class="tb-confirm-dialog" aria-labelledby="stockTimelineTitle">
+            <form method="dialog">
+                <h2 class="tb-confirm-title text-danger" id="stockTimelineTitle">錯誤，請重新確認</h2>
+                <p class="tb-confirm-message">{{ $stockTimelineMessage }}</p>
+                <div class="tb-confirm-actions">
+                    <button type="submit" class="btn btn-primary" autofocus>我知道了</button>
+                </div>
+            </form>
+        </dialog>
+        <script>
+            (function () { const d = document.getElementById('stockTimelineDialog'); if (d && d.showModal) d.showModal(); })();
+        </script>
+    @endif
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @auth
