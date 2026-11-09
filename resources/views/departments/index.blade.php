@@ -106,7 +106,7 @@
 
                                         {{-- 刪除按鈕（垃圾桶圖示）：送出前先確認；若還有用戶或教室屬於這個部門，後端會擋下並說明。 --}}
                                         <form method="POST" action="{{ route('departments.destroy', $department) }}"
-                                            onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('departments.confirm.delete', ['name' => $department->name])) }});">
+                                            data-confirm="{{ __('departments.confirm.delete', ['name' => $department->name]) }}">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-outline-danger btn-sm icon-btn" type="submit"

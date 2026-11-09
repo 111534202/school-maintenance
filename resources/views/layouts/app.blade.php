@@ -395,6 +395,50 @@
         }, true);
     })();
     </script>
+    {{-- 刪除前的二次確認（全站共用）：表單加上 data-confirm="請問確定要刪除…嗎？"，按下送出會先跳出這個視窗，
+         按「確認」才真的送出，按「取消」什麼都不做。用 <dialog>，會蓋在所有東西上面（包含清單的詳細視窗）。
+         按鈕文字可用 data-confirm-ok 改（預設「確認刪除」）。 --}}
+    <dialog id="confirmActionDialog" class="tb-confirm-dialog" aria-labelledby="confirmActionTitle">
+        <form method="dialog">
+            <h2 class="tb-confirm-title" id="confirmActionTitle">請再確認一次</h2>
+            <p class="tb-confirm-message" id="confirmActionMessage"></p>
+            <div class="tb-confirm-actions">
+                <button type="submit" value="cancel" class="btn btn-outline-secondary" autofocus>取消</button>
+                <button type="submit" value="ok" class="btn btn-danger" id="confirmActionOk">確認刪除</button>
+            </div>
+        </form>
+    </dialog>
+    <script>
+    (function () {
+        const dialog = document.getElementById('confirmActionDialog');
+        if (!dialog || typeof dialog.showModal !== 'function') return;   // 很舊的瀏覽器：退回不攔（後端照常處理）
+        const message = document.getElementById('confirmActionMessage');
+        const okButton = document.getElementById('confirmActionOk');
+        let pending = null;
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-confirm')) return;
+            if (form.dataset.confirmed === '1') { delete form.dataset.confirmed; return; }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            pending = form;
+            message.textContent = form.getAttribute('data-confirm');
+            okButton.textContent = form.getAttribute('data-confirm-ok') || '確認刪除';
+            dialog.returnValue = '';
+            dialog.showModal();
+        }, true);
+        dialog.addEventListener('close', function () {
+            const form = pending;
+            pending = null;
+            if (form && dialog.returnValue === 'ok') {
+                form.dataset.confirmed = '1';
+                if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
+            }
+        });
+        // 點視窗外面（灰色背景）等於取消。
+        dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close('cancel'); });
+    })();
+    </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @auth

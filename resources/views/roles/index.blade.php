@@ -84,7 +84,7 @@
                                             title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                         {{-- 刪除按鈕（垃圾桶圖示）：送出前先確認；系統內建身分的按鈕是停用狀態（@disabled）。 --}}
                                         <form method="POST" action="{{ route('roles.destroy', $role) }}"
-                                            onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('roles.confirm.delete', ['name' => $role->name])) }});">
+                                            data-confirm="{{ __('roles.confirm.delete', ['name' => $role->name]) }}">
                                             @csrf
                                             {{-- 用隱藏欄位把 POST 偽裝成 DELETE。 --}}
                                             @method('DELETE')

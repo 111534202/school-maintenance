@@ -28,7 +28,7 @@ class GuestScheduleTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('查詢課表（免登入）')
+            ->assertSee('>查詢課表</a>', false)
             ->assertSee(route('schedule'), false);
     }
 

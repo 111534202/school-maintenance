@@ -60,7 +60,7 @@
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                     {{-- 刪除按鈕：送出前先確認；還有設備在用的類別，後端會擋下並說明。 --}}
                                     <form method="POST" action="{{ route('device-categories.destroy', $category) }}"
-                                        onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('device_categories.confirm.delete')) }});">
+                                        data-confirm="{{ __('device_categories.confirm.delete', ['name' => $category->name]) }}">
                                         @csrf
                                         {{-- 用隱藏欄位把 POST 偽裝成 DELETE。 --}}
                                         @method('DELETE')

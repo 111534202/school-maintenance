@@ -93,7 +93,7 @@
                                                 title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                             {{-- 刪除按鈕（垃圾桶圖示）：只有管理權限者看得到，送出前先確認。 --}}
                                             <form method="POST" action="{{ route('knowledge-base.destroy', $entry) }}"
-                                                onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('knowledge_base.confirm_delete', ['title' => $entry->title])) }});">
+                                                data-confirm="{{ __('knowledge_base.confirm_delete', ['title' => $entry->title]) }}">
                                                 @csrf
                                                 {{-- 用隱藏欄位把 POST 偽裝成 DELETE。 --}}
                                                 @method('DELETE')
