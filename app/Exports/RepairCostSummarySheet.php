@@ -55,6 +55,19 @@ class RepairCostSummarySheet implements FromArray, WithHeadings, WithTitle
                 $this->data['status'] ?? '全部狀態',
                 '依目前頁面的狀態篩選條件',
             ],
+            // 報廢損失放在最後（前面幾列的位置不變）。
+            ...(($this->data['includeScraps'] ?? false) ? [
+                [
+                    '報廢損失',
+                    (float) $this->data['scrapLoss'],
+                    '依報廢日期篩選，共 ' . $this->data['scrapCount'] . ' 筆；金額＝各批數量×那一批的單價',
+                ],
+                [
+                    '材料費＋報廢損失',
+                    (float) $this->data['totalCost'],
+                    '已知材料費小計加上報廢損失',
+                ],
+            ] : []),
         ];
     }
 }

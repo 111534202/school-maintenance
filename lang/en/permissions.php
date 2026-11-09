@@ -39,6 +39,9 @@ return [
         'audit-logs' => [
             'view' => ['name' => 'View Audit Log', 'description' => 'View the system-wide audit log'],
         ],
+        'backups' => [
+            'manage' => ['name' => 'Backup & Restore', 'description' => 'Back up now, download backups, restore data to a backup, set how long backups are kept'],
+        ],
         'repairs' => [
             'create' => ['name' => 'Submit Repairs', 'description' => 'Create repair requests, fill in devices by scanning a barcode'],
             'dispatch' => ['name' => 'Dispatch & Reassign', 'description' => 'Assign repair requests to technicians and change technicians'],

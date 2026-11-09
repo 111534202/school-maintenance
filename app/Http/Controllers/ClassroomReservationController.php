@@ -55,16 +55,6 @@ class ClassroomReservationController extends Controller
         $canManage = $request->user()->hasPermission('reservations.manage');
         abort_unless($canManage || $reservation->requester_id === $request->user()->id, 403);
 
-        // 舊資料沒有時段明細：用整筆申請的時間補一個時段，審核畫面才能逐一選擇。
-        if (! $reservation->slots()->exists()) {
-            $reservation->slots()->create([
-                'reservation_date' => $reservation->reservation_date->toDateString(),
-                'start_time' => $reservation->start_time,
-                'end_time' => $reservation->end_time,
-                'period_number' => null,
-            ]);
-        }
-
         $reservation->load(['classroom', 'requester', 'reviewer', 'slots']);
 
         // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
@@ -122,9 +112,9 @@ class ClassroomReservationController extends Controller
     {
         $submittedSlots = $request->input('slots');
 
-        // 一次選多個時段（可跨日）時，申請本身的日期／開始／結束只是「代表時段」：
-        // 一律取最早的那一個時段（同一天內的開始與結束），不能拿第一個時段的開始配最後一個時段的結束，
-        // 否則跨日選取（例如 11/17 下午＋11/18 第一節）會被誤判成「結束時間早於開始時間」。
+        // 表單上的日期／開始／結束欄位只用來驗證與「沒有選時段時當成一個時段」，不會存進申請本身
+        // （使用時間只存在時段明細）。一次選多個時段（可跨日）時，拿最早的那一個時段來驗證，
+        // 不能拿第一個時段的開始配最後一個時段的結束，否則跨日選取會被誤判成「結束時間早於開始時間」。
         if (is_array($submittedSlots) && count($submittedSlots) > 0) {
             $validSlots = array_values(array_filter($submittedSlots, fn ($slot) => is_array($slot)
                 && is_string($slot['reservation_date'] ?? null)
@@ -200,12 +190,10 @@ class ClassroomReservationController extends Controller
         }
 
         $slots = array_values($uniqueSlots);
-        $firstSlot = $slots[0];
 
         $result = DB::transaction(function () use (
             $validated,
             $slots,
-            $firstSlot,
             $request
         ) {
             $classroom = Classroom::query()
@@ -246,9 +234,6 @@ class ClassroomReservationController extends Controller
                 'classroom_id' => $classroom->id,
                 'requester_id' => $request->user()->id,
                 'class_name' => $validated['class_name'],
-                'reservation_date' => $firstSlot['reservation_date'],
-                'start_time' => $firstSlot['start_time'],
-                'end_time' => $firstSlot['end_time'],
                 'status' => 'pending',
                 'purpose' => $validated['purpose'] ?? null,
             ]);

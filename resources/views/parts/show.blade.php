@@ -222,4 +222,85 @@
             </div>
         @endif
     </div>
+    {{-- 報廢紀錄：零件還沒用就壞掉、過期或遺失時登記，從庫存扣掉（先進先出，跟用料一樣）。
+         報廢損失＝扣到的各批數量×那一批的單價。登記錯了可以「取消報廢」，數量加回原本的批次。 --}}
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            {{-- 標題旁邊寫共報廢多少（損失金額在每一筆的詳細與匯出裡）；右邊是「登記報廢」。 --}}
+            <div class="d-flex flex-wrap align-items-baseline gap-2">
+                <span>報廢紀錄</span>
+                @if ($scraps->isNotEmpty())
+                    <span class="text-muted small">共報廢 {{ $part->withUnit($scraps->sum('quantity')) }}</span>
+                @endif
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-outline-danger">登記報廢</a>
+            </div>
+        </div>
+        @if ($scraps->isEmpty())
+            <div class="card-body text-muted small">目前沒有報廢紀錄。</div>
+        @else
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-nowrap">報廢日期</th>
+                            <th>原因</th>
+                            <th class="text-end text-nowrap">數量</th>
+                            <th class="text-end text-nowrap">損失金額</th>
+                            <th class="text-nowrap">扣用批次</th>
+                            <th>登記人</th>
+                            <th>備註</th>
+                            <th class="text-nowrap">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($scraps as $scrap)
+                            <tr>
+                                <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
+                                <td>{{ $scrap->reason }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($scrap->quantity) }}</td>
+                                <td class="text-end text-nowrap">
+                                    NT$ {{ number_format($scrap->lossAmount()) }}
+                                    @if ($scrap->hasMissingPrice())<small class="text-muted">（部分缺少單價）</small>@endif
+                                </td>
+                                <td class="text-nowrap">
+                                    @foreach ($scrap->batches as $batch)
+                                        <div>{{ $batch->purchase ? $batch->purchase->purchase_date->format('Y-m-d') . ' 採購' : '—' }} × {{ $batch->quantity }}</div>
+                                    @endforeach
+                                </td>
+                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                                <td>{{ $scrap->note ?? '—' }}</td>
+                                <td class="text-nowrap">
+                                    <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
+                                        data-msg="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" onsubmit="return confirm(this.dataset.msg);">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">取消報廢</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
+    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊（基本資料、使用紀錄、採購紀錄、報廢紀錄）與欄位，再選 Excel 或 PDF。 --}}
+    <div class="d-flex justify-content-end">
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#partHistoryExportModal">
+            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+        </button>
+    </div>
+
+    @include('exports._sections-modal', [
+        'modalId' => 'partHistoryExportModal',
+        'modalTitle' => '匯出零件履歷',
+        'excelUrl' => route('parts.history.export', [$part, 'excel']),
+        'pdfUrl' => route('parts.history.export', [$part, 'pdf']),
+        'hidden' => [],
+        'note' => $part->displayName() . '：勾選要匯出的區塊與欄位，取消勾選的欄位在預覽裡會隱藏。',
+        'sections' => $exportSections,
+    ])
 @endsection

@@ -163,7 +163,8 @@ class RepairLogPartUsageTest extends TestCase
     {
         $part = $this->makePart(10);
         app(\App\Services\PartStockService::class)->receive($part, [
-            'purchase_date' => now()->addDay()->toDateString(), 'vendor_name' => '測試廠商', 'quantity' => 10, 'unit_price' => 10, 'note' => null,
+            // 依日期計算先進先出：這一批要在維修日期（2026-10-12）以前買進才能扣。
+            'purchase_date' => '2026-10-01', 'vendor_name' => '測試廠商', 'quantity' => 10, 'unit_price' => 10, 'note' => null,
         ]);
 
         $first = $this->makeInProgressRequest();

@@ -27,7 +27,7 @@ class LowStockPartsExport implements FromArray, WithHeadings, WithTitle, ShouldA
 
     public function headings(): array
     {
-        return ['零件編號', '名稱', '規格', '品牌／型號', '目前庫存', '安全庫存', '單位', '建議補貨數量'];
+        return ['零件編號', '名稱', '規格', '品牌/型號', '目前庫存', '安全庫存', '單位', '建議補貨數量'];
     }
 
     public function array(): array

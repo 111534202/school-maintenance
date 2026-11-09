@@ -7,10 +7,12 @@ use App\Models\ClassroomReservation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
+use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 class ClassroomReservationTest extends TestCase
 {
+    use CreatesReservations;
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
@@ -99,14 +101,14 @@ class ClassroomReservationTest extends TestCase
     {
         $classroom = $this->makeClassroom();
 
-        $own = ClassroomReservation::create([
+        $own = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
         $otherUser = $this->makeUserWithRole('teacher', '教師');
-        ClassroomReservation::create([
+        $this->makeReservation([
             ...$this->payload($classroom, [
                 'class_name' => '二年乙班',
                 'start_time' => '10:00',
@@ -152,7 +154,7 @@ class ClassroomReservationTest extends TestCase
     {
         $classroom = $this->makeClassroom();
 
-        ClassroomReservation::create([
+        $this->makeReservation([
             ...$this->payload($classroom, [
                 'class_name' => '已核准班級',
                 'start_time' => '09:00',
@@ -211,7 +213,7 @@ class ClassroomReservationTest extends TestCase
      public function test_manager_can_approve_pending_reservation_and_audit_it(): void
     {
         $classroom = $this->makeClassroom();
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
@@ -243,7 +245,7 @@ class ClassroomReservationTest extends TestCase
     public function test_manager_can_reject_pending_reservation_with_reason(): void
     {
         $classroom = $this->makeClassroom();
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
@@ -277,7 +279,7 @@ class ClassroomReservationTest extends TestCase
     public function test_user_without_reservation_permission_cannot_review(): void
     {
         $classroom = $this->makeClassroom();
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
@@ -299,7 +301,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
 
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'approved',
@@ -322,7 +324,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
 
-        ClassroomReservation::create([
+        $this->makeReservation([
             ...$this->payload($classroom, [
                 'class_name' => '已核准班級',
                 'start_time' => '09:00',
@@ -334,7 +336,7 @@ class ClassroomReservationTest extends TestCase
             'reviewed_at' => now(),
         ]);
 
-        $pending = ClassroomReservation::create([
+        $pending = $this->makeReservation([
             ...$this->payload($classroom, [
                 'class_name' => '待審核班級',
                 'start_time' => '09:30',
@@ -427,7 +429,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
 
         // 教室正常時，先建立待審核預約。
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
@@ -458,7 +460,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
         $this->loginAsAnyUser();
 
-        $reservation = ClassroomReservation::create([
+        $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
@@ -510,7 +512,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom('IT-301');
         $date = now()->next('Monday')->toDateString();
 
-        ClassroomReservation::create([
+        $this->makeReservation([
             ...$this->payload($classroom, [
                 'reservation_date' => $date,
                 'class_name' => '測試預約班級',
@@ -654,7 +656,7 @@ class ClassroomReservationTest extends TestCase
         $monday = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY);
         $outsideDate = $monday->copy()->addDays(7);   // 下一週的星期一（週課表現在包含星期六、日）
 
-        ClassroomReservation::create([
+        $this->makeReservation([
             ...$this->payload($classroom, [
                 'reservation_date' => $outsideDate->toDateString(),
                 'class_name' => '下週預約不應出現',
@@ -761,11 +763,13 @@ class ClassroomReservationTest extends TestCase
             ],
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
 
+        // 使用時間只存在時段明細：兩個時段都在，最早的是第一天下午那一個。
         $reservation = ClassroomReservation::query()->sole();
-        $this->assertSame($day1, $reservation->reservation_date->toDateString());
-        $this->assertSame('13:10', substr((string) $reservation->start_time, 0, 5));
-        $this->assertSame('14:00', substr((string) $reservation->end_time, 0, 5));
         $this->assertSame(2, $reservation->slots()->count());
+        $first = $reservation->firstSlot;
+        $this->assertSame($day1, $first->reservation_date->toDateString());
+        $this->assertSame('13:10', substr((string) $first->start_time, 0, 5));
+        $this->assertSame('14:00', substr((string) $first->end_time, 0, 5));
     }
 
     /** 今天已經開始的節次不能預約；今天稍晚的節次可以。 */

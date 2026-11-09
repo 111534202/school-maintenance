@@ -39,6 +39,9 @@ return [
         'audit-logs' => [
             'view' => ['name' => '操作紀錄查詢', 'description' => '查看全系統的操作紀錄'],
         ],
+        'backups' => [
+            'manage' => ['name' => '資料備份與還原', 'description' => '立即備份、下載備份、把資料還原到某一份備份、設定保留天數'],
+        ],
         'repairs' => [
             'create' => ['name' => '提出報修', 'description' => '新增報修單、用條碼掃描帶入設備'],
             'dispatch' => ['name' => '派工與重新指派', 'description' => '把報修單指派給維修人員、更換維修人員'],

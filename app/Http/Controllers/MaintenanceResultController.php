@@ -79,6 +79,13 @@ class MaintenanceResultController extends Controller
                 foreach ($allocations as $allocation) {
                     $result->partUsages()->create(['part_id' => $part->id, ...$allocation]);
                 }
+
+                // 依日期重新計算先進先出（執行時間比較早時可能改扣更早的批次）；會讓某一筆當時庫存不足就整筆擋下。
+                try {
+                    $stock->rebuild($part);
+                } catch (DomainException $exception) {
+                    throw ValidationException::withMessages(["part_usages.{$index}.quantity" => $exception->getMessage()]);
+                }
             }
 
             $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_COMPLETED]);

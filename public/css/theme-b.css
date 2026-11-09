@@ -362,10 +362,14 @@ body.tb-body {
 @media (max-width: 575.98px) {
     .tb { gap: 12px; padding-bottom: 12px; }
     .tb-header { flex-wrap: nowrap; gap: 10px; }
-    .tb-title { font-size: 1.5rem; }
+    .tb-title { font-size: 1.3rem; }   /* 頁首多了圖示按鈕時，標題不要被擠成兩行 */
     .tb-subtitle { display: none; }
     .tb-alert { padding: 10px 14px; gap: 8px 12px; }
     .tb-alert .tb-note, .tb-alert-icon { display: none; }
     .tb-form-row { flex-wrap: nowrap; gap: 8px; }
     .tb-form-row .tb-input { flex: 1 1 auto !important; }
 }
+
+/* 成本分析加上「報廢損失」時，統計列是四格（手機版仍然一格一列）。 */
+.tb-stat-band.tb-stat-band-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 767.98px) { .tb-stat-band.tb-stat-band-4 { grid-template-columns: minmax(0, 1fr); } }

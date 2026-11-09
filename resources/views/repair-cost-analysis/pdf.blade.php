@@ -180,6 +180,14 @@
                     {{ number_format($missingPriceCount) }}
                 </div>
             </td>
+            @if ($includeScraps)
+                <td>
+                    <div class="metric-label">報廢損失</div>
+                    <div class="metric-value">
+                        NT$ {{ number_format($scrapLoss, 2) }}
+                    </div>
+                </td>
+            @endif
             <td>
                 <div class="metric-label">涉及維修案件數</div>
                 <div class="metric-value">
@@ -212,7 +220,7 @@
                 <tr>
                     <td>{{ $item->part?->name ?? '零件資料不存在' }}</td>
                     <td class="number">
-                        {{ number_format((int) $item->total_quantity) }}
+                        {{ number_format((int) $item->total_quantity) }} {{ $item->part?->unit }}
                     </td>
                     <td class="number">
                         NT$ {{ number_format((float) $item->known_subtotal, 2) }}
@@ -285,7 +293,7 @@
                     <td>{{ $deviceLabel }}</td>
                     <td>{{ $locationLabel }}</td>
                     <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
-                    <td class="number">{{ number_format((int) $usage->quantity) }}</td>
+                    <td class="number">{{ number_format((int) $usage->quantity) }} {{ $usage->part?->unit }}</td>
                     <td class="number">
                         @if ($priceMissing)
                             缺少單價
@@ -308,6 +316,41 @@
             @endforelse
         </tbody>
     </table>
+
+    @if ($includeScraps)
+        <h2>三、報廢明細（共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss, 2) }}）</h2>
+
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>報廢日期</th>
+                    <th>零件名稱</th>
+                    <th>原因</th>
+                    <th>數量</th>
+                    <th>損失金額</th>
+                    <th>登記人</th>
+                    <th>備註</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($scraps as $scrap)
+                    <tr>
+                        <td>{{ $scrap->scrap_date->format('Y-m-d') }}</td>
+                        <td>{{ $scrap->part?->name ?? '零件資料不存在' }}{{ $scrap->part?->specification ? '（' . $scrap->part->specification . '）' : '' }}</td>
+                        <td>{{ $scrap->reason }}</td>
+                        <td class="number">{{ number_format($scrap->quantity) }} {{ $scrap->part?->unit }}</td>
+                        <td class="number">{{ number_format($scrap->lossAmount(), 2) }}</td>
+                        <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                        <td>{{ $scrap->note ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="no-data">此日期範圍內沒有報廢紀錄。</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
 
     <div class="footer">
         維修材料成本分析報表｜第 <span class="page-number"></span>

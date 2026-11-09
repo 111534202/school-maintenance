@@ -34,6 +34,7 @@ return [
         'device_categories' => 'Device Categories',
         'devices' => 'Device Master',
         'audit_logs' => 'Audit Log',
+        'backups' => 'Backups',
     ],
 
     // 語言切換選單裡的語言名稱。

@@ -40,13 +40,19 @@ class PartPurchase extends Model
         return $this->quantity * $this->unit_price;
     }
 
-    /** 已經被用掉的數量。 */
+    /** 已經被用掉的數量（維修、保養用料與報廢都算）。 */
     public function usedQuantity(): int
     {
         return $this->quantity - $this->remaining_quantity;
     }
 
     /** 這一批是否已經被用過（用過就不能改數量、單價，也不能刪除）。 */
+    /** 新增零件時填的期初庫存（不是真的採購）：重新計算先進先出時視為最早就有。 */
+    public function isOpeningStock(): bool
+    {
+        return $this->vendor_name === null && $this->note === '期初庫存';
+    }
+
     public function isUsed(): bool
     {
         return $this->usedQuantity() > 0;
@@ -63,10 +69,17 @@ class PartPurchase extends Model
         return $this->morphMany(Attachment::class, 'attachable');
     }
 
-    /** 刪除這筆採購的附件：資料列和硬碟上的檔案一起刪掉，不留下沒人用的檔案。 */
-    public function deleteAttachments(): void
+    /** 刪除這筆採購的附件（不給編號＝全部；給編號＝只刪那幾個）：資料列和硬碟上的檔案一起刪掉，不留下沒人用的檔案。 */
+    public function deleteAttachments(?array $ids = null): void
     {
-        foreach ($this->attachments()->get() as $attachment) {
+        if ($ids === []) {
+            return;
+        }
+        $query = $this->attachments();
+        if ($ids !== null) {
+            $query->whereIn('id', $ids);
+        }
+        foreach ($query->get() as $attachment) {
             if ($disk = $attachment->storageDisk()) {
                 Storage::disk($disk)->delete($attachment->file_path);
             }

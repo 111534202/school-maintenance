@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
  * 教室預約的審核與時段衝突檢查（送出申請、整筆核准／拒絕、分時段審核都用這裡）。
  *
  * 「已核准的時段」包含：時段本身標成 approved，或時段沒有自己的結果、而整筆申請是 approved（舊資料）。
+ * 使用時間只看時段明細；每筆申請至少有一個時段（舊資料已由 migration 2026_11_05_010000 補齊）。
  * 同一間教室、同一個時間只能有一個已核准的時段。
  */
 class ReservationReviewService
@@ -22,7 +23,7 @@ class ReservationReviewService
      */
     public function approvedConflict(int $classroomId, string $date, string $start, string $end, ?int $excludeReservationId = null): ?object
     {
-        $slot = DB::table('classroom_reservation_slots as slots')
+        return DB::table('classroom_reservation_slots as slots')
             ->join('classroom_reservations as reservations', 'reservations.id', '=', 'slots.classroom_reservation_id')
             ->where('reservations.classroom_id', $classroomId)
             ->when($excludeReservationId, fn ($q) => $q->where('reservations.id', '<>', $excludeReservationId))
@@ -32,23 +33,6 @@ class ReservationReviewService
             ->where(fn ($q) => $q->where('slots.status', ClassroomReservation::STATUS_APPROVED)
                 ->orWhere(fn ($q) => $q->whereNull('slots.status')->where('reservations.status', ClassroomReservation::STATUS_APPROVED)))
             ->select(['reservations.class_name', 'slots.reservation_date', 'slots.start_time', 'slots.end_time'])
-            ->first();
-
-        if ($slot) {
-            return $slot;
-        }
-
-        // 相容沒有時段明細的舊資料：直接看整筆申請的時間。
-        return DB::table('classroom_reservations')
-            ->where('classroom_id', $classroomId)
-            ->when($excludeReservationId, fn ($q) => $q->where('id', '<>', $excludeReservationId))
-            ->where('status', ClassroomReservation::STATUS_APPROVED)
-            ->whereDate('reservation_date', $date)
-            ->where('start_time', '<', $end)
-            ->where('end_time', '>', $start)
-            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('classroom_reservation_slots')
-                ->whereColumn('classroom_reservation_slots.classroom_reservation_id', 'classroom_reservations.id'))
-            ->select(['class_name', 'reservation_date', 'start_time', 'end_time'])
             ->first();
     }
 
@@ -81,15 +65,6 @@ class ReservationReviewService
                 return ['type' => 'already_reviewed'];
             }
 
-            // 舊資料沒有時段明細：先用整筆申請的時間補一個時段，之後一律以時段審核。
-            if (! $locked->slots()->exists()) {
-                $locked->slots()->create([
-                    'reservation_date' => $locked->reservation_date->toDateString(),
-                    'start_time' => $locked->start_time,
-                    'end_time' => $locked->end_time,
-                    'period_number' => null,
-                ]);
-            }
             $slots = $locked->slots()->get();
 
             // 整理每個時段的決定。

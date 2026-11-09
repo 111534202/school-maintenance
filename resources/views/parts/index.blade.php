@@ -9,9 +9,15 @@
             <h1 class="tb-title">零件庫存列表</h1>
             <p class="tb-subtitle">點選任一列查看零件履歷；庫存由採購紀錄與使用紀錄增減。</p>
         </div>
-        <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>新增零件
-        </a>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            {{-- 匯出：先打開預覽視窗，勾選要匯出的零件與欄位，再選 Excel 或 PDF。放在頁首，手機只顯示圖示，不佔清單的高度。 --}}
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#partsExportModal" title="匯出零件清單（Excel／PDF）" aria-label="匯出零件清單">
+                <i class="bi bi-download" aria-hidden="true"></i><span class="d-none d-sm-inline">匯出</span>
+            </button>
+            <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>新增零件
+            </a>
+        </div>
     </div>
 
     {{-- 低庫存提示列：列出低於安全庫存的零件，按鈕開啟「目前低庫存品項」視窗（可匯出 Excel）。 --}}
@@ -144,15 +150,19 @@
                     @endif
                 </div>
                 <div class="modal-footer">
+                    {{-- 匯出 Excel／PDF：換到預覽視窗（只含低庫存品項），可勾選要匯出的欄位與零件。 --}}
                     @if ($lowStockParts->isNotEmpty())
-                        <a href="{{ route('parts.low-stock.export') }}" class="btn btn-sm btn-success">
-                            <i class="bi bi-file-earmark-excel me-1"></i>匯出 Excel
-                        </a>
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#lowStockExportModal">
+                            <i class="bi bi-download me-1" aria-hidden="true"></i>匯出 Excel／PDF
+                        </button>
                     @endif
                 </div>
             </div>
         </div>
     </div>
+
+    @include('parts._export-modal', ['modalId' => 'partsExportModal', 'modalTitle' => '匯出零件清單', 'exportParts' => $exportParts, 'withKeyword' => true])
+    @include('parts._export-modal', ['modalId' => 'lowStockExportModal', 'modalTitle' => '匯出低庫存品項', 'exportParts' => $lowStockParts, 'withKeyword' => false])
 
     <style>
         .part-row { cursor: pointer; }

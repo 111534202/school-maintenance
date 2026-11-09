@@ -51,8 +51,10 @@ class GenerateSchemaDocs extends Command
         'knowledge_base' => ['自助知識庫文章', '規格書未列（工作計畫指定模組）', '符合 3NF。category 是自由文字（沒有獨立的分類表）；值很少、也沒有跨表查詢需求，若日後分類變多再拆成獨立資料表。'],
         'parts' => ['零件庫存', '規格書未列（備品庫存模組）', '大致符合 3NF。part_code 是零件編號，可自訂、可修改（不可重複），未填時自動產生 PART-順序數字；其他資料表以 id 關聯零件，所以改編號不影響紀錄；單價不存在零件上，改存在每一筆採購批次。current_stock 等於各批次剩餘數量的加總，是為了列表與扣料檢查保留的快取值，只能由 PartStockService 更新（進貨、用料），不能手動修改。'],
         'part_purchases' => ['零件採購紀錄', '規格書未列（備品庫存模組：採購與先進先出成本）', '符合 3NF。每一筆是一個進貨批次；總價＝數量×單價，不另存。remaining_quantity 是這一批還沒被用掉的數量，先進先出扣料時遞減。發票以 attachments 多型關聯保存。'],
+        'part_scraps' => ['零件報廢紀錄', '規格書未列（備品庫存模組：零件沒用就壞掉、過期或遺失時報廢）', '符合 3NF。一次報廢一筆；扣了哪幾個採購批次與當時單價記在 part_scrap_batches，報廢損失由明細計算，不另存。recorded_by 是登記的人。'],
+        'part_scrap_batches' => ['零件報廢扣用批次', '規格書未列（報廢的先進先出明細，與用料明細同結構）', '符合 3NF。一次報廢跨兩個採購批次時拆成兩列，unit_price 是那一批的單價（成本快照）；取消報廢時依這裡把數量加回原批次。'],
         'maintenance_part_usages' => ['保養零件使用明細', '規格書未列（保養用料，與維修用料同結構）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），一次用料跨兩批時拆成兩列。'],
-        'classroom_reservations' => ['教室預約申請', '規格書未列（空間預約模組）', '大致符合 3NF，但有一個未解決的問題：reservation_date、start_time、end_time 只是「第一個時段」的複本，真正的時間在 classroom_reservation_slots（一張申請可有多個時段），兩份可能不一致。已隔離保存為待確認問題，尚未處理，見 docs/待確認/預約時間重複儲存_劉家芸.md。'],
+        'classroom_reservations' => ['教室預約申請', '規格書未列（空間預約模組）', '符合 3NF：使用時間（日期、開始、結束）只記在 classroom_reservation_slots（一張申請可有多個時段），申請本身不另存。原本重複存放的 reservation_date、start_time、end_time 已依方案 A 移除（2026_11_05_010000），見 docs/待確認/預約時間重複儲存_劉家芸.md。'],
         'classroom_reservation_slots' => ['教室預約時段明細', '規格書未列（教室預約課表與多時段預約功能）', '一對多關聯明細表：每筆明細透過 classroom_reservation_id 關聯一筆預約申請；刪除預約申請時，外鍵會級聯刪除所屬時段。每個時段分別審核：status 為這個時段的結果（空白代表跟著整筆申請，供舊資料與未審核的申請使用），被拒絕時 rejection_reason 記錄原因。'],
         'ai_settings' => ['AI 預防保養參數', '規格書未列（AI 預測性維護）', '「參數名稱＋參數值」的設定表（key-value），參數會隨功能增減，所以刻意不為每個參數開一個欄位。'],
         'preventive_candidates' => ['預防保養候選', '規格書未列（AI 預測性維護）', '符合 3NF。explanation／features 是 JSON：當時評分的快照（日後改規則也要能重現當時結果），有意不拆。'],
@@ -82,6 +84,8 @@ class GenerateSchemaDocs extends Command
         'repair_part_usages' => ['明細', 'repair', 'part_usages'],
         'part_purchases' => ['單據', 'part', 'purchases'],
         'maintenance_part_usages' => ['明細', 'maintenance', 'part_usages'],
+        'part_scraps' => ['單據', 'part', 'scraps'],
+        'part_scrap_batches' => ['明細', 'part', 'scrap_batches'],
         'attachments' => ['附屬（多型）', '', 'attachments'],
         'audit_logs' => ['紀錄', 'audit', 'logs'],
         'knowledge_base' => ['主檔（例外）', '', 'knowledge_base'],
@@ -124,6 +128,7 @@ class GenerateSchemaDocs extends Command
         'attachable_type' => '附件所屬資料類型（多型）', 'attachable_id' => '附件所屬資料編號（多型）', 'file_path' => '檔案儲存路徑（私有磁碟）', 'file_name' => '原始檔名（使用者上傳時的檔名）', 'mime_type' => '檔案類型', 'size_bytes' => '檔案大小（位元組）',
         'user_id' => '操作人（users.id）', 'action' => '操作動作', 'loggable_type' => '被操作資料類型（多型）', 'loggable_id' => '被操作資料編號（多型）', 'changes' => '變更內容（JSON 快照）',
         'part_code' => '零件編號（唯一，可自訂；未填時自動產生 PART-順序數字）', 'unit' => '單位（條、個、片…）', 'purchase_date' => '採購日期', 'vendor_name' => '廠商名稱', 'remaining_quantity' => '批次剩餘數量', 'part_purchase_id' => '扣用的採購批次（part_purchases.id）', 'maintenance_result_id' => '所屬保養結果', 'specification' => '規格', 'unit_price' => '單價', 'current_stock' => '目前庫存', 'safety_stock' => '安全庫存', 'repair_log_id' => '所屬維修紀錄', 'part_id' => '零件（parts.id）', 'quantity' => '使用數量',
+        'scrap_date' => '報廢日期', 'scrap_time' => '報廢時間（同一天依時間先後扣批次）', 'reason' => '原因', 'recorded_by' => '登記人（users.id）', 'part_scrap_id' => '所屬報廢紀錄（part_scraps.id）',
         'class_name' => '班級名稱', 'reservation_date' => '預約日期', 'start_time' => '開始時間', 'end_time' => '結束時間', 'reviewed_by' => '審核人（users.id）', 'reviewed_at' => '審核時間', 'purpose' => '用途',
         'key' => '參數名稱', 'value' => '參數值', 'risk_score' => '風險分數（0～1）', 'threshold' => '當時的門檻', 'algorithm' => '評分演算法版本', 'explanation' => '評分明細（JSON 快照）', 'features' => '輸入特徵（JSON 快照）',
         'decided_by' => '審核人（users.id）', 'decided_at' => '審核時間', 'decision_note' => '審核備註',
@@ -131,6 +136,7 @@ class GenerateSchemaDocs extends Command
 
     /** @var array<string, string> 個別資料表裡意思不同的欄位 */
     private array $columnTextSpecific = [
+        'part_scraps.quantity' => '報廢數量', 'part_scrap_batches.quantity' => '從這一批扣的數量', 'part_scrap_batches.unit_price' => '這一批的單價（報廢損失用）',
         'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
         'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
     ];

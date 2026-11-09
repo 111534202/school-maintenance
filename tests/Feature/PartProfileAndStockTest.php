@@ -109,11 +109,13 @@ class PartProfileAndStockTest extends TestCase
         $this->buy($part, '2026-10-10', 2, 20);
 
         $this->put(route('parts.update', $part), ['part_code' => 'HDMI-1M', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
-            ->assertRedirect(route('parts.show', $part));
+            ->assertRedirect(route('parts.show', $part->fresh()));
 
+        // 網址用零件編號，改編號後網址跟著變（/parts/HDMI-1M）。
+        $this->assertSame(url('/parts/HDMI-1M'), route('parts.show', $part->fresh()));
         $this->assertSame('HDMI-1M', $part->fresh()->part_code);
         $this->assertSame(1, $part->fresh()->purchases()->count());
-        $this->get(route('parts.show', $part))->assertSee('零件履歷：HDMI-1M HDMI 線（1公尺）');
+        $this->get(route('parts.show', $part->fresh()))->assertSee('零件履歷：HDMI-1M HDMI 線（1公尺）');
     }
 
     public function test_the_code_must_use_allowed_characters_and_is_required_when_editing(): void
@@ -137,6 +139,24 @@ class PartProfileAndStockTest extends TestCase
         $this->getJson(route('parts.check-code', ['code' => 'NEW-1']))->assertJson(['available' => true]);
         $this->getJson(route('parts.check-code', ['code' => 'bad code']))->assertJson(['available' => false]);
         $this->getJson(route('parts.check-code', ['code' => '']))->assertJson(['available' => true]);
+    }
+
+    /** 零件編號也不能跟設備主檔的設備編號重複，並說明是跟零件還是設備重複。 */
+    public function test_a_code_already_used_as_a_device_code_is_refused_and_says_so(): void
+    {
+        $this->loginAsAnyUser();
+        $this->makeDevice('DEV-0100');
+        $this->makePart(['part_code' => 'HDMI-2M']);
+
+        $this->getJson(route('parts.check-code', ['code' => 'dev-0100']))
+            ->assertJson(['available' => false])
+            ->assertJsonFragment(['message' => '「dev-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
+        $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))
+            ->assertJson(['available' => false]);
+        $this->assertStringContainsString('零件', $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))->json('message'));
+
+        $this->post(route('parts.store'), ['part_code' => 'DEV-0100', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
+            ->assertSessionHasErrors(['part_code' => '「DEV-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
     }
 
     public function test_unit_is_required_and_shown_with_stock_quantities(): void
@@ -197,6 +217,8 @@ class PartProfileAndStockTest extends TestCase
 
         // 低庫存視窗裡只有 LOW-1。
         $modal = substr($html, strpos($html, 'id="lowStockModal"'));
+        // 頁尾還有兩個匯出預覽視窗（會列出所有零件），只檢查低庫存視窗本身。
+        $modal = substr($modal, 0, strpos($modal, 'id="partsExportModal"') ?: strlen($modal));
         $this->assertStringContainsString('LOW-1', $modal);
         $this->assertStringNotContainsString('OK-1', $modal);
 
@@ -213,7 +235,13 @@ class PartProfileAndStockTest extends TestCase
         $enough = $this->makePart(['part_code' => 'OK-1', 'safety_stock' => 1]);
         $this->buy($enough, '2026-10-10', 9, 20);
 
-        $this->get(route('parts.index'))->assertSee(route('parts.low-stock.export'), false);
+        // 低庫存視窗的「匯出 Excel／PDF」打開只含低庫存品項的預覽視窗（可勾選欄位與零件）。
+        $html = $this->get(route('parts.index'))->assertSee('data-bs-target="#lowStockExportModal"', false)->getContent();
+        $preview = substr($html, strpos($html, 'id="lowStockExportModal"'));
+        $this->assertStringContainsString('name="ids[]" value="' . $low->id . '"', $preview);
+        $this->assertStringNotContainsString('name="ids[]" value="' . $enough->id . '"', $preview);
+
+        // 原本的低庫存 Excel 網址仍可使用。
         $this->get(route('parts.low-stock.export'))->assertOk();
 
         \Maatwebsite\Excel\Facades\Excel::matchByRegex();
@@ -240,7 +268,7 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('parts.show', $part))
             ->assertOk()
             ->assertSee('零件履歷：PART-1 HDMI 線（1公尺）')
-            ->assertSee('Cable Master／HD-1M')
+            ->assertSee('Cable Master/HD-1M')
             ->assertSee('低庫存')
             ->assertSee('測試廠商')
             ->assertSee('NT$ 40')            // 總價＝2×20
@@ -283,34 +311,7 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('attachments.show', $purchase->attachments->first()))->assertOk();
     }
 
-    public function test_the_attachment_shows_as_a_button_and_can_be_removed_without_uploading_a_new_one(): void
-    {
-        Storage::fake('local');
-        $this->loginAsAnyUser();
-        $part = $this->makePart();
-
-        $this->post(route('parts.purchases.store', $part), [
-            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20,
-            'invoice' => UploadedFile::fake()->image('receipt-2026.jpg'),
-        ]);
-        $purchase = PartPurchase::firstOrFail();
-        $path = $purchase->attachments->first()->file_path;
-        Storage::disk('local')->assertExists($path);
-
-        // 履歷頁只顯示「附件」按鈕，不顯示檔名；按鈕帶著預覽用的網址與檔案類型。
-        $this->get(route('parts.show', $part))
-            ->assertSee('data-bs-target="#attachmentModal"', false)
-            ->assertSee('data-mime="image/jpeg"', false)
-            ->assertDontSee('receipt-2026.jpg');
-
-        $this->put(route('parts.purchases.update', [$part, $purchase]), [
-            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20, 'remove_invoice' => '1',
-        ])->assertSessionHasNoErrors();
-
-        $this->assertCount(0, $purchase->fresh()->attachments);
-        Storage::disk('local')->assertMissing($path);
-        $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
-    }
+    /** 一筆採購最多 5 個附件，每個 2 MB；修改時可以只刪其中幾個、再加新的。 */
 
     public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void
     {
@@ -334,7 +335,8 @@ class PartProfileAndStockTest extends TestCase
         $this->loginAsAnyUser();
         $part = $this->makePart();
         $purchase = $this->buy($part, '2026-10-10', 3, 20);
-        app(PartStockService::class)->consume($part, 1);
+        // 用掉 1 個（報廢 1 個；依日期重新計算時要有真正的紀錄）。
+        app(PartStockService::class)->scrap($part, ['scrap_date' => '2026-10-11', 'quantity' => 1, 'reason' => '損壞'], null);
 
         $this->put(route('parts.purchases.update', [$part, $purchase]), [
             'purchase_date' => '2026-10-10', 'vendor_name' => '測試廠商', 'quantity' => 9, 'unit_price' => 20,
@@ -462,5 +464,20 @@ class PartProfileAndStockTest extends TestCase
         $this->delete(route('parts.destroy', $part))->assertRedirect(route('parts.index'));
         $this->assertDatabaseCount('parts', 0);
         $this->assertDatabaseCount('part_purchases', 0);
+    }
+
+    // 零件履歷網址用零件編號；舊的流水號網址仍然打得開；和固定網址重複的名稱不能當編號。
+    public function test_part_urls_use_the_part_code(): void
+    {
+        $this->actingAs($this->makeUserWithPermissions(['parts.manage']));
+        $part = $this->makePart();
+
+        $this->assertSame(url('/parts/' . $part->part_code), route('parts.show', $part));
+        $this->get('/parts/' . $part->part_code)->assertOk()->assertSee($part->name);
+        $this->get('/parts/' . $part->id)->assertOk()->assertSee($part->name);
+        $this->get('/parts/NO-SUCH-CODE')->assertNotFound();
+
+        $this->put(route('parts.update', $part), ['part_code' => 'create', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1])
+            ->assertSessionHasErrors('part_code');
     }
 }

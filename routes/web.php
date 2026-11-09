@@ -39,6 +39,7 @@ use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
 use App\Http\Controllers\PartController;
+use App\Http\Controllers\PartScrapController;
 use App\Http\Controllers\PartPurchaseController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
@@ -238,8 +239,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         // 即時檢查零件編號是否重複（要放在 resource 前面，否則 check-code 會被當成零件編號）。
         Route::get('parts/check-code', [PartController::class, 'checkCode'])->name('parts.check-code');
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
+        // 零件清單匯出（excel／pdf）：預覽視窗勾選的零件與欄位
+        Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel', 'pdf'])->name('parts.export');
+        // 零件履歷匯出（excel／pdf）：預覽視窗勾選的區塊與欄位
+        Route::get('parts/{part}/history-export/{format}', [PartController::class, 'exportHistory'])->whereIn('format', ['excel', 'pdf'])->name('parts.history.export');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
+        // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。
+        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store', 'destroy']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
@@ -247,6 +254,15 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::resource('devices', DeviceController::class)->except(['destroy']);
         Route::patch('devices/{device}/disable', [DeviceController::class, 'disable'])->name('devices.disable');   // 停用設備
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
+    });
+
+    // 資料備份：需要 backups.manage（預設只有系統管理員）。每週日自動備份，也可手動備份、下載、還原。
+    Route::middleware('can:backups.manage')->prefix('backups')->name('backups.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BackupController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\BackupController::class, 'store'])->name('store');
+        Route::post('/settings', [\App\Http\Controllers\BackupController::class, 'settings'])->name('settings');
+        Route::get('/{name}/download', [\App\Http\Controllers\BackupController::class, 'download'])->name('download');
+        Route::post('/{name}/restore', [\App\Http\Controllers\BackupController::class, 'restore'])->name('restore');
     });
 
     // 操作紀錄：只能查看，需要 audit-logs.view 權限。

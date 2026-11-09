@@ -34,6 +34,7 @@ return [
         'device_categories' => '設備類別',
         'devices' => '設備主檔',
         'audit_logs' => '操作紀錄',
+        'backups' => '資料備份',
     ],
 
     // 語言切換選單裡的語言名稱。

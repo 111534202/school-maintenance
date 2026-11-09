@@ -80,9 +80,37 @@ class Part extends Model
 
         do {
             $code = self::CODE_PREFIX . (++$max);
-        } while (self::codeTaken($code));
+        } while (self::codeConflict($code) !== null);   // 也避開已經是設備編號的
 
         return $code;
+    }
+
+    /**
+     * 零件編號跟誰重複：其他零件，或設備主檔的設備編號（大小寫視為相同）。
+     * 沒有重複回傳 null；有重複回傳給使用者看的說明，例如「已經是設備主檔裡「A101 教室 投影機」的設備編號」。
+     */
+    public static function codeConflict(string $code, ?int $ignoreId = null): ?string
+    {
+        $normalized = mb_strtolower(trim($code));
+
+        $part = self::query()
+            ->whereRaw('LOWER(part_code) = ?', [$normalized])
+            ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))
+            ->first(['id', 'part_code', 'name']);
+        if ($part) {
+            return "「{$code}」已經是零件「{$part->name}」（{$part->part_code}）的零件編號";
+        }
+
+        $device = Device::query()
+            ->with(['category:id,name', 'classroom:id,name'])
+            ->whereRaw('LOWER(device_code) = ?', [$normalized])
+            ->first();
+        if ($device) {
+            $label = trim(($device->classroom?->name ?? '') . ' ' . ($device->category?->name ?? '設備'));
+            return "「{$code}」已經是設備主檔裡「{$label}」的設備編號";
+        }
+
+        return null;
     }
 
     /** 這個零件編號是否已經被其他零件使用（大小寫視為相同；修改時傳自己的 id 排除自己）。 */
@@ -95,15 +123,39 @@ class Part extends Model
     }
 
     /** 標題用的完整名稱：PART-1 HDMI 線（2公尺）。 */
+    /**
+     * 網址用零件編號（/parts/HDMI-2），不用流水號。
+     * 舊網址（/parts/1）仍可開：找不到這個編號、而且是數字時，再用流水號找。
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'part_code';
+    }
+
+    public function getRouteKey(): mixed
+    {
+        return $this->part_code ?? $this->getKey();
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field !== null) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        return static::where('part_code', $value)->first()
+            ?? (ctype_digit((string) $value) ? static::find($value) : null);
+    }
+
     public function displayName(): string
     {
         return trim($this->part_code . ' ' . $this->name . ($this->specification ? "（{$this->specification}）" : ''));
     }
 
-    /** 品牌／型號合併顯示；兩個都沒填就回傳 null。 */
+    /** 品牌/型號合併顯示（例如 Cable Master/HD-2M）；兩個都沒填就回傳 null。 */
     public function brandModel(): ?string
     {
-        $text = implode('／', array_filter([$this->brand, $this->model]));
+        $text = implode('/', array_filter([$this->brand, $this->model]));
 
         return $text === '' ? null : $text;
     }
@@ -157,5 +209,11 @@ class Part extends Model
     public function maintenancePartUsages(): HasMany
     {
         return $this->hasMany(MaintenancePartUsage::class, 'part_id');
+    }
+
+    /** 報廢紀錄（沒用就壞掉、過期、遺失而從庫存扣掉的）。 */
+    public function scraps(): HasMany
+    {
+        return $this->hasMany(PartScrap::class);
     }
 }

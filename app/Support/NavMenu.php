@@ -64,6 +64,7 @@ class NavMenu
             ]],
             ['type' => 'group', 'id' => 'system', 'label' => __('common.nav.system_section'), 'icon' => 'bi-gear', 'children' => [
                 $link(__('common.nav.audit_logs'), 'bi-clock-history', 'audit-logs.index', ['audit-logs.*'], $can('audit-logs.view')),
+                $link(__('common.nav.backups'), 'bi-cloud-arrow-up', 'backups.index', ['backups.*'], $can('backups.manage')),
             ]],
         ];
 

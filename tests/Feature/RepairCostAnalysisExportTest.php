@@ -57,7 +57,7 @@ class RepairCostAnalysisExportTest extends TestCase
         ]);
     }
 
-    public function test_export_contains_three_sheets_and_preserves_cost_rules(): void
+    public function test_export_contains_the_summary_parts_details_and_scrap_sheets_and_preserves_cost_rules(): void
     {
         $user = $this->makeUserWithPermissions(['maintenance.view']);
 
@@ -82,10 +82,12 @@ class RepairCostAnalysisExportTest extends TestCase
         $export = new RepairCostAnalysisExport($data);
         $sheets = $export->sheets();
 
-        $this->assertCount(3, $sheets);
+        // 預設「報廢損失：一起顯示」，多一張報廢明細；選「不顯示」時只有原本三張。
+        $this->assertCount(4, $sheets);
+        $this->assertCount(3, (new RepairCostAnalysisExport(app(RepairCostAnalysisService::class)->generate($user, ['scraps' => 'exclude'])))->sheets());
 
         $this->assertSame(
-            ['成本總覽', '備品彙總', '用料明細'],
+            ['成本總覽', '備品彙總', '用料明細', '報廢明細'],
             array_map(
                 fn ($sheet) => $sheet->title(),
                 $sheets
