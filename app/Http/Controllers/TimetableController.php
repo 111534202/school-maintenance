@@ -78,6 +78,27 @@ class TimetableController extends Controller
     }
 
     /**
+     * 免登入查詢課表用（GET /schedule/timetable/week）：和 week() 相同，但只留「有沒有課」與預約的時間、狀態：
+     * 拿掉課程的班級與課名、預約的班級名稱，不透露是哪一班在哪間教室上什麼課或預約。
+     */
+    public function publicWeek(Request $request, TimetableProvider $provider): JsonResponse
+    {
+        $response = $this->week($request, $provider);
+        $data = $response->getData(true);
+
+        foreach ($data['days'] ?? [] as $d => $day) {
+            foreach ($day['periods'] ?? [] as $p => $period) {
+                unset($data['days'][$d]['periods'][$p]['class_name'], $data['days'][$d]['periods'][$p]['course_name']);
+                foreach ($period['reservations'] ?? [] as $r => $reservation) {
+                    unset($data['days'][$d]['periods'][$p]['reservations'][$r]['class_name']);
+                }
+            }
+        }
+
+        return response()->json($data, $response->getStatusCode());
+    }
+
+    /**
      * 回傳指定日期所在週的星期一至星期五課表。
      */
     public function week(Request $request, TimetableProvider $provider): JsonResponse

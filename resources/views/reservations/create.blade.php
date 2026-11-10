@@ -1,12 +1,20 @@
 @extends('layouts.app')
 
-@section('title', '新增空間預約')
+{{-- $guest：免登入查詢課表（/schedule）。同一個頁面，不能送出申請，點空堂／送出會跳出「若需預約請先登入」。 --}}
+@php $guest = $guest ?? false; @endphp
+
+@section('title', $guest ? '查詢課表' : '新增空間預約')
 
 @section('content')
 <div class="container-fluid py-4">
     <div class="mb-4">
-        <h1 class="h3 mb-1">新增空間預約</h1>
-        <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
+        @if ($guest)
+            <h1 class="h3 mb-1">查詢課表</h1>
+            <p class="text-muted mb-0">不用登入即可查詢教室課表；若需預約教室，請先登入。</p>
+        @else
+            <h1 class="h3 mb-1">新增空間預約</h1>
+            <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
+        @endif
     </div>
 
     <div class="card shadow-sm">
@@ -226,6 +234,54 @@
         </div>
     </div>
 </div>
+
+@if ($guest)
+    {{-- 未登入時：點空堂、送出，或點到需要登入的頁面，跳出這個視窗（取消／登入）。 --}}
+    <div class="modal fade" id="loginRequiredModal" tabindex="-1" aria-labelledby="loginRequiredTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="loginRequiredTitle">需要登入</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                </div>
+                <div class="modal-body">若需預約請先登入。</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <a href="{{ route('schedule.login') }}" class="btn btn-primary" data-login-required-ok>登入</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalEl = document.getElementById('loginRequiredModal');
+        const ask = function (event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        };
+        // 免登入也能開的網址（查詢課表本身、登入）；其他站內連結都要登入。
+        const openPaths = ['/schedule', '/schedule/login', '/login'];
+        const needsLogin = function (a) {
+            if (!a || !a.href || a.target === '_blank' || a.hasAttribute('data-login-required-ok')) return false;
+            const url = new URL(a.href, window.location.href);
+            return url.origin === window.location.origin && !openPaths.includes(url.pathname);
+        };
+        // 捕獲階段先攔下：課表的空堂格子（role=button）、送出表單、站內需要登入的連結。
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('#timetable_result [role="button"]')) return ask(event);
+            const a = event.target.closest('a[href]');
+            if (needsLogin(a)) return ask(event);
+        }, true);
+        document.addEventListener('keydown', function (event) {
+            if ((event.key === 'Enter' || event.key === ' ') && event.target.closest && event.target.closest('#timetable_result [role="button"]')) ask(event);
+        }, true);
+        document.addEventListener('submit', function (event) {
+            if (event.target.closest('.container-fluid')) ask(event);
+        }, true);
+    });
+    </script>
+@endif
 
 <style>
     /* 有設備在報修的教室：深黃色字（Bootstrap 的亮黃色在白底上看不清楚）。 */
@@ -1098,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const url = new URL(
-                @json(route('reservations.timetable.week')),
+                @json($guest ? route('schedule.timetable.week') : route('reservations.timetable.week')),
                 window.location.origin
             );
             url.searchParams.set('classroom_id', classroomInput.value);
