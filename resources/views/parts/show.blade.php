@@ -14,7 +14,7 @@
             <span>基本資料</span>
             <div class="d-flex gap-2">
                 <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary">修改基本資料</a>
-                <form method="POST" action="{{ route('parts.destroy', $part) }}" onsubmit="return confirm('確定要刪除這個零件嗎？採購紀錄也會一起刪除。');">
+                <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？採購紀錄也會一起刪除。">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-outline-danger">刪除零件</button>
@@ -103,7 +103,7 @@
                                     <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
-                                            onsubmit="return confirm('確定要刪除這筆採購紀錄嗎？庫存會減少 {{ $purchase->quantity }}。');">
+                                            data-confirm="請問確定要刪除 {{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的採購紀錄（{{ $part->withUnit($purchase->quantity) }}）嗎？庫存會減少 {{ $part->withUnit($purchase->quantity) }}。">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger">刪除</button>
@@ -273,7 +273,7 @@
                                 <td>{{ $scrap->note ?? '—' }}</td>
                                 <td class="text-nowrap">
                                     <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
-                                        data-msg="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" onsubmit="return confirm(this.dataset.msg);">
+                                        data-confirm="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" data-confirm-ok="確認取消報廢">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-secondary">取消報廢</button>

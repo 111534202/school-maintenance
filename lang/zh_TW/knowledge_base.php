@@ -31,7 +31,7 @@ return [
     'uncategorized' => '未分類',
     'published' => '已上架',
     'unpublished' => '未上架',
-    'confirm_delete' => '確定要刪除「:title」嗎？',
+    'confirm_delete' => '請問確定要刪除「:title」嗎？',
 
     'create_title' => '新增知識庫項目',
     'edit_title' => '編輯知識庫項目',

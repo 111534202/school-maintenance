@@ -12,7 +12,7 @@
             <p class="tb-subtitle">每月 1 號凌晨 0 點自動備份整個資料庫；有人改錯資料時，可以還原到某一份備份。</p>
         </div>
         <form method="POST" action="{{ route('backups.store') }}"
-            data-msg="請問確定要立即備份目前所有資料嗎？" onsubmit="return confirm(this.dataset.msg);">
+            data-confirm="請問確定要立即備份目前所有資料嗎？" data-confirm-ok="確認備份">
             @csrf
             <button type="submit" class="tb-btn tb-btn-primary"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>立即備份</button>
         </form>
@@ -57,7 +57,7 @@
                             <i class="bi bi-download" aria-hidden="true"></i> 下載
                         </a>
                         <form method="POST" action="{{ route('backups.restore', $backup['name']) }}"
-                            data-msg="請問確定要把所有資料還原到 {{ $backup['created_at']->format('Y-m-d H:i') }} 的備份嗎？這個時間之後新增或修改的資料都會不見（還原前會先自動備份目前的資料）。" onsubmit="return confirm(this.dataset.msg);">
+                            data-confirm="請問確定要把所有資料還原到 {{ $backup['created_at']->format('Y-m-d H:i') }} 的備份嗎？這個時間之後新增或修改的資料都會不見（還原前會先自動備份目前的資料）。" data-confirm-ok="確認還原">
                             @csrf
                             <button type="submit" class="btn btn-sm btn-outline-danger">還原</button>
                         </form>

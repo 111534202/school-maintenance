@@ -203,6 +203,15 @@ protected function setUp(): void
                 $dom = new \DOMDocument();
                 @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
                 foreach ($dom->getElementsByTagName('form') as $form) {
+                    // 刪除改用全站的二次確認視窗（data-confirm，訊息用 textContent 放進視窗，不會被當成程式執行）：
+                    // 解碼後的訊息必須完整包含原本的名稱，而且不能另外有 onsubmit。
+                    $dataConfirm = $form->getAttribute('data-confirm');
+                    if (str_contains($dataConfirm, 'alert')) {
+                        $this->assertStringContainsString($evil, $dataConfirm, "確認訊息不完整：$route");
+                        $this->assertSame('', $form->getAttribute('onsubmit'));
+                        $checked++;
+                        continue;
+                    }
                     $onsubmit = $form->getAttribute('onsubmit');   // 已經是瀏覽器解碼後的內容
                     if (! str_contains($onsubmit, 'alert')) {
                         continue;

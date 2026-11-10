@@ -373,3 +373,10 @@ body.tb-body {
 /* 成本分析加上「報廢損失」時，統計列是四格（手機版仍然一格一列）。 */
 .tb-stat-band.tb-stat-band-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 767.98px) { .tb-stat-band.tb-stat-band-4 { grid-template-columns: minmax(0, 1fr); } }
+/* 刪除前的二次確認視窗（layouts/app 的 #confirmActionDialog）。 */
+.tb-confirm-dialog { border: 0; border-radius: 18px; padding: 0; width: min(92vw, 420px); box-shadow: 0 18px 48px rgba(0, 0, 0, .25); color: var(--tb-text); font-family: var(--tb-font-body); }
+.tb-confirm-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.tb-confirm-dialog > form { padding: 22px 24px 20px; margin: 0; }
+.tb-confirm-title { font-family: var(--tb-font-heading); font-size: 1.2rem; font-weight: 700; margin: 0 0 10px; color: var(--tb-heading-color); }
+.tb-confirm-message { margin: 0 0 20px; line-height: 1.6; overflow-wrap: anywhere; }
+.tb-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }

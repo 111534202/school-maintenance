@@ -47,7 +47,7 @@ class DatabaseBackupTest extends TestCase
 
         $this->actingAs($this->admin());
         $this->get(route('backups.index'))->assertOk()->assertSee('資料備份')->assertSee('立即備份')->assertSee('每月 1 號凌晨 0 點')
-            ->assertSee('data-msg="請問確定要立即備份目前所有資料嗎？"', false);   // 立即備份也要二次確認
+            ->assertSee('data-confirm="請問確定要立即備份目前所有資料嗎？"', false);   // 立即備份也要二次確認
     }
 
     public function test_back_up_now_creates_a_file_that_can_be_downloaded(): void
@@ -59,7 +59,7 @@ class DatabaseBackupTest extends TestCase
         $this->assertCount(1, $backups);
         $this->assertSame('manual', $backups[0]['reason']);
         // 還原表單要先確認（第二批會換成全站的確認視窗）。
-        $this->get(route('backups.index'))->assertSee('手動備份')->assertSee('把所有資料還原到')->assertSee('return confirm(this.dataset.msg)', false);
+        $this->get(route('backups.index'))->assertSee('手動備份')->assertSee('把所有資料還原到')->assertSee('data-confirm-ok="確認還原"', false)->assertDontSee('return confirm(', false);
         $this->get(route('backups.download', $backups[0]['name']))->assertOk();
         $this->get(route('backups.download', '..%2F..%2F.env'))->assertNotFound();
     }

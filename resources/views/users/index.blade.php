@@ -157,7 +157,7 @@
 
                                             {{-- 刪除按鈕（垃圾桶圖示）：送出前確認；自己不能刪除自己。 --}}
                                             <form method="POST" action="{{ route('users.destroy', $user) }}"
-                                                onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('users.confirm.delete', ['name' => $user->name])) }});">
+                                                data-confirm="{{ __('users.confirm.delete', ['name' => $user->name]) }}">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="btn btn-outline-danger btn-sm icon-btn" type="submit" @disabled($isSelf)
