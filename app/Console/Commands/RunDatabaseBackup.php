@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 /**
  * 備份資料庫並刪除超過保留天數的舊備份。
- * 排程：每週日凌晨 2 點（routes/console.php）；也可以手動執行 php artisan backup:run。
+ * 排程：每月 1 號凌晨 0 點（routes/console.php）；也可以手動執行 php artisan backup:run。
  */
 class RunDatabaseBackup extends Command
 {

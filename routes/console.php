@@ -44,11 +44,11 @@ Schedule::command(ScanPreventiveCandidates::class)
     ->onOneServer();
 
 /**
- * 資料備份：每週日凌晨 2 點備份整個資料庫，並刪除超過保留天數的舊備份（保留天數在「資料備份」頁面設定）。
+ * 資料備份：每月 1 號凌晨 0 點備份整個資料庫，並刪除超過保留天數的舊備份（保留天數在「資料備份」頁面設定）。
  * 跟上面的排程一樣，正式環境要設定每分鐘執行一次 `php artisan schedule:run`。
  */
 Schedule::command(\App\Console\Commands\RunDatabaseBackup::class, ['--reason=scheduled'])
-    ->weeklyOn(0, '02:00')
+    ->monthlyOn(1, '00:00')
     ->name('backup:run')
     ->withoutOverlapping()
     ->onOneServer();

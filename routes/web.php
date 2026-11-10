@@ -256,7 +256,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
     });
 
-    // 資料備份：需要 backups.manage（預設只有系統管理員）。每週日自動備份，也可手動備份、下載、還原。
+    // 資料備份：需要 backups.manage（預設只有系統管理員）。每月 1 號凌晨 0 點自動備份，也可手動備份、下載、還原。
     Route::middleware('can:backups.manage')->prefix('backups')->name('backups.')->group(function () {
         Route::get('/', [\App\Http\Controllers\BackupController::class, 'index'])->name('index');
         Route::post('/', [\App\Http\Controllers\BackupController::class, 'store'])->name('store');

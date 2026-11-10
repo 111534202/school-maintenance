@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\RepairRequestStatus;           // 報修單狀態列舉
+use App\Models\ClassroomReservation;        // 空間預約申請資料表模型
 use App\Models\RepairRequest;                // 報修單資料表模型
 use App\Models\User;                         // 用戶資料表模型
 use App\Services\AI\PredictionServiceInterface;   // AI 預測服務介面（王佑恩，第 4 週）
@@ -95,6 +96,7 @@ class AppServiceProvider extends ServiceProvider
      * - 有「派工」權限：新報修還沒派工的案件
      * - 有「驗收」權限：等待驗收的案件
      * - 有「處理維修」權限：指派給自己、還沒做完的案件
+     * - 有「空間申請審核」權限：待審核的空間申請（已逾期的不算）
      * 每一項都帶著點下去要跳轉的網址（直接帶篩選條件到報修看板）。
      *
      * 【想新增一種通知】照下面的格式再加一個 if 區塊即可：判斷權限 → 算數量 → 數量大於 0 才加進 $items；
@@ -151,6 +153,26 @@ class AppServiceProvider extends ServiceProvider
                     'text' => __('notifications.assigned_to_me', ['count' => $count]),
                     'count' => $count,
                     'url' => route('repairs.index', ['assignee' => $user->name]),   // 用自己的姓名篩選報修看板
+                ];
+            }
+        }
+
+        // 有空間申請審核權限的人：提醒「有幾筆空間申請待審核」。
+        // 已經有時段開始（逾期、打開空間申請頁時會自動拒絕）的不算，規則同 ReservationReviewService::expireOverdue。
+        if ($user->can('reservations.manage')) {
+            $today = now()->toDateString();
+            $time = now()->format('H:i:s');
+            $count = ClassroomReservation::query()
+                ->where('status', ClassroomReservation::STATUS_PENDING)
+                ->whereDoesntHave('slots', fn ($q) => $q->where(fn ($q) => $q->whereDate('reservation_date', '<', $today)
+                    ->orWhere(fn ($q) => $q->whereDate('reservation_date', $today)->where('start_time', '<=', $time))))
+                ->count();
+            if ($count > 0) {
+                $items[] = [
+                    'icon' => 'bi-door-open',
+                    'text' => __('notifications.pending_reservations', ['count' => $count]),
+                    'count' => $count,
+                    'url' => route('reservations.index', ['status' => 'pending']),   // 空間申請，只看未審核
                 ];
             }
         }

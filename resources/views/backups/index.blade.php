@@ -3,15 +3,16 @@
 @section('title', '資料備份')
 
 @section('content')
-{{-- 資料備份（系統管理）：每週日凌晨 2 點自動備份，也可以手動備份；可下載、還原、設定保留天數。
+{{-- 資料備份（系統管理）：每月 1 號凌晨 0 點自動備份，也可以手動備份；可下載、還原、設定保留天數。
      備份與還原的做法見 App\Services\DatabaseBackup。 --}}
 <div class="tb">
     <div class="tb-header">
         <div>
             <h1 class="tb-title">資料備份</h1>
-            <p class="tb-subtitle">每週日凌晨 2 點自動備份整個資料庫；有人改錯資料時，可以還原到某一份備份。</p>
+            <p class="tb-subtitle">每月 1 號凌晨 0 點自動備份整個資料庫；有人改錯資料時，可以還原到某一份備份。</p>
         </div>
-        <form method="POST" action="{{ route('backups.store') }}">
+        <form method="POST" action="{{ route('backups.store') }}"
+            data-msg="請問確定要立即備份目前所有資料嗎？" onsubmit="return confirm(this.dataset.msg);">
             @csrf
             <button type="submit" class="tb-btn tb-btn-primary"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>立即備份</button>
         </form>

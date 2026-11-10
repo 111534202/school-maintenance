@@ -14,9 +14,9 @@ use RuntimeException;
  * 不需要另外安裝 mysqldump：直接用 Laravel 讀出每一張資料表的全部資料，壓縮成一個檔案
  * （storage/app/backups/backup-日期-時間-原因.json.gz），MySQL、SQLite 都能用，Windows 也不用設定路徑。
  *
- * - 定期備份：每週日凌晨 2 點（routes/console.php 的排程，正式機要設定每分鐘執行 schedule:run）
+ * - 定期備份：每月 1 號凌晨 0 點（routes/console.php 的排程，正式機要設定每分鐘執行 schedule:run）
  * - 手動備份：頁面上的「立即備份」
- * - 保留天數：頁面上可以改（預設 30 天），超過天數的自動刪除，但最新的一份永遠保留
+ * - 保留天數：頁面上可以改（預設 180 天，約半年），超過天數的自動刪除，但最新的一份永遠保留
  * - 還原：先自動備份一次「還原前」的資料，再把資料表內容換成備份裡的內容
  *
  * 只備份資料庫的內容；上傳的附件檔案（發票、照片）放在 storage 資料夾，不在這個備份裡。
@@ -31,7 +31,7 @@ class DatabaseBackup
 
     public const REASONS = ['scheduled' => '定期備份', 'manual' => '手動備份', 'before-restore' => '還原前自動備份'];
 
-    public const DEFAULT_KEEP_DAYS = 30;
+    public const DEFAULT_KEEP_DAYS = 180;
 
     public function directory(): string
     {

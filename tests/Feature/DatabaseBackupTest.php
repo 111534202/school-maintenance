@@ -11,7 +11,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 資料備份：每週日自動備份、立即備份、下載、還原（還原前先自動備份）、保留天數；只有 backups.manage 能用。
+ * 資料備份：每月 1 號凌晨 0 點自動備份、立即備份、下載、還原（還原前先自動備份）、保留天數；只有 backups.manage 能用。
  */
 class DatabaseBackupTest extends TestCase
 {
@@ -46,7 +46,8 @@ class DatabaseBackupTest extends TestCase
         $this->post(route('backups.store'))->assertForbidden();
 
         $this->actingAs($this->admin());
-        $this->get(route('backups.index'))->assertOk()->assertSee('資料備份')->assertSee('立即備份')->assertSee('每週日凌晨 2 點');
+        $this->get(route('backups.index'))->assertOk()->assertSee('資料備份')->assertSee('立即備份')->assertSee('每月 1 號凌晨 0 點')
+            ->assertSee('data-msg="請問確定要立即備份目前所有資料嗎？"', false);   // 立即備份也要二次確認
     }
 
     public function test_back_up_now_creates_a_file_that_can_be_downloaded(): void
@@ -101,17 +102,17 @@ class DatabaseBackupTest extends TestCase
     public function test_keep_days_can_be_changed_on_the_page(): void
     {
         $this->actingAs($this->admin());
-        $this->assertSame(30, app(DatabaseBackup::class)->keepDays());
+        $this->assertSame(180, app(DatabaseBackup::class)->keepDays());   // 預設約半年
 
         $this->post(route('backups.settings'), ['keep_days' => 180])->assertRedirect(route('backups.index'));
         $this->assertSame(180, app(DatabaseBackup::class)->keepDays());
         $this->post(route('backups.settings'), ['keep_days' => -1])->assertSessionHasErrors('keep_days');
     }
 
-    public function test_backups_are_scheduled_every_sunday_at_two_am(): void
+    public function test_backups_are_scheduled_on_the_first_of_every_month_at_midnight(): void
     {
         $event = collect(app(Schedule::class)->events())->first(fn ($e) => str_contains($e->command ?? '', 'backup:run'));
         $this->assertNotNull($event);
-        $this->assertSame('0 2 * * 0', $event->expression);
+        $this->assertSame('0 0 1 * *', $event->expression);   // 每月 1 號 00:00
     }
 }
