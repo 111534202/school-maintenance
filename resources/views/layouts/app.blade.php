@@ -303,6 +303,8 @@
     @include('layouts.partials.filter-onion')
     {{-- 清單的洋蔥式檢視：列表頁的寬表格變成一列一列的簡短清單，點進去詳細內容從右邊滑入。 --}}
     @include('layouts.partials.list-onion')
+    {{-- 所有表格／清單依畫面大小自動切換：螢幕夠大用表格，不夠用清單（不用左右滑動）。 --}}
+    @include('layouts.partials.auto-table')
     {{-- 讓列表頁剛好一個畫面：電腦版清單在固定外框內捲動，手機版一次只顯示放得下的幾筆並用上一頁／下一頁切換。 --}}
     @include('layouts.partials.fit-screen')
 </body>

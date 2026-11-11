@@ -163,6 +163,4 @@
     <div class="mt-3">{{ $devices->links() }}</div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
-    {{-- 表格／清單依畫面自動切換（螢幕夠大用表格，不夠就用清單）。 --}}
-    @include('master._auto-table')
 @endsection

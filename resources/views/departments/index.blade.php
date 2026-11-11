@@ -126,6 +126,4 @@
             {{ $departments->links() }}
         </div>
     @endif
-    {{-- 表格／清單依畫面自動切換（螢幕夠大用表格，不夠就用清單）。 --}}
-    @include('master._auto-table')
 @endsection
