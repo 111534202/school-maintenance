@@ -44,7 +44,7 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格（有框線，全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="2" data-no-onion>
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="2">
                     <thead class="table-light">
                         <tr>
                             <th>{{ __('roles.table.name') }}</th>
@@ -105,4 +105,6 @@
             {{ $roles->links() }}
         </div>
     @endif
+    {{-- 表格／清單依畫面自動切換（螢幕夠大用表格，不夠就用清單）。 --}}
+    @include('master._auto-table')
 @endsection

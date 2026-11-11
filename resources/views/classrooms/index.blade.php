@@ -70,7 +70,7 @@
     <div class="card shadow-sm">
         <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,6,7" data-no-onion>
+            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,6,7">
                 <thead class="table-light">
                     <tr>
                         <th>{{ __('classrooms.table.code') }}</th>
@@ -163,4 +163,6 @@
     <div class="mt-3">{{ $classrooms->links() }}</div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
+    {{-- 表格／清單依畫面自動切換（螢幕夠大用表格，不夠就用清單）。 --}}
+    @include('master._auto-table')
 @endsection
