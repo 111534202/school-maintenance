@@ -33,7 +33,8 @@
         function apply() {
             var roomy = window.innerWidth >= MIN_WIDTH && window.innerWidth / window.innerHeight >= MIN_RATIO;
             views.forEach(function (v) {
-                if (v.wrap.offsetParent === null) return;   // 現在看不到（收合的區塊、分頁籤）：量不到寬度，先維持原狀
+                // 表格區與清單區都看不到（整個區塊收合、在分頁籤裡）：量不到寬度，先維持原狀。（不能只看表格區：清單模式時表格區本來就是收起來的。）
+                if (v.wrap.offsetParent === null && v.list.offsetParent === null) return;
                 if (!roomy) { show(v, false); return; }
                 // 先試試用表格，量一下放不放得下；放不下就退回清單。
                 show(v, true);
