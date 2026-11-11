@@ -265,10 +265,28 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSeeInOrder(['用戶數量', '3']);  // admin + 2
         $response->assertSeeInOrder(['教室數量', '1']);
         $response->assertSee('設備異常教室 1 間');
-        $response->assertSee('chart-deviceStatus', false);
-        $response->assertSee('chart-roleDistribution', false);
-        $response->assertSee(str_replace('/', '\/', route('devices.index', ['status' => 'repairing'])), false);
+        // 主控台只留兩張重要圖表；設備狀態、用戶身分等圖表搬進對應的主檔（統計圖表按鈕）。
+        $response->assertSee('工單狀態分布');
+        $response->assertSee('近 14 日新增報修');
+        $response->assertDontSee('設備狀態分布');
+        $response->assertDontSee('用戶身分分布');
+        $response->assertDontSee('chart-deviceStatus', false);
+        $response->assertDontSee('chart-roleDistribution', false);
         $response->assertSee(route('users.index'), false);
+    }
+
+    // 搬進主檔的圖表：設備主檔有設備狀態圖、用戶主檔有身分分布圖，點圖會帶著篩選條件跳回該主檔。
+    public function test_master_pages_hold_the_charts_that_left_the_dashboard(): void
+    {
+        $this->makeDevices();
+        $this->loginAsAnyUser();
+
+        $devices = $this->get(route('devices.index'))->assertOk()->assertSee('id="masterChartModal"', false)->assertSee('統計圖表');
+        $devices->assertViewHas('chart', fn ($chart) => $chart['type'] === 'doughnut'
+            && in_array(route('devices.index', ['status' => 'repairing']), $chart['urls'], true));
+
+        $this->get(route('users.index'))->assertOk()->assertSee('id="masterChartModal"', false)
+            ->assertViewHas('chart', fn ($chart) => $chart['type'] === 'bar' && array_sum($chart['counts']) >= 1);
     }
 
     // 沒有主檔權限的人（例如維修人員）看不到設備、用戶、教室的統計。
@@ -300,25 +318,17 @@ class DashboardAndNotificationTest extends TestCase
     }
 
     // 儀表板排行依主檔權限顯示。
-    public function test_dashboard_repair_rankings_follow_master_data_permissions(): void
+    public function test_repair_rankings_follow_master_data_permissions(): void
     {
-        // 技術人員沒有教室與設備主檔管理權限。
+        // 技術人員沒有教室與設備類別主檔管理權限：進不去，自然看不到排行圖。
         $this->actingAs($this->makeTechnician());
+        $this->get(route('classrooms.index'))->assertForbidden();
+        $this->get(route('device-categories.index'))->assertForbidden();
 
-        $response = $this->get(route('dashboard'));
-
-        $response->assertOk();
-        $response->assertViewHas('classroomRepairRanking', null);
-        $response->assertViewHas('deviceCategoryRepairRanking', null);
-
-        // 資訊組主管具有教室與設備管理權限。
+        // 資訊組主管具有教室與設備管理權限：兩個主檔頁各有一張排行圖。
         $this->actingAs($this->makeItManager());
-
-        $response = $this->get(route('dashboard'));
-
-        $response->assertOk();
-        $response->assertViewHas('classroomRepairRanking');
-        $response->assertViewHas('deviceCategoryRepairRanking');
+        $this->get(route('classrooms.index'))->assertOk()->assertViewHas('chart');
+        $this->get(route('device-categories.index'))->assertOk()->assertViewHas('chart');
     }
 
     // 圖表點擊帶去的網址，目標頁面真的有套用篩選（設備狀態、用戶身分）。
@@ -472,7 +482,7 @@ class DashboardAndNotificationTest extends TestCase
     }
 
     // 儀表板本月排行：確認教室與設備類別的數量、排序及月份範圍。
-    public function test_dashboard_ranks_classrooms_and_device_categories_for_current_month(): void
+    public function test_master_pages_rank_classrooms_and_device_categories_for_current_month(): void
     {
         $user = $this->makeUserWithRole('admin', '系統管理員');
         $this->actingAs($user);
@@ -545,28 +555,15 @@ class DashboardAndNotificationTest extends TestCase
         // 上個月的報修不應被算入本月排行。
         $createRepair($projectorB, $lastMonth);
 
-        $response = $this->get(route('dashboard'));
-
-        $response->assertOk();
-
-        $response->assertViewHas(
-            'classroomRepairRanking',
-            fn ($ranking) =>
-                array_column($ranking, 'label') === [
-                    'A101 一樓教室',
-                    'B202 二樓教室',
-                ]
-                && array_column($ranking, 'count') === [3, 1]
+        // 本月教室報修排行在「教室主檔」的統計圖表、設備類別排行在「設備類別主檔」。
+        $this->get(route('classrooms.index'))->assertOk()->assertViewHas(
+            'chart',
+            fn ($chart) => $chart['labels'] === ['A101 一樓教室', 'B202 二樓教室'] && $chart['counts'] === [3, 1]
         );
 
-        $response->assertViewHas(
-            'deviceCategoryRepairRanking',
-            fn ($ranking) =>
-                array_column($ranking, 'label') === [
-                    '投影機',
-                    '電腦',
-                ]
-                && array_column($ranking, 'count') === [3, 1]
+        $this->get(route('device-categories.index'))->assertOk()->assertViewHas(
+            'chart',
+            fn ($chart) => $chart['labels'] === ['投影機', '電腦'] && $chart['counts'] === [3, 1]
         );
     }
 

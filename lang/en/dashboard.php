@@ -42,6 +42,7 @@ return [
         'device_category_repair_ranking' => 'Device Category Repair Ranking This Month',
         'repair_trend_series' => 'New repairs',
         'no_data' => 'No data yet',
+        'open' => 'Charts',
     ],
 
     // 設備狀態的顯示名稱（主控台圖表用）。

@@ -8,7 +8,9 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 主控台最上面的洋蔥式「功能入口」：項目與權限跟側邊選單同一份資料（App\Support\NavMenu）。
+ * 主控台不再有「功能入口」（主檔、報修服務、保養管理、空間與零件、系統五個分類卡）：
+ * 功能都從左上角的漢堡選單進入（項目與權限見 App\Support\NavMenu，DrilldownNavigationTest 檢查）；
+ * 主控台只留數字卡片與兩張重要圖表。
  */
 class DashboardEntryTest extends TestCase
 {
@@ -16,52 +18,37 @@ class DashboardEntryTest extends TestCase
     use InteractsWithRolesAndUsers;
     use RefreshDatabase;
 
-    /** 取出功能入口那一區的 HTML。 */
-    private function entry(string $slug): string
+    public function test_dashboard_has_no_function_entry_tiles_for_any_role(): void
     {
-        $html = $this->actingAs($this->makeUser($slug))->get(route('dashboard'))->assertOk()->getContent();
-        $this->assertSame(1, preg_match('#id="home-entry".*?</section>#s', $html, $m), '找不到功能入口');
+        foreach (['admin', 'it_manager', 'technician', 'teacher'] as $slug) {
+            $html = $this->actingAs($this->makeUser($slug))->get(route('dashboard'))->assertOk()->getContent();
 
-        return $m[0];
-    }
-
-    public function test_admin_sees_every_category_as_a_tile_with_its_functions_inside(): void
-    {
-        $entry = $this->entry('admin');
-
-        foreach (['work', 'maintenance', 'master'] as $id) {
-            $this->assertStringContainsString('data-entry-open="'.$id.'"', $entry, "缺少分類 $id");
-            $this->assertStringContainsString('data-entry-panel="'.$id.'"', $entry, "缺少第二層 $id");
-        }
-        // 第二層裡有原本的功能連結
-        foreach (['repairs.index', 'maintenance-orders.index', 'preventive-candidates.index', 'users.index', 'devices.index'] as $route) {
-            $this->assertStringContainsString('href="'.route($route).'"', $entry, "$route 應該在功能入口裡");
+            $this->assertStringNotContainsString('id="home-entry"', $html, "$slug 的主控台不該有功能入口");
+            $this->assertStringNotContainsString('data-entry-open', $html);
+            $this->assertStringNotContainsString('entry-tile', $html);
         }
     }
 
-    public function test_entry_follows_permissions(): void
+    public function test_the_hamburger_menu_is_still_the_way_in(): void
     {
-        $teacher = $this->entry('teacher');
-        $this->assertStringContainsString('data-entry-open="work"', $teacher);
-        $this->assertStringNotContainsString('data-entry-open="maintenance"', $teacher);
-        $this->assertStringNotContainsString('data-entry-open="master"', $teacher);
-        $this->assertStringNotContainsString(route('maintenance-orders.index'), $teacher);
+        $html = $this->actingAs($this->makeUser('admin'))->get(route('dashboard'))->assertOk()->getContent();
 
-        $technician = $this->entry('technician');
-        $this->assertStringContainsString('data-entry-open="maintenance"', $technician);
-        $this->assertStringNotContainsString(route('preventive-candidates.index'), $technician);
+        // 漢堡按鈕與抽屜選單還在，抽屜裡有主檔等分類。
+        $this->assertStringContainsString('sidebarOffcanvas', $html);
+        $this->assertStringContainsString('data-drill-open="master"', $html);
     }
 
-    public function test_entry_does_not_list_the_dashboard_itself(): void
-    {
-        $this->assertStringNotContainsString('href="'.route('dashboard').'"', $this->entry('admin'));
-    }
-
-    public function test_existing_dashboard_cards_and_charts_are_still_there(): void
+    public function test_dashboard_keeps_its_cards_and_the_two_important_charts(): void
     {
         $html = $this->actingAs($this->makeUser('admin'))->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('kpi-card', $html);
         $this->assertStringContainsString('chart.umd', $html);
+        // 圖表標題與資料（沒有報修資料時只顯示「目前沒有資料」，所以用標題檢查）。
+        $this->assertStringContainsString('工單狀態分布', $html);
+        $this->assertStringContainsString('近 14 日新增報修', $html);
+        foreach (['設備狀態分布', '用戶身分分布', '本月教室報修排行', '本月設備類別報修排行'] as $moved) {
+            $this->assertStringNotContainsString($moved, $html, "圖表「{$moved}」已搬進主檔");
+        }
     }
 }

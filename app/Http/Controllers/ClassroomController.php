@@ -62,7 +62,8 @@ class ClassroomController extends Controller
         // 篩選列的部門下拉選單：列出全部部門（含停用的），才篩得到舊資料。
         $departments = Department::orderBy('name')->get();
 
-        return view('classrooms.index', compact('classrooms', 'departments'));
+        $chart = \App\Services\MasterCharts::classroomRepairRanking($request->user());   // 頁首「統計圖表」按鈕的圖表資料
+        return view('classrooms.index', compact('classrooms', 'departments', 'chart'));
     }
 
     /** 顯示新增教室表單（GET /classrooms/create）。 */

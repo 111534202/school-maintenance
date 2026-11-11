@@ -12,9 +12,12 @@
     {{-- 頁面標題列：左邊標題、右邊「新增用戶」按鈕。 --}}
     <div class="page-header mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-people me-2"></i>{{ __('users.index_title') }}</h1>
-        <a class="btn btn-primary" href="{{ route('users.create') }}">
-            <i class="bi bi-plus-lg me-1"></i>{{ __('users.add_user') }}
-        </a>
+        <div class="d-flex gap-2">
+            @include('charts._button')
+            <a class="btn btn-primary" href="{{ route('users.create') }}">
+                <i class="bi bi-plus-lg me-1"></i>{{ __('users.add_user') }}
+            </a>
+        </div>
     </div>
 
     {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
@@ -80,7 +83,7 @@
         <div class="card shadow-sm">
             <div class="table-responsive">
                 {{-- 資料表格：table-bordered 有框線、table-hover 滑鼠移上去會變色（全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,4">
+                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,4" data-no-onion>
                     <thead class="table-light">
                         <tr>
                             <th>{{ __('users.table.account') }}</th>
@@ -178,4 +181,6 @@
             {{ $users->links() }}
         </div>
     @endif
+    {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
+    @include('charts._modal')
 @endsection
