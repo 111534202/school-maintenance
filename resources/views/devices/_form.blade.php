@@ -12,12 +12,24 @@
     <div class="col-md-6">
         <label for="device_code" class="form-label">{{ __('devices.form.code') }}</label>
         {{-- 設備編號：整個系統不可重複，QR Code 網址就是用它。old(欄位, 預設值) 會在驗證失敗導回時帶回剛輸入的內容。 --}}
-        <input type="text" id="device_code" name="device_code" class="form-control @error('device_code') is-invalid @enderror" value="{{ old('device_code', $device->device_code ?? '') }}" required>
+        {{-- 輸入框右邊的相機按鈕：掃 QR 或條碼，內容直接填進這個欄位（見 scanner/_camera）。 --}}
+        <div class="input-group">
+            <input type="text" id="device_code" name="device_code" class="form-control @error('device_code') is-invalid @enderror" value="{{ old('device_code', $device->device_code ?? '') }}" required>
+            <button type="button" class="btn btn-outline-primary" data-scan-target="#device_code" data-scan-extract="device-code"
+                data-scan-title="{{ __('scanner.button') }}：{{ __('devices.form.code') }}"
+                title="{{ __('scanner.button') }}" aria-label="{{ __('scanner.button') }}"><i class="bi bi-upc-scan"></i></button>
+        </div>
     </div>
     <div class="col-md-6">
         <label for="asset_code" class="form-label">{{ __('devices.form.asset_code') }}</label>
         {{-- 資產編號（選填，學校財產編號）。 --}}
-        <input type="text" id="asset_code" name="asset_code" class="form-control @error('asset_code') is-invalid @enderror" value="{{ old('asset_code', $device->asset_code ?? '') }}">
+        {{-- 輸入框右邊的相機按鈕：掃 QR 或條碼，內容直接填進這個欄位（見 scanner/_camera）。 --}}
+        <div class="input-group">
+            <input type="text" id="asset_code" name="asset_code" class="form-control @error('asset_code') is-invalid @enderror" value="{{ old('asset_code', $device->asset_code ?? '') }}">
+            <button type="button" class="btn btn-outline-primary" data-scan-target="#asset_code"
+                data-scan-title="{{ __('scanner.button') }}：{{ __('devices.form.asset_code') }}"
+                title="{{ __('scanner.button') }}" aria-label="{{ __('scanner.button') }}"><i class="bi bi-upc-scan"></i></button>
+        </div>
     </div>
     <div class="col-md-6">
         <label for="device_category_id" class="form-label">{{ __('devices.form.category') }}</label>
@@ -58,7 +70,13 @@
     <div class="col-md-4">
         <label for="serial_number" class="form-label">{{ __('devices.form.serial_number') }}</label>
         {{-- 序號（選填）。 --}}
-        <input type="text" id="serial_number" name="serial_number" class="form-control @error('serial_number') is-invalid @enderror" value="{{ old('serial_number', $device->serial_number ?? '') }}">
+        {{-- 輸入框右邊的相機按鈕：掃 QR 或條碼，內容直接填進這個欄位（見 scanner/_camera）。 --}}
+        <div class="input-group">
+            <input type="text" id="serial_number" name="serial_number" class="form-control @error('serial_number') is-invalid @enderror" value="{{ old('serial_number', $device->serial_number ?? '') }}">
+            <button type="button" class="btn btn-outline-primary" data-scan-target="#serial_number"
+                data-scan-title="{{ __('scanner.button') }}：{{ __('devices.form.serial_number') }}"
+                title="{{ __('scanner.button') }}" aria-label="{{ __('scanner.button') }}"><i class="bi bi-upc-scan"></i></button>
+        </div>
     </div>
     <div class="col-md-4">
         <label for="warranty_end_date" class="form-label">{{ __('devices.form.warranty_end_date') }}</label>
@@ -91,3 +109,4 @@
     <a class="btn btn-outline-secondary" href="{{ route('devices.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>
+
