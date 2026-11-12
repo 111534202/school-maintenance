@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Part;
 use App\Models\PartPurchase;
 use App\Services\AttachmentUploader;
+use App\Support\AttachmentLimit;
 use App\Services\AuditLogger;
 use App\Services\PartStockService;
 use DomainException;
@@ -18,10 +19,8 @@ use Illuminate\Support\Facades\DB;
  */
 class PartPurchaseController extends Controller
 {
-    /** 一筆採購最多幾個附件、每個檔案最大幾 KB（2 MB）。畫面上的說明文字與檢查也用這兩個值。 */
-    public const MAX_ATTACHMENTS = 5;
-
-    public const MAX_FILE_KB = 2048;
+    /** 一筆採購最多幾個附件（全站共用 App\Support\AttachmentLimit：最多 5 個、加起來 5 MB 以內）。 */
+    public const MAX_ATTACHMENTS = AttachmentLimit::MAX_FILES;
 
     public function __construct(private PartStockService $stock, private AttachmentUploader $uploader)
     {
@@ -66,9 +65,15 @@ class PartPurchaseController extends Controller
         $removeIds = $request->boolean('remove_invoice')
             ? $purchase->attachments()->pluck('id')->all()
             : array_map('intval', (array) $request->input('remove_attachments', []));
-        $keep = $purchase->attachments()->whereNotIn('id', $removeIds)->count();
+        $kept = $purchase->attachments()->whereNotIn('id', $removeIds);
+        $keep = (clone $kept)->count();
         if ($keep + count($this->uploadedFiles($request)) > self::MAX_ATTACHMENTS) {
             return back()->withInput()->withErrors(['invoices' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件；目前保留 ' . $keep . ' 個，請先勾選刪除一些再上傳。']);
+        }
+        // 大小總和：保留的附件＋新上傳的，加起來不能超過 5 MB。
+        $sizeCheck = validator(['invoices' => $this->uploadedFiles($request)], ['invoices' => [AttachmentLimit::totalSizeRule((int) (clone $kept)->sum('size_bytes'))]]);
+        if ($sizeCheck->fails()) {
+            return back()->withInput()->withErrors($sizeCheck->errors());
         }
 
         try {
@@ -111,20 +116,18 @@ class PartPurchaseController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
             'unit_price' => ['required', 'integer', 'min:0'],
             'note' => ['nullable', 'string', 'max:255'],
-            // 附件（發票、收據等）：PDF 或圖片，一個檔案最多 2 MB，一筆最多 5 個。
+            // 附件（發票、收據等）：PDF 或圖片，一筆最多 5 個、加起來 5 MB 以內（單檔不另外限制）。
             // invoices[] 是畫面上的多檔欄位；invoice（單一檔案）保留給舊的寫法。
-            'invoices' => ['nullable', 'array', 'max:' . self::MAX_ATTACHMENTS],
-            'invoices.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:' . self::MAX_FILE_KB],
-            'invoice' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . self::MAX_FILE_KB],
+            'invoices' => ['nullable', 'array', 'max:' . self::MAX_ATTACHMENTS, AttachmentLimit::totalSizeRule()],
+            'invoices.*' => ['file', 'mimes:pdf,jpg,jpeg,png'],
+            'invoice' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', AttachmentLimit::totalSizeRule()],
             'remove_invoice' => ['nullable', 'boolean'],
             'remove_attachments' => ['nullable', 'array'],
             'remove_attachments.*' => ['integer'],
         ], [
             'purchase_date.before_or_equal' => '採購日期不能晚於今天。',
             'invoices.max' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件。',
-            'invoices.*.max' => '每個附件最多 2 MB。',
             'invoices.*.mimes' => '附件只能是 PDF 或圖片（JPG、PNG）。',
-            'invoice.max' => '每個附件最多 2 MB。',
         ]);
     }
 

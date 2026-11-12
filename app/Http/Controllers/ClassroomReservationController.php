@@ -13,19 +13,21 @@ use Illuminate\Support\Facades\DB;
 class ClassroomReservationController extends Controller
 {
     /**
-     * 空間申請（預約列表，只有預約管理權限的人看得到）：只列送出時間、申請人、申請班級、申請狀態（已審核／未審核），
-     * 點一筆在畫面中的對話框打開「預約詳細」（可直接核准／拒絕）。
-     * 上方可以搜尋，下方分頁（每頁 15 筆，左邊顯示第幾筆、共幾筆，右邊切換頁數）。
+     * 空間申請（選單上唯一的入口）：
+     * - 有審核權限（reservations.manage）的人：全部申請列表（全部／未審核／已審核、搜尋、分頁），點一筆在對話框打開「預約詳細」審核；
+     *   右上角「空間預約」換到有課表的申請頁，「我的申請」在對話框打開自己的申請。
+     * - 沒有審核權限的人：直接是有課表的申請頁，下方是「我的申請」（跟空間預約頁相同）。
      */
     public function index(Request $request, ReservationReviewService $reviewService)
     {
-        // 空間申請只給有預約管理（審核）權限的人；一般使用者在「空間預約」頁下方的「我的申請」看自己的申請。
-        abort_unless($request->user()->hasPermission('reservations.manage'), 403);
+        if (! $request->user()->hasPermission('reservations.manage')) {
+            return $this->create($request, $reviewService);
+        }
 
-        // 時間已到、或和已核准時段重疊的待審核申請先自動拒絕，列表上的狀態才會正確（排程沒開也一樣）。
+        // 和已核准時段重疊的待審核節次先自動拒絕，列表上的狀態才會正確。
         $reviewService->sweep();
 
-        $query = ClassroomReservation::with(['requester'])
+        $query = ClassroomReservation::with(['requester', 'classroom', 'slots'])
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")   // 未審核的排前面
             ->orderByDesc('created_at');
 
@@ -95,7 +97,7 @@ class ClassroomReservationController extends Controller
 
     /**
      * 預約詳細頁：教室、預約日期、使用時段、用途、審核人與審核時間；
-     * 有預約管理權限的人可以在這裡整筆核准或整筆拒絕。申請人本人也可以看自己的申請。
+     * 有預約管理權限的人可以在這裡逐節審核（或整筆同意／拒絕）。申請人本人也可以看自己的申請。
      */
     public function show(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
     {
@@ -105,9 +107,13 @@ class ClassroomReservationController extends Controller
         $reviewService->sweep();
         $reservation->refresh()->load(['classroom', 'requester', 'reviewer', 'slots']);
 
-        // 審核參考：核准後會被自動拒絕的其他待審核申請（和已核准時段重疊的申請在上面已經自動拒絕了）。
+        // 審核參考：同意後會「整筆」自動拒絕的其他申請（重疊、而且選了「其中一節無法借用就整筆不要」的）。
+        // 只拒絕重疊那一節的申請不列出來（那些申請的其他節次仍可審核）。
         $willAutoReject = $canManage && ! $reservation->isReviewed()
-            ? $reviewService->overlappingPending($reservation)
+            ? array_values(array_filter(
+                $reviewService->overlappingPending($reservation),
+                fn (array $other) => (bool) $other['reservation']->is_all_or_nothing
+            ))
             : [];
 
         // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
@@ -123,16 +129,10 @@ class ClassroomReservationController extends Controller
      */
     public function create(Request $request, ReservationReviewService $reviewService)
     {
-        // 下方「我的申請」：自己提出的申請與目前狀態（先跑自動拒絕，狀態才正確）；點一筆在對話框看預約詳細。
+        // 下方「我的申請」只給沒有審核權限的人（有權限的人在空間申請右上角按「我的申請」）。
         $reviewService->sweep();
-        $myReservations = ClassroomReservation::query()
-            ->with('classroom')
-            ->where('requester_id', $request->user()->id)
-            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-            ->orderByDesc('created_at')
-            ->paginate(10, ['*'], 'my_page')
-            ->withQueryString()
-            ->fragment('my-requests');
+        $showMine = ! $request->user()->hasPermission('reservations.manage');
+        $myReservations = $showMine ? $this->myReservations($request)->fragment('my-requests') : null;
 
         $classrooms = Classroom::query()
             ->where('is_active', true)
@@ -143,7 +143,27 @@ class ClassroomReservationController extends Controller
         $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
         $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
-        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations'));
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine'));
+    }
+
+    /** 我的申請（有審核權限的人從空間申請右上角打開的對話框；?modal=1）。 */
+    public function mine(Request $request, ReservationReviewService $reviewService)
+    {
+        $reviewService->sweep();
+
+        return view('reservations.mine', ['myReservations' => $this->myReservations($request)]);
+    }
+
+    /** 自己提出的申請：待審核的在前、新的在前，每頁 10 筆。 */
+    private function myReservations(Request $request)
+    {
+        return ClassroomReservation::query()
+            ->with(['classroom', 'slots'])
+            ->where('requester_id', $request->user()->id)
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+            ->orderByDesc('created_at')
+            ->paginate(10, ['*'], 'my_page')
+            ->withQueryString();
     }
 
     /**
@@ -214,6 +234,7 @@ class ClassroomReservationController extends Controller
             'slots.*.end_time' => ['required', 'date_format:H:i'],
             'slots.*.period_number' => ['nullable', 'integer', 'min:0'],   // 早自習為 0、午休為空
             'purpose' => ['nullable', 'string', 'max:255'],
+            'is_all_or_nothing' => ['nullable', 'boolean'],   // 其中一節無法借用就整筆不要
         ]);
 
         $slots = $validated['slots'] ?? [[
@@ -306,6 +327,7 @@ class ClassroomReservationController extends Controller
                 'class_name' => $validated['class_name'],
                 'status' => 'pending',
                 'purpose' => $validated['purpose'] ?? null,
+                'is_all_or_nothing' => (bool) ($validated['is_all_or_nothing'] ?? false),
             ]);
 
             foreach ($slots as $slot) {
@@ -362,10 +384,39 @@ class ClassroomReservationController extends Controller
 
 
         return redirect()
-            ->to(route('reservations.create') . '#my-requests')
-            ->with('success', '已送出預約申請，請等待審核。可以在下方「我的申請」查看進度。');
+            ->to($request->user()->hasPermission('reservations.manage')
+                ? route('reservations.create')
+                : route('reservations.index') . '#my-requests')
+            ->with('success', $request->user()->hasPermission('reservations.manage')
+                ? '已送出預約申請，請等待審核。可以在空間申請右上角的「我的申請」查看進度。'
+                : '已送出預約申請，請等待審核。可以在下方「我的申請」查看進度。');
     }
-    /** 整筆核准（每個時段都同意）。 */
+    /**
+     * 逐節審核：decisions[時段 id] = approved／rejected，每一節都要選；拒絕原因（選填）套用在被拒絕的節次。
+     */
+    public function review(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
+    {
+        abort_unless($request->user()->hasPermission('reservations.manage'), 403);
+
+        $validated = $request->validate([
+            'decisions' => ['required', 'array'],
+            'decisions.*' => ['required', 'in:approved,rejected'],
+            'rejection_reason' => ['nullable', 'string', 'max:500'],
+        ], [
+            'decisions.required' => '請替每一節選擇同意或拒絕。',
+            'decisions.*.in' => '每一節只能選同意或拒絕。',
+            'rejection_reason.max' => '拒絕原因不可超過 500 個字元。',
+        ]);
+
+        return $this->afterReview($reviewService->review(
+            $reservation,
+            $request->user(),
+            array_map('strval', $validated['decisions']),
+            $validated['rejection_reason'] ?? null
+        ));
+    }
+
+    /** 整筆同意（每個還沒審核的節次都同意）。 */
     public function approve(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
     {
         abort_unless($request->user()->hasPermission('reservations.manage'), 403);
@@ -373,7 +424,7 @@ class ClassroomReservationController extends Controller
         return $this->afterReview($reviewService->approveAll($reservation, $request->user()));
     }
 
-    /** 整筆拒絕（每個時段都拒絕）；拒絕原因選填。 */
+    /** 整筆拒絕（每個還沒審核的節次都拒絕）；拒絕原因選填。 */
     public function reject(Request $request, ClassroomReservation $reservation, ReservationReviewService $reviewService)
     {
         abort_unless($request->user()->hasPermission('reservations.manage'), 403);
@@ -399,12 +450,18 @@ class ClassroomReservationController extends Controller
 
         return match ($result['type']) {
             'already_reviewed' => $redirect->with('error', '這筆預約已經審核過，無法重複操作。'),
-            'expired' => $redirect->with('error', '這筆申請的時段已經開始，系統已自動拒絕，無法再核准。'),
-            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在維修而暫停預約，無法核准此預約（仍可拒絕）。'),
-            'conflict' => $redirect->with('error', '無法核准：下列時段已核准給其他申請，這筆申請已自動拒絕：' . implode('、', $result['slots'])),
-            default => $redirect->with('success', $result['status'] === ClassroomReservation::STATUS_APPROVED
-                ? '預約已核准。' . (($result['auto_rejected'] ?? 0) > 0 ? "時段重疊的 {$result['auto_rejected']} 筆待審核申請已自動拒絕。" : '')
-                : '預約已拒絕。'),
+            'incomplete' => back()->with('error', '請替每一節選擇同意或拒絕。'),
+            'is_all_or_nothing' => back()->with('error', '申請人選了「其中一節無法借用就整筆不要」，只能全部同意或全部拒絕。'),
+            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在維修而暫停預約，無法同意此預約（仍可拒絕）。'),
+            'conflict' => ($result['whole_rejected'] ?? false)
+                ? $redirect->with('error', '下列節次已核准給其他申請；這筆申請選了整筆，已自動整筆拒絕：' . implode('、', $result['slots']))
+                : back()->with('error', '下列節次已核准給其他申請，不能同意，請改成拒絕：' . implode('、', $result['slots'])),
+            default => $redirect->with('success', match ($result['status']) {
+                ClassroomReservation::STATUS_APPROVED => '預約已核准。',
+                ClassroomReservation::STATUS_PARTIALLY_APPROVED => '預約已部分核准。',
+                ClassroomReservation::STATUS_REJECTED => '預約已拒絕。',
+                default => '已儲存審核結果。',
+            } . (($result['auto_rejected'] ?? 0) > 0 ? "其他申請裡重疊的 {$result['auto_rejected']} 節已自動拒絕。" : '')),
         };
     }
 }

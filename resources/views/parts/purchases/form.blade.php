@@ -59,7 +59,7 @@
                 </div>
             @endif
 
-            {{-- 附件：一個檔案最多 2 MB、一筆最多 5 個（上限在 PartPurchaseController 的 MAX_FILE_KB、MAX_ATTACHMENTS）。
+            {{-- 附件：一筆最多 5 個、加起來 5 MB 以內（上限在 App\Support\AttachmentLimit；保留的舊附件也算在總和裡）。
                  修改時，原本的附件各自可以勾選刪除；新選的檔案加在後面。 --}}
             @php($maxAttachments = \App\Http\Controllers\PartPurchaseController::MAX_ATTACHMENTS)
             @php($currentAttachments = $editing ? $purchase->attachments : collect())
@@ -74,7 +74,7 @@
                                     data-title="附件 {{ $loop->iteration }}">附件 {{ $loop->iteration }}：查看</button>
                                 <div class="form-check mb-0">
                                     <input class="form-check-input" type="checkbox" value="{{ $attachment->id }}" id="remove_attachment_{{ $attachment->id }}"
-                                        name="remove_attachments[]" @checked(in_array($attachment->id, (array) old('remove_attachments', [])))>
+                                        name="remove_attachments[]" data-bytes="{{ (int) $attachment->size_bytes }}" @checked(in_array($attachment->id, (array) old('remove_attachments', [])))>
                                     <label class="form-check-label text-danger" for="remove_attachment_{{ $attachment->id }}">刪除</label>
                                 </div>
                             </li>
@@ -82,9 +82,10 @@
                     </ul>
                 @endif
                 <input type="file" id="invoices" name="invoices[]" multiple accept=".pdf,.jpg,.jpeg,.png"
-                    data-max-mb="2" data-max-files="{{ $maxAttachments - $currentAttachments->count() }}" data-max-files-total="{{ $maxAttachments }}"
+                    data-max-files="{{ $maxAttachments - $currentAttachments->count() }}" data-max-files-total="{{ $maxAttachments }}"
+                    data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}" data-existing-bytes="{{ (int) $currentAttachments->sum('size_bytes') }}"
                     class="form-control @error('invoices') is-invalid @enderror @error('invoices.*') is-invalid @enderror">
-                <div class="form-text">一個檔案上限 2 MB，一筆最多 {{ $maxAttachments }} 個檔案。</div>
+                <div class="form-text">一筆{{ \App\Support\AttachmentLimit::hint() }}（原本保留的附件也算在內）。</div>
                 @error('invoices')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 @foreach ($errors->get('invoices.*') as $messages)
                     <div class="invalid-feedback">{{ $messages[0] }}</div>
@@ -122,8 +123,10 @@
             const files = document.getElementById('invoices');
             const removes = document.querySelectorAll('input[name="remove_attachments[]"]');
             function updateFileLimit() {
-                const kept = removes.length - Array.prototype.filter.call(removes, function (c) { return c.checked; }).length;
-                files.dataset.maxFiles = String(parseInt(files.dataset.maxFilesTotal, 10) - kept);
+                const keptBoxes = Array.prototype.filter.call(removes, function (c) { return !c.checked; });
+                files.dataset.maxFiles = String(parseInt(files.dataset.maxFilesTotal, 10) - keptBoxes.length);
+                // 保留的舊附件大小也算進 5 MB 總和。
+                files.dataset.existingBytes = String(keptBoxes.reduce(function (sum, c) { return sum + (parseInt(c.dataset.bytes, 10) || 0); }, 0));
             }
             removes.forEach(function (c) { c.addEventListener('change', updateFileLimit); });
             updateFileLimit();

@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 預約申請裡的一個時段。status 是這個時段的結果（approved／rejected）；現在一筆申請整筆審核，所有時段結果相同，
- * 只有以前分時段審核的舊資料會不同。空白代表跟著整筆申請的狀態（還沒審核，或更早的舊資料）。
+ * 預約申請裡的一個時段。status 是這個時段的審核結果（approved／rejected），可以逐節審核；
+ * 空白代表還沒審核（或更早、沒有逐節結果的舊資料，跟著整筆申請的狀態）。
  */
 class ClassroomReservationSlot extends Model
 {

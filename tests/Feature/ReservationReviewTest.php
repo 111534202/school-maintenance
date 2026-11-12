@@ -11,8 +11,9 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 空間預約：列表只顯示送出時間／申請人／申請班級／已審核或未審核；詳細頁只能整筆核准或整筆拒絕。
- * 核准一筆後，時段重疊的其他待審核申請整筆自動拒絕；最早的時段已經開始仍未審核的申請也會自動拒絕。
+ * 空間預約：列表只顯示送出時間／申請人／申請班級／已審核或未審核；詳細頁逐節審核（同意／拒絕）。
+ * 同意一節後，其他申請裡重疊的那一節自動拒絕（申請人選了整筆的，整筆自動拒絕）；
+ * 時間過了還沒審核的申請維持待審核、之後仍可補同意；已拒絕與逾期未審核的申請由 reservations:cleanup 清除。
  */
 class ReservationReviewTest extends TestCase
 {
@@ -69,7 +70,7 @@ class ReservationReviewTest extends TestCase
             ->assertSee('一年甲班')
             ->assertSee('未審核')
             ->assertSee('已審核')
-            ->assertSee('href="' . route('reservations.show', $pending) . '" class="tb-list-card" data-modal-frame data-modal-title="預約詳細"', false)
+            ->assertSee('data-modal-frame-href="' . route('reservations.show', $pending) . '" data-modal-title="預約詳細"', false)
             ->assertDontSee('審核時間');
     }
 
@@ -83,7 +84,7 @@ class ReservationReviewTest extends TestCase
         $this->actingAs($this->makeUserWithRole('teacher', '教師'))->get(route('reservations.show', $reservation))->assertForbidden();
 
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))->get(route('reservations.show', $reservation))
-            ->assertOk()->assertSee('拒絕原因（選填）')->assertSee('>核准</button>', false)->assertSee('>拒絕</button>', false);
+            ->assertOk()->assertSee('拒絕原因（選填')->assertSee('>送出審核</button>', false)->assertSee('>同意</label>', false)->assertSee('>拒絕</label>', false);
     }
 
     public function test_detail_shows_fields_in_order_with_date_and_period_only(): void
@@ -96,7 +97,8 @@ class ReservationReviewTest extends TestCase
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))
             ->get(route('reservations.show', ['reservation' => $reservation, 'modal' => 1]))
             ->assertOk()
-            ->assertSeeInOrder(['申請狀態', '送出時間', '教室', '申請班級', '申請人', '申請時段', '用途', '拒絕原因（選填）'])
+            ->assertSeeInOrder(['申請狀態', '送出時間', '教室', '申請班級', '申請人', '申請時段', '用途', '拒絕原因（選填'])
+            ->assertDontSee('借用方式')         // 沒勾選「其中一節無法借用就整筆不要」就不顯示借用方式
             ->assertSee($date->format('Y-m-d') . '（' . $weekday . '）第 1 節')
             ->assertDontSee('08:10')            // 時間只記在資料裡，不顯示
             ->assertDontSee('教室設備報修中')     // 沒有設備在報修就不顯示
@@ -127,95 +129,157 @@ class ReservationReviewTest extends TestCase
         $this->assertSame('rejected', $reservation->fresh()->status);
     }
 
-    public function test_the_per_period_review_route_no_longer_exists(): void
+    public function test_manager_can_approve_some_periods_and_reject_others(): void
     {
-        $this->assertFalse(\Illuminate\Support\Facades\Route::has('reservations.review'));
+        $reservation = $this->request([[3, '09:00', '10:00'], [3, '13:00', '14:00']]);
+        [$morning, $afternoon] = $reservation->slots;
+        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
+
+        $this->actingAs($manager)->post(route('reservations.review', $reservation), [
+            'decisions' => [$morning->id => 'approved', $afternoon->id => 'rejected'],
+            'rejection_reason' => '下午有考試',
+        ])->assertRedirect(route('reservations.index'))->assertSessionHas('success', '預約已部分核准。');
+
+        $reservation->refresh();
+        $this->assertSame('partially_approved', $reservation->status);
+        $this->assertSame($manager->id, $reservation->reviewed_by);
+        $this->assertSame(['approved', 'rejected'], $reservation->slots->pluck('status')->all());
+        $this->assertSame('下午有考試', $reservation->slots[1]->rejection_reason);
+
+        // 每一節都要選。
+        $other = $this->request([[5, '09:00', '10:00'], [5, '13:00', '14:00']]);
+        $this->post(route('reservations.review', $other), ['decisions' => [$other->slots[0]->id => 'approved']])
+            ->assertSessionHas('error', '請替每一節選擇同意或拒絕。');
+        $this->assertSame('pending', $other->fresh()->status);
     }
 
-    public function test_approving_one_request_rejects_every_overlapping_pending_request_as_a_whole(): void
+    public function test_approving_a_period_rejects_only_the_overlapping_period_of_other_requests(): void
     {
-        // A：第 3 天、第 4 天的 09:00–10:00；B：第 4 天 09:30–10:20（和 A 的第 4 天重疊）；C：第 4 天 13:00（不重疊）。
-        $a = $this->request([[3, '09:00', '10:00'], [4, '09:00', '10:00']], ['class_name' => 'A 班']);
-        $b = $this->request([[4, '09:30', '10:20']], ['class_name' => 'B 班']);
+        // A：第 4 天第 5、6 節（09:00–10:00、10:10–11:00）；B：第 4 天第 5 節。B 先被同意。
+        $a = $this->request([[4, '09:00', '10:00'], [4, '10:10', '11:00']], ['class_name' => 'A 班']);
+        $b = $this->request([[4, '09:00', '10:00']], ['class_name' => 'B 班']);
         $c = $this->request([[4, '13:00', '14:00']], ['class_name' => 'C 班']);
         $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
 
-        // 審核 B 時先提醒會自動拒絕 A。
+        // A 沒有選整筆：同意 B 只會拒絕 A 重疊的那一節，所以不另外提醒。
         $this->actingAs($manager)->get(route('reservations.show', $b))
-            ->assertSee('核准後，下列時段重疊的待審核申請會整筆自動拒絕')->assertSee('A 班')->assertDontSee('C 班');
+            ->assertDontSee('會整筆自動拒絕')->assertDontSee('A 班')->assertDontSee('C 班');
 
         $this->post(route('reservations.approve', $b))
-            ->assertSessionHas('success', '預約已核准。時段重疊的 1 筆待審核申請已自動拒絕。');
+            ->assertSessionHas('success', '預約已核准。其他申請裡重疊的 1 節已自動拒絕。');
 
-        // A 整筆拒絕：連沒重疊的第 3 天也一起拒絕；審核人是系統。
+        // A 的第 5 節自動拒絕，第 6 節仍待審核、可以同意。
         $a->refresh();
-        $this->assertSame('rejected', $a->status);
-        $this->assertNull($a->reviewed_by);
-        $this->assertNotNull($a->reviewed_at);
-        $this->assertSame(['rejected', 'rejected'], $a->slots->pluck('status')->all());
-        $this->assertSame('因為' . now()->addDays(4)->format('Y-m-d') . ' 09:30–10:20 已核准給B 班，整筆申請自動拒絕。', $a->rejection_reason);
+        $this->assertSame('pending', $a->status);
+        $this->assertSame(['rejected', null], $a->slots->pluck('status')->all());
+        $this->assertStringContainsString('已核准給B 班，這一節自動拒絕。', $a->slots[0]->rejection_reason);
 
-        $this->get(route('reservations.show', $a))->assertSee('系統自動')->assertSee('已核准給B 班，整筆申請自動拒絕。')->assertDontSee('拒絕原因（選填）');
+        $this->get(route('reservations.show', $a))->assertSee('待審核')->assertSee('已核准給B 班，這一節自動拒絕。');
+        $this->post(route('reservations.review', $a), ['decisions' => [$a->slots[1]->id => 'approved']])
+            ->assertSessionHas('success', '預約已部分核准。');
+        $this->assertSame('partially_approved', $a->fresh()->status);
 
         // 不重疊的 C 不受影響。
         $this->assertSame('pending', $c->fresh()->status);
-        $this->assertDatabaseHas('audit_logs', ['description' => '系統自動拒絕空間預約：A 班']);
+        $this->assertDatabaseHas('audit_logs', ['description' => '系統自動拒絕重疊時段：A 班']);
     }
 
-    public function test_a_pending_request_that_overlaps_an_approved_one_is_rejected_automatically(): void
+    public function test_an_all_or_nothing_request_is_rejected_as_a_whole_when_one_period_is_taken(): void
+    {
+        $a = $this->request([[4, '09:00', '10:00'], [4, '10:10', '11:00']], ['class_name' => 'A 班', 'is_all_or_nothing' => true]);
+        $b = $this->request([[4, '09:00', '10:00']], ['class_name' => 'B 班']);
+        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
+
+        // 整筆制只能全部同意或全部拒絕。
+        $this->actingAs($manager)->get(route('reservations.show', $a))
+            ->assertSee('申請人選了整筆：只能全部同意或全部拒絕')
+            ->assertSee('<dd class="rd-wrap rd-full text-danger fw-bold">其中一節無法借用就整筆不要</dd>', false)
+            ->assertDontSee('借用方式');
+        // 審核 B 時先提醒：A 選了整筆，同意 B 會讓 A 整筆自動拒絕。
+        $this->get(route('reservations.show', $b))->assertSee('會整筆自動拒絕')->assertSee('A 班（重疊');
+        $this->post(route('reservations.review', $a), ['decisions' => [$a->slots[0]->id => 'approved', $a->slots[1]->id => 'rejected']])
+            ->assertSessionHas('error', '申請人選了「其中一節無法借用就整筆不要」，只能全部同意或全部拒絕。');
+
+        $this->post(route('reservations.approve', $b))->assertSessionHas('success');
+
+        $a->refresh();
+        $this->assertSame('rejected', $a->status);
+        $this->assertNull($a->reviewed_by);
+        $this->assertSame(['rejected', 'rejected'], $a->slots->pluck('status')->all());
+        $this->assertStringContainsString('整筆申請自動拒絕', $a->rejection_reason);
+    }
+
+    public function test_a_pending_period_that_overlaps_an_approved_one_is_rejected_automatically(): void
     {
         // 別人已核准第 3 天 09:00–10:00（例如改版前就核准的資料）。
         $this->request([[3, '09:00', '10:00']], ['class_name' => '已核准班級', 'status' => 'approved']);
         $reservation = $this->request([[3, '09:30', '10:30'], [4, '09:00', '10:00']]);
 
-        // 打開空間申請列表時就自動整筆拒絕，不用再操作。
+        // 打開空間申請列表時就自動拒絕重疊的那一節，不用再操作；另一節仍待審核。
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))->get(route('reservations.index'))->assertOk();
 
         $reservation->refresh();
-        $this->assertSame('rejected', $reservation->status);
-        $this->assertNull($reservation->reviewed_by);
-        $this->assertSame(['rejected', 'rejected'], $reservation->slots->pluck('status')->all());
-        $this->assertStringStartsWith('因為', $reservation->rejection_reason);
-        $this->assertStringContainsString('已核准給已核准班級，整筆申請自動拒絕。', $reservation->rejection_reason);
-
-        $this->get(route('reservations.show', $reservation))->assertSee('系統自動')->assertDontSee('拒絕原因（選填）');
+        $this->assertSame('pending', $reservation->status);
+        $this->assertSame(['rejected', null], $reservation->slots->pluck('status')->all());
+        $this->assertStringContainsString('已核准給已核准班級，這一節自動拒絕。', $reservation->slots[0]->rejection_reason);
     }
 
-    public function test_pending_request_is_rejected_automatically_once_its_first_period_has_started(): void
+    public function test_an_overdue_request_stays_pending_and_can_still_be_approved(): void
     {
-        Carbon::setTestNow(now()->startOfDay()->setTime(8, 30));
+        $reservation = $this->request([[1, '09:00', '10:00']], ['class_name' => '補審班']);
+        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
 
-        // 第 1 節今天 08:10 已開始、另一節明天：整筆自動拒絕。還沒開始的申請不受影響。
-        $started = $this->request([[0, '08:10', '09:00'], [1, '08:10', '09:00']], ['class_name' => '過期班']);
-        $later = $this->request([[0, '09:10', '10:00']], ['class_name' => '晚點班']);
+        // 時間過了還沒審核：不會自動拒絕，仍是待審核。
+        Carbon::setTestNow(now()->addDays(1)->setTime(10, 30));
+        $this->actingAs($manager)->get(route('reservations.index'))->assertOk();
+        $this->assertSame('pending', $reservation->fresh()->status);
 
-        $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))->get(route('reservations.index'))->assertOk();
+        // 之後補同意：課表上那一節變成「已借用」，審核的人看得到班級。
+        $this->post(route('reservations.approve', $reservation))->assertSessionHas('success', '預約已核准。');
+        $this->assertSame('approved', $reservation->fresh()->status);
 
-        $started->refresh();
-        $this->assertSame('rejected', $started->status);
-        $this->assertNull($started->reviewed_by);
-        $this->assertSame(['rejected', 'rejected'], $started->slots->pluck('status')->all());
-        $this->assertStringContainsString('已經開始仍未審核，系統自動拒絕', $started->rejection_reason);
-        $this->assertSame('pending', $later->fresh()->status);
+        $week = $this->getJson(route('reservations.timetable.week', ['classroom_id' => $this->classroom->id, 'date' => now()->toDateString()]))->assertOk();
+        $approved = collect($week->json('days'))->pluck('periods')->flatten(1)->pluck('reservations')->flatten(1)->where('status', 'approved');
+        $this->assertSame('補審班', $approved->first()['class_name'] ?? null);
 
-        // 排程指令也會做同一件事。
-        Carbon::setTestNow(now()->setTime(9, 15));
-        $this->artisan('reservations:expire-pending')->assertSuccessful();
-        $this->assertSame('rejected', $later->fresh()->status);
-
+        // 沒有審核權限的人只看到「已借用」，不知道是哪一班。
+        $this->actingAs($this->applicant);
+        $week = $this->getJson(route('reservations.timetable.week', ['classroom_id' => $this->classroom->id, 'date' => now()->toDateString()]))->assertOk();
+        $this->assertStringNotContainsString(trim(json_encode('補審班'), '"'), $week->getContent());
         Carbon::setTestNow();
     }
 
-    public function test_an_expired_request_cannot_be_approved(): void
+    public function test_cleanup_removes_rejected_and_overdue_pending_requests_only(): void
     {
-        $reservation = $this->request([[1, '09:00', '10:00']]);
-        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
+        $rejected = $this->request([[3, '09:00', '10:00']], ['status' => 'rejected', 'reviewed_at' => now()]);
+        $overdue = $this->request([[1, '09:00', '10:00']]);
+        $upcoming = $this->request([[5, '09:00', '10:00']]);
+        $approved = $this->request([[1, '13:00', '14:00']], ['status' => 'approved', 'reviewed_at' => now()]);
+        $partial = $this->request([[1, '15:00', '16:00']], ['status' => 'partially_approved', 'reviewed_at' => now()]);
 
-        // 管理者打開詳細頁之後，時間過了才按核准。
-        Carbon::setTestNow(now()->addDays(1)->setTime(9, 5));
-        $this->actingAs($manager)->post(route('reservations.approve', $reservation))
-            ->assertSessionHas('error', '這筆申請的時段已經開始，系統已自動拒絕，無法再核准。');
-        $this->assertSame('rejected', $reservation->fresh()->status);
+        Carbon::setTestNow(now()->addDays(2));
+        $this->artisan('reservations:cleanup')->expectsOutput('已清除 2 筆空間申請。')->assertSuccessful();
+
+        $this->assertNull(ClassroomReservation::find($rejected->id));
+        $this->assertNull(ClassroomReservation::find($overdue->id));
+        $this->assertDatabaseMissing('classroom_reservation_slots', ['classroom_reservation_id' => $overdue->id]);
+        $this->assertNotNull(ClassroomReservation::find($upcoming->id));
+        $this->assertNotNull(ClassroomReservation::find($approved->id));
+        $this->assertNotNull(ClassroomReservation::find($partial->id));
+        Carbon::setTestNow();
+    }
+
+    public function test_cleanup_is_scheduled_on_the_monday_after_the_second_and_fourth_sunday(): void
+    {
+        $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->first(fn ($e) => str_contains($e->command ?? '', 'reservations:cleanup'));
+        $this->assertNotNull($event);
+        $this->assertSame('0 0 * * 1', $event->expression);
+
+        // 2026-11：第二個週日 11/8 → 11/9（一）執行；第四個週日 11/22 → 11/23 執行；11/2、11/16、11/30 不執行。
+        foreach (['2026-11-09' => true, '2026-11-23' => true, '2026-11-02' => false, '2026-11-16' => false, '2026-11-30' => false] as $monday => $runs) {
+            Carbon::setTestNow($monday . ' 00:00:00');
+            $this->assertSame($runs, $event->filtersPass($this->app), $monday);
+        }
         Carbon::setTestNow();
     }
 
@@ -248,7 +312,7 @@ class ReservationReviewTest extends TestCase
 
         $this->get(route('reservations.index'))
             ->assertOk()
-            ->assertSee('tb-list tb-list-grouped', false)
+            ->assertSee('tb-table-wrap', false)
             ->assertSee('顯示第 1 到 2 筆，共 2 筆');
 
         // 一個輸入框：申請班級、申請人、申請狀態、申請時段（日期或節次）、送出時間、教室都找得到。

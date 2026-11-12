@@ -66,6 +66,17 @@ class TimetableController extends Controller
         }
         unset($period);
 
+        // 預約的班級名稱只給有空間申請審核權限的人。
+        if (! $request->user()?->hasPermission('reservations.manage')) {
+            foreach ($schedule as &$periodData) {
+                foreach ($periodData['reservations'] as &$reservationData) {
+                    unset($reservationData['class_name']);
+                }
+                unset($reservationData);
+            }
+            unset($periodData);
+        }
+
         return response()->json([
             'classroom' => [
                 'id' => $classroom->id,
@@ -165,6 +176,20 @@ class TimetableController extends Controller
                 'weekday' => $date->isoFormat('dddd'),
                 'periods' => $schedule,
             ];
+        }
+
+        // 預約的班級名稱只給有空間申請審核權限的人（課表上顯示「班級＋已借用」）；其他人只看到「已借用」。
+        if (! $request->user()?->hasPermission('reservations.manage')) {
+            foreach ($days as &$dayData) {
+                foreach ($dayData['periods'] as &$periodData) {
+                    foreach ($periodData['reservations'] as &$reservationData) {
+                        unset($reservationData['class_name']);
+                    }
+                    unset($reservationData);
+                }
+                unset($periodData);
+            }
+            unset($dayData);
         }
 
         return response()->json([

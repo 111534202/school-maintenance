@@ -3,7 +3,8 @@
 {{-- $guest：免登入查詢課表（/schedule）。同一個頁面，不顯示「我的申請」，點空堂／送出會跳出「若需預約請先登入」。 --}}
 @php $guest = $guest ?? false; @endphp
 
-@section('title', $guest ? '查詢課表' : '空間預約')
+{{-- $showMine：沒有審核權限的人（空間申請＝這一頁）下方顯示「我的申請」；有審核權限的人在空間申請右上角另外有「我的申請」按鈕。 --}}
+@section('title', $guest ? '查詢課表' : ($showMine ?? true ? '空間申請' : '空間預約'))
 
 @section('content')
 <div class="container-fluid py-4">
@@ -12,7 +13,7 @@
             <h1 class="h3 mb-1">查詢課表</h1>
             <p class="text-muted mb-0">不用登入即可查詢教室課表；若需預約教室，請先登入。</p>
         @else
-            <h1 class="h3 mb-1">空間預約</h1>
+            <h1 class="h3 mb-1">{{ ($showMine ?? true) ? '空間申請' : '空間預約' }}</h1>
             <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
         @endif
     </div>
@@ -213,6 +214,17 @@
                             @error('purpose')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+
+                            {{-- 一次申請好幾節時：其中一節被別人借走（或被拒絕）就整筆都不要。
+                                 不勾＝可以只借到其中幾節（審核時逐節同意）；勾了＝只能整筆同意或整筆拒絕。
+                                 只選一節時沒有意義，所以選了兩節以上才顯示（見下方 updateNextStepButtonState）。 --}}
+                            <div class="form-check mt-3" id="allOrNothingBox" hidden>
+                                <input class="form-check-input" type="checkbox" value="1" id="is_all_or_nothing" name="is_all_or_nothing" @checked(old('is_all_or_nothing'))>
+                                <label class="form-check-label" for="is_all_or_nothing">
+                                    其中一節無法借用時，整筆申請都不要（自動整筆拒絕）
+                                </label>
+                                <div class="form-text">不勾選的話，可能只借到其中幾節（例如第 5 節已被借走，第 6 節仍可借）。</div>
+                            </div>
                         </div>
                     </div>
 
@@ -231,23 +243,21 @@
         </div>
     </div>
 
-    {{-- 我的申請：自己提出的空間預約申請與目前狀態；點一筆在畫面中的對話框打開「預約詳細」。
-         （有預約管理權限的人另外有「空間申請」可以看全部申請並審核。） --}}
-    @unless ($guest)
+    {{-- 我的申請：自己提出的空間預約申請與目前狀態（表格，螢幕不夠大自動變清單）；點一筆在畫面中的對話框打開「預約詳細」。
+         只給沒有審核權限的人；有審核權限的人在空間申請右上角按「我的申請」打開視窗。 --}}
+    @if (! $guest && ($showMine ?? true))
     <section id="my-requests" class="tb mt-4" aria-labelledby="my-requests-title">
         <h2 class="h5 mb-0" id="my-requests-title">我的申請</h2>
         @if ($myReservations->isEmpty())
             <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>
         @else
-            <div class="tb-list tb-list-grouped">
-                @foreach ($myReservations as $reservation)
-                    @include('reservations._list-card', ['reservation' => $reservation, 'showResult' => true])
-                @endforeach
-            </div>
+            <section class="tb-table-wrap" data-no-fit aria-label="我的申請">
+                @include('reservations._table', ['reservations' => $myReservations, 'mine' => true])
+            </section>
             <div>{{ $myReservations->links() }}</div>
         @endif
     </section>
-    @endunless
+    @endif
 </div>
 
 @if ($guest)
@@ -302,14 +312,24 @@
     /* 第一步「教室／日期／查詢課表」：寬度不夠時換行，不用左右滑動。 */
     /* 教室一段、「日期＋查詢課表」一段；寬度不夠時教室自己一行，日期和「查詢課表」永遠在同一行，按鈕靠最右邊。 */
     #reservation_query_row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; container-type: inline-size; }
+    /* 放得下同一列時，多出來的寬度都給「選擇教室」，日期和「查詢課表」緊接在後面，中間不留大片空白。 */
     #reservation_query_row > .rq-classroom { flex: 1 1 240px; min-width: 0; }
-    #reservation_query_row > .rq-date-group { flex: 1 1 300px; min-width: 0; display: flex; align-items: flex-end; gap: 0.5rem; }
+    #reservation_query_row > .rq-date-group { flex: 0 1 auto; min-width: 0; display: flex; align-items: flex-end; gap: 0.5rem; }
     .rq-date-group > .rq-date { flex: 0 1 190px; min-width: 0; }
+    /* 窄到教室自己一行時，「日期＋查詢課表」佔滿下一行，按鈕靠最右邊。 */
+    @container (max-width: 560px) {
+        #reservation_query_row > .rq-date-group { flex-grow: 1; }
+    }
     .rq-date-group > .rq-controls { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; }
     /* 很窄的時候（手機）「查詢課表」縮小一點，跟日期擠得下同一行。 */
     @container (max-width: 360px) {
         #timetable_query { padding: 0.3rem 0.75rem; font-size: 0.875rem; }
     }
+    /* 教室下拉清單：外框畫在清單本身（圓角），選項只留分隔線。原本外框在每個選項上，
+       最後一個看得到的選項不是 :last-child（後面還有隱藏的「找不到符合的教室」），下面兩個角就沒有圓角。 */
+    #classroom_options { border: var(--bs-border-width) solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg); background: var(--bs-body-bg); }
+    #classroom_options > .list-group-item { border-width: 0 0 var(--bs-border-width); border-radius: 0; }
+    #classroom_options > .list-group-item.is-last-visible { border-bottom-width: 0; }
     #timetable_status { margin: -0.5rem 0 0.75rem; }
     #timetable_status:empty { display: none; }
 
@@ -445,6 +465,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         noResults.style.display = visibleCount === 0 ? '' : 'none';
+        // 最後一個看得到的選項不畫分隔線（下面就是清單外框），避免底部變成兩條線。
+        let lastVisible = null;
+        options.forEach(function (option) {
+            option.classList.remove('is-last-visible');
+            if (option.style.display !== 'none') lastVisible = option;
+        });
+        if (lastVisible) lastVisible.classList.add('is-last-visible');
         optionsList.style.display = '';
         searchInput.setAttribute('aria-expanded', 'true');
     }
@@ -799,6 +826,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         nextStepButton.disabled = selectedPeriods.length === 0;
+
+        // 「其中一節無法借用時，整筆申請都不要」：選了兩節以上才顯示；只剩一節時收起來並取消勾選。
+        const allOrNothingBox = document.getElementById('allOrNothingBox');
+        if (allOrNothingBox) {
+            const multiple = selectedPeriods.length >= 2;
+            allOrNothingBox.hidden = !multiple;
+            if (!multiple) {
+                document.getElementById('is_all_or_nothing').checked = false;
+            }
+        }
     }
 
     pendingConfirmationCheckbox.addEventListener('change', function () {
@@ -1053,12 +1090,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (hasApproved) {
-                    addScheduleText(
-                        cell,
-                        'div',
-                        '已借用',
-                        'small mb-2 fw-bold'
-                    );
+                    // 有審核權限的人看得到借用的班級（第一行粗體班級、第二行「已借用」）；其他人只看到「已借用」。
+                    // 時間已過但後來補同意的節次，一樣顯示已借用。
+                    const approvedItem = reservations.find(function (item) { return item.status === 'approved'; });
+                    if (approvedItem && approvedItem.class_name) {
+                        addScheduleText(cell, 'div', approvedItem.class_name, 'fw-bold');
+                        addScheduleText(cell, 'div', '已借用', 'small mb-2');
+                    } else {
+                        addScheduleText(
+                            cell,
+                            'div',
+                            '已借用',
+                            'small mb-2 fw-bold'
+                        );
+                    }
                 } else if (pending.length) {
                     addScheduleText(
                         cell,

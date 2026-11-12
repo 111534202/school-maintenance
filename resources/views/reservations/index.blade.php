@@ -12,7 +12,12 @@
     <div class="tb-header">
         <div>
             <h1 class="tb-title">空間申請</h1>
-            <p class="tb-subtitle">查看教室借用申請；點一筆可以看預約詳細並審核。要提出新的申請請到「空間預約」。</p>
+            <p class="tb-subtitle">查看教室借用申請；點一筆可以看預約詳細並審核。</p>
+        </div>
+        {{-- 右上角：「我的申請」在畫面中的對話框打開自己的申請（表格／清單自動切換）；「空間預約」換到有課表的申請頁。 --}}
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+            <a href="{{ route('reservations.mine') }}" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="我的申請"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>我的申請</a>
+            <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-primary"><i class="bi bi-calendar-plus" aria-hidden="true"></i>空間預約</a>
         </div>
     </div>
 
@@ -76,16 +81,13 @@
         <div class="tb-card tb-empty">
             <i class="bi bi-calendar-x" aria-hidden="true"></i>
             <h2 class="h5 mt-3" style="color: var(--tb-text)">目前沒有預約紀錄</h2>
-            <p class="mb-3">可以到「空間預約」提出申請。</p>
+            <p class="mb-3">可以按右上角「空間預約」提出申請。</p>
             <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-outline">前往空間預約</a>
         </div>
     @else
-        {{-- 所有申請放在同一張大卡片裡（tb-list-grouped，只有外框四角是圓角），一筆一列；
-             點一列在畫面中的對話框打開「預約詳細」（data-modal-frame；可以直接核准／拒絕）。 --}}
-        <section class="tb-list tb-list-grouped" aria-label="預約申請列表">
-            @foreach ($reservations as $reservation)
-                @include('reservations._list-card', ['reservation' => $reservation])
-            @endforeach
+        {{-- 申請表格：螢幕夠大用表格、不夠用清單（全站自動切換）；點一列在畫面中的對話框打開「預約詳細」（可以直接審核）。 --}}
+        <section class="tb-table-wrap" data-no-fit aria-label="預約申請列表">
+            @include('reservations._table', ['reservations' => $reservations])
         </section>
 
         {{-- 分頁：左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數；只有一頁時也顯示筆數。 --}}

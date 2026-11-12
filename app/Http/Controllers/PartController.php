@@ -240,7 +240,15 @@ class PartController extends Controller
                 'batch' => $usage->purchase,
             ]);
 
-        $usages = $repairUsages->concat($maintenanceUsages)->sortByDesc('used_at')->values();
+        // 使用紀錄：使用日期時間由遠到近；同一個時間（例如同一張報修單一次扣了兩個批次）再依扣用批次的採購日期（舊的在前）。
+        $usages = $repairUsages->concat($maintenanceUsages)
+            ->sortBy(fn (array $usage) => sprintf(
+                '%s|%s|%010d',
+                $usage['used_at']?->format('Y-m-d H:i:s') ?? '',
+                $usage['batch']?->purchase_date?->format('Y-m-d') ?? '0000-00-00',
+                $usage['batch']?->id ?? 0
+            ))
+            ->values();
 
         // 報廢紀錄：新的在上面；batches 用來算報廢損失。
         $scraps = $part->scraps()->with(['batches.purchase', 'recorder'])->orderByDesc('scrap_date')->orderByDesc('id')->get();

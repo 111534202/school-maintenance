@@ -81,9 +81,9 @@
         {{-- RWD：頂部列永遠單排（漢堡 / 標題 / 右側工具），標題太長就省略號，不會換成兩排。 --}}
         <div class="container-fluid flex-nowrap gap-2">
             @auth
-                {{-- 「漢堡」按鈕：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。
-                     寬螢幕（1200px 以上，d-xl-none）選單已經排在上方列（top-nav），就不顯示漢堡按鈕；比較窄的螢幕才用它。 --}}
-                <button class="btn btn-outline-light btn-sm tb-nav-btn tb-nav-btn-square flex-shrink-0 d-xl-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
+                {{-- 「漢堡」按鈕（手機、平板、桌面都一樣）：整份選單收在裡面，點了會打開下面的 #sidebarOffcanvas 側邊選單。
+                     不採用寬螢幕上方選單（top-nav），與 integrate/all 相同。 --}}
+                <button class="btn btn-outline-light btn-sm tb-nav-btn tb-nav-btn-square flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
@@ -98,13 +98,9 @@
             {{-- 網站名稱（左側標題）。 --}}
             {{-- 已登入時，點網站名稱回到主控台（沒登入就只是標題）。同步自 integrate/all（彭仕衡 5cc43ed）。 --}}
             @auth
-                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;" data-site-title>{{ __('common.site_title') }}</a>
+                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;" data-site-title>{{ __('common.site_title') }}</a>
             @else
-                <span class="navbar-brand text-truncate me-auto me-xl-3 mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
-            @endauth
-            {{-- 寬螢幕（1200px 以上）選單也直接排在上方列（top-nav），比較窄時只用漢堡選單。 --}}
-            @auth
-                @include('layouts.partials.top-nav')
+                <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
             @endauth
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
@@ -147,7 +143,7 @@
                         </ul>
                     </div>
 
-                    <span class="text-light small d-none d-sm-inline">
+                    <span class="text-light tb-nav-user d-none d-sm-inline">
                         {{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}
                     </span>
                     {{-- 手機寬度放不下姓名文字，改顯示人像圖示，長按/滑過仍可看到姓名與角色。 --}}
@@ -183,7 +179,8 @@
     @auth
         @unless ($embedded)
         {{-- 全站唯一的選單：預設收起來，點左上角的漢堡按鈕才從左邊滑出（所有螢幕大小都一樣，不再有固定的側邊欄）。 --}}
-        <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas">
+        {{-- data-bs-scroll：打開選單時不拿掉頁面捲軸（Bootstrap 拿掉捲軸時會在 body 右邊補一條空白，頂端列不會跟著補，最右邊就多出一條空白）。 --}}
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" data-bs-scroll="true">
             <div class="offcanvas-header">
                 <h6 class="offcanvas-title">選單</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
@@ -267,6 +264,16 @@
             var max = parseInt(input.getAttribute('data-max-files'), 10);
             return input.files.length > max ? max : null;
         }
+        // 欄位有 data-max-total-mb（附件一筆加起來的上限，例如 5 MB）時：已選的檔案＋data-existing-bytes（保留的舊附件）不能超過。
+        function totalLimit(input) { return parseFloat(input.getAttribute('data-max-total-mb') || '0') * 1048576; }
+        function existingBytes(input) { return parseInt(input.getAttribute('data-existing-bytes') || '0', 10) || 0; }
+        function sumBytes(files) { var t = 0; for (var i = 0; i < files.length; i++) t += files[i].size; return t; }
+        function tooHeavy(input) {
+            var limit = totalLimit(input);
+            if (!limit || !input.files) return null;
+            var total = existingBytes(input) + sumBytes(input.files);
+            return total > limit ? { total: total, limit: limit } : null;
+        }
         function tooManyText(max) {
             return max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件。' : '最多只能再選 ' + max + ' 個檔案。';
         }
@@ -344,11 +351,16 @@
                 var known = current.map(fileKey);
                 var limit = fileLimit(input);
                 var max = input.hasAttribute('data-max-files') ? parseInt(input.getAttribute('data-max-files'), 10) : Infinity;
+                var total = totalLimit(input);
                 var messages = [];
                 Array.prototype.forEach.call(input.files, function (f) {
                     if (known.indexOf(fileKey(f)) !== -1) return;   // 同一個檔案選兩次只算一次
                     if (limit && f.size > limit) { messages.push('「' + f.name + '」有 ' + mb(f.size) + '，超過上限 ' + mb(limit) + '。'); return; }
                     if (current.length >= max) { messages.push(max <= 0 ? '附件已經達到上限，請先勾選刪除原本的附件。' : '這裡最多只能放 ' + max + ' 個檔案。'); return; }
+                    if (total && existingBytes(input) + sumBytes(current) + f.size > total) {
+                        messages.push('加入「' + f.name + '」（' + mb(f.size) + '）後附件會超過 ' + mb(total) + '，所以沒有加入；附件加起來最多 ' + mb(total) + '。');
+                        return;
+                    }
                     current.push(f);
                     known.push(fileKey(f));
                 });
@@ -386,6 +398,10 @@
                 var many = tooMany(inputs[i]);
                 if (many !== null) {
                     return stop(inputs[i], tooManyText(many));
+                }
+                var heavy = tooHeavy(inputs[i]);
+                if (heavy) {
+                    return stop(inputs[i], '附件加起來有 ' + mb(heavy.total) + '，超過上限 ' + mb(heavy.limit) + '，請移除一些檔案或改選較小的檔案。');
                 }
                 for (var k = 0; k < inputs[i].files.length; k++) total += inputs[i].files[k].size;
             }
@@ -480,6 +496,41 @@
     @include('layouts.partials.filter-onion')
     {{-- 清單的洋蔥式檢視：列表頁的寬表格變成一列一列的簡短清單，點進去詳細內容從右邊滑入。 --}}
     @include('layouts.partials.list-onion')
+    {{-- 表格的一列加上 data-modal-frame-href（與 data-modal-title）：點這一列（或按 Enter）就在畫面中的對話框打開那個網址，
+         跟 data-modal-frame 連結一樣；清單模式點一筆也一樣（list-onion 會呼叫 tbOpenRow）。
+         在對話框裡面（例如「我的申請」視窗）點一列：直接在同一個對話框裡打開。點到列裡的按鈕、連結不算。 --}}
+    <script>
+    (function () {
+        window.tbOpenRow = function (tr) {
+            var href = tr.getAttribute('data-modal-frame-href');
+            if (!href) return;
+            if (window.parent !== window) {   // 已經在對話框裡（例如對話框裡的清單）：請外面的對話框疊一層打開，關掉這一層會回到原本的清單
+                window.parent.postMessage({ type: 'modal-push', url: new URL(href, window.location.href).href, title: tr.getAttribute('data-modal-title') || '' }, window.location.origin);
+                return;
+            }
+            var a = document.createElement('a');
+            a.href = href;
+            a.setAttribute('data-modal-frame', '');
+            a.setAttribute('data-modal-title', tr.getAttribute('data-modal-title') || '');
+            a.hidden = true;
+            (tr.querySelector('td') || document.body).appendChild(a);   // 放在列裡面：從另一個視窗（例如低庫存品項）打開時，會先關掉那個視窗
+            a.click();
+            a.remove();
+        };
+        document.addEventListener('click', function (event) {
+            var tr = event.target.closest && event.target.closest('tr[data-modal-frame-href]');
+            if (!tr || event.target.closest('a, button, input, label, select, textarea')) return;
+            window.tbOpenRow(tr);
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Enter' || !event.target.matches || !event.target.matches('tr[data-modal-frame-href]')) return;
+            event.preventDefault();
+            window.tbOpenRow(event.target);
+        });
+        // Bootstrap 視窗打開後（例如低庫存品項），讓表格／清單自動切換依視窗內的寬度重新判斷。
+        document.addEventListener('shown.bs.modal', function () { window.dispatchEvent(new Event('resize')); });
+    })();
+    </script>
     {{-- 所有表格／清單依畫面大小自動切換：螢幕夠大用表格，不夠用清單（不用左右滑動）。（同步 integrate/all 85ddc1a） --}}
     @include('layouts.partials.auto-table')
     {{-- 讓列表頁剛好一個畫面：電腦版清單在固定外框內捲動，手機版一次只顯示放得下的幾筆並用上一頁／下一頁切換。 --}}
@@ -504,15 +555,32 @@
             document.addEventListener('click', function (event) {
                 var a = event.target.closest && event.target.closest('a[href]');
                 if (!a || a.target === '_blank' || a.hasAttribute('data-bs-toggle') || a.getAttribute('href').charAt(0) === '#') return;
+                // data-modal-stay（例如對話框裡清單的分頁）：就在對話框裡換頁（分頁連結本來就帶著 modal=1）。
+                if (a.closest('[data-modal-stay]')) return;
                 event.preventDefault();
                 post({ type: 'modal-navigate', url: a.href });
             });
             // 告訴外面的對話框「表單內容」有多高（量內容本身，不是整個頁面；頁面高度會被對話框撐開，量它會留下一大段空白），
             // 對話框就剛好到「儲存／取消」那一列為止，也不會出現兩層捲軸。
             var content = document.querySelector('.app-content') || document.body;
-            function size() { post({ type: 'modal-size', height: Math.ceil(content.getBoundingClientRect().bottom + window.scrollY) }); }
+            // 量內容區裡最後一個東西的底部（加上內容區下方留白）：內容區本身會被拉高到填滿對話框，
+            // 量它的話對話框只會變高不會變矮（例如對話框變寬、表格變矮之後留下一大段空白）。
+            function size() {
+                var bottom = 0;
+                Array.prototype.forEach.call(content.children, function (child) {
+                    if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE' || child.offsetParent === null) return;
+                    bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+                });
+                if (!bottom) bottom = content.getBoundingClientRect().bottom;
+                else bottom += parseFloat(getComputedStyle(content).paddingBottom) || 0;
+                post({ type: 'modal-size', height: Math.ceil(bottom + window.scrollY) });
+            }
             window.addEventListener('load', size);
-            if (window.ResizeObserver) new ResizeObserver(size).observe(content);
+            if (window.ResizeObserver) {
+                var observer = new ResizeObserver(size);
+                observer.observe(content);
+                Array.prototype.forEach.call(content.children, function (child) { observer.observe(child); });
+            }
         })();
         </script>
     @else
@@ -534,6 +602,8 @@
             var modalEl = document.getElementById('frameModal');
             var frame = document.getElementById('frameModalFrame');
             var title = document.getElementById('frameModalTitle');
+            var dialog = modalEl.querySelector('.modal-dialog');
+            var stack = [];   // 對話框裡疊上去的各層（見 modal-push）
             function modal() { return window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null; }
             document.addEventListener('click', function (event) {
                 var a = event.target.closest && event.target.closest('a[data-modal-frame]');
@@ -544,6 +614,12 @@
                 title.textContent = a.getAttribute('data-modal-title') || a.textContent.trim();
                 frame.title = title.textContent;
                 frame.style.height = '240px';   // 先用小的高度，表單載入後依內容高度調整（見 modal-size）
+                // data-modal-table：外面這一頁的表格正在用表格顯示時，對話框裡也用表格（table=1），寬度跟著表格調整（見 modal-width）。
+                if (a.hasAttribute('data-modal-table')) {
+                    var pageTable = document.querySelector('.app-content .tb-table-wrap .table-responsive');
+                    if (pageTable && pageTable.offsetParent !== null && !pageTable.hidden) url.searchParams.set('table', '1');
+                }
+                stack = [];
                 frame.src = url.href;
                 // 從另一個已打開的視窗裡點（例如低庫存品項視窗）：先關掉那個視窗，再打開這個。
                 var host = a.closest('.modal.show');
@@ -560,6 +636,18 @@
                 if (data.type === 'modal-size') {
                     // 最高到瀏覽器視窗扣掉對話框標題與上下留白；比較高的表單在對話框裡捲動。
                     frame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
+                } else if (data.type === 'modal-push') {
+                    // 在對話框裡的清單點一筆（例如清單→詳細）：記下目前這一層，換成新的一層；
+                    // 之後按關閉、點外面或按 Esc，會先回到上一層（見下面的 hide.bs.modal），不會整個關掉。
+                    stack.push({ src: frame.src, title: title.textContent, width: dialog.style.maxWidth, height: frame.style.height });
+                    var next = new URL(data.url, window.location.href);
+                    next.searchParams.set('modal', '1');
+                    title.textContent = data.title || title.textContent;
+                    frame.title = title.textContent;
+                    frame.src = next.href;
+                } else if (data.type === 'modal-width') {
+                    // 對話框寬度＝表格需要的寬度（加上對話框本身的框線），最寬到瀏覽器視窗左右各留 16px。
+                    dialog.style.maxWidth = Math.min(data.width + 2, window.innerWidth - 32) + 'px';
                 } else if (data.type === 'modal-done') {
                     // 回到同一個列表頁（例如在預約列表審核完）：保留目前的篩選（?status=pending）。
                     var done = new URL(data.url, window.location.href);
@@ -567,11 +655,26 @@
                     window.location.href = done.href;
                 } else if (data.type === 'modal-navigate') {
                     var target = new URL(data.url, window.location.href);
+                    stack = [];   // 要離開對話框了：不用再回到上一層
                     modal().hide();
                     if (target.pathname !== window.location.pathname) window.location.href = target.href;
                 }
             });
-            modalEl.addEventListener('hidden.bs.modal', function () { frame.src = 'about:blank'; });
+            // 有疊上去的一層時，關閉＝回到上一層（例如從詳細回到原本的清單，保留原本的頁數）。
+            modalEl.addEventListener('hide.bs.modal', function (event) {
+                if (!stack.length) return;
+                event.preventDefault();
+                var prev = stack.pop();
+                title.textContent = prev.title;
+                frame.title = prev.title;
+                dialog.style.maxWidth = prev.width;
+                frame.style.height = prev.height;
+                frame.src = prev.src;
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                frame.src = 'about:blank';
+                dialog.style.maxWidth = '';
+            });
         })();
         </script>
     @endif

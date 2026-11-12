@@ -54,14 +54,17 @@ class PartHistoryExportTest extends TestCase
         $this->get(route('parts.history.export', [$part, 'excel']))->assertSessionHasErrors('sections');
     }
 
-    public function test_low_stock_alert_shows_only_the_count(): void
+    /** 有低庫存零件時，右上角（新增零件左邊）才有「目前低庫存零件 N」按鈕；不再顯示紅色提示卡片。 */
+    public function test_low_stock_button_shows_only_when_there_are_low_stock_parts(): void
     {
         $this->loginAsAnyUser();
-        $part = Part::create(['name' => '網路線', 'specification' => '3公尺', 'unit' => '條', 'current_stock' => 0, 'safety_stock' => 3]);
+        $this->get(route('parts.index'))->assertOk()->assertDontSee('目前低庫存零件');
 
-        $html = $this->get(route('parts.index'))->assertOk()->assertSee('有 1 項零件低於安全庫存')->getContent();
-        $alert = substr($html, strpos($html, 'class="tb-alert"'));
-        $alert = substr($alert, 0, strpos($alert, '</button>'));
-        $this->assertStringNotContainsString($part->part_code, $alert);
+        Part::create(['name' => '網路線', 'specification' => '3公尺', 'unit' => '條', 'current_stock' => 0, 'safety_stock' => 3]);
+
+        $this->get(route('parts.index'))->assertOk()
+            ->assertSeeInOrder(['目前低庫存零件', '>1</span>', '新增零件'], false)
+            ->assertDontSee('低於安全庫存</div>', false)
+            ->assertDontSee('class="tb-alert', false);
     }
 }

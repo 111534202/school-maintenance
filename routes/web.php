@@ -219,16 +219,26 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/create', [ClassroomReservationController::class, 'create'])
             ->name('create');
 
+        // 我的申請（有審核權限的人在空間申請右上角打開的對話框）
+        Route::get('/mine', [ClassroomReservationController::class, 'mine'])
+            ->name('mine');
+
         Route::post('/', [ClassroomReservationController::class, 'store'])
             ->name('store');
 
-        // 核准預約（整筆；一筆申請不能只同意其中幾節）
+        // 逐節審核：每一節選同意或拒絕（申請人選了「整筆」的，只能全部同意或全部拒絕）
+        Route::post('/{reservation}/review', [
+            ClassroomReservationController::class,
+            'review',
+        ])->name('review');
+
+        // 整筆同意（所有還沒審核的節次都同意）
         Route::post('/{reservation}/approve', [
             ClassroomReservationController::class,
             'approve',
         ])->name('approve');
 
-        // 拒絕預約
+        // 整筆拒絕
         Route::post('/{reservation}/reject', [
             ClassroomReservationController::class,
             'reject',

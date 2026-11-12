@@ -35,7 +35,7 @@ class PartExportTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
-            ->assertSee('tb-list tb-list-grouped', false)
+            ->assertSee('tb-table-wrap', false)
             ->assertSee('顯示第 1 到 2 筆，共 2 筆')
             ->assertSee('匯出 Excel／PDF')
             ->assertSee('匯出零件清單')
@@ -104,7 +104,7 @@ class PartExportTest extends TestCase
 
         $this->get(route('parts.summary', ['part' => $hdmi, 'modal' => 1]))
             ->assertOk()
-            ->assertSeeInOrder(['庫存狀態', '⚠ 低庫存', '零件編號', '名稱', '規格', '品牌/型號', '平均單價', '目前庫存', '安全庫存', '查看詳細'])
+            ->assertSeeInOrder([$hdmi->part_code, 'HDMI 線', '庫存狀態', '⚠ 低庫存', '品牌/型號', '平均單價', '目前庫存', '安全庫存', '查看履歷'])
             ->assertSee('NT$ 10')
             ->assertSee('href="' . route('parts.show', $hdmi) . '"', false)
             ->assertDontSee('<h1', false)

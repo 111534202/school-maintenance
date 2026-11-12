@@ -15,7 +15,7 @@ return [
         'ended_at' => '結束時間',
         'parts_used_note' => '使用備品說明（選填，例如：更換投影機燈泡 x1）',
         'parts_used_note_hint' => '備品主檔尚未合併進來，暫時用文字描述；之後會改成選單並自動扣庫存。',
-        'attachments' => '維修前後照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，單檔 20MB 以內）',
+        'attachments' => '維修前後照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，加起來 5MB 以內）',
     ],
 
     'submit' => '送出維修紀錄（送出後案件進入待驗收）',

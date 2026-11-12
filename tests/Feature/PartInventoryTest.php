@@ -36,7 +36,7 @@ class PartInventoryTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
-            ->assertSee('<span class="tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
+            ->assertSee('<span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
             ->assertDontSee('庫存充足')
             ->assertSee('目前低庫存品項（1）');
     }
@@ -48,8 +48,8 @@ class PartInventoryTest extends TestCase
         $this->get(route('parts.index'))
             ->assertOk()
             // 「查看目前低庫存品項」按鈕一定會出現；這裡檢查的是列表裡的低庫存標籤與彈窗筆數。
-            ->assertDontSee('<span class="tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
-            ->assertSee('<span class="tb-pill tb-pill-ok">庫存充足</span>', false)
+            ->assertDontSee('<span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
+            ->assertSee('<span class="badge tb-pill tb-pill-ok">庫存充足</span>', false)
             ->assertSee('目前低庫存品項（0）');
     }
 
@@ -60,8 +60,8 @@ class PartInventoryTest extends TestCase
         $this->get(route('parts.index'))
             ->assertOk()
             // 「查看目前低庫存品項」按鈕一定會出現；這裡檢查的是列表裡的低庫存標籤與彈窗筆數。
-            ->assertDontSee('<span class="tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
-            ->assertSee('<span class="tb-pill tb-pill-ok">庫存充足</span>', false)
+            ->assertDontSee('<span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>', false)
+            ->assertSee('<span class="badge tb-pill tb-pill-ok">庫存充足</span>', false)
             ->assertSee('目前低庫存品項（0）');
     }
 }

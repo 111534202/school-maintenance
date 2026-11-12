@@ -12,6 +12,8 @@
     (function () {
         var MIN_WIDTH = 1100;
         var MIN_RATIO = 1.25;
+        // 網址帶 table=1：一律用表格（例如外面那一頁是表格時打開的對話框，跟外面一樣用表格，對話框寬度跟著表格）。
+        var FORCE_TABLE = new URLSearchParams(window.location.search).get('table') === '1';
         var views = [];
         var busy = false;   // 自己派發 resize 時，不要再觸發自己
 
@@ -38,15 +40,37 @@
             views.forEach(function (v) {
                 // 表格區與清單區都看不到（整個區塊收合、在分頁籤裡）：量不到寬度，先維持原狀。（不能只看表格區：清單模式時表格區本來就是收起來的。）
                 if (v.wrap.offsetParent === null && v.list.offsetParent === null) return;
+                if (FORCE_TABLE) { show(v, true); return; }
                 if (!roomy) { show(v, false); return; }
                 // 先試試用表格，量一下放不放得下；放不下就退回清單。
                 show(v, true);
                 if (v.wrap.scrollWidth > v.wrap.clientWidth + 1) show(v, false);
             });
+            if (FORCE_TABLE) postTableWidth();
             // 讓「一個畫面」（fit-screen）依新的內容重新計算高度。
             busy = true;
             window.dispatchEvent(new Event('resize'));
             busy = false;
+        }
+
+        // 在對話框（iframe）裡：量出表格不擠、不換行時需要的寬度，請外面的對話框調成這個寬度（見 layouts/app 的 modal-width）。
+        function postTableWidth() {
+            if (window.parent === window) return;
+            var width = 0;
+            views.forEach(function (v) {
+                var table = v.wrap.querySelector('table');
+                if (!table || v.wrap.offsetParent === null) return;
+                var box = v.wrap.closest('.tb-table-wrap') || v.wrap;
+                var old = table.style.width;
+                table.style.width = 'max-content';
+                var need = table.getBoundingClientRect().width;
+                table.style.width = old;
+                // 表格四周（內容區留白、表格外框、直的捲軸）佔掉的寬度＝目前整頁可用寬度－表格區塊的內寬。
+                var around = window.innerWidth - box.clientWidth;
+                width = Math.max(width, need + around);
+            });
+            if (!width) return;
+            window.parent.postMessage({ type: 'modal-width', width: Math.ceil(width) }, window.location.origin);
         }
 
         var timer = null;
@@ -56,6 +80,17 @@
         document.addEventListener('DOMContentLoaded', function () {
             collect();
             apply();
+            // 頁面裡的 Bootstrap 視窗（例如低庫存品項）：視窗一變成看得到（display: block，淡入動畫開始前）就馬上判斷，
+            // 不等打開完成，才不會先閃一下清單再換成表格。
+            document.querySelectorAll('.modal').forEach(function (modal) {
+                if (!window.MutationObserver || !modal.querySelector('.table-responsive')) return;
+                var wasShown = false;
+                new MutationObserver(function () {
+                    var shown = modal.style.display === 'block';
+                    if (shown && !wasShown) apply();
+                    wasShown = shown;
+                }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+            });
             window.addEventListener('resize', schedule);
             window.addEventListener('orientationchange', schedule);
         });

@@ -97,6 +97,32 @@ body.tb-body {
     .tb-navbar .tb-nav-btn-square { width: 2.5rem; }
 }
 @media (pointer: coarse) and (max-width: 575.98px) { .tb-navbar .tb-nav-btn[data-page-back] { width: 2.5rem; } }
+/* 頂端列的漢堡選單、返回、通知鈴鐺、登出（含免登入頁的「登入」）：不要外框，滑鼠移上去、按下也不變色，只有圖示與文字。
+   （用鍵盤 Tab 移到按鈕上時，仍保留 Bootstrap 的外圈光暈，才知道目前在哪個按鈕。） */
+.tb-navbar .btn-outline-light,
+.tb-navbar .btn-outline-light:hover,
+.tb-navbar .btn-outline-light:focus,
+.tb-navbar .btn-outline-light:active,
+.tb-navbar .btn-outline-light.show { color: #FFFFFF; background-color: transparent; border-color: transparent; }
+/* 頂端列的圖示與文字統一放大（按鈕一律 2.5rem 見方，頂端列總高度仍是 56px）。 */
+.tb-navbar .tb-nav-btn, .tb-navbar .icon-btn { height: 2.5rem; }
+.tb-navbar .tb-nav-btn-square, .tb-navbar .icon-btn { width: 2.5rem; }
+.tb-navbar .tb-nav-btn-square .bi { font-size: 1.75rem !important; }
+.tb-navbar .icon-btn .bi { font-size: 1.4rem; }
+/* 鈴鐺的紅色數字：縮小並往鈴鐺右上角內移一點，不會被頂端列邊緣切到。 */
+.tb-navbar #notificationBadge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1rem; height: 1rem; padding: 0 0.28rem; border-radius: 999px;
+    font-size: 0.625rem; line-height: 1;
+    top: 0.3rem !important; left: auto !important; right: 0; transform: none !important;
+}
+.tb-navbar .tb-nav-btn[data-page-back] { font-size: 1.1rem; }
+.tb-navbar .tb-nav-btn[data-page-back] .bi { font-size: 1.25rem; }
+.tb-navbar .navbar-brand { font-size: 1.2rem !important; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
+.tb-navbar .tb-nav-user { font-size: 1.05rem; }
+.tb-navbar .bi-person-circle { font-size: 1.6rem !important; }
+@media (min-width: 768px) { .tb-navbar .navbar-brand { font-size: 1.5rem !important; } }
+@media (max-width: 575.98px) { .tb-navbar .tb-nav-btn[data-page-back] { width: 2.5rem; padding: 0; } }
 
 /* 側邊選單：目前所在頁面改成墨綠底。 */
 .tb-body .offcanvas .nav-link.active { background-color: var(--tb-accent); color: #FFFFFF; }
@@ -178,6 +204,8 @@ body.tb-body {
     gap: 22px;
     padding-bottom: 24px;
 }
+/* 在對話框（iframe，?modal=1）裡：最下面不再多留白，對話框才會剛好包住內容。 */
+.tb-embedded .tb { padding-bottom: 0; }
 .tb a { color: var(--tb-accent); }
 .tb a:hover { color: var(--tb-accent-dark); }
 
@@ -255,6 +283,18 @@ body.tb-body {
     padding: 15px 20px; font-weight: 700; text-align: left; white-space: nowrap;
     border-bottom: 2px solid var(--tb-border); background: var(--tb-surface);
 }
+.tb .tb-table > thead > tr > th {
+    /* 表頭凍結在最上面：表格區自己捲動時（一個畫面放不下、fit-screen），往下捲表頭依然顯示。
+       border-collapse 的框線不會跟著固定，所以表頭下方的線改用 box-shadow 畫。 */
+    position: sticky; top: 0; z-index: 2;
+    border-bottom-color: transparent; box-shadow: inset 0 -2px 0 var(--tb-border);
+}
+/* 不套用「一個畫面」（data-no-fit）的表格：整頁一起往下捲，不在卡片裡上下捲；表頭固定在頂端列下方。
+   overflow: hidden／auto 會讓表頭只黏在卡片裡（等於沒有固定），所以改成 clip（一樣裁掉圓角外的內容，但不會變成捲動區）。
+   這種表格只在放得下時才用表格顯示（auto-table），不需要左右捲動。 */
+.tb-body .tb-table-wrap[data-no-fit] { overflow: clip !important; }
+.tb-body .tb-table-wrap[data-no-fit] > .table-responsive { overflow: visible; }
+.tb-body:not(.tb-embedded) .tb-table-wrap[data-no-fit] .tb-table > thead > tr > th { top: 56px; }
 .tb .tb-table > tbody > tr > td { padding: 14px 20px; vertical-align: middle; border: 0; }
 .tb .tb-table > tbody > tr:nth-child(even) > td { background: var(--tb-zebra); }
 .tb .tb-table.tb-table-hover > tbody > tr:hover > td { background: var(--tb-accent-faint); }
@@ -311,6 +351,12 @@ body.tb-body {
 .tb-lc-person .tb-ellipsis { max-width: var(--tb-col-requester); }
 /* 我的申請：第二欄是教室（6 字）。 */
 .tb-list-card-mine { --tb-col-person: var(--tb-col-classroom); }
+/* 表格裡點了會開對話框的列（空間申請、零件庫存）；表格裡的固定欄寬文字一樣用 --tb-col-* 的字數。 */
+tr[data-modal-frame-href] { cursor: pointer; }
+.tb-cell-name { max-width: var(--tb-col-part-name); }
+.tb-cell-spec { max-width: var(--tb-col-part-spec); }
+.tb-cell-person { max-width: var(--tb-col-requester); }
+.tb-cell-room { max-width: var(--tb-col-classroom); }
 /* 刪除前的二次確認視窗（layouts/app 的 #confirmActionDialog）。 */
 .tb-confirm-dialog { border: 0; border-radius: 18px; padding: 0; width: min(92vw, 420px); box-shadow: 0 18px 48px rgba(0, 0, 0, .25); color: var(--tb-text); font-family: var(--tb-font-body); }
 .tb-confirm-dialog::backdrop { background: rgba(0, 0, 0, .45); }
@@ -321,6 +367,11 @@ body.tb-body {
 /* 詳細資料（零件履歷的基本資料、零件庫存視窗）：名稱與內容固定同一行，不會變成上下兩行。
    .tb-clip-* 固定字數（同上面 --tb-col-*），超過以「…」結尾；.tb-dl-wrap 不限字數，太長換行。 */
 .tb-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .5rem 2rem; align-items: baseline; }
+/* 零件履歷的基本資料：內容往右多留一點距離，跟下面表格的欄位比較協調。 */
+.tb-dl.tb-dl-roomy { column-gap: 3.5rem; }
+@media (max-width: 575.98px) { .tb-dl.tb-dl-roomy { column-gap: 1.25rem; } }
+/* 表格裡只跟內容一樣寬的欄（例如「操作」：分隔線剛好在最左邊的按鈕旁邊）。 */
+.tb-col-fit { width: 1%; white-space: nowrap; }
 .tb-dl > dt { font-weight: 700; white-space: nowrap; }
 .tb-dl > dd { margin: 0; min-width: 0; }
 /* 窄畫面：內容固定靠右；寬畫面：內容緊接在名稱右邊。 */

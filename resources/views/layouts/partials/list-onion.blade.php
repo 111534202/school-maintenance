@@ -207,6 +207,8 @@
                 chev.className = 'bi bi-chevron-right text-muted flex-shrink-0';
                 item.appendChild(chev);
                 item.addEventListener('click', function () {
+                    // 這一列設定成「點了在畫面中的對話框打開」（<tr data-modal-frame-href>）：直接打開對話框，不先開詳細面板。
+                    if (tr.hasAttribute('data-modal-frame-href') && window.tbOpenRow) { window.tbOpenRow(tr); return; }
                     // 對話框的標題：預設是這一筆的標題（第一欄）；表格有 data-onion-panel-title 時改用它（例如零件履歷的採購紀錄顯示零件名稱與規格）。
                     openPanel({ title: table.getAttribute('data-onion-panel-title') || title, href: tr.getAttribute('data-href'), fields: main.filter(function (f) { return f.nodes.length; }), actions: actions }, item);
                 });

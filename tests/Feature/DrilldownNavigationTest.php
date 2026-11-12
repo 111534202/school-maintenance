@@ -115,22 +115,15 @@ class DrilldownNavigationTest extends TestCase
         $this->assertStringContainsString('id="sidebarOffcanvas"', $html);
     }
 
-    // 選單入口在每個螢幕寬度都要有一個：
-    //   1200px 以下用漢堡按鈕（不能帶 d-none、d-sm/md/lg-none 這類「比較窄就隱藏」的類別）；
-    //   1200px 以上（xl）漢堡按鈕收起來（d-xl-none），改由上方列的下拉選單（tb-topnav，d-xl-flex）提供，而且項目跟漢堡選單一樣。
-    public function test_there_is_a_menu_entry_at_every_screen_width(): void
+    // 選單只放在漢堡抽屜裡（不採用寬螢幕上方選單 top-nav，同 integrate/all），所以漢堡按鈕在任何螢幕寬度都要看得到：
+    // 不能帶 d-lg-none 之類「大螢幕隱藏」的類別，否則電腦版就沒有選單入口。
+    public function test_the_hamburger_button_is_visible_at_every_screen_width(): void
     {
         $html = $this->page('admin');
 
         $this->assertSame(1, preg_match('/<button[^>]*data-bs-target="#sidebarOffcanvas"[^>]*>/', $html, $button));
-        $this->assertDoesNotMatchRegularExpression('/\bd-(sm|md|lg)-none\b|\bd-none\b/', $button[0]);
-
-        if (str_contains($button[0], 'd-xl-none')) {
-            $this->assertSame(1, preg_match('/<ul class="navbar-nav tb-topnav[^"]*\bd-xl-flex\b[^"]*"[^>]*>(.*?)<\/ul>\s*<script>/s', $html, $top), '寬螢幕收起漢堡按鈕時，上方列必須有選單');
-            foreach (['users.index', 'repairs.index', 'maintenance-orders.index', 'parts.index', 'audit-logs.index'] as $route) {
-                $this->assertStringContainsString('href="'.route($route).'"', $top[1], "上方列選單缺少 {$route}");
-            }
-        }
+        $this->assertDoesNotMatchRegularExpression('/\bd-(sm|md|lg|xl|xxl)-none\b|\bd-none\b/', $button[0]);
+        $this->assertStringNotContainsString('tb-topnav', $html);
     }
 
     // 最內層的清單頁（用戶主檔、空間預約…）也要有「返回」；主控台是最上層，不需要。

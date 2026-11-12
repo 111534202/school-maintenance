@@ -132,8 +132,8 @@
                 <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.create.section_attachments') }}</div>
                 <div class="card-body">
                     <label for="attachments" class="form-label">{{ __('repair_requests.create.attachments_label') }}</label>
-                    {{-- 附件：可一次選多個檔案（欄位名稱以 [] 結尾 = 陣列）；accept 只是提示瀏覽器的檔案類型，真正的限制（最多 5 個、單檔 20MB）在後端 StoreRepairRequestRequest。 --}}
-                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-mb="20">
+                    {{-- 附件：可一次選多個檔案（欄位名稱以 [] 結尾 = 陣列）；accept 只是提示瀏覽器的檔案類型，真正的限制（最多 5 個、加起來 5 MB）在後端 StoreRepairRequestRequest（App\Support\AttachmentLimit）。 --}}
+                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
                 </div>
             </div>
 

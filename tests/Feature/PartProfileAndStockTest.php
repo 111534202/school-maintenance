@@ -210,22 +210,22 @@ class PartProfileAndStockTest extends TestCase
 
         $html = $this->get(route('parts.index'))
             ->assertOk()
-            ->assertSee('查看目前低庫存品項')
+            ->assertSee('目前低庫存零件')
             ->assertSee('目前低庫存品項（1）')
-            ->assertSee('href="' . route('parts.summary', $low) . '" class="tb-list-card tb-part-card" data-modal-frame data-modal-title="零件庫存"', false)
-            ->assertDontSee('href="' . route('parts.show', $low) . '" class="tb-list-card', false)   // 不會直接跳到零件履歷
+            ->assertSee('data-modal-frame-href="' . route('parts.summary', $low) . '" data-modal-title="零件庫存"', false)
+            ->assertDontSee('data-modal-frame-href="' . route('parts.show', $low) . '"', false)   // 不會直接跳到零件履歷
             ->getContent();
 
-        // 低庫存視窗裡只有 LOW-1，而且是清單（沒有表格檢視）。
+        // 低庫存視窗裡只有 LOW-1；跟列表一樣是表格，依視窗大小自動切換成清單。
         $modal = substr($html, strpos($html, 'id="lowStockModal"'));
         $modal = substr($modal, 0, strpos($modal, 'id="lowStockExportModal"') ?: strlen($modal));
         $this->assertStringContainsString('LOW-1', $modal);
         $this->assertStringNotContainsString('OK-1', $modal);
-        $this->assertStringNotContainsString('<table', $modal);
+        $this->assertStringContainsString('tb-table-wrap', $modal);
 
         // 列表：低庫存顯示「低庫存」，其他顯示「庫存充足」。
-        $this->assertStringContainsString('<span class="tb-pill tb-pill-danger">⚠ 低庫存</span>', $html);
-        $this->assertStringContainsString('<span class="tb-pill tb-pill-ok">庫存充足</span>', $html);
+        $this->assertStringContainsString('<span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>', $html);
+        $this->assertStringContainsString('<span class="badge tb-pill tb-pill-ok">庫存充足</span>', $html);
     }
 
     public function test_low_stock_parts_can_be_exported_to_excel(): void
@@ -330,8 +330,8 @@ class PartProfileAndStockTest extends TestCase
         // 履歷頁只顯示「附件」按鈕，不在頁面上直接列出檔名；按鈕帶著預覽用的網址、檔案類型與檔名（打開預覽時顯示在標題旁邊）。
         $this->get(route('parts.show', $part))
             ->assertSee('data-bs-target="#attachmentModal"', false)
-            ->assertSee('data-mime="image/jpeg"', false)
-            ->assertSee('data-filename="receipt-2026.jpg"', false)
+            ->assertSee('&quot;mime&quot;:&quot;image\/jpeg&quot;', false)
+            ->assertSee('&quot;filename&quot;:&quot;receipt-2026.jpg&quot;', false)
             ->assertDontSeeText('receipt-2026.jpg');
 
         $this->put(route('parts.purchases.update', [$part, $purchase]), [
@@ -343,7 +343,7 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
     }
 
-    /** 一筆採購最多 5 個附件，每個 2 MB；修改時可以只刪其中幾個、再加新的。 */
+    /** 一筆採購最多 5 個附件、加起來 5 MB 以內（單檔不另外限制）；修改時可以只刪其中幾個、再加新的。 */
     public function test_a_purchase_keeps_up_to_five_attachments_of_two_megabytes_each(): void
     {
         Storage::fake('local');
@@ -357,10 +357,11 @@ class PartProfileAndStockTest extends TestCase
         $purchase = PartPurchase::firstOrFail();
         $this->assertCount(2, $purchase->attachments);
 
-        // 超過 2 MB 的檔案不收。
+        // 保留的附件（約 100 KB）＋新的檔案（5050 KB）加起來超過 5 MB 不收；只看新檔案的話還沒超過。
         $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
-            'invoices' => [UploadedFile::fake()->create('big.pdf', 2049, 'application/pdf')],
-        ])->assertSessionHasErrors('invoices.0');
+            'invoices' => [UploadedFile::fake()->create('big.pdf', 5050, 'application/pdf')],
+        ])->assertSessionHasErrors('invoices');
+        $this->assertCount(2, $purchase->fresh()->attachments);
 
         // 已有 2 個，再加 4 個會超過 5 個。
         $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
@@ -377,8 +378,11 @@ class PartProfileAndStockTest extends TestCase
         $this->assertCount(4, $purchase->fresh()->attachments);
         $this->assertNull($purchase->fresh()->attachments->firstWhere('id', $first->id));
 
-        // 履歷頁每個附件各一顆按鈕。
-        $this->get(route('parts.show', $part))->assertSee('附件 4');
+        // 履歷頁只有一顆「附件」按鈕，4 個附件都在按鈕的資料裡（在預覽視窗左右切換）。
+        $html = $this->get(route('parts.show', $part))->getContent();
+        $this->assertSame(1, substr_count($html, 'data-bs-target="#attachmentModal"'));
+        $this->assertSame(4, substr_count($html, '&quot;url&quot;'));
+        $this->assertStringNotContainsString('附件 2', $html);
     }
 
     public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void

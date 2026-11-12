@@ -26,9 +26,10 @@
             </div>
         </div>
         <div class="card-body">
-            {{-- 名稱與內容固定同一行（.tb-dl，見 theme-b.css）；零件編號、名稱、規格、單位用固定字數，超過以「…」結尾（滑鼠停留看完整）；
+            {{-- 名稱與內容固定同一行（.tb-dl，見 theme-b.css）；零件編號、名稱、單位用固定字數，超過以「…」結尾（滑鼠停留看完整）；
+                 規格不限字數，同一行放得下就整段顯示，放不下才以「…」結尾；
                  品牌/型號不限字數，太長就換行。 --}}
-            <dl class="tb-dl mb-0">
+            <dl class="tb-dl tb-dl-roomy mb-0">
                 <dt>零件編號</dt>
                 <dd><span class="tb-clip tb-clip-code" title="{{ $part->part_code }}">{{ $part->part_code }}</span></dd>
 
@@ -36,7 +37,7 @@
                 <dd><span class="tb-clip tb-clip-name" title="{{ $part->name }}">{{ $part->name }}</span></dd>
 
                 <dt>規格</dt>
-                <dd><span class="tb-clip tb-clip-spec" title="{{ $part->specification }}">{{ $part->specification ?? '—' }}</span></dd>
+                <dd><span class="tb-clip" title="{{ $part->specification }}">{{ $part->specification ?? '—' }}</span></dd>
 
                 <dt>品牌/型號</dt>
                 <dd class="tb-dl-wrap">{{ $part->brandModel() ?? '—' }}</dd>
@@ -80,7 +81,7 @@
                     <thead class="table-light">
                         <tr>
                             {{-- 欄位順序決定清單的標題與副標題：標題＝使用日期，副標題＝狀態 · 單號。 --}}
-                            <th>來源</th>
+                            <th class="tb-col-fit">來源</th>
                             <th class="text-nowrap">使用日期</th>
                             <th>狀態</th>
                             <th class="text-nowrap">單號</th>
@@ -94,7 +95,7 @@
                     <tbody>
                         @foreach ($usages as $usage)
                             <tr>
-                                <td><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
+                                <td class="tb-col-fit"><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
                                 <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $usage['status'] ?? '—' }}</td>
                                 <td class="text-nowrap">
@@ -137,7 +138,8 @@
                             <th class="text-end text-nowrap">總價</th>
                             <th class="text-end text-nowrap">剩餘數量</th>
                             <th>備註</th>
-                            <th class="text-end">操作</th>
+                            {{-- 操作欄只跟按鈕一樣寬（tb-col-fit）：欄位的分隔線剛好在最左邊的按鈕旁邊；標題與按鈕都靠右。 --}}
+                            <th class="text-end tb-col-fit">操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -151,16 +153,15 @@
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->totalPrice()) }}</td>
                                 <td class="text-end text-nowrap">{{ $part->withUnit($purchase->remaining_quantity) }}</td>
                                 <td>{{ $purchase->note ?? '—' }}</td>
-                                <td class="text-end text-nowrap">
-                                    {{-- 附件：在目前畫面用視窗預覽（圖片、PDF），不會另開分頁。 --}}
-                                    @foreach ($purchase->attachments as $attachment)
-                                        @php($attachmentNo = $purchase->attachments->count() > 1 ? ' ' . $loop->iteration : '')
+                                <td class="text-end tb-col-fit">
+                                    {{-- 附件：有附件時只放一個「附件」按鈕，在目前畫面用視窗預覽（圖片、PDF）；有好幾個附件時在視窗裡左右切換。 --}}
+                                    @if ($purchase->attachments->isNotEmpty())
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
-                                            data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}" data-filename="{{ $attachment->file_name }}"
-                                            data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件{{ $attachmentNo }}">
-                                            <i class="bi bi-paperclip"></i> 附件{{ $attachmentNo }}
+                                            data-attachments="{{ $purchase->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values()->toJson() }}"
+                                            data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
+                                            <i class="bi bi-paperclip"></i> 附件
                                         </button>
-                                    @endforeach
+                                    @endif
                                     <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改採購紀錄">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
@@ -204,21 +205,22 @@
                 <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄" data-onion-list-only>
                     <thead class="table-light">
                         <tr>
+                            {{-- 欄位順序：報廢日期、登記人、數量、損失金額、扣用批次、原因、備註、操作。 --}}
                             <th class="text-nowrap">報廢日期</th>
-                            <th>原因</th>
+                            <th>登記人</th>
                             <th class="text-end text-nowrap">數量</th>
                             <th class="text-end text-nowrap">損失金額</th>
                             <th class="text-nowrap">扣用批次</th>
-                            <th>登記人</th>
+                            <th>原因</th>
                             <th>備註</th>
-                            <th class="text-nowrap">操作</th>
+                            <th class="text-end tb-col-fit">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($scraps as $scrap)
                             <tr>
                                 <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
-                                <td>{{ $scrap->reason }}</td>
+                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
                                 <td class="text-end text-nowrap">{{ $part->withUnit($scrap->quantity) }}</td>
                                 <td class="text-end text-nowrap">
                                     NT$ {{ number_format($scrap->lossAmount()) }}
@@ -229,9 +231,9 @@
                                         <div>{{ $batch->purchase ? $batch->purchase->purchase_date->format('Y-m-d') . ' 採購' : '—' }} × {{ $batch->quantity }}</div>
                                     @endforeach
                                 </td>
-                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                                <td>{{ $scrap->reason }}</td>
                                 <td>{{ $scrap->note ?? '—' }}</td>
-                                <td class="text-nowrap">
+                                <td class="text-end tb-col-fit">
                                     <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
                                         data-confirm="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" data-confirm-ok="確認取消報廢">
                                         @csrf
