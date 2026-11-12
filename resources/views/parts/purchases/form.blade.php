@@ -8,10 +8,11 @@
     <h1 class="h3 mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
-    <div class="card p-4" style="max-width: 560px;">
+    <div style="max-width: 560px;">
         <form method="POST" enctype="multipart/form-data"
             action="{{ $editing ? route('parts.purchases.update', [$part, $purchase]) : route('parts.purchases.store', $part) }}">
             @csrf
+            <div class="tb-form-card">
             @if ($editing)
                 @method('PUT')
             @endif
@@ -99,9 +100,13 @@
                     value="{{ old('note', $purchase->note) }}">
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            </div>
 
-            <button type="submit" class="btn btn-primary">{{ $editing ? '儲存' : '新增採購並加入庫存' }}</button>
-            <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
+            {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
+                <button type="submit" class="btn btn-primary">{{ $editing ? '儲存' : '新增採購並加入庫存' }}</button>
+            </div>
         </form>
     </div>
 

@@ -38,7 +38,7 @@ class CostReportSelectedExportTest extends TestCase
 
         $this->actingAs($user)->get(route('repair-cost-analysis.index'))
             ->assertOk()
-            ->assertSee('class="filter-bar tb-form-row cost-filter" data-no-onion', false)   // 篩選不收進右邊滑出的面板
+            ->assertSee('class="filter-bar tb-form-row tb-filter cost-filter" data-no-onion', false)   // 篩選不收進右邊滑出的面板
             ->assertDontSee('以表格檢視')
             ->assertSee('data-onion-panel-title="材料費明細" data-onion-list-only', false)
             ->assertSeeInOrder(['NT$ 120', '共 12 條'])                                      // 數量緊接在金額右邊

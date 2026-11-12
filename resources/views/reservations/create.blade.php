@@ -254,7 +254,7 @@
             <section class="tb-table-wrap" data-no-fit aria-label="我的申請">
                 @include('reservations._table', ['reservations' => $myReservations, 'mine' => true])
             </section>
-            <div>{{ $myReservations->links() }}</div>
+            @include('layouts.pager', ['paginator' => $myReservations])
         @endif
     </section>
     @endif

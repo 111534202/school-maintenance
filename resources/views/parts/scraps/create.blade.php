@@ -8,13 +8,14 @@
     <h1 class="h3 mb-1">登記報廢</h1>
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
-    <div class="card p-4" style="max-width: 560px;">
+    <div style="max-width: 560px;">
         @if ($part->current_stock < 1)
             <div class="alert alert-warning mb-3">目前沒有庫存，不能登記報廢。</div>
         @endif
 
         <form method="POST" action="{{ route('parts.scraps.store', $part) }}">
             @csrf
+            <div class="tb-form-card">
 
             <div class="row g-3">
                 <div class="col-sm-4">
@@ -70,9 +71,13 @@
                     class="form-control @error('note') is-invalid @enderror" value="{{ old('note') }}">
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            </div>
 
-            <button type="submit" class="btn btn-danger" @disabled($part->current_stock < 1)>登記報廢並扣除庫存</button>
-            <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
+            {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
+                <button type="submit" class="btn btn-danger" @disabled($part->current_stock < 1)>登記報廢並扣除庫存</button>
+            </div>
         </form>
     </div>
 

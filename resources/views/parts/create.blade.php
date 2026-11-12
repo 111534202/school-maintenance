@@ -5,9 +5,10 @@
 @section('content')
     <h1 class="h3 mb-3">新增零件</h1>
 
-    <div class="card p-4" style="max-width: 560px;">
+    <div style="max-width: 560px;">
         <form method="POST" action="{{ route('parts.store') }}">
             @csrf
+            <div class="tb-form-card">
 
             @include('parts._code-field', ['part' => null, 'nextCode' => $nextCode])
 
@@ -30,9 +31,13 @@
                     @error('unit_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
+            </div>
 
-            <button type="submit" class="btn btn-primary">儲存</button>
-            <a href="{{ route('parts.index') }}" class="btn btn-outline-secondary">取消</a>
+            {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a href="{{ route('parts.index') }}" class="btn btn-outline-secondary">取消</a>
+                <button type="submit" class="btn btn-primary">儲存</button>
+            </div>
         </form>
     </div>
 @endsection

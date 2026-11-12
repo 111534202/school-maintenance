@@ -16,9 +16,7 @@
             @include('reservations._table', ['reservations' => $myReservations, 'mine' => true])
         </section>
         {{-- data-modal-stay：在對話框裡按分頁，就在對話框裡換頁。 --}}
-        @if ($myReservations->hasPages())
-            <div data-modal-stay>{{ $myReservations->links() }}</div>
-        @endif
+        <div data-modal-stay>@include('layouts.pager', ['paginator' => $myReservations])</div>
     @endif
 </div>
 @endsection

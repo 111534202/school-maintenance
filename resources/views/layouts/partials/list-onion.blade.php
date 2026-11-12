@@ -184,6 +184,8 @@
                     if (isAction[i]) return;
                     main.push({ label: heads[i] || '', nodes: Array.prototype.slice.call(td.childNodes) });
                     var parts = split(td);
+                    // 只有數字的欄位（例如「使用中設備數」1）單獨看不懂，前面加上欄位名稱：「使用中設備數：1」。
+                    if (parts.main && /^[0-9][0-9,.]*$/.test(parts.main) && heads[i] && texts.length) parts.main = heads[i] + '：' + parts.main;
                     if (parts.main && parts.main !== '—' && parts.main !== '-') texts.push(parts.main);
                     if (parts.note) texts.push(parts.note);
                 });

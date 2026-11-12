@@ -8,15 +8,12 @@
 @section('content')
     <div class="page-narrow">
         <h1 class="h4 mb-4"><i class="bi bi-plus-circle me-2"></i>{{ __('devices.form.create_title') }}</h1>
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                {{-- 表單送出到 POST /devices（DeviceController::store）。 --}}
-                <form method="POST" action="{{ route('devices.store') }}">
-                    {{-- 引入共用的欄位表單。 --}}
-                    @include('devices._form')
-                </form>
-            </div>
-        </div>
+        {{-- 外框只包欄位（在 _form 裡），「取消／儲存」在外框下面、靠右。 --}}
+        {{-- 表單送出到 POST /devices（DeviceController::store）。 --}}
+        <form method="POST" action="{{ route('devices.store') }}">
+            {{-- 引入共用的欄位表單。 --}}
+            @include('devices._form')
+        </form>
     </div>
     {{-- 相機掃描視窗（QR／條碼）：表單裡三個欄位的相機按鈕共用，放在表單外面。 --}}
     @include('scanner._camera')

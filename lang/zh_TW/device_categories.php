@@ -3,14 +3,14 @@
 // i18n：設備類別主檔。修改這個檔案時，記得同步修改 lang/en/device_categories.php，兩邊的 key 必須完全一致。
 // （語言檔怎麼用、怎麼新增文字，見 lang/zh_TW/common.php 檔頭。）
 return [
-    'index_title' => '設備類別管理',
+    'index_title' => '設備類別',
     'add_category' => '新增類別',
     'empty_list' => '尚無設備類別',
 
     // 搜尋列的文字。
     'filter' => [
         'keyword' => '類別名稱',
-        'keyword_placeholder' => '搜尋類別名稱',
+        'keyword_placeholder' => '選擇或輸入類別名稱',
     ],
 
     // 表格欄位標題。

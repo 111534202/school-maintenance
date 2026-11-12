@@ -7,20 +7,23 @@
 @section('title', __('repair_requests.board_title'))
 
 @section('content')
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-tools me-2"></i>{{ __('repair_requests.board_title') }}</h1>
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('repair_requests.board_title') }}</h1>
+        </div>
         {{-- 有「提出報修」權限才顯示「新增報修」按鈕。 --}}
         @can('repairs.create')
-            <a class="btn btn-primary" href="{{ route('repairs.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('repair_requests.add_request') }}
+            <a class="tb-btn tb-btn-primary" href="{{ route('repairs.create') }}" data-modal-frame data-modal-title="{{ __('repair_requests.add_request') }}" data-modal-size="xl">
+                <i class="bi bi-plus-lg"></i>{{ __('repair_requests.add_request') }}
             </a>
         @endcan
     </div>
 
-    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
-            <form method="GET" action="{{ route('repairs.index') }}" class="filter-bar">
+    {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
+    <div class="tb-card tb-card-pad">
+        <div>
+            <form method="GET" action="{{ route('repairs.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
                 <div>
                     <label for="status" class="form-label small mb-1">{{ __('repair_requests.filter.status') }}</label>
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
@@ -56,15 +59,7 @@
                 @if (request('overdue'))
                     <input type="hidden" name="overdue" value="1">
                 @endif
-                <div class="d-inline-flex gap-1">
-                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
-                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
-                    {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('status') || request('assignee') || request('classroom_id') || request('device_id') || request('overdue'))
-                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.index') }}"
-                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['status', 'assignee', 'classroom_id', 'device_id', 'overdue']])
             </form>
         </div>
     </div>
@@ -87,13 +82,13 @@
 
     {{-- 查不到任何案件時顯示提示；否則顯示表格。 --}}
     @if ($repairRequests->isEmpty())
-        <div class="alert alert-info mb-0">{{ __('repair_requests.empty_list') }}</div>
+        <div class="tb-card tb-empty">{{ __('repair_requests.empty_list') }}</div>
     @else
-        <div class="card shadow-sm">
+        <section class="tb-table-wrap" data-no-fit>
             <div class="table-responsive">
                 {{-- 資料表格（有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,5">
-                    <thead class="table-light">
+                <table class="tb-table tb-table-hover" data-onion-primary="1,5">
+                    <thead>
                         <tr>
                             <th>{{ __('repair_requests.table.title') }}</th>
                             <th>{{ __('repair_requests.table.device_location') }}</th>
@@ -103,7 +98,6 @@
                             <th>{{ __('repair_requests.table.assignee') }}</th>
                             <th>{{ __('repair_requests.table.submitted_at') }}</th>
                             <th>{{ __('repair_requests.table.waiting_time') }}</th>
-                            <th class="text-center"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -113,9 +107,9 @@
                                 // 影響程度 → 徽章顏色：輕微綠、中等黃、嚴重紅；未知值用灰色。
                                 $impactBadge = ['low' => 'text-bg-success', 'medium' => 'text-bg-warning', 'high' => 'text-bg-danger'][$repairRequest->impact_level] ?? 'text-bg-secondary';
                             @endphp
-                            {{-- 點這一列的任何地方都會進入案件詳細頁（data-href，行為在共用版型）。 --}}
-                            <tr data-href="{{ route('repairs.show', $repairRequest) }}">
-                                <td><a href="{{ route('repairs.show', $repairRequest) }}" class="text-decoration-none">{{ $repairRequest->title }}</a></td>
+                            {{-- 點這一列的任何地方都會在畫面中的對話框打開案件詳細（data-modal-frame-href，行為在共用版型）。 --}}
+                            <tr data-modal-frame-href="{{ route('repairs.show', $repairRequest) }}" data-modal-title="報修案件" data-modal-size="xl" tabindex="0" role="link">
+                                <td class="fw-semibold">{{ $repairRequest->title }}</td>
                                 {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的設備地點，沒有就用設備所在教室）。 --}}
                                 @php($rowClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom)
                                 <td>
@@ -135,9 +129,9 @@
                                 </td>
                                 <td class="text-center">
                                     @if ($repairRequest->is_class_affected)
-                                        <span class="badge text-bg-danger">{{ __('repair_requests.yes') }}</span>
+                                        <span class="badge tb-pill tb-pill-danger">{{ __('repair_requests.yes') }}</span>
                                     @else
-                                        <span class="badge text-bg-light border text-muted">{{ __('repair_requests.no') }}</span>
+                                        <span class="badge tb-pill tb-pill-muted">{{ __('repair_requests.no') }}</span>
                                     @endif
                                 </td>
                                 {{-- 引入共用的狀態徽章（看板與詳細頁用同一份，顏色集中管理）。 --}}
@@ -145,7 +139,7 @@
                                     @include('repairs._status-badge', ['status' => $repairRequest->status])
                                     {{-- 逾時提醒：還沒結案、且已經超過預計處理時間（見 RepairRequest::isOverdue）。 --}}
                                     @if ($repairRequest->is_overdue)
-                                        <span class="badge text-bg-danger ms-1"><i class="bi bi-alarm"></i> {{ __('repair_requests.overdue') }}</span>
+                                        <span class="badge tb-pill tb-pill-danger ms-1"><i class="bi bi-alarm"></i> {{ __('repair_requests.overdue') }}</span>
                                     @endif
                                 </td>
                                 <td>
@@ -161,20 +155,17 @@
                                 <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>
                                 {{-- 等待時間：用「3 小時前」這種口語方式顯示；語言由 SetLocale 中介層決定。 --}}
                                 <td>{{ $repairRequest->created_at->diffForHumans() }}</td>
-                                <td class="text-center">
-                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.show', $repairRequest) }}"
-                                        title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
-                                </td>
                             </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div class="mt-3">
+        <div>
             {{-- 分頁按鈕。 --}}
-            {{ $repairRequests->links() }}
+            @include('layouts.pager', ['paginator' => $repairRequests])
         </div>
     @endif
+</div>
 @endsection

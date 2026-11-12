@@ -8,14 +8,11 @@
 @section('content')
     <div class="page-narrow">
         <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('classrooms.form.edit_title') }}</h1>
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                {{-- 表單送出到 PUT /classrooms/{id}（ClassroomController::update）。 --}}
-                <form method="POST" action="{{ route('classrooms.update', $classroom) }}">
-                    {{-- 引入共用的欄位表單。 --}}
-                    @include('classrooms._form')
-                </form>
-            </div>
-        </div>
+        {{-- 外框只包欄位（在 _form 裡），「取消／儲存」在外框下面、靠右。 --}}
+        {{-- 表單送出到 PUT /classrooms/{id}（ClassroomController::update）。 --}}
+        <form method="POST" action="{{ route('classrooms.update', $classroom) }}">
+            {{-- 引入共用的欄位表單。 --}}
+            @include('classrooms._form')
+        </form>
     </div>
 @endsection

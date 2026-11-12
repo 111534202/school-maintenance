@@ -39,12 +39,12 @@ class FilterOnionTest extends TestCase
     }
 
     #[DataProvider('filterPages')]
-    public function test_filter_pages_load_filter_onion_and_keep_the_original_form(string $route, array $fields): void
+    public function test_filter_pages_show_the_original_filter_form_inline(string $route, array $fields): void
     {
         $html = $this->actingAs($this->makeUser('admin'))->get(route($route))->assertOk()->getContent();
 
-        $this->assertStringContainsString('fo-open', $html, "$route 沒有載入篩選列的洋蔥式");
-        $this->assertStringContainsString('class="filter-bar"', $html, "$route 原本的篩選表單不見了");
+        // 改成風格 B 之後：篩選表單直接顯示在頁面上的卡片裡（data-no-onion，不收成右邊滑出的面板），欄位放得下排一列、不夠寬換行。
+        $this->assertStringContainsString('class="filter-bar tb-form-row tb-filter" data-no-onion', $html, "$route 原本的篩選表單不見了");
 
         foreach ($fields as $name) {
             $this->assertStringContainsString('name="'.$name.'"', $html, "$route 的篩選欄位 $name 不見了");

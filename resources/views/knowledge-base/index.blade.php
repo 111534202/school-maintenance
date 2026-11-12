@@ -7,12 +7,15 @@
 
 {{-- 從這裡開始是「放進主版面中間」的內容，到 @endsection 結束。 --}}
 @section('content')
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-book me-2"></i>{{ __('knowledge_base.index_heading') }}</h1>
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('knowledge_base.index_heading') }}</h1>
+        </div>
         {{-- @can：有「管理知識庫」權限才顯示「新增」按鈕。 --}}
         @can('knowledge-base.manage')
-            <a class="btn btn-primary" href="{{ route('knowledge-base.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('knowledge_base.add_entry') }}
+            <a class="tb-btn tb-btn-primary" href="{{ route('knowledge-base.create') }}" data-modal-frame data-modal-title="{{ __('knowledge_base.add_entry') }}" data-modal-size="xl">
+                <i class="bi bi-plus-lg"></i>{{ __('knowledge_base.add_entry') }}
             </a>
         @endcan
     </div>
@@ -21,10 +24,10 @@
     @php
         $searching = $keyword !== '' || $category !== '';
     @endphp
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
+    <div class="tb-card tb-card-pad">
+        <div>
             {{-- 搜尋列：用全站共用的 filter-bar，洋蔥式會收成「篩選條件」摘要列，點開從右邊滑出（見 layouts/partials/filter-onion）。 --}}
-            <form method="GET" action="{{ route('knowledge-base.index') }}" class="filter-bar" role="search">
+            <form method="GET" action="{{ route('knowledge-base.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion role="search">
                 <div>
                     <label for="kb-keyword" class="form-label small mb-1">{{ __('knowledge_base.search.keyword') }}</label>
                     <input type="search" id="kb-keyword" name="keyword" class="form-control form-control-sm" style="width: 18rem;" value="{{ $keyword }}"
@@ -39,12 +42,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="d-inline-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1"></i>{{ __('knowledge_base.search.submit') }}</button>
-                    @if ($searching)
-                        <a href="{{ route('knowledge-base.index') }}" class="btn btn-outline-secondary btn-sm">{{ __('knowledge_base.search.clear') }}</a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('knowledge-base.index'), 'active' => $searching])
             </form>
             @if ($searching)
                 <div class="small text-muted mt-2">{{ __('knowledge_base.search.result_count', ['count' => $knowledgeBaseEntries->total()]) }}</div>
@@ -54,45 +52,46 @@
 
     {{-- 沒有任何文章時顯示提示；否則顯示表格。 --}}
     @if ($knowledgeBaseEntries->isEmpty())
-        <div class="alert alert-info mb-0">{{ $searching ? __('knowledge_base.search.no_results') : __('knowledge_base.empty_list') }}</div>
+        <div class="tb-card tb-empty">{{ $searching ? __('knowledge_base.search.no_results') : __('knowledge_base.empty_list') }}</div>
     @else
-        <div class="card shadow-sm">
+        <section class="tb-table-wrap" data-no-fit>
             <div class="table-responsive">
                 {{-- 資料表格（有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="tb-table tb-table-hover">
+                    <thead>
                         <tr>
                             <th>{{ __('knowledge_base.table.title') }}</th>
                             <th>{{ __('knowledge_base.table.category') }}</th>
                             <th class="text-center">{{ __('knowledge_base.table.status') }}</th>
                             <th>{{ __('knowledge_base.table.updated_at') }}</th>
-                            <th class="text-center">{{ __('knowledge_base.table.actions') }}</th>
+                            {{-- 查看次數：打開文章一次加 1，列表依這個數字由多到少排；所有人都看得到。 --}}
+                            <th class="text-end text-nowrap">查看次數</th>
+                            <th class="text-end tb-col-fit">{{ __('knowledge_base.table.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {{-- 逐一列出每篇文章。 --}}
                         @foreach ($knowledgeBaseEntries as $entry)
-                            {{-- 點這一列的任何地方都會進入文章（data-href，行為在共用版型）。 --}}
-                            <tr data-href="{{ route('knowledge-base.show', $entry) }}">
-                                <td><a href="{{ route('knowledge-base.show', $entry) }}" class="text-decoration-none">{{ $entry->title }}</a></td>
+                            {{-- 點這一列的任何地方都會在畫面中的對話框打開文章（data-modal-frame-href，行為在共用版型）。 --}}
+                            <tr data-modal-frame-href="{{ route('knowledge-base.show', $entry) }}" data-modal-title="知識庫文章" data-modal-size="xl" tabindex="0" role="link">
+                                <td class="fw-semibold">{{ $entry->title }}</td>
                                 <td>{{ $entry->category ?? __('knowledge_base.uncategorized') }}</td>
                                 <td class="text-center">
                                     {{-- 上架狀態徽章：綠色「已上架」或灰色「未上架」。 --}}
                                     @if ($entry->is_published)
-                                        <span class="badge text-bg-success">{{ __('knowledge_base.published') }}</span>
+                                        <span class="badge tb-pill tb-pill-ok">{{ __('knowledge_base.published') }}</span>
                                     @else
-                                        <span class="badge text-bg-secondary">{{ __('knowledge_base.unpublished') }}</span>
+                                        <span class="badge tb-pill tb-pill-muted">{{ __('knowledge_base.unpublished') }}</span>
                                     @endif
                                 </td>
                                 {{-- 最後更新時間，格式化成「年-月-日 時:分」。 --}}
                                 <td>{{ $entry->updated_at->format('Y-m-d H:i') }}</td>
-                                <td class="text-center">
+                                <td class="text-end tb-num">{{ number_format($entry->view_count) }}</td>
+                                <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">
-                                        {{-- 檢視按鈕（眼睛圖示）：所有人都有。 --}}
-                                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('knowledge-base.show', $entry) }}"
-                                            title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
+                                        {{-- 閱讀文章：點這一列在對話框打開（不另外放「查看」按鈕）。 --}}
                                         @can('knowledge-base.manage')
-                                            <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('knowledge-base.edit', $entry) }}"
+                                            <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('knowledge-base.edit', $entry) }}" data-modal-frame data-modal-title="修改文章" data-modal-size="lg"
                                                 title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                             {{-- 刪除按鈕（垃圾桶圖示）：只有管理權限者看得到，送出前先確認。 --}}
                                             <form method="POST" action="{{ route('knowledge-base.destroy', $entry) }}"
@@ -111,11 +110,12 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div class="mt-3">
+        <div>
             {{-- 分頁按鈕。 --}}
-            {{ $knowledgeBaseEntries->links() }}
+            @include('layouts.pager', ['paginator' => $knowledgeBaseEntries])
         </div>
     @endif
+</div>
 @endsection

@@ -8,7 +8,10 @@
     @method('PUT')
 @endisset
 
-<div class="row g-3" data-step="負責單位">
+<div class="card shadow-sm">
+<div class="card-body p-4">
+{{-- 負責單位、位置、教室資料放在同一頁（不分上一步／下一步），依序往下排。 --}}
+<div class="row g-3">
     <div class="col-md-6">
         <label for="department_id" class="form-label">{{ __('classrooms.form.department') }}</label>
         {{-- 部門下拉選單：選項來自部門主檔（只列啟用中的，但會保留這間教室目前已選的部門）。 --}}
@@ -34,8 +37,7 @@
             @endforeach
         </select>
     </div>
-</div>
-<div class="row g-3" data-step="位置">
+
     <div class="col-md-4">
         <label for="campus" class="form-label">{{ __('classrooms.form.campus') }}</label>
         {{-- 校區（必填）。 --}}
@@ -51,8 +53,7 @@
         {{-- 樓層（必填）。 --}}
         <input type="text" id="floor" name="floor" class="form-control @error('floor') is-invalid @enderror" value="{{ old('floor', $classroom->floor ?? '') }}" required>
     </div>
-</div>
-<div class="row g-3" data-step="教室資料">
+
     <div class="col-md-6">
         <label for="classroom_code" class="form-label">{{ __('classrooms.form.classroom_code') }}</label>
         {{-- 教室代碼：整個系統不可重複（後端驗證）。 --}}
@@ -69,9 +70,11 @@
         <input type="text" id="type" name="type" class="form-control @error('type') is-invalid @enderror" value="{{ old('type', $classroom->type ?? '') }}">
     </div>
 </div>
+</div>
+</div>
 
-{{-- 表單底部的「取消／儲存」按鈕（和用戶、部門主檔的表單一致）。 --}}
-<div class="d-flex justify-content-end gap-2 mt-4">
+{{-- 表單底部的「取消／儲存」按鈕（和用戶、部門主檔的表單一致）：在外框下面、靠右。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
     <a class="btn btn-outline-secondary" href="{{ route('classrooms.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

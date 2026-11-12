@@ -182,8 +182,8 @@
         {{-- data-bs-scroll：打開選單時不拿掉頁面捲軸（Bootstrap 拿掉捲軸時會在 body 右邊補一條空白，頂端列不會跟著補，最右邊就多出一條空白）。 --}}
         <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" data-bs-scroll="true">
             <div class="offcanvas-header">
+                {{-- 右上角不放關閉 ✕：點選單外面的灰色區域或按 Esc 就會收起來。 --}}
                 <h6 class="offcanvas-title">選單</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="關閉"></button>
             </div>
             {{-- 手機版與桌面版都用「洋蔥式」選單（一層一層往內點，見 layouts/partials/nav-drilldown.blade.php）。 --}}
             <div class="offcanvas-body p-0">
@@ -411,9 +411,32 @@
         }, true);
     })();
     </script>
+    {{-- 密碼欄位的「顯示密碼」小眼睛：<input type="password" data-reveal> 會在右邊加一顆眼睛按鈕，按一下顯示輸入的內容，再按一下藏回去。 --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('input[type="password"][data-reveal]').forEach(function (input) {
+            var group = document.createElement('div');
+            group.className = 'input-group';
+            input.parentNode.insertBefore(group, input);
+            group.appendChild(input);
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-outline-secondary';
+            button.setAttribute('aria-label', '顯示密碼');
+            button.innerHTML = '<i class="bi bi-eye" aria-hidden="true"></i>';
+            button.addEventListener('click', function () {
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                button.setAttribute('aria-label', show ? '隱藏密碼' : '顯示密碼');
+                button.innerHTML = '<i class="bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + '" aria-hidden="true"></i>';
+            });
+            group.appendChild(button);
+        });
+    });
+    </script>
     {{-- 刪除前的二次確認（全站共用）：表單加上 data-confirm="請問確定要刪除…嗎？"，按下送出會先跳出這個視窗，
          按「確認」才真的送出，按「取消」什麼都不做。用 <dialog>，會蓋在所有東西上面（包含清單的詳細視窗）。
-         按鈕文字可用 data-confirm-ok 改（預設「確認刪除」）。 --}}
+         按鈕文字可用 data-confirm-ok 改（預設「確認刪除」）；不是危險動作（例如還原）可加 data-confirm-variant="primary"，按鈕改成主色。 --}}
     <dialog id="confirmActionDialog" class="tb-confirm-dialog" aria-labelledby="confirmActionTitle">
         <form method="dialog">
             <h2 class="tb-confirm-title" id="confirmActionTitle">請再確認一次</h2>
@@ -440,6 +463,7 @@
             pending = form;
             message.textContent = form.getAttribute('data-confirm');
             okButton.textContent = form.getAttribute('data-confirm-ok') || '確認刪除';
+            okButton.className = 'btn ' + (form.getAttribute('data-confirm-variant') === 'primary' ? 'btn-primary' : 'btn-danger');
             dialog.returnValue = '';
             dialog.showModal();
         }, true);
@@ -471,6 +495,80 @@
             (function () { const d = document.getElementById('stockTimelineDialog'); if (d && d.showModal) d.showModal(); })();
         </script>
     @endif
+    {{-- 可以輸入也可以下拉選的欄位（跟空間預約的「選擇教室」一樣）：<input data-suggest='["選項1","選項2"]'>。
+         點進欄位就列出全部選項，打字會篩出包含這些字的選項；點一個選項（或用上下鍵＋Enter）就填進去。
+         加 data-suggest-submit 時，選了就直接送出表單（篩選列用）。樣式在 public/css/theme-b.css 的 .tb-suggest。 --}}
+    <script>
+    (function () {
+        document.querySelectorAll('input[data-suggest]').forEach(function (input) {
+            var items = [];
+            try { items = JSON.parse(input.getAttribute('data-suggest')) || []; } catch (e) { return; }
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('role', 'combobox');
+            input.setAttribute('aria-expanded', 'false');
+            var wrap = document.createElement('div');
+            wrap.className = 'tb-suggest';
+            input.parentNode.insertBefore(wrap, input);
+            wrap.appendChild(input);
+            var list = document.createElement('div');
+            list.className = 'tb-suggest-list';
+            list.setAttribute('role', 'listbox');
+            list.hidden = true;
+            wrap.appendChild(list);
+            var active = -1;
+            function render() {
+                var q = input.value.trim().toLowerCase();
+                list.innerHTML = '';
+                active = -1;
+                var shown = items.filter(function (x) { return q === '' || String(x).toLowerCase().indexOf(q) !== -1; });
+                shown.forEach(function (x) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'tb-suggest-item';
+                    b.setAttribute('role', 'option');
+                    b.textContent = x;
+                    b.addEventListener('mousedown', function (e) { e.preventDefault(); choose(x); });
+                    list.appendChild(b);
+                });
+                if (!shown.length) {
+                    var none = document.createElement('div');
+                    none.className = 'tb-suggest-empty';
+                    none.textContent = '找不到符合的選項';
+                    list.appendChild(none);
+                }
+                open(true);
+            }
+            function open(on) { list.hidden = !on; input.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+            function choose(x) {
+                input.value = x;
+                open(false);
+                if (input.hasAttribute('data-suggest-submit') && input.form) {
+                    if (typeof input.form.requestSubmit === 'function') input.form.requestSubmit(); else input.form.submit();
+                }
+            }
+            function move(step) {
+                var opts = list.querySelectorAll('.tb-suggest-item');
+                if (!opts.length) return;
+                active = (active + step + opts.length) % opts.length;
+                opts.forEach(function (o, i) { o.classList.toggle('is-active', i === active); });
+                opts[active].scrollIntoView({ block: 'nearest' });
+            }
+            input.addEventListener('focus', render);
+            input.addEventListener('click', function () { if (list.hidden) render(); });
+            input.addEventListener('input', render);
+            input.addEventListener('blur', function () { open(false); });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) render(); move(1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+                else if (e.key === 'Escape') { open(false); }
+                else if (e.key === 'Enter' && !list.hidden && active >= 0) {
+                    e.preventDefault();
+                    choose(list.querySelectorAll('.tb-suggest-item')[active].textContent);
+                }
+            });
+        });
+    })();
+    </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @auth
@@ -512,6 +610,7 @@
             a.href = href;
             a.setAttribute('data-modal-frame', '');
             a.setAttribute('data-modal-title', tr.getAttribute('data-modal-title') || '');
+            if (tr.hasAttribute('data-modal-size')) a.setAttribute('data-modal-size', tr.getAttribute('data-modal-size'));
             a.hidden = true;
             (tr.querySelector('td') || document.body).appendChild(a);   // 放在列裡面：從另一個視窗（例如低庫存品項）打開時，會先關掉那個視窗
             a.click();
@@ -519,7 +618,7 @@
         };
         document.addEventListener('click', function (event) {
             var tr = event.target.closest && event.target.closest('tr[data-modal-frame-href]');
-            if (!tr || event.target.closest('a, button, input, label, select, textarea')) return;
+            if (!tr || event.target.closest('a, button, input, label, select, textarea, summary, details, form')) return;
             window.tbOpenRow(tr);
         });
         document.addEventListener('keydown', function (event) {
@@ -551,12 +650,24 @@
                 hidden.type = 'hidden'; hidden.name = 'modal'; hidden.value = '1';
                 form.appendChild(hidden);
             });
+            // 對話框右上角已經有 ✕ 可以關閉：表單旁邊的「取消」按鈕就不顯示（頁面裡的小視窗、確認視窗裡的「取消」不動）。
+            document.querySelectorAll('.app-content a.btn, .app-content button.btn[type="button"]').forEach(function (b) {
+                if (b.textContent.trim() !== '取消' || b.closest('.modal, dialog')) return;
+                b.hidden = true;
+                b.classList.add('d-none');
+            });
             // 點一般連結（例如「取消」）：交給外面的頁面處理，對話框裡不換頁。
             document.addEventListener('click', function (event) {
                 var a = event.target.closest && event.target.closest('a[href]');
                 if (!a || a.target === '_blank' || a.hasAttribute('data-bs-toggle') || a.getAttribute('href').charAt(0) === '#') return;
                 // data-modal-stay（例如對話框裡清單的分頁）：就在對話框裡換頁（分頁連結本來就帶著 modal=1）。
                 if (a.closest('[data-modal-stay]')) return;
+                // 對話框裡的 data-modal-frame 連結（例如報修案件裡的「填寫維修紀錄」）：在同一個對話框疊一層打開，關掉回到原本那一層。
+                if (a.hasAttribute('data-modal-frame')) {
+                    event.preventDefault();
+                    post({ type: 'modal-push', url: a.href, title: a.getAttribute('data-modal-title') || a.textContent.trim() });
+                    return;
+                }
                 event.preventDefault();
                 post({ type: 'modal-navigate', url: a.href });
             });
@@ -589,10 +700,28 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h2 class="modal-title h5" id="frameModalTitle"></h2>
+                        {{-- 從列表點一列打開時：這一列「操作」欄的按鈕（修改、停用、刪除…）也放在標題旁邊，
+                             清單檢視（沒有操作欄）也能直接操作。內容由下面的程式從那一列複製過來。 --}}
+                        <div class="frame-modal-actions" id="frameModalActions" hidden></div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
                     </div>
                     <div class="modal-body p-0">
                         <iframe id="frameModalFrame" title="" style="width: 100%; height: 240px; border: 0; display: block;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{-- 上層對話框：在對話框標題旁按「修改」時，直接在原本的對話框（例如設備詳細）上面再開一個，
+             不用把詳細頁換成修改頁；修改送出後關掉上層，下面的詳細頁重新載入顯示改好的資料。 --}}
+        <div class="modal fade" id="frameModalTop" tabindex="-1" aria-labelledby="frameModalTopTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title h5" id="frameModalTopTitle"></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <iframe id="frameModalTopFrame" title="" style="width: 100%; height: 240px; border: 0; display: block;"></iframe>
                     </div>
                 </div>
             </div>
@@ -604,10 +733,107 @@
             var title = document.getElementById('frameModalTitle');
             var dialog = modalEl.querySelector('.modal-dialog');
             var stack = [];   // 對話框裡疊上去的各層（見 modal-push）
+            var actionsBox = document.getElementById('frameModalActions');
             function modal() { return window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null; }
+            // 標題旁的操作按鈕：複製這一列最後一格（操作欄）裡的按鈕、表單；連到對話框本身那一頁的（例如修改頁裡的「修改」）不放。
+            // 表單（停用、刪除…）照常在這一頁送出（有 data-confirm 的一樣先跳確認視窗）；「修改」這類 data-modal-frame 連結在對話框裡疊一層打開。
+            function setActions(tr, url) {
+                actionsBox.innerHTML = '';
+                var cell = tr && tr.lastElementChild;
+                if (cell && cell.querySelector('a, button, form')) {
+                    Array.prototype.forEach.call(cell.querySelectorAll('a[href], form, .btn.disabled'), function (el) {
+                        if (el.parentElement.closest('form') || (el.matches('.btn.disabled') && el.closest('a, form'))) return;
+                        if (el.matches('a') && (el.hidden || new URL(el.href, window.location.href).pathname === url.pathname)) return;
+                        // 不能按的（例如系統內建身分的「刪除」、已回報的工單）：標題旁不放，免得按了沒反應。
+                        if (el.matches('.btn.disabled') || (el.matches('form') && !el.querySelector('[type="submit"]:not(:disabled)'))) return;
+                        var copy = el.cloneNode(true);
+                        copy.removeAttribute('id');
+                        copy.querySelectorAll('[id]').forEach(function (x) { x.removeAttribute('id'); });
+                        actionsBox.appendChild(copy);
+                    });
+                }
+                showActions();
+            }
+            function showActions() { actionsBox.hidden = stack.length > 0 || !actionsBox.children.length; }
+            // 對話框裡的頁面本身已經有同一個按鈕（例如保養工單詳細的「回報保養結果」）：標題旁就不重複放。
+            frame.addEventListener('load', function () {
+                if (stack.length || !actionsBox.children.length) return;
+                var doc;
+                try { doc = frame.contentDocument; } catch (e) { return; }
+                if (!doc) return;
+                var paths = Array.prototype.map.call(doc.querySelectorAll('.app-content a[href]'), function (x) { return x.pathname; });
+                actionsBox.querySelectorAll('a[href]').forEach(function (x) { if (paths.indexOf(x.pathname) !== -1) x.remove(); });
+                showActions();
+            });
+            // 在對話框裡疊一層打開（對話框裡的 data-modal-frame 連結、標題旁的「修改」都用這個）。
+            function pushLayer(href, newTitle) {
+                stack.push({ src: frame.src, title: title.textContent, width: dialog.style.maxWidth, height: frame.style.height });
+                var next = new URL(href, window.location.href);
+                next.searchParams.set('modal', '1');
+                title.textContent = newTitle || title.textContent;
+                frame.title = title.textContent;
+                frame.src = next.href;
+                showActions();
+            }
+            // 標題旁的「修改」這類連結：在上層對話框打開（下面的詳細頁保持不動）。
+            var topEl = document.getElementById('frameModalTop');
+            var topFrame = document.getElementById('frameModalTopFrame');
+            var topTitle = document.getElementById('frameModalTopTitle');
+            var topDialog = topEl.querySelector('.modal-dialog');
+            var changed = false;   // 上層送出過：關掉整個對話框時重新整理列表
+            function topModal() { return window.bootstrap.Modal.getOrCreateInstance(topEl); }
+            function openTop(a) {
+                var url = new URL(a.href, window.location.href);
+                url.searchParams.set('modal', '1');
+                topTitle.textContent = a.getAttribute('data-modal-title') || a.getAttribute('title') || a.textContent.trim();
+                topFrame.title = topTitle.textContent;
+                topFrame.style.height = '240px';
+                topDialog.classList.toggle('modal-lg', a.getAttribute('data-modal-size') === 'lg');
+                topDialog.classList.toggle('modal-xl', a.getAttribute('data-modal-size') === 'xl');
+                topFrame.src = url.href;
+                // 下面那個對話框會把游標留在自己裡面（Bootstrap 的 focus trap）：上層打開時先暫停，不然上層的欄位不能打字。
+                var under = modal();
+                if (under && under._focustrap) under._focustrap.deactivate();
+                topModal().show();
+            }
+            topEl.addEventListener('hidden.bs.modal', function () {
+                topFrame.src = 'about:blank';
+                var under = modal();
+                if (under && under._focustrap && modalEl.classList.contains('show')) under._focustrap.activate();
+                // Bootstrap 關掉上層時會把整頁的捲動鎖拿掉：下面的對話框還開著，要鎖回去。
+                if (modalEl.classList.contains('show')) { document.body.classList.add('modal-open'); document.body.style.overflow = 'hidden'; }
+            });
+            window.addEventListener('message', function (event) {
+                if (event.origin !== window.location.origin || event.source !== topFrame.contentWindow || !event.data) return;
+                var data = event.data;
+                if (data.type === 'modal-size') {
+                    topFrame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
+                } else if (data.type === 'modal-push') {
+                    var next = new URL(data.url, window.location.href);
+                    next.searchParams.set('modal', '1');
+                    topFrame.src = next.href;
+                } else if (data.type === 'modal-done') {
+                    // 送出成功：關掉上層，下面的頁面重新載入（看到改好的資料）。
+                    changed = true;
+                    topModal().hide();
+                    var url = new URL(frame.src, window.location.href);
+                    url.searchParams.set('_r', Date.now());
+                    frame.src = url.href;
+                } else if (data.type === 'modal-navigate') {
+                    topModal().hide();
+                }
+            });
+            actionsBox.addEventListener('click', function (event) {
+                var a = event.target.closest('a[data-modal-frame]');
+                if (!a) return;
+                event.preventDefault();
+                event.stopPropagation();
+                openTop(a);
+            });
             document.addEventListener('click', function (event) {
                 var a = event.target.closest && event.target.closest('a[data-modal-frame]');
                 if (!a || !modal() || event.ctrlKey || event.metaKey || event.shiftKey) return;
+                if (actionsBox.contains(a)) return;
                 event.preventDefault();
                 var url = new URL(a.href, window.location.href);
                 url.searchParams.set('modal', '1');
@@ -619,7 +845,11 @@
                     var pageTable = document.querySelector('.app-content .tb-table-wrap .table-responsive');
                     if (pageTable && pageTable.offsetParent !== null && !pageTable.hidden) url.searchParams.set('table', '1');
                 }
+                // data-modal-size="lg"／"xl"：內容比較多的表單或詳細頁用比較寬的對話框（Bootstrap 的 modal-lg／modal-xl）。
+                dialog.classList.toggle('modal-lg', a.getAttribute('data-modal-size') === 'lg');
+                dialog.classList.toggle('modal-xl', a.getAttribute('data-modal-size') === 'xl');
                 stack = [];
+                setActions(a.closest('tr[data-modal-frame-href]'), url);
                 frame.src = url.href;
                 // 從另一個已打開的視窗裡點（例如低庫存品項視窗）：先關掉那個視窗，再打開這個。
                 var host = a.closest('.modal.show');
@@ -639,27 +869,43 @@
                 } else if (data.type === 'modal-push') {
                     // 在對話框裡的清單點一筆（例如清單→詳細）：記下目前這一層，換成新的一層；
                     // 之後按關閉、點外面或按 Esc，會先回到上一層（見下面的 hide.bs.modal），不會整個關掉。
-                    stack.push({ src: frame.src, title: title.textContent, width: dialog.style.maxWidth, height: frame.style.height });
-                    var next = new URL(data.url, window.location.href);
-                    next.searchParams.set('modal', '1');
-                    title.textContent = data.title || title.textContent;
-                    frame.title = title.textContent;
-                    frame.src = next.href;
+                    pushLayer(data.url, data.title);
                 } else if (data.type === 'modal-width') {
                     // 對話框寬度＝表格需要的寬度（加上對話框本身的框線），最寬到瀏覽器視窗左右各留 16px。
                     dialog.style.maxWidth = Math.min(data.width + 2, window.innerWidth - 32) + 'px';
                 } else if (data.type === 'modal-done') {
-                    // 回到同一個列表頁（例如在預約列表審核完）：保留目前的篩選（?status=pending）。
                     var done = new URL(data.url, window.location.href);
+                    // 疊上去的一層送出成功、要回到上一層的頁面（例如報修案件裡「填寫維修紀錄」送出後回到案件）：
+                    // 留在對話框裡，回到上一層並重新載入（成功訊息會顯示在那一層），不換整頁。
+                    if (backToPreviousLayer(done, true)) return;
+                    // 回到同一個列表頁（例如在預約列表審核完）：保留目前的篩選（?status=pending）。
                     if (done.pathname === window.location.pathname && !done.search) done.search = window.location.search;
                     window.location.href = done.href;
                 } else if (data.type === 'modal-navigate') {
                     var target = new URL(data.url, window.location.href);
+                    // 疊上去的一層按「取消」（連到上一層的頁面）：回到上一層，不換整頁。
+                    if (backToPreviousLayer(target, false)) return;
                     stack = [];   // 要離開對話框了：不用再回到上一層
                     modal().hide();
                     if (target.pathname !== window.location.pathname) window.location.href = target.href;
                 }
             });
+            // 目標網址就是上一層的頁面時，回到上一層（reload：重新載入，看到剛送出的結果）；不是的話回傳 false。
+            function backToPreviousLayer(target, reload) {
+                if (!stack.length) return false;
+                var prev = stack[stack.length - 1];
+                if (new URL(prev.src, window.location.href).pathname !== target.pathname) return false;
+                stack.pop();
+                title.textContent = prev.title;
+                frame.title = prev.title;
+                dialog.style.maxWidth = prev.width;
+                frame.style.height = prev.height;
+                var url = new URL(prev.src, window.location.href);
+                if (reload) url.searchParams.set('_r', Date.now());   // 同一個網址也要重新載入
+                frame.src = url.href;
+                showActions();
+                return true;
+            }
             // 有疊上去的一層時，關閉＝回到上一層（例如從詳細回到原本的清單，保留原本的頁數）。
             modalEl.addEventListener('hide.bs.modal', function (event) {
                 if (!stack.length) return;
@@ -670,10 +916,16 @@
                 dialog.style.maxWidth = prev.width;
                 frame.style.height = prev.height;
                 frame.src = prev.src;
+                showActions();
             });
             modalEl.addEventListener('hidden.bs.modal', function () {
                 frame.src = 'about:blank';
                 dialog.style.maxWidth = '';
+                dialog.classList.remove('modal-lg', 'modal-xl');
+                actionsBox.innerHTML = '';
+                actionsBox.hidden = true;
+                // 在上層修改過資料：整個對話框關掉後重新整理列表（顯示改好的資料）。
+                if (changed) { changed = false; window.location.reload(); }
             });
         })();
         </script>

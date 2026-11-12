@@ -12,7 +12,6 @@
     <div class="tb-header">
         <div>
             <h1 class="tb-title">空間申請</h1>
-            <p class="tb-subtitle">查看教室借用申請；點一筆可以看預約詳細並審核。</p>
         </div>
         {{-- 右上角：「我的申請」在畫面中的對話框打開自己的申請（表格／清單自動切換）；「空間預約」換到有課表的申請頁。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end">

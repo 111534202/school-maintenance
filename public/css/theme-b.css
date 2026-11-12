@@ -210,7 +210,18 @@ body.tb-body {
 .tb a:hover { color: var(--tb-accent-dark); }
 
 /* ---- 頁首 ---- */
-.tb-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; }
+/* 頁首：標題在左、按鈕（統計圖表、新增…）在右上角，手機也排在同一行（標題太長時標題自己換行，按鈕不會掉到下一行）。 */
+.tb-header { display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 16px; }
+.tb-header > :first-child { flex: 1 1 auto; min-width: 0; }
+.tb-header > :first-child .tb-title { overflow-wrap: anywhere; word-break: keep-all; }
+.tb-header > :not(:first-child) { flex: 0 0 auto; }
+.tb-header > div:not(:first-child) { display: flex; flex-wrap: nowrap; justify-content: flex-end; }
+@media (max-width: 575.98px) {
+    .tb-header { gap: 8px; }
+    .tb-header .tb-title { font-size: 1.35rem; line-height: 1.3; }
+    .tb .tb-header .tb-btn { min-height: 36px; padding: 0 12px; gap: 5px; font-size: .875rem; }
+    .tb-header > div:not(:first-child) { gap: 6px !important; }
+}
 .tb-title { margin: 0; font-family: var(--tb-font-heading); font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
 .tb-subtitle { margin: 6px 0 0; color: var(--tb-muted); font-size: 1rem; line-height: 1.7; }
 .tb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -337,6 +348,39 @@ body.tb-body {
 .tb-list-arrow { color: var(--tb-muted); flex: 0 0 auto; }
 .tb-avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 1.05rem; }
 .tb-pill-info { background: #E3EEF7; color: #24507A; }
+.tb-pill-muted { background: #ECEAE4; color: #5C5A55; }
+
+/* 列表頁的篩選列（主檔、報修、保養等）：放在 tb-card 裡，欄位放得下就排成一列，不夠寬時換行（不用左右滑動）。
+   欄位原本寫死的寬度（style="width: …"）在這裡改成跟著欄位伸縮。 */
+.tb .tb-filter.filter-bar { flex-wrap: wrap; overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+.tb .tb-filter.filter-bar > div { flex: 1 1 160px; min-width: 0; }
+.tb .tb-filter.filter-bar .form-control,
+.tb .tb-filter.filter-bar .form-select { width: 100% !important; }
+/* 手機：篩選欄位兩個一排（第一個通常是關鍵字，自己一排），卡片留白縮小，不會佔滿整個畫面。
+   最後一個欄位跟「篩選／清除」排在同一行（欄位縮短讓出按鈕的位置），按鈕不會自己換到下一行。 */
+@media (max-width: 575.98px) {
+    .tb .tb-card.tb-card-pad:has(> div > .tb-filter, > .tb-filter) { padding: 14px 16px; }
+    .tb .tb-filter.filter-bar { gap: 10px; }
+    .tb .tb-filter.filter-bar > div { flex: 1 1 calc(50% - 5px); }
+    .tb .tb-filter.filter-bar > div:first-child:has(input[type="text"], input[type="search"]) { flex-basis: 100%; }
+    .tb .tb-filter.filter-bar > div:has(+ .tb-filter-actions) { flex: 1 1 0 !important; min-width: 55%; }
+}
+/* 「篩選／清除」按鈕（layouts/partials/filter-actions）：只跟按鈕一樣寬，對齊欄位底部。 */
+.tb .tb-filter.filter-bar > .tb-filter-actions,
+.tb .tb-filter.filter-bar > .d-inline-flex { flex: 0 0 auto !important; align-self: flex-end; }
+/* 表格裡被停用、已刪除的列：淡一點。 */
+.tb .tb-table > tbody > tr.tb-row-muted > td { color: var(--tb-muted); background: #F1EFEA; }
+.tb .tb-table > tbody > tr.table-danger > td { background: var(--tb-danger-bg); }
+/* 組員頁面用程式組出來的 Bootstrap 徽章（text-bg-success 等，例如報修狀態、設備狀態、工單狀態）：在風格 B 的表格與清單裡改成膠囊樣式。 */
+.tb :is(.tb-table, .onion-list) .badge[class*="text-bg-"] { padding: 4px 12px; border-radius: 999px; font-size: 0.8125rem; font-weight: 500; }
+.tb :is(.tb-table, .onion-list) .badge.text-bg-success { background: var(--tb-accent-soft) !important; color: #24553E !important; }
+.tb :is(.tb-table, .onion-list) .badge.text-bg-danger { background: var(--tb-danger-bg) !important; color: var(--tb-danger) !important; font-weight: 700; }
+.tb :is(.tb-table, .onion-list) .badge.text-bg-warning { background: var(--tb-warn-bg) !important; color: var(--tb-warn-text) !important; }
+.tb :is(.tb-table, .onion-list) .badge.text-bg-primary,
+.tb :is(.tb-table, .onion-list) .badge.text-bg-info { background: #E3EEF7 !important; color: #24507A !important; }
+.tb :is(.tb-table, .onion-list) .badge.text-bg-secondary,
+.tb :is(.tb-table, .onion-list) .badge.text-bg-light,
+.tb :is(.tb-table, .onion-list) .badge.text-bg-dark { background: #ECEAE4 !important; color: #5C5A55 !important; }
 /* 零件卡片（零件庫存列表、低庫存視窗）：零件編號在左，名稱｜規格｜庫存狀態 ＋「>」靠右（跟空間申請一樣）。 */
 .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
     grid-template-columns: minmax(0, 1fr) var(--tb-col-part-name) var(--tb-col-part-spec) 116px;
@@ -550,6 +594,8 @@ tr[data-modal-frame-href] { cursor: pointer; }
 /* 卡片標題列下面的分隔線：所有卡片固定同樣粗細（--tb-card-head-rule）。
    清單本身不再畫上框線，之前「使用紀錄」看起來比較粗，是標題列的線和清單的上框線疊在一起。 */
 .tb-body .card > .card-header { border-bottom: var(--tb-card-head-rule) solid var(--tb-border); }
+/* 卡片下面是表格時：標題列右邊的按鈕（新增採購、登記報廢…）跟表格最後一欄的按鈕右緣對齊（表格儲存格左右留 .5rem）；變成清單時不套用。 */
+.tb-body .card:has(> .table-responsive:not([hidden]) > .table) > .card-header { padding-right: .5rem; }
 .tb-body .card > .onion-list, .tb-body .tb-table-wrap > .onion-list { border: 0; }
 
 /* 從詳細對話框裡再打開的視窗（附件預覽、修改採購…）要蓋在詳細對話框上面。 */
@@ -562,9 +608,15 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 .tb-embedded .app-content { padding: 20px 24px !important; }
 .tb-embedded .app-content > h1:first-of-type { display: none; }
 .tb-embedded .app-content > .card { max-width: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; background: transparent !important; border-radius: 0; }
+/* 保養項目／計畫／結果的表單外框：跟其他表單一樣用細線框（不是陰影），在對話框裡也保留。 */
+.tb-body .tb-form-card { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px; padding: 24px; }
+.tb-body .tb-form-card > :last-child { margin-bottom: 0 !important; }
 
 /* 在畫面中開啟表單的對話框（#frameModal）：寬度跟清單的詳細對話框一樣（不會因為螢幕比較窄就縮成 500px），四角圓角。 */
 .tb-body #frameModal .modal-dialog { max-width: min(94vw, 640px); }
+/* data-modal-size：內容比較多的表單（lg）與詳細頁（xl）用比較寬的對話框。 */
+.tb-body #frameModal .modal-dialog.modal-lg { max-width: min(94vw, 860px); }
+.tb-body #frameModal .modal-dialog.modal-xl { max-width: min(94vw, 1140px); }
 .tb-body #frameModal .modal-content { border-radius: 18px; overflow: hidden; }
 
 /* 附件預覽視窗：寬度跟著瀏覽器視窗走，左右固定各留 32px；高度跟著附件（圖片多高就多高），
@@ -575,3 +627,47 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 .attachment-dialog .modal-body { display: flex; align-items: center; justify-content: center; }
 .attachment-dialog .modal-body img { max-width: 100%; max-height: calc(100vh - 2 * var(--att-gap) - var(--att-chrome)) !important; object-fit: contain; }
 .attachment-dialog .modal-body iframe { height: calc(100vh - 2 * var(--att-gap) - var(--att-chrome)) !important; }
+
+/* 手機：頂端列的漢堡、返回、標題靠近一點（標題才有空間顯示）；右邊的通知、帳號、登出也收緊。 */
+@media (max-width: 575.98px) {
+    .tb-navbar > .container-fluid { column-gap: 2px !important; padding-left: 6px; padding-right: 6px; }
+    .tb-navbar .tb-nav-btn[data-page-back] { width: 1.9rem !important; }
+    .tb-navbar .navbar-brand { margin-left: 2px; }
+    .tb-navbar > .container-fluid > .d-flex { gap: 2px !important; }
+}
+/* 手機：漢堡選單只跟選單內容一樣寬（最寬一列的文字），不再固定 400px 佔掉大半個畫面。
+   每一層面板改成疊在同一格（grid），選單寬度就會取最寬的那一層；捲動、滑進滑出的動畫不變。 */
+@media (max-width: 575.98px) {
+    #sidebarOffcanvas.offcanvas-start { width: auto; min-width: 13rem; max-width: 85vw; }
+    #sidebarOffcanvas .drill { display: grid; grid-template-rows: minmax(0, 1fr); }
+    #sidebarOffcanvas .drill-panel { position: relative; inset: auto; grid-area: 1 / 1; min-height: 0; }
+    #sidebarOffcanvas .drill-item { white-space: nowrap; padding-right: 1.25rem; }
+}
+/* 對話框裡的表單（手機尤其明顯）：最後一排「取消／儲存」下面不再多留一大段空白。
+   表單最後的按鈕列不加下邊距（原本的 mb-3／mb-4），內容區下方留白也縮小。 */
+.tb-embedded .app-content { padding-bottom: 12px !important; }
+.tb-embedded .app-content form:not(:has(~ :not(script, style, dialog, input[type="hidden"])))
+    > div:has(> [type="submit"]):not(:has(~ :not(input[type="hidden"], script))) { margin-bottom: 0 !important; }
+/* 對話框標題旁的操作按鈕（從列表那一列的操作欄複製過來，見 layouts/app.blade.php 的 #frameModalActions）。 */
+#frameModal .modal-header { gap: .5rem; }
+#frameModal .frame-modal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; margin-left: auto; }
+#frameModal .frame-modal-actions[hidden] { display: none; }
+#frameModal .frame-modal-actions form { display: inline-flex; margin: 0; }
+#frameModal .frame-modal-actions + .btn-close { margin-left: .25rem; }
+/* 漢堡選單上面的「選單」字大一點。 */
+#sidebarOffcanvas .offcanvas-title { font-size: 1.3rem; font-weight: 700; }
+/* 可以輸入也可以下拉選的欄位（input[data-suggest]，程式在 layouts/app.blade.php）。 */
+.tb-suggest { position: relative; display: block; width: 100%; }
+.tb-suggest-list { position: absolute; z-index: 1060; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto;
+    background: var(--tb-surface, #fff); border: 1px solid var(--tb-border, #dee2e6); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 4px 0; }
+.tb-suggest-list[hidden] { display: none; }
+.tb-suggest-item { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 8px 14px; font-size: .95rem; color: inherit; }
+.tb-suggest-item:hover, .tb-suggest-item.is-active { background: var(--tb-accent-faint, #eef3ef); }
+.tb-suggest-empty { padding: 8px 14px; color: var(--tb-muted, #6c757d); font-size: .9rem; }
+/* 上層對話框（在設備詳細等對話框上面再開「修改」）：疊在原本的對話框與它的灰色背景上面。 */
+.tb-body #frameModalTop { z-index: 1090; }
+.tb-body .modal-backdrop.show + .modal-backdrop.show { z-index: 1085; }
+#frameModalTop .modal-content { border-radius: 18px; overflow: hidden; }
+#frameModalTop .modal-dialog { max-width: min(94vw, 640px); }
+#frameModalTop .modal-dialog.modal-lg { max-width: min(94vw, 860px); }
+#frameModalTop .modal-dialog.modal-xl { max-width: min(94vw, 1140px); }

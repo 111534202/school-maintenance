@@ -355,7 +355,9 @@ class DashboardAndNotificationTest extends TestCase
         $this->loginAsAnyUser();
 
         foreach (['classrooms.index', 'device-categories.index', 'devices.index', 'users.index', 'roles.index', 'departments.index', 'audit-logs.index'] as $route) {
-            $this->assertStringContainsString('table-bordered', $this->get(route($route))->getContent(), "$route 的表格沒有框線");
+            // 舊版 Bootstrap 表格要有 table-bordered；改成風格 B 的列表（tb-table，外框與分隔線由 theme-b.css 畫）也算。
+            $html = $this->get(route($route))->getContent();
+            $this->assertTrue(str_contains($html, 'table-bordered') || str_contains($html, 'class="tb-table'), "$route 的表格沒有框線");
         }
     }
 

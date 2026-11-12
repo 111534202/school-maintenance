@@ -15,7 +15,7 @@
                 <th class="text-end text-nowrap">安全庫存</th>
                 {{-- 庫存狀態與「查看履歷」只跟內容一樣寬（tb-col-fit），兩個貼在一起放在最右邊。 --}}
                 <th class="tb-col-fit">庫存狀態</th>
-                <th class="text-end tb-col-fit"><span class="visually-hidden">操作</span></th>
+                <th class="text-end tb-col-fit">操作</th>
             </tr>
         </thead>
         <tbody>

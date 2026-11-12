@@ -39,7 +39,8 @@ return [
     // 知識庫新增／編輯表單的欄位名稱。
     'form' => [
         'title' => '標題',
-        'category' => '分類（選填，例如：投影機 / 電腦 / 網路）',
+        'category' => '分類（選填）',
+        'category_placeholder' => '例如：投影機、電腦、網路',
         'symptom' => '常見故障現象',
         'solution' => '自助排除步驟',
         'is_published' => '上架顯示給使用者',

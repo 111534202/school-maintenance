@@ -8,10 +8,13 @@
 @section('content')
     <div class="page-header mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-pc-display me-2"></i>{{ __('devices.show.title') }}</h1>
-        <div class="d-inline-flex gap-1">
-            <a class="btn btn-outline-primary icon-btn" href="{{ route('devices.edit', $device) }}"
-                title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
-        </div>
+        {{-- 在設備主檔的對話框裡打開（?modal=1）時不放「修改」按鈕（修改在列表的鉛筆按鈕）。 --}}
+        @unless (request()->boolean('modal'))
+            <div class="d-inline-flex gap-1">
+                <a class="btn btn-outline-primary icon-btn" href="{{ route('devices.edit', $device) }}"
+                    title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
+            </div>
+        @endunless
     </div>
 
     <div class="row g-3">

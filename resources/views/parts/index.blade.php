@@ -7,14 +7,13 @@
     <div class="tb-header">
         <div>
             <h1 class="tb-title">零件庫存列表</h1>
-            <p class="tb-subtitle">點選任一列查看零件履歷；庫存由採購紀錄與使用紀錄增減。</p>
         </div>
         {{-- 右上角：「目前低庫存零件 N」（有低庫存零件時才出現，開啟低庫存視窗，可預覽匯出 Excel／PDF）＋「新增零件」。
              不論螢幕寬窄都一樣，不再顯示紅色提示卡片。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end parts-actions">
             @if ($lowStockParts->isNotEmpty())
                 <button type="button" class="tb-btn tb-btn-danger-outline" data-bs-toggle="modal" data-bs-target="#lowStockModal">
-                    <i class="bi bi-exclamation-triangle d-none d-sm-inline" aria-hidden="true"></i>目前低庫存零件
+                    <i class="bi bi-exclamation-triangle d-none d-sm-inline" aria-hidden="true"></i><span class="d-none d-sm-inline">目前低庫存零件</span><span class="d-sm-none">低庫存</span>
                     <span class="tb-pill tb-pill-danger" style="padding: 1px 9px">{{ $lowStockParts->count() }}</span>
                 </button>
             @endif
@@ -100,10 +99,5 @@
     <style>
         .low-stock-list { gap: 0; padding-bottom: 0; }
         @media (min-width: 1200px) { .low-stock-dialog { max-width: min(1400px, calc(100vw - 2rem)); } }
-        /* 手機：右上角的兩個按鈕排成同一行、各佔一半。 */
-        @media (max-width: 575.98px) {
-            .parts-actions { width: 100%; flex-wrap: nowrap !important; }
-            .parts-actions > .tb-btn { flex: 1 1 0; justify-content: center; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
-        }
     </style>
 @endsection

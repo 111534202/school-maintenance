@@ -62,7 +62,7 @@
         <div class="card mt-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>保養結果</span>
-                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary">查看完整詳細</a>
+                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整詳細</a>
             </div>
             <div class="card-body">
                 <dl class="row mb-0">

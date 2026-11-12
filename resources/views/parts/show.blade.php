@@ -81,7 +81,7 @@
                     <thead class="table-light">
                         <tr>
                             {{-- 欄位順序決定清單的標題與副標題：標題＝使用日期，副標題＝狀態 · 單號。 --}}
-                            <th class="tb-col-fit">來源</th>
+                            <th class="tb-col-fit text-center">來源</th>
                             <th class="text-nowrap">使用日期</th>
                             <th>狀態</th>
                             <th class="text-nowrap">單號</th>
@@ -95,7 +95,7 @@
                     <tbody>
                         @foreach ($usages as $usage)
                             <tr>
-                                <td class="tb-col-fit"><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
+                                <td class="tb-col-fit text-center"><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
                                 <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $usage['status'] ?? '—' }}</td>
                                 <td class="text-nowrap">

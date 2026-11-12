@@ -7,7 +7,6 @@
     <div class="tb-header">
         <div>
             <h1 class="tb-title">{{ __('common.nav.cost_analysis') }}</h1>
-            <p class="tb-subtitle">依維修紀錄建立時間統計備品材料成本；單價為扣料當下該批採購的單價。</p>
         </div>
 
     </div>
@@ -15,7 +14,7 @@
     {{-- 篩選：直接顯示在頁面上（data-no-onion：不收成右邊滑出的「篩選條件」面板）；寬度不夠時自動換行，不用左右滑動。
          兩個日期都不填時，檢視全部日期。 --}}
     <div class="tb-card tb-card-pad">
-    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row cost-filter" data-no-onion>
+    <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row tb-filter cost-filter" data-no-onion>
         <div class="tb-field">
             <label for="start_date" class="form-label small mb-1">開始日期</label>
             <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
@@ -44,10 +43,7 @@
                 <option value="exclude" @selected(! $includeScraps)>不顯示</option>
             </select>
         </div>
-        <div class="d-inline-flex gap-2">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search me-1" aria-hidden="true"></i>查詢</button>
-            <a href="{{ route('repair-cost-analysis.index') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center">清除篩選</a>
-        </div>
+        @include('layouts.partials.filter-actions', ['reset' => route('repair-cost-analysis.index'), 'fields' => ['start_date', 'end_date', 'status', 'scraps']])
     </form>
     </div>
 
@@ -276,10 +272,7 @@
     .tb .cost-table > tbody > tr[data-href] { cursor: pointer; }
 </style>
 <style>
-    /* 篩選欄位放得下就排成一列，不夠寬時換行（不用左右滑動）。 */
-    .cost-filter.filter-bar { flex-wrap: wrap; overflow: visible; padding-bottom: 0; margin-bottom: 0; }
-    .cost-filter.filter-bar > .tb-field { flex: 1 1 160px; min-width: 0; }
-    .cost-filter.filter-bar > .d-inline-flex { flex: 0 0 auto; }
+    /* 篩選列的排版跟其他列表頁共用（tb-filter，見 public/css/theme-b.css）。 */
     /* 備品使用彙總：金額右邊緊接著「共 N 條」。 */
     .tb-bar-value { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; column-gap: 12px; text-align: right; }
     .tb-bar-value .tb-bar-missing { flex-basis: 100%; font-size: 0.85rem; }

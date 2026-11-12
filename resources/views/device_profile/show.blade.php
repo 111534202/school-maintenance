@@ -65,7 +65,7 @@
                         <th>排定日期</th>
                         <th>結果</th>
                         <th>執行人</th>
-                        <th class="text-end">操作</th>
+                        <th class="text-end tb-col-fit">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,8 +85,8 @@
                                 @endif
                             </td>
                             <td>{{ $order->result->executor?->name ?? '—' }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary">詳細</a>
+                            <td class="text-end tb-col-fit">
+                                <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="保養工單詳細" data-modal-size="xl">詳細</a>
                             </td>
                         </tr>
                     @empty
