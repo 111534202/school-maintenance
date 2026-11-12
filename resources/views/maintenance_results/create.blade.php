@@ -33,7 +33,7 @@
             @error('result')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
-            <div class="form-text">選擇 NG 送出後，會標記這張工單待轉報修（等彭仕衡的報修介面串接後會自動建立）。</div>
+            <div class="form-text">選擇 NG 送出後，系統會自動建立一張報修單，並記錄在這張工單上。</div>
         </div>
 
         <div class="mb-3">
