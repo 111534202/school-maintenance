@@ -64,7 +64,8 @@ class DeviceController extends Controller
         $classrooms = Classroom::orderBy('classroom_code')->get();
         $categories = DeviceCategory::orderBy('name')->get();
 
-        return view('devices.index', compact('devices', 'classrooms', 'categories'));
+        $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
+        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart'));
     }
 
     /** 顯示新增設備表單（GET /devices/create）。 */

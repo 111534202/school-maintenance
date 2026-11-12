@@ -103,6 +103,7 @@
                             <th>{{ __('repair_requests.table.assignee') }}</th>
                             <th>{{ __('repair_requests.table.submitted_at') }}</th>
                             <th>{{ __('repair_requests.table.waiting_time') }}</th>
+                            <th class="text-center"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -160,6 +161,10 @@
                                 <td>{{ $repairRequest->created_at->format('Y-m-d H:i') }}</td>
                                 {{-- 等待時間：用「3 小時前」這種口語方式顯示；語言由 SetLocale 中介層決定。 --}}
                                 <td>{{ $repairRequest->created_at->diffForHumans() }}</td>
+                                <td class="text-center">
+                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('repairs.show', $repairRequest) }}"
+                                        title="{{ __('common.buttons.view') }}" aria-label="{{ __('common.buttons.view') }}"><i class="bi bi-eye"></i></a>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

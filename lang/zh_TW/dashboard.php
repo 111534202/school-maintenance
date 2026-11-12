@@ -42,6 +42,7 @@ return [
         'device_category_repair_ranking' => '本月設備類別報修排行',
         'repair_trend_series' => '新增報修數',
         'no_data' => '目前沒有資料',
+        'open' => '統計圖表',
     ],
 
     // 設備狀態的顯示名稱（主控台圖表用）。

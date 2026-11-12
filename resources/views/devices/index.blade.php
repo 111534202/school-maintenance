@@ -9,9 +9,12 @@
 @section('content')
     <div class="page-header mb-4">
         <h1 class="h4 mb-0"><i class="bi bi-pc-display me-2"></i>{{ __('devices.index_title') }}</h1>
-        <a class="btn btn-primary" href="{{ route('devices.create') }}">
-            <i class="bi bi-plus-lg me-1"></i>{{ __('devices.add_device') }}
-        </a>
+        <div class="d-flex gap-2">
+            @include('charts._button')
+            <a class="btn btn-primary" href="{{ route('devices.create') }}">
+                <i class="bi bi-plus-lg me-1"></i>{{ __('devices.add_device') }}
+            </a>
+        </div>
     </div>
 
     {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
@@ -131,6 +134,8 @@
                             </td>
                             <td class="text-center">
                                 <div class="d-inline-flex gap-1">
+                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('devices.show', $device) }}"
+                                        title="{{ __('devices.actions.detail') }}" aria-label="{{ __('devices.actions.detail') }}"><i class="bi bi-eye"></i></a>
                                     <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                     {{-- 停用按鈕：送出前先跳出確認視窗；停用 = 狀態改 disabled 並軟刪除。 --}}
@@ -156,4 +161,6 @@
 
     {{-- 分頁按鈕。 --}}
     <div class="mt-3">{{ $devices->links() }}</div>
+    {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
+    @include('charts._modal')
 @endsection

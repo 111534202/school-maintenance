@@ -214,12 +214,11 @@
             <div class="tb-section-head" data-onion-header>
                 <div class="d-flex flex-wrap align-items-baseline gap-2">
                     <h2 id="scrapTitle" class="tb-section-title">報廢明細</h2>
-                    <span class="tb-note">共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss) }}</span>
+                    {{-- 沒資料時寫在同一行，不另外多一段（同步 integrate/all eed2947） --}}
+                    <span class="tb-note">共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss) }}{{ $scraps->isEmpty() ? '；此日期範圍內沒有報廢紀錄。' : '' }}</span>
                 </div>
             </div>
-            @if ($scraps->isEmpty())
-                <p class="tb-note" style="padding: 16px 24px 20px">此日期範圍內沒有報廢紀錄。</p>
-            @else
+            @if ($scraps->isNotEmpty())
                 <div class="table-responsive">
                     <table class="tb-table tb-table-hover" style="font-size: 0.9rem" data-onion-panel-title="報廢明細" data-onion-list-only>
                         <thead>

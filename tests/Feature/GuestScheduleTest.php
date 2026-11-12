@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Classroom;
 use App\Models\ClassroomReservation;
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -94,5 +95,43 @@ class GuestScheduleTest extends TestCase
     {
         $this->get(route('schedule.login'))->assertRedirect(route('login'));
         $this->assertSame(route('reservations.create'), session('url.intended'));
+    }
+
+    // 以下兩個測試同步自 integrate/all f3a55bf：免登入時不洩漏課程班級、課名與報修單標題。
+    public function test_guest_timetable_hides_course_and_class_names_but_keeps_busy_periods(): void
+    {
+        $classroom = $this->classroom();
+        $date = now()->addDays(7)->startOfWeek()->addDay();   // 星期二
+        config(['timetable.courses' => ['2.A101.1' => ['class_name' => '資五孝', 'course_name' => '程式設計']]]);
+        $query = ['classroom_id' => $classroom->id, 'date' => $date->toDateString()];
+
+        // 登入後的課表有班級與課名；免登入的沒有，但「這一節有課」仍要看得到。
+        $this->actingAs(User::factory()->create());
+        $this->assertStringContainsString($this->escaped('程式設計'), $this->getJson(route('reservations.timetable.week', $query))->getContent());
+        auth()->logout();
+
+        $response = $this->getJson(route('schedule.timetable.week', $query))->assertOk();
+        $this->assertStringNotContainsString($this->escaped('資五孝'), $response->getContent());
+        $this->assertStringNotContainsString($this->escaped('程式設計'), $response->getContent());
+        $busy = collect($response->json('days'))->pluck('periods')->flatten(1)->where('is_class', true);
+        $this->assertCount(1, $busy);
+    }
+
+    public function test_guest_page_does_not_show_repair_titles(): void
+    {
+        $classroom = $this->classroom();
+        RepairRequest::factory()->create(['device_id' => null, 'classroom_id' => $classroom->id, 'title' => '王老師的筆電被偷', 'status' => 'pending']);
+
+        // 頁面把提醒用 @json 放進程式裡，中文是跳脫過的字串。
+        $this->get(route('schedule'))->assertOk()
+            ->assertSee($this->escaped('有報修案件正在等待維修'), false)
+            ->assertDontSee($this->escaped('王老師的筆電被偷'), false)
+            ->assertDontSee('王老師的筆電被偷');
+    }
+
+    /** 中文轉成 JSON 裡的 \uXXXX 寫法（頁面與 API 回應裡的樣子）。 */
+    private function escaped(string $text): string
+    {
+        return trim(json_encode($text), '"');
     }
 }

@@ -45,26 +45,26 @@ class FitScreenTest extends TestCase
         $this->assertStringContainsString('fit-scroll', $html);
     }
 
-    public function test_dashboard_puts_charts_in_a_mobile_layer_and_keeps_every_chart(): void
+    public function test_dashboard_shows_the_two_important_charts_directly(): void
     {
         $html = $this->actingAs($this->makeUser('admin'))->get(route('dashboard'))->assertOk()->getContent();
 
+        // 圖表直接顯示（不再有手機的「數據圖表」滑入層）；只留兩張。
         $this->assertStringContainsString('id="home-charts"', $html);
-        $this->assertStringContainsString('data-charts-open', $html);
-        $this->assertStringContainsString('data-charts-back', $html);
-
-        foreach (['repairStatus', 'repairTrend', 'deviceStatus', 'roleDistribution'] as $chart) {
-            $this->assertStringContainsString('id="chart-'.$chart.'"', $html, "圖表 $chart 不見了");
+        $this->assertStringNotContainsString('data-charts-open', $html);
+        $this->assertStringNotContainsString('data-charts-back', $html);
+        foreach (['工單狀態分布', '近 14 日新增報修'] as $title) {
+            $this->assertStringContainsString($title, $html, "圖表「{$title}」不見了");
         }
-        // 六張數字卡片都還在，而且點了還是跳去原本的功能。
+        // 數字卡片都還在，而且點了還是跳去原本的功能。
         $this->assertGreaterThanOrEqual(6, substr_count($html, 'kpi-card'));
     }
 
-    public function test_teacher_dashboard_still_has_the_charts_layer(): void
+    public function test_teacher_dashboard_has_the_same_two_charts_and_no_master_charts(): void
     {
         $html = $this->actingAs($this->makeUser('teacher'))->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('data-charts-open', $html);
-        $this->assertStringNotContainsString('id="chart-roleDistribution"', $html);
+        $this->assertStringContainsString('工單狀態分布', $html);
+        $this->assertStringNotContainsString('用戶身分分布', $html);
     }
 }

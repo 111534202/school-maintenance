@@ -80,11 +80,13 @@ class UserController extends Controller
             ->withQueryString();  // 換頁時保留原本的篩選參數，不然翻到第 2 頁篩選就不見了
 
         // 把資料交給 resources/views/users/index.blade.php 畫成網頁。
+        $chart = \App\Services\MasterCharts::roleDistribution();   // 頁首「統計圖表」按鈕的圖表資料
         return view('users.index', [
             'users' => $users,
             // 篩選列的下拉選單選項：全部身分、全部部門（這裡篩選要看得到停用的部門，所以不過濾）。
             'roles' => Role::orderBy('id')->get(),
             'departments' => Department::orderBy('name')->get(),
+            'chart' => $chart,
         ]);
     }
 

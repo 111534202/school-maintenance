@@ -60,6 +60,8 @@ class DatabaseBackupTest extends TestCase
         $this->assertSame('manual', $backups[0]['reason']);
         $this->get(route('backups.index'))->assertSee('手動備份')->assertSee('確認還原');
         $this->get(route('backups.download', $backups[0]['name']))->assertOk();
+        // 下載備份會寫入操作紀錄（同步 integrate/all eed2947）。
+        $this->assertDatabaseHas('audit_logs', ['action' => 'downloaded']);
         $this->get(route('backups.download', '..%2F..%2F.env'))->assertNotFound();
     }
 

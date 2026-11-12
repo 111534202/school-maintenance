@@ -37,7 +37,7 @@
                             value="{{ $device->device_code ?? '' }}">
                         {{-- 用手機／筆電鏡頭掃描設備上的 QR 或條碼貼紙。 --}}
                         <button type="button" class="btn btn-outline-primary" id="scan_camera_btn"
-                            data-bs-toggle="modal" data-bs-target="#scanModal"
+                            data-scan-target="#device_code_input" data-scan-title="{{ __('repair_requests.create.scan_title') }}"
                             title="{{ __('repair_requests.create.scan_button') }}" aria-label="{{ __('repair_requests.create.scan_button') }}">
                             <i class="bi bi-camera"></i>
                         </button>

@@ -25,9 +25,10 @@ class ClassroomRepairNotices
 {
     /**
      * @param  iterable<int>  $classroomIds
+     * @param  bool  $withTitles  false＝不帶報修單標題（免登入查詢課表用：標題是使用者自由填寫的文字，不對外公開）
      * @return array<int, list<array{text: string, core: bool}>> 以教室編號為鍵；沒有狀況的教室不會出現
      */
-    public static function for(iterable $classroomIds): array
+    public static function for(iterable $classroomIds, bool $withTitles = true): array
     {
         $ids = collect($classroomIds)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
         if ($ids === []) {
@@ -52,7 +53,7 @@ class ClassroomRepairNotices
                 $seenDevices[$repair->device->id] = true;
                 self::add($notices, $repair->device->classroom_id, self::deviceLabel($repair->device) . '正在等待維修', (bool) $repair->device->is_core);
             } else {
-                self::add($notices, $repair->classroom_id, "報修案件「{$repair->title}」正在等待維修", false);
+                self::add($notices, $repair->classroom_id, $withTitles ? "報修案件「{$repair->title}」正在等待維修" : '有報修案件正在等待維修', false);
             }
         }
 

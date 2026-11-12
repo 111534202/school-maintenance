@@ -18,8 +18,9 @@ use App\Services\RepairDurationStatisticsService;
  * 主控台：用數字卡片與圖表呈現目前的概況，每一張卡片、每一塊圖表點下去都會跳到對應的功能區
  * （例如點「待驗收」跳到篩好狀態的報修看板、點設備狀態圖的某一塊跳到篩好狀態的設備主檔）。
  *
- * 跟權限的關係：報修的數字所有登入者都看得到；設備、用戶、教室的數字與圖表只有
- * 能進入對應主檔的人才會出現（不然點了也是 403，也不該讓沒權限的人看到統計數字）。
+ * 跟權限的關係：報修的數字所有登入者都看得到；設備、用戶、教室的數字只有能進入對應主檔的人才會出現
+ * （不然點了也是 403，也不該讓沒權限的人看到統計數字）。主控台只留兩張圖表（工單狀態、近 14 日新增報修），
+ * 其餘圖表搬進對應主檔頁（App\Services\MasterCharts）。
  *
  * 這支 Controller 只負責「算數字」，怎麼畫成卡片與圖表在 resources/views/dashboard.blade.php。
  * 【想新增一張卡片或圖表】在這裡算出數字放進 $data，再到 dashboard.blade.php 的 $cards / $charts 加一筆。
@@ -114,70 +115,19 @@ class DashboardController extends Controller
                 ->where('status', ClassroomReservation::STATUS_PENDING)
                 ->when(! $user->hasPermission('reservations.manage'), fn ($q) => $q->where('requester_id', $user->id))
                 ->count(),
-            'deviceStatuses' => null,
             'deviceTotal' => null,
-            'roleDistribution' => null,
             'userTotal' => null,
             'classroomTotal' => null,
             'classroomAbnormal' => null,
-            'classroomRepairRanking' => null,
-            'deviceCategoryRepairRanking' => null,
         ];
 
         // ---- 設備（需要設備主檔權限）----
         if ($user->can('devices.manage')) {   // can()：這個人有沒有這項權限（管理員永遠是 true）
-            $deviceCounts = Device::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
-            // 每一種設備狀態整理成 {代碼、中文名、數量、點擊網址}；沒有的狀態補 0。
-            $data['deviceStatuses'] = collect(Device::STATUSES)->map(fn (string $status) => [
-                'key' => $status,
-                'label' => __('dashboard.device_status.' . $status),   // 狀態的中文／英文名稱來自 lang/各語言資料夾/dashboard.php
-                'count' => (int) ($deviceCounts[$status] ?? 0),
-                'url' => route('devices.index', ['status' => $status]),
-            ])->values()->all();
             $data['deviceTotal'] = Device::count();   // 設備總數
-
-            // 本月設備類別報修排行：只統計可見、已綁定實際設備的報修單。
-            $data['deviceCategoryRepairRanking'] = RepairRequest::query()
-                ->visibleTo($user)
-                ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
-                ->join(
-                    'device_categories',
-                    'devices.device_category_id',
-                    '=',
-                    'device_categories.id'
-                )
-                ->whereNull('devices.deleted_at')
-                ->where('repair_requests.created_at', '>=', $monthStart)
-                ->where('repair_requests.created_at', '<', $nextMonthStart)
-                ->select(
-                    'device_categories.id',
-                    'device_categories.name'
-                )
-                ->selectRaw('COUNT(repair_requests.id) AS total')
-                ->groupBy('device_categories.id', 'device_categories.name')
-                ->orderByDesc('total')
-                ->orderBy('device_categories.name')
-                ->limit(5)
-                ->get()
-                ->map(fn ($item) => [
-                    'label' => $item->name,
-                    'count' => (int) $item->total,
-                    'url' => route('repairs.index'),
-                ])
-                ->all();
         }
 
         // ---- 用戶（需要用戶主檔權限）----
         if ($user->can('users.manage')) {
-            // 每個身分各有幾位用戶。
-            $roleCounts = User::query()->selectRaw('role_id, count(*) as total')->groupBy('role_id')->pluck('total', 'role_id');
-            // 所有身分（連 0 人的也列出）都做成一根長條，點下去跳到「篩好該身分」的用戶主檔。
-            $data['roleDistribution'] = Role::orderBy('id')->get()->map(fn (Role $role) => [
-                'key' => $role->id,
-                'label' => $role->name,
-                'count' => (int) ($roleCounts[$role->id] ?? 0),
-                'url' => route('users.index', ['role_id' => $role->id]),
-            ])->all();
             $data['userTotal'] = User::count();   // 用戶總數
         }
 
@@ -186,37 +136,6 @@ class DashboardController extends Controller
             $data['classroomTotal'] = Classroom::count();
             // 預約狀態為 abnormal 的教室，卡片上會用紅字提示「設備異常教室 N 間」。
             $data['classroomAbnormal'] = Classroom::withAbnormalDevices()->count();
-
-            // 本月教室報修排行：透過實際設備所在教室彙整。
-            $data['classroomRepairRanking'] = RepairRequest::query()
-                ->visibleTo($user)
-                ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
-                ->join('classrooms', 'devices.classroom_id', '=', 'classrooms.id')
-                ->whereNull('devices.deleted_at')
-                ->whereNull('classrooms.deleted_at')
-                ->where('repair_requests.created_at', '>=', $monthStart)
-                ->where('repair_requests.created_at', '<', $nextMonthStart)
-                ->select(
-                    'classrooms.id',
-                    'classrooms.classroom_code',
-                    'classrooms.name'
-                )
-                ->selectRaw('COUNT(repair_requests.id) AS total')
-                ->groupBy(
-                    'classrooms.id',
-                    'classrooms.classroom_code',
-                    'classrooms.name'
-                )
-                ->orderByDesc('total')
-                ->orderBy('classrooms.classroom_code')
-                ->limit(5)
-                ->get()
-                ->map(fn ($item) => [
-                    'label' => trim($item->classroom_code . ' ' . $item->name),
-                    'count' => (int) $item->total,
-                    'url' => route('repairs.index'),
-                ])
-                ->all();
         }
 
         // 把整理好的資料交給 resources/views/dashboard.blade.php 畫出來。

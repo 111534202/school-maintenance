@@ -23,6 +23,9 @@ use RuntimeException;
  */
 class DatabaseBackup
 {
+    /** 目前這一次備份的原因（寫進備份檔的標頭）。 */
+    private string $reason = 'manual';
+
     /** 不備份、也不還原的資料表：登入連線、快取、佇列這類暫存資料。 */
     private const SKIP_TABLES = ['migrations', 'sessions', 'cache', 'cache_locks', 'jobs', 'job_batches', 'failed_jobs', 'password_reset_tokens'];
 
@@ -44,6 +47,7 @@ class DatabaseBackup
     public function create(string $reason = 'manual'): string
     {
         $reason = array_key_exists($reason, self::REASONS) ? $reason : 'manual';
+        $this->reason = $reason;
         $name = 'backup-' . now()->format('Ymd-His') . '-' . $reason . '.json.gz';
         $path = $this->directory() . DIRECTORY_SEPARATOR . $name;
         $tmp = $path . '.part';
@@ -53,8 +57,26 @@ class DatabaseBackup
             throw new RuntimeException('無法建立備份檔案，請確認 storage/app/backups 可以寫入。');
         }
 
+        try {
+            $this->writeTables($gz);
+        } catch (\Throwable $e) {
+            gzclose($gz);
+            @unlink($tmp);   // 寫到一半失敗：不留下半份備份
+
+            throw $e;
+        }
+        gzclose($gz);
+        rename($tmp, $path);
+
+        return $name;
+    }
+
+    /** 把每一張資料表依序寫進壓縮檔。 */
+    private function writeTables($gz): void
+    {
+
         // 一張表一張表寫，資料多也不會一次佔滿記憶體。
-        gzwrite($gz, '{"created_at":' . json_encode(now()->toIso8601String()) . ',"reason":' . json_encode($reason) . ',"tables":{');
+        gzwrite($gz, '{"created_at":' . json_encode(now()->toIso8601String()) . ',"reason":' . json_encode($this->reason) . ',"tables":{');
         $first = true;
         foreach ($this->tables() as $table) {
             gzwrite($gz, ($first ? '' : ',') . json_encode($table) . ':[');
@@ -68,10 +90,6 @@ class DatabaseBackup
             gzwrite($gz, ']');
         }
         gzwrite($gz, '}}');
-        gzclose($gz);
-        rename($tmp, $path);
-
-        return $name;
     }
 
     /**
@@ -185,7 +203,10 @@ class DatabaseBackup
     /** @return list<string> 要備份的資料表 */
     private function tables(): array
     {
-        return collect(Schema::getTableListing(schemaQualified: false))
+        // MySQL 要指定目前的資料庫：同一台伺服器上若還有別的資料庫，不指定的話會連別庫的資料表一起列進來。
+        $schema = in_array(DB::getDriverName(), ['mysql', 'mariadb'], true) ? DB::getDatabaseName() : null;
+
+        return collect(Schema::getTableListing(schema: $schema, schemaQualified: false))
             ->reject(fn (string $table) => in_array($table, self::SKIP_TABLES, true) || str_starts_with($table, 'sqlite_'))
             ->values()->all();
     }

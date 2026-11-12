@@ -175,6 +175,7 @@ class RepairRequestController extends Controller
         return response()->json([
             'id' => $device->id,
             'device_code' => $device->device_code,
+            'serial_number' => $device->serial_number,   // 掃到序號時，畫面上一併顯示，讓使用者確認是同一台
             'display' => trim(
                 ($device->category->name ?? '') . ' ' . $device->brand . ' ' . $device->model
                 . '（' . ($device->classroom->name ?? $device->classroom->classroom_code ?? '') . '）'

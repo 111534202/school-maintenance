@@ -39,6 +39,9 @@ class BackupController extends Controller
     {
         $path = $this->backup->path($name) ?? abort(404);
 
+        // 備份含全部資料（包含密碼雜湊與個資），誰下載了哪一份要留下紀錄。
+        AuditLogger::log('downloaded', null, ['file' => $name], "下載資料庫備份：{$name}");
+
         return response()->download($path, $name);
     }
 

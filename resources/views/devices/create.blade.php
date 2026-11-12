@@ -18,4 +18,6 @@
             </div>
         </div>
     </div>
+    {{-- 相機掃描視窗（QR／條碼）：表單裡三個欄位的相機按鈕共用，放在表單外面。 --}}
+    @include('scanner._camera')
 @endsection

@@ -241,6 +241,7 @@
                 host.insertBefore(list, wrap.nextSibling);
                 return { apply: apply };
             }
+            wrap.onionViewbar = bar;   // 讓 auto-table（表格／清單自動切換）找得到這張表自己的切換鈕，只收起它、不動標題列
             var header = wrap.previousElementSibling;
             // 表格放在卡片內文（.card-body）的最上面、卡片有標題列時（例如報修詳細頁的「材料費明細」），切換按鈕也放進標題列。
             if (host.matches('.card-body') && host.firstElementChild === wrap && host.previousElementSibling

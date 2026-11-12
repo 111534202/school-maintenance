@@ -162,7 +162,8 @@ class ClassroomReservationController extends Controller
             ->get();
 
         // 報修提醒（黃色）與暫停預約（紅色）一樣顯示：讓人知道為什麼不能預約。
-        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
+        // 不帶報修單標題（使用者自由填寫的文字，不對未登入的人公開；同步 integrate/all f3a55bf）。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: false);
         $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
         return view('reservations.create', [

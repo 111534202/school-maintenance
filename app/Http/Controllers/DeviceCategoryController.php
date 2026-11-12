@@ -27,7 +27,8 @@ class DeviceCategoryController extends Controller
             ->paginate(15)
             ->withQueryString();   // 換頁時保留搜尋條件
 
-        return view('device-categories.index', compact('categories'));
+        $chart = \App\Services\MasterCharts::deviceCategoryRepairRanking($request->user());   // 頁首「統計圖表」按鈕的圖表資料
+        return view('device-categories.index', compact('categories', 'chart'));
     }
 
     /** 顯示新增類別表單（GET /device-categories/create）。 */
