@@ -300,6 +300,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');   // 重設密碼
         // withTrashed()：還原的對象是已被軟刪除的帳號，預設的路由綁定找不到它們。
         Route::patch('users/{user}/restore', [UserController::class, 'restore'])->withTrashed()->name('users.restore');
+        // 永久刪除：對象同樣是已被軟刪除的帳號；這裡是真的從資料庫移除，不能還原。
+        Route::delete('users/{user}/force', [UserController::class, 'forceDestroy'])->withTrashed()->name('users.force-destroy');
     });
 
     // 身分主檔：決定每個身分開放哪些權限（像 Discord 的身分組）。

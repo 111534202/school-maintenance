@@ -12,6 +12,7 @@ return [
         'deleted' => '刪除',
         'restored' => '還原',
         'downloaded' => '下載',
+        'force_deleted' => '永久刪除',
         'status_changed' => '狀態變更',
         'password_reset' => '重設密碼',
         'core_flag_changed' => '核心設備標記變更',

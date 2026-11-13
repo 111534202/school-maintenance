@@ -235,6 +235,30 @@ class UserController extends Controller
     }
 
     /**
+     * 永久刪除（DELETE /users/{user}/force，路由有 withTrashed()）：真的從資料庫移除，無法還原。
+     * 只能對「已經軟刪除」的帳號操作，一般刪除要先做過一次。
+     * 有些紀錄（例如空間預約申請）資料庫故意設計成擋下刪除、保留歷史，遇到就接住並顯示清楚的錯誤訊息。
+     */
+    public function forceDestroy(User $user): RedirectResponse
+    {
+        if (! $user->trashed()) {
+            return back()->with('error', __('users.errors.not_deleted_yet'));
+        }
+
+        try {
+            $user->forceDelete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->with('error', __('users.errors.force_delete_blocked', ['name' => $user->name]));
+        }
+
+        // forceDelete() 之後 $user 這個物件還在記憶體裡（屬性都還在），只是資料庫那筆已經真的沒了，
+        // 所以這裡還是能正常記錄「永久刪除了誰」。
+        AuditLogger::log('force_deleted', $user);
+
+        return redirect()->route('users.index')->with('success', __('users.flash.force_deleted'));
+    }
+
+    /**
      * 新增／編輯共用的驗證規則。
      * 編輯時傳入 $user，唯一性檢查會「排除自己」，這樣不改帳號直接存檔才不會被說「帳號已被使用」。
      * 想放寬或加嚴某欄位，改這裡就會同時套用到新增與編輯。

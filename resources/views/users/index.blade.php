@@ -126,7 +126,7 @@
                                 <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">
                                         @if ($user->trashed())
-                                            {{-- 已刪除的用戶只提供「還原」按鈕。data-confirm：送出前先跳出全站共用的確認視窗（跟刪除一樣）。 --}}
+                                            {{-- 已刪除的用戶提供「還原」與「永久刪除」兩個按鈕。data-confirm：送出前先跳出全站共用的確認視窗（跟刪除一樣）。 --}}
                                             <form method="POST" action="{{ route('users.restore', $user) }}"
                                                 data-confirm="{{ __('users.confirm.restore', ['name' => $user->name]) }}" data-confirm-ok="確認還原" data-confirm-variant="primary">
                                                 @csrf
@@ -134,6 +134,15 @@
                                                 @method('PATCH')
                                                 <button class="btn btn-outline-success btn-sm icon-btn" type="submit"
                                                     title="{{ __('users.actions.restore') }}" aria-label="{{ __('users.actions.restore') }}"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                            </form>
+                                            {{-- 永久刪除：真的從資料庫移除、無法還原，所以用實心紅色按鈕跟其他操作區隔開，並且用全站共用的二次確認視窗（data-confirm）。 --}}
+                                            <form method="POST" action="{{ route('users.force-destroy', $user) }}"
+                                                data-confirm="{{ __('users.confirm.force_delete', ['name' => $user->name]) }}"
+                                                data-confirm-ok="{{ __('users.actions.force_delete') }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-danger btn-sm icon-btn" type="submit"
+                                                    title="{{ __('users.actions.force_delete') }}" aria-label="{{ __('users.actions.force_delete') }}"><i class="bi bi-trash3-fill"></i></button>
                                             </form>
                                         @else
                                             {{-- 編輯按鈕（鉛筆圖示）。 --}}
