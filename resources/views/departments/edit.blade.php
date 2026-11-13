@@ -9,7 +9,7 @@
 @section('content')
     {{-- 窄版容器：限制表單最大寬度，大螢幕上才不會被拉得太寬。 --}}
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('departments.form.edit_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('departments.form.edit_title') }}</h1>
 
         <form method="POST" action="{{ route('departments.update', $department) }}">
             {{-- 表單防偽 token（CSRF）：Laravel 要求所有 POST 表單都要有，沒有會被擋下。 --}}

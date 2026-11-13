@@ -3,7 +3,7 @@
 @section('title', '回報保養結果')
 
 @section('content')
-    <h1 class="h3 mb-3">回報保養結果</h1>
+    <h1 data-modal-hide class="tb-title mb-3">回報保養結果</h1>
 
     <div class="card mb-3">
         <div class="card-body">
@@ -15,7 +15,9 @@
 
     <form action="{{ route('maintenance-orders.results.store', $order) }}" method="POST">
         @csrf
-        <div class="tb-form-card">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white form-section-title"><i class="bi bi-clipboard-check me-2"></i>保養結果</div>
+            <div class="card-body">
 
         <div class="mb-3">
             <label class="form-label">保養結果 <span class="text-danger">*</span></label>
@@ -70,10 +72,11 @@
             @include('parts._usage-picker', ['parts' => $parts])
         </div>
         </div>
+        </div>
 
         {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
         <div class="d-flex justify-content-end gap-2 mt-3">
-            <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary">取消</a>
+            <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>取消</a>
             <button type="submit" class="btn btn-primary">送出</button>
         </div>
     </form>

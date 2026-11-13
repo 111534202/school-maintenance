@@ -63,7 +63,7 @@
             <tbody>
                 @foreach ($orders as $order)
                     @php [$statusText, $statusColor] = $order->statusLabel(); @endphp
-                    <tr data-modal-frame-href="{{ route('maintenance-orders.show', $order) }}" data-modal-title="保養工單詳細" data-modal-size="xl" tabindex="0" role="link">
+                    <tr data-modal-frame-href="{{ route('maintenance-orders.show', $order) }}" data-modal-title="保養紀錄" data-modal-size="xl" tabindex="0" role="link">
                         {{-- 設備編號：點字換頁到設備履歷；點這一列的其他地方在對話框打開工單詳細。 --}}
                         <td class="fw-semibold">
                             @if ($order->device)

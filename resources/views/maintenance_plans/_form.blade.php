@@ -1,6 +1,8 @@
 @csrf
 
-<div class="tb-form-card">
+<div class="card shadow-sm">
+    <div class="card-header bg-white form-section-title"><i class="bi bi-calendar-check me-2"></i>計畫內容</div>
+    <div class="card-body">
 <div>
 <div class="mb-3">
     <label for="name" class="form-label">計畫名稱 <span class="text-danger">*</span></label>
@@ -83,9 +85,10 @@
 </div>
 </div>
 </div>
+</div>
 
 {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
 <div class="d-flex justify-content-end gap-2 mt-3">
-    <a href="{{ route('maintenance-plans.index') }}" class="btn btn-outline-secondary">取消</a>
-    <button type="submit" class="btn btn-primary">儲存</button>
+    <a href="{{ route('maintenance-plans.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>取消</a>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>儲存</button>
 </div>

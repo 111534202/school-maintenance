@@ -64,7 +64,7 @@ return [
         'edit_title' => '編輯用戶',
         'section_account' => '帳號資料',
         'section_contact' => '聯絡與所屬',
-        'section_password' => '登入密碼',
+        'section_password' => '密碼設定',
         'section_reset_password' => '重設密碼',
         'account' => '帳號',
         'username_hint' => '3～30 個字元，限英文、數字、點、底線、連字號，建立後仍可修改。',

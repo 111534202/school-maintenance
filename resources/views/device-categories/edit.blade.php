@@ -7,11 +7,13 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('device_categories.form.edit_title') }}</h1>
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                {{-- 表單送出到 PUT /device-categories/{id}（DeviceCategoryController::update）。 --}}
-                <form method="POST" action="{{ route('device-categories.update', $category) }}">
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('device_categories.form.edit_title') }}</h1>
+        {{-- 表單送出到 PUT /device-categories/{id}（DeviceCategoryController::update）。 --}}
+        <form method="POST" action="{{ route('device-categories.update', $category) }}">
+            {{-- 欄位放在有標題列的外框裡；「取消／儲存」在外框下面、靠右（跟其他表單一致）。 --}}
+            <div class="card shadow-sm">
+                <div class="card-header bg-white form-section-title"><i class="bi bi-tags me-2"></i>類別資料</div>
+                <div class="card-body p-4">
                     {{-- 表單防偽 token（CSRF）：Laravel 要求所有 POST 表單都要有。 --}}
                     @csrf
                     {{-- 用隱藏欄位把 POST 偽裝成 PUT（Laravel 的更新慣例）。 --}}
@@ -21,12 +23,12 @@
                         {{-- old(欄位, 預設值)：驗證失敗導回時帶回剛輸入的；否則顯示目前的類別名稱。 --}}
                         <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $category->name) }}" required autofocus>
                     </div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-secondary" href="{{ route('device-categories.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
-                        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <a class="btn btn-outline-secondary" href="{{ route('device-categories.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
+            </div>
+        </form>
     </div>
 @endsection

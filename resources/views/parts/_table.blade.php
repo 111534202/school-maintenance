@@ -14,7 +14,7 @@
                 <th class="text-end text-nowrap">目前庫存</th>
                 <th class="text-end text-nowrap">安全庫存</th>
                 {{-- 庫存狀態與「查看履歷」只跟內容一樣寬（tb-col-fit），兩個貼在一起放在最右邊。 --}}
-                <th class="tb-col-fit">庫存狀態</th>
+                <th class="tb-col-fit text-center">庫存狀態</th>
                 <th class="text-end tb-col-fit">操作</th>
             </tr>
         </thead>
@@ -30,7 +30,7 @@
                     <td class="text-end text-nowrap tb-num">{{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}</td>
                     <td class="text-end text-nowrap tb-num {{ $part->isLowStock() ? 'fw-bold tb-c-danger' : '' }}">{{ $part->withUnit($part->current_stock) }}</td>
                     <td class="text-end text-nowrap tb-num tb-muted">{{ $part->withUnit($part->safety_stock) }}</td>
-                    <td class="tb-col-fit">
+                    <td class="tb-col-fit text-center">
                         @if ($part->isLowStock())
                             <span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>
                         @else

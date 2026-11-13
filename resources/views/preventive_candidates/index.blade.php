@@ -148,7 +148,7 @@
                                 </form>
                                 <form method="POST" action="{{ route('preventive-candidates.reject', $candidate) }}" class="d-inline">
                                     @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">駁回</button>
+                                    <button type="submit" class="btn btn-sm btn-danger">駁回</button>
                                 </form>
                             @endif
                         </td>

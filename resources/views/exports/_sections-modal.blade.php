@@ -38,8 +38,8 @@
 
                         <div class="table-responsive" data-export-preview>
                             {{-- data-no-onion：預覽用的表格，不要變成清單。 --}}
-                            <table class="table table-bordered table-sm align-middle mb-0 small" data-no-onion>
-                                <thead class="table-light">
+                            <table class="tb-table tb-table-sm align-middle mb-0" data-no-onion>
+                                <thead>
                                     <tr>
                                         @foreach ($section['headings'] as $i => $heading)
                                             <th class="text-nowrap {{ in_array($i, $section['numeric'], true) ? 'text-end' : '' }}" data-export-cell="{{ $i }}">{{ $heading }}</th>

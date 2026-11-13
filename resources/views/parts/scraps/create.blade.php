@@ -5,17 +5,19 @@
 @section('title', '登記報廢：' . $part->part_code)
 
 @section('content')
-    <h1 class="h3 mb-1">登記報廢</h1>
+    <h1 data-modal-hide class="tb-title mb-1">登記報廢</h1>
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
-    <div style="max-width: 560px;">
+    <div>
         @if ($part->current_stock < 1)
             <div class="alert alert-warning mb-3">目前沒有庫存，不能登記報廢。</div>
         @endif
 
         <form method="POST" action="{{ route('parts.scraps.store', $part) }}">
             @csrf
-            <div class="tb-form-card">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white form-section-title"><i class="bi bi-trash3 me-2"></i>報廢資料</div>
+                <div class="card-body">
 
             <div class="row g-3">
                 <div class="col-sm-4">
@@ -72,10 +74,11 @@
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             </div>
+            </div>
 
             {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
             <div class="d-flex justify-content-end gap-2 mt-3">
-                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
+                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>取消</a>
                 <button type="submit" class="btn btn-danger" @disabled($part->current_stock < 1)>登記報廢並扣除庫存</button>
             </div>
         </form>

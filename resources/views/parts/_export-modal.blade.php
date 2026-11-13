@@ -33,8 +33,8 @@
                 </div>
                 <div class="table-responsive">
                     {{-- data-no-onion：這張是預覽用的表格，不要變成清單。 --}}
-                    <table class="table table-bordered table-sm align-middle mb-0" data-no-onion>
-                        <thead class="table-light">
+                    <table class="tb-table tb-table-sm align-middle mb-0" data-no-onion>
+                        <thead>
                             <tr>
                                 <th class="text-center" style="width: 2.5rem;">
                                     <input class="form-check-input" type="checkbox" data-export-all checked aria-label="全選／全不選零件">

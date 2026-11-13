@@ -7,7 +7,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('classrooms.form.edit_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('classrooms.form.edit_title') }}</h1>
         {{-- 外框只包欄位（在 _form 裡），「取消／儲存」在外框下面、靠右。 --}}
         {{-- 表單送出到 PUT /classrooms/{id}（ClassroomController::update）。 --}}
         <form method="POST" action="{{ route('classrooms.update', $classroom) }}">

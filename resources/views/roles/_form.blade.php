@@ -16,7 +16,8 @@
     <div class="card-body">
         {{-- 編輯系統內建身分時，顯示提醒：代碼與刪除受限，但名稱、說明、權限可以調整。 --}}
         @if ($role?->is_system)
-            <div class="alert alert-info py-2"><i class="bi bi-info-circle me-1"></i>{{ __('roles.form.system_notice') }}</div>
+            {{-- 說明文字一律用灰字（不用藍色提示框）。 --}}
+            <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>{{ __('roles.form.system_notice') }}</p>
         @endif
         <div class="row g-3">
             <div class="col-md-5">
@@ -42,14 +43,14 @@
 @foreach ($groups as $groupKey => $permissionKeys)
     {{-- data-permission-group：標記這張卡片屬於哪個分組，下面的「全選／全部取消」用它找到同組的開關。 --}}
     <div class="card shadow-sm mb-3" data-permission-group="{{ $groupKey }}">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <span class="form-section-title">{{ __('permissions.groups.' . $groupKey) }}</span>
+        <div class="card-header bg-white form-section-title d-flex justify-content-between align-items-center">
+            <span>{{ __('permissions.groups.' . $groupKey) }}</span>
             {{-- 管理員不需要「全選／取消」（永遠全開），其他身分才顯示。 --}}
             @unless ($isAdminRole)
-                <span class="d-inline-flex gap-2 small">
-                    <a href="#" class="text-decoration-none" data-permission-all="{{ $groupKey }}">{{ __('roles.form.select_all') }}</a>
-                    <span class="text-muted">|</span>
-                    <a href="#" class="text-decoration-none" data-permission-none="{{ $groupKey }}">{{ __('roles.form.clear_all') }}</a>
+                {{-- 底色是米色，白字看不清楚：改成白底的小按鈕，比原本的綠色文字明顯。 --}}
+                <span class="d-inline-flex gap-2">
+                    <a href="#" class="btn btn-sm btn-light tb-chip-btn" data-permission-all="{{ $groupKey }}">{{ __('roles.form.select_all') }}</a>
+                    <a href="#" class="btn btn-sm btn-light tb-chip-btn" data-permission-none="{{ $groupKey }}">{{ __('roles.form.clear_all') }}</a>
                 </span>
             @endunless
         </div>
@@ -76,7 +77,7 @@
 @endforeach
 </div>
 
-<div class="d-flex justify-content-end gap-2 mb-4">
+<div class="d-flex justify-content-end gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="{{ route('roles.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

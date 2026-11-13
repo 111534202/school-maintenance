@@ -6,7 +6,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-person-plus me-2"></i>{{ __('users.form.create_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('users.form.create_title') }}</h1>
 
         {{-- 表單送出到 POST /users（UserController::store）。 --}}
         <form method="POST" action="{{ route('users.store') }}">

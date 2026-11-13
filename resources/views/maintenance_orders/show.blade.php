@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', '保養工單詳細')
+@section('title', '保養紀錄')
 
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">保養工單詳細</h1>
+        <h1 data-modal-hide class="tb-title mb-0">保養紀錄</h1>
         <div>
             @if (! $maintenanceOrder->result)
                 @can('maintenance.report')
@@ -60,8 +60,8 @@
     @if ($maintenanceOrder->result)
         @php [$resultText, $resultColor] = $maintenanceOrder->result->resultLabel(); @endphp
         <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>保養結果</span>
+            <div class="card-header bg-white form-section-title d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard-check me-2"></i>保養結果</span>
                 <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整詳細</a>
             </div>
             <div class="card-body">
@@ -102,7 +102,7 @@
 
     @if ($maintenanceOrder->maintenancePlan?->maintenanceItems->isNotEmpty())
         <div class="card mt-3">
-            <div class="card-header">來源計畫包含的保養項目</div>
+            <div class="card-header bg-white form-section-title"><i class="bi bi-list-check me-2"></i>來源計畫包含的保養項目</div>
             <ul class="list-group list-group-flush">
                 @foreach ($maintenanceOrder->maintenancePlan->maintenanceItems as $item)
                     <li class="list-group-item">

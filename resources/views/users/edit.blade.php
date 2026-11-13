@@ -6,8 +6,8 @@
 
 @section('content')
     <div class="page-narrow">
-        <div class="page-header mb-4">
-            <h1 class="h4 mb-0"><i class="bi bi-person-gear me-2"></i>{{ __('users.form.edit_title') }}</h1>
+        <div class="page-header mb-3">
+            <h1 data-modal-hide class="tb-title mb-0">{{ __('users.form.edit_title') }}</h1>
             <span class="text-muted small">
                 {{ __('users.form.created_at') }}：{{ $user->created_at->format('Y-m-d H:i') }}
                 {{ __('users.form.last_login_at') }}：{{ $user->last_login_at?->format('Y-m-d H:i') ?? __('users.never_logged_in') }}
@@ -26,9 +26,9 @@
         {{-- 重設密碼：獨立的表單，只改密碼，不會動到上面的其他資料。 --}}
         <form method="POST" action="{{ route('users.reset-password', $user) }}">
             @csrf
-            {{-- 標題在外框上面；外框只包新密碼、確認密碼與說明文字。 --}}
-            <h2 class="h6 form-section-title mb-2"><i class="bi bi-key me-2"></i>{{ __('users.form.section_reset_password') }}</h2>
+            {{-- 跟上面的「帳號資料」「聯絡與所屬」一樣：標題放在外框裡的標題列（底色填滿），下面是新密碼、確認密碼與說明文字。 --}}
             <div class="card shadow-sm mb-3">
+                <h2 class="card-header bg-white form-section-title mb-0"><i class="bi bi-key me-2"></i>{{ __('users.form.section_reset_password') }}</h2>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -47,8 +47,8 @@
                 </div>
             </div>
             {{-- 送出重設密碼的按鈕（紅色邊框提醒這是會讓對方被強制登出的動作）：放在外框下面，外框只包密碼欄位與說明。 --}}
-            <div class="d-flex justify-content-end mb-4">
-                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-key me-1"></i>{{ __('users.actions.reset_password') }}</button>
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-danger" type="submit"><i class="bi bi-key me-1"></i>{{ __('users.actions.reset_password') }}</button>
             </div>
         </form>
     </div>

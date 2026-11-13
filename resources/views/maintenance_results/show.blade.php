@@ -6,11 +6,11 @@
     @php [$resultText, $resultColor] = $result->resultLabel(); @endphp
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">保養結果詳細</h1>
+        <h1 data-modal-hide class="tb-title mb-0">保養結果詳細</h1>
     </div>
 
     <div class="card mb-3">
-        <div class="card-header">來源工單</div>
+        <div class="card-header bg-white form-section-title"><i class="bi bi-clipboard me-2"></i>來源工單</div>
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">工單編號</dt>
@@ -34,7 +34,7 @@
     </div>
 
     <div class="card mb-3">
-        <div class="card-header">保養結果</div>
+        <div class="card-header bg-white form-section-title"><i class="bi bi-clipboard-check me-2"></i>保養結果</div>
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">結果</dt>
@@ -75,13 +75,13 @@
 
     {{-- 保養用料：一次用料跨兩個採購批次時會分成兩列，各自顯示那一批的單價（先進先出）。 --}}
     <div class="card mb-3">
-        <div class="card-header">使用零件</div>
+        <div class="card-header bg-white form-section-title"><i class="bi bi-box-seam me-2"></i>使用零件</div>
         @if ($result->partUsages->isEmpty())
             <div class="card-body text-muted small">這次保養沒有使用零件。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
-                    <thead class="table-light">
+                <table class="tb-table align-middle mb-0">
+                    <thead>
                         <tr><th>零件編號</th><th>零件</th><th class="text-end">數量</th><th class="text-end">單價</th><th class="text-end">小計</th></tr>
                     </thead>
                     <tbody>
@@ -101,7 +101,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header">附件</div>
+        <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>附件</div>
         <div class="card-body text-muted small">
             共用附件機制尚未建立（規劃在本週之後）。等正式納入後，這裡會沿用該共用機制顯示這筆保養結果的附件，
             不會另外做一套附件上傳邏輯。

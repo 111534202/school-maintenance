@@ -3,7 +3,7 @@
 @section('title', '修改保養計畫')
 
 @section('content')
-    <h1 class="h3 mb-3">修改保養計畫</h1>
+    <h1 data-modal-hide class="tb-title mb-3">修改保養計畫</h1>
 
     <form action="{{ route('maintenance-plans.update', $plan) }}" method="POST">
         @method('PUT')

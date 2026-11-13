@@ -34,7 +34,7 @@
     --tb-accent-faint: #EEF4F0;
     --tb-warn-bg: #FBEFD5;
     --tb-warn-text: #7A4F00;
-    --tb-danger: #A3301F;
+    --tb-danger: #DC3545;   /* 跟狀態標籤、紅色按鈕同一種紅（Bootstrap danger） */
     --tb-danger-bg: #FDF1EF;
     --tb-danger-border: #F1CFC9;
     --tb-zebra: #FBFAF6;
@@ -118,7 +118,7 @@ body.tb-body {
 }
 .tb-navbar .tb-nav-btn[data-page-back] { font-size: 1.1rem; }
 .tb-navbar .tb-nav-btn[data-page-back] .bi { font-size: 1.25rem; }
-.tb-navbar .navbar-brand { font-size: 1.2rem !important; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
+.tb-navbar .navbar-brand { font-size: 1.25rem !important; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
 .tb-navbar .tb-nav-user { font-size: 1.05rem; }
 .tb-navbar .bi-person-circle { font-size: 1.6rem !important; }
 @media (min-width: 768px) { .tb-navbar .navbar-brand { font-size: 1.5rem !important; } }
@@ -144,6 +144,7 @@ body.tb-body {
 }
 .tb-body .btn-outline-primary {
     --bs-btn-color: #2F6B4F; --bs-btn-border-color: #2F6B4F;
+    --bs-btn-hover-color: #FFFFFF; --bs-btn-active-color: #FFFFFF;
     --bs-btn-hover-bg: #2F6B4F; --bs-btn-hover-border-color: #2F6B4F;
     --bs-btn-active-bg: #214D39; --bs-btn-active-border-color: #214D39;
     --bs-btn-disabled-color: #2F6B4F; --bs-btn-disabled-border-color: #2F6B4F;
@@ -206,8 +207,8 @@ body.tb-body {
 }
 /* 在對話框（iframe，?modal=1）裡：最下面不再多留白，對話框才會剛好包住內容。 */
 .tb-embedded .tb { padding-bottom: 0; }
-.tb a { color: var(--tb-accent); }
-.tb a:hover { color: var(--tb-accent-dark); }
+.tb a:not(.btn):not(.tb-btn):not(.badge) { color: var(--tb-accent); }
+.tb a:not(.btn):not(.tb-btn):not(.badge):hover { color: var(--tb-accent-dark); }   /* 按鈕樣式的連結滑過時用按鈕自己的顏色（實心底＋白字） */
 
 /* ---- 頁首 ---- */
 /* 頁首：標題在左、按鈕（統計圖表、新增…）在右上角，手機也排在同一行（標題太長時標題自己換行，按鈕不會掉到下一行）。 */
@@ -241,6 +242,10 @@ body.tb-body {
 .tb .tb-btn-dark:hover { background: #000000; color: #FFFFFF; }
 .tb .tb-btn-danger-outline { background: var(--tb-surface); color: var(--tb-danger); border-color: var(--tb-danger); }
 .tb .tb-btn-danger-outline:hover { background: var(--tb-danger-bg); color: var(--tb-danger); }
+/* 紅底白字的頁首按鈕（例如「目前低庫存零件 N」）；裡面的數字用白底紅字的小圓。 */
+.tb .tb-btn-danger { background: var(--tb-danger); color: #FFFFFF; border-color: var(--tb-danger); }
+.tb .tb-btn-danger:hover { background: #BB2D3B; color: #FFFFFF; border-color: #BB2D3B; }
+.tb .tb-btn-count { display: inline-block; min-width: 1.6em; padding: 1px 8px; border-radius: 999px; background: #FFFFFF; color: var(--tb-danger); font-size: .8125rem; font-weight: 700; line-height: 1.4; text-align: center; }
 .tb .tb-btn-sm { min-height: 36px; padding: 0 14px; font-size: 0.875rem; }
 
 /* ---- 卡片 ---- */
@@ -289,12 +294,12 @@ body.tb-body {
 
 /* ---- 表格 ---- */
 .tb-table-wrap { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 18px; overflow: hidden; }
-.tb .tb-table { width: 100%; margin: 0; border-collapse: collapse; font-size: 0.95rem; color: var(--tb-text); }
-.tb .tb-table > thead > tr > th {
+.tb-body .tb-table { width: 100%; margin: 0; border-collapse: collapse; font-size: 0.95rem; color: var(--tb-text); }
+.tb-body .tb-table > thead > tr > th {
     padding: 15px 20px; font-weight: 700; text-align: left; white-space: nowrap;
     border-bottom: 2px solid var(--tb-border); background: var(--tb-surface);
 }
-.tb .tb-table > thead > tr > th {
+.tb-body .tb-table > thead > tr > th {
     /* 表頭凍結在最上面：表格區自己捲動時（一個畫面放不下、fit-screen），往下捲表頭依然顯示。
        border-collapse 的框線不會跟著固定，所以表頭下方的線改用 box-shadow 畫。 */
     position: sticky; top: 0; z-index: 2;
@@ -306,11 +311,11 @@ body.tb-body {
 .tb-body .tb-table-wrap[data-no-fit] { overflow: clip !important; }
 .tb-body .tb-table-wrap[data-no-fit] > .table-responsive { overflow: visible; }
 .tb-body:not(.tb-embedded) .tb-table-wrap[data-no-fit] .tb-table > thead > tr > th { top: 56px; }
-.tb .tb-table > tbody > tr > td { padding: 14px 20px; vertical-align: middle; border: 0; }
-.tb .tb-table > tbody > tr:nth-child(even) > td { background: var(--tb-zebra); }
-.tb .tb-table.tb-table-hover > tbody > tr:hover > td { background: var(--tb-accent-faint); }
-.tb .tb-table .text-end { text-align: right; }
-.tb .tb-table .text-center { text-align: center; }
+.tb-body .tb-table > tbody > tr > td { padding: 14px 20px; vertical-align: middle; border: 0; }
+.tb-body .tb-table > tbody > tr:nth-child(even) > td { background: var(--tb-zebra); }
+.tb-body .tb-table.tb-table-hover > tbody > tr:hover > td { background: var(--tb-accent-faint); }
+.tb-body .tb-table .text-end { text-align: right; }
+.tb-body .tb-table .text-center { text-align: center; }
 .tb-num { font-variant-numeric: tabular-nums; }
 .tb-code { font-weight: 700; color: var(--tb-accent); white-space: nowrap; }
 .tb-muted { color: var(--tb-muted); }
@@ -369,18 +374,18 @@ body.tb-body {
 .tb .tb-filter.filter-bar > .tb-filter-actions,
 .tb .tb-filter.filter-bar > .d-inline-flex { flex: 0 0 auto !important; align-self: flex-end; }
 /* 表格裡被停用、已刪除的列：淡一點。 */
-.tb .tb-table > tbody > tr.tb-row-muted > td { color: var(--tb-muted); background: #F1EFEA; }
-.tb .tb-table > tbody > tr.table-danger > td { background: var(--tb-danger-bg); }
-/* 組員頁面用程式組出來的 Bootstrap 徽章（text-bg-success 等，例如報修狀態、設備狀態、工單狀態）：在風格 B 的表格與清單裡改成膠囊樣式。 */
-.tb :is(.tb-table, .onion-list) .badge[class*="text-bg-"] { padding: 4px 12px; border-radius: 999px; font-size: 0.8125rem; font-weight: 500; }
-.tb :is(.tb-table, .onion-list) .badge.text-bg-success { background: var(--tb-accent-soft) !important; color: #24553E !important; }
-.tb :is(.tb-table, .onion-list) .badge.text-bg-danger { background: var(--tb-danger-bg) !important; color: var(--tb-danger) !important; font-weight: 700; }
-.tb :is(.tb-table, .onion-list) .badge.text-bg-warning { background: var(--tb-warn-bg) !important; color: var(--tb-warn-text) !important; }
-.tb :is(.tb-table, .onion-list) .badge.text-bg-primary,
-.tb :is(.tb-table, .onion-list) .badge.text-bg-info { background: #E3EEF7 !important; color: #24507A !important; }
-.tb :is(.tb-table, .onion-list) .badge.text-bg-secondary,
-.tb :is(.tb-table, .onion-list) .badge.text-bg-light,
-.tb :is(.tb-table, .onion-list) .badge.text-bg-dark { background: #ECEAE4 !important; color: #5C5A55 !important; }
+.tb-body .tb-table > tbody > tr.tb-row-muted > td { color: var(--tb-muted); background: #F1EFEA; }
+.tb-body .tb-table > tbody > tr.table-danger > td { background: var(--tb-danger-bg); }
+/* 狀態標籤（全站統一）：列表、清單、詳細頁都用同一種「實心深色底」的膠囊——
+   不管是 Bootstrap 徽章（text-bg-success…，組員程式組出來的報修／設備／工單狀態）還是風格 B 的 tb-pill-*，
+   形狀（圓角、留白、字級）與顏色都一樣：成功＝綠底白字、危險＝紅底白字、警告＝黃底深字、資訊＝藍底白字、其他＝灰底白字。 */
+.tb-body .app-content :is(.badge[class*="text-bg-"], .tb-pill) { display: inline-block; padding: 4px 12px; border-radius: 999px;
+    font-size: 0.8125rem; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.tb-body .app-content .tb-pill-ok { background-color: RGBA(var(--bs-success-rgb), 1); color: #FFFFFF; }
+.tb-body .app-content .tb-pill-danger { background-color: RGBA(var(--bs-danger-rgb), 1); color: #FFFFFF; }
+.tb-body .app-content .tb-pill-warn { background-color: RGBA(var(--bs-warning-rgb), 1); color: #000000; }
+.tb-body .app-content .tb-pill-info { background-color: #2F6FA8; color: #FFFFFF; }
+.tb-body .app-content .tb-pill-muted { background-color: RGBA(var(--bs-secondary-rgb), 1); color: #FFFFFF; }
 /* 零件卡片（零件庫存列表、低庫存視窗）：零件編號在左，名稱｜規格｜庫存狀態 ＋「>」靠右（跟空間申請一樣）。 */
 .tb-list-card.tb-part-card, .tb a.tb-list-card.tb-part-card {
     grid-template-columns: minmax(0, 1fr) var(--tb-col-part-name) var(--tb-col-part-spec) 116px;
@@ -416,10 +421,10 @@ tr[data-modal-frame-href] { cursor: pointer; }
 @media (max-width: 575.98px) { .tb-dl.tb-dl-roomy { column-gap: 1.25rem; } }
 /* 表格裡只跟內容一樣寬的欄（例如「操作」：分隔線剛好在最左邊的按鈕旁邊）。 */
 .tb-col-fit { width: 1%; white-space: nowrap; }
-.tb-dl > dt { font-weight: 700; white-space: nowrap; }
-.tb-dl > dd { margin: 0; min-width: 0; }
+.tb-dl > dt { font-weight: 400; color: var(--tb-muted); white-space: nowrap; line-height: 26px; }   /* 跟其他詳細頁的名稱／內容清單一樣：名稱灰色一般粗細 */
+.tb-dl > dd { margin: 0; min-width: 0; line-height: 26px; }
 /* 窄畫面：內容固定靠右；寬畫面：內容緊接在名稱右邊。 */
-@media (max-width: 575.98px) { .tb-dl > dd { text-align: right; } .tb-dl .tb-clip { margin-left: auto; } }
+@media (max-width: 575.98px) { .tb-dl > dd { text-align: left; } }
 .tb-dl > dd.tb-dl-wrap { overflow-wrap: anywhere; }
 .tb-clip { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* 占滿整列的補充說明（例如平均單價下面的「用料成本依先進先出…」）：緊接在上一項下面、靠左（寬窄畫面都一樣）。 */
@@ -596,6 +601,7 @@ tr[data-modal-frame-href] { cursor: pointer; }
 .tb-body .card > .card-header { border-bottom: var(--tb-card-head-rule) solid var(--tb-border); }
 /* 卡片下面是表格時：標題列右邊的按鈕（新增採購、登記報廢…）跟表格最後一欄的按鈕右緣對齊（表格儲存格左右留 .5rem）；變成清單時不套用。 */
 .tb-body .card:has(> .table-responsive:not([hidden]) > .table) > .card-header { padding-right: .5rem; }
+.tb-body .card:has(> .table-responsive:not([hidden]) > .tb-table) > .card-header { padding-left: 20px; padding-right: 20px; }
 .tb-body .card > .onion-list, .tb-body .tb-table-wrap > .onion-list { border: 0; }
 
 /* 從詳細對話框裡再打開的視窗（附件預覽、修改採購…）要蓋在詳細對話框上面。 */
@@ -605,9 +611,10 @@ tr[data-modal-frame-href] { cursor: pointer; }
 /* 在畫面中（對話框）開啟的表單頁（網址帶 ?modal=1，見 App\Http\Middleware\EmbeddedModal）：
    白底、不要頁面大標題（對話框已經有標題）、表單卡片不要外框，寬度填滿對話框。 */
 body.tb-body.tb-embedded { background: var(--tb-surface); }
-.tb-embedded .app-content { padding: 20px 24px !important; }
+.tb-embedded .app-content { padding: 16px 24px !important;   /* 上下都 16px：跟框與按鈕之間、按鈕下面的間隔一樣 */ }
 .tb-embedded .app-content > h1:first-of-type { display: none; }
-.tb-embedded .app-content > .card { max-width: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; background: transparent !important; border-radius: 0; }
+/* 對話框裡的卡片照常有外框（跟整頁開啟時一樣），只拿掉寬度上限。 */
+.tb-embedded .app-content > .card { max-width: none !important; }
 /* 保養項目／計畫／結果的表單外框：跟其他表單一樣用細線框（不是陰影），在對話框裡也保留。 */
 .tb-body .tb-form-card { background: var(--tb-surface); border: 1px solid var(--tb-border); border-radius: 16px; padding: 24px; }
 .tb-body .tb-form-card > :last-child { margin-bottom: 0 !important; }
@@ -645,7 +652,7 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 }
 /* 對話框裡的表單（手機尤其明顯）：最後一排「取消／儲存」下面不再多留一大段空白。
    表單最後的按鈕列不加下邊距（原本的 mb-3／mb-4），內容區下方留白也縮小。 */
-.tb-embedded .app-content { padding-bottom: 12px !important; }
+.tb-embedded .app-content { padding-bottom: 16px !important; }
 .tb-embedded .app-content form:not(:has(~ :not(script, style, dialog, input[type="hidden"])))
     > div:has(> [type="submit"]):not(:has(~ :not(input[type="hidden"], script))) { margin-bottom: 0 !important; }
 /* 對話框標題旁的操作按鈕（從列表那一列的操作欄複製過來，見 layouts/app.blade.php 的 #frameModalActions）。 */
@@ -654,8 +661,14 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 #frameModal .frame-modal-actions[hidden] { display: none; }
 #frameModal .frame-modal-actions form { display: inline-flex; margin: 0; }
 #frameModal .frame-modal-actions + .btn-close { margin-left: .25rem; }
-/* 漢堡選單上面的「選單」字大一點。 */
-#sidebarOffcanvas .offcanvas-title { font-size: 1.3rem; font-weight: 700; }
+/* 漢堡選單上面的「選單」：跟頂端列的系統名稱同一種字、同樣大小（手機 20px、電腦 24px），
+   標題列跟頂端列一樣高（56px），下面畫一條線，選單第一列剛好從頂端列的下緣開始。 */
+#sidebarOffcanvas .offcanvas-header { height: 56px; padding: 0 1rem; border-bottom: 1px solid var(--tb-border); }
+#sidebarOffcanvas .offcanvas-title { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.04em; line-height: 1.2; }
+@media (min-width: 768px) { #sidebarOffcanvas .offcanvas-title { font-size: 1.5rem; } }
+/* 第二層（例如主檔）上面的「返回　主檔」：跟其他列一樣高、不再多一段空白，底色淡一點，看得出是標題列。 */
+#sidebarOffcanvas .drill-top { padding: 0 .5rem; min-height: 0; background: var(--tb-zebra, #FAF8F4); border-bottom-color: var(--tb-border); }
+#sidebarOffcanvas .drill-top .drill-back { min-height: 3rem; }
 /* 可以輸入也可以下拉選的欄位（input[data-suggest]，程式在 layouts/app.blade.php）。 */
 .tb-suggest { position: relative; display: block; width: 100%; }
 .tb-suggest-list { position: absolute; z-index: 1060; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto;
@@ -671,3 +684,101 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 #frameModalTop .modal-dialog { max-width: min(94vw, 640px); }
 #frameModalTop .modal-dialog.modal-lg { max-width: min(94vw, 860px); }
 #frameModalTop .modal-dialog.modal-xl { max-width: min(94vw, 1140px); }
+/* 表單分區的標題列（用戶的帳號資料、聯絡與所屬、密碼設定／重設密碼，身分、報修的分區也一樣）：底色填滿外框的顏色。 */
+.tb-body .card > .card-header.form-section-title { background: var(--tb-border) !important; border-bottom-color: var(--tb-border); color: var(--tb-ink, #212529); }
+/* 分區標題列一律同樣高：不管寫成 <div> 還是 <h2>（例如修改用戶的「重設密碼」），字級、行高、上下留白都一樣。 */
+.tb-body .card > .card-header.form-section-title { margin: 0; padding: 10px 16px; font-size: .95rem; font-weight: 600; line-height: 1.5; }
+/* 手機上打開對話框：Bootstrap 會在右邊多留一條捲軸的寬度，對話框左右邊距不一樣（右邊比較寬）。
+   這裡的頁面捲動已經鎖住，不需要補那條寬度：左右都一樣留 8px，對話框置中對齊。 */
+.tb-body #frameModal, .tb-body #frameModalTop { padding-left: 0 !important; padding-right: 0 !important; }
+@media (max-width: 575.98px) {
+    .tb-body #frameModal .modal-dialog, .tb-body #frameModalTop .modal-dialog { margin-left: 8px; margin-right: 8px; max-width: none !important; width: auto; }
+}
+
+/* 對話框標題列：標題、標題旁的圓形按鈕（修改、停用、刪除）、右上角的 ✕ 一樣高（40px），上下置中對齊；
+   標題字 32px（太長時結尾變成「…」）；✕ 可以按的範圍跟圓形按鈕一樣是 40px，顯示的 ✕ 放大到 26px。上層對話框（#frameModalTop）也一樣。 */
+.tb-body #frameModal .modal-header, .tb-body #frameModalTop .modal-header { align-items: center; }
+.tb-body #frameModal .modal-title, .tb-body #frameModalTop .modal-title { font-size: 2rem; line-height: 40px; margin: 0; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-body #frameModal .frame-modal-actions > *, .tb-body #frameModal .frame-modal-actions .btn { height: 40px; }
+/* 標題旁只有圖示的按鈕（修改、停用、刪除）：固定 40×40 的正圓，寬螢幕也不會變成橢圓。 */
+.tb-body #frameModal .frame-modal-actions .icon-btn { width: 40px; height: 40px; padding: 0; border-radius: 50%; flex: 0 0 40px; }
+.tb-body #frameModal .modal-header .btn-close, .tb-body #frameModalTop .modal-header .btn-close {
+    width: 40px; height: 40px; padding: 0; margin: 0 0 0 auto; flex: 0 0 40px; background-size: 1.625rem; box-sizing: border-box; }
+.tb-body #frameModal .modal-header .frame-modal-actions:not([hidden]) + .btn-close { margin-left: .25rem; }
+
+/* 寬螢幕的捲軸位置（html 的 scrollbar-gutter: stable）：打開對話框時捲軸雖然藏起來，右邊仍保留捲軸的寬度，
+   對話框看起來偏左（右邊空比較多）。左邊補同樣的寬度（--tb-sbw，由 layouts/app.blade.php 量出來），左右就一樣寬。
+   手機、Mac 這類捲軸浮在畫面上的，寬度是 0，不受影響。 */
+.tb-body #frameModal, .tb-body #frameModalTop { padding-left: var(--tb-sbw, 0px) !important; }
+
+/* 外框按鈕（鉛筆、停用、刪除…）滑鼠移上去變成實心底色時，圖示一律變白色（原本黃色的停用會變黑色）。 */
+.tb-body .btn-outline-warning, .tb-body .btn-outline-danger, .tb-body .btn-outline-success, .tb-body .btn-outline-secondary {
+    --bs-btn-hover-color: #FFFFFF; --bs-btn-active-color: #FFFFFF; }
+/* 詳細頁裡比較擠的表格（報修詳細的用料、匯出視窗、AI 候選說明）：風格 B 表格，左右上下留白小一點。 */
+.tb-body .tb-table.tb-table-sm > thead > tr > th { padding: 10px 14px; }
+.tb-body .tb-table.tb-table-sm > tbody > tr > td { padding: 8px 14px; }
+/* 有標題列的表單外框：框裡最後一個欄位的下邊距拿掉，上下留白一樣。 */
+.tb-body .card:has(> .form-section-title) > .card-body > :last-child { margin-bottom: 0 !important; }
+/* 在對話框裡打開的頁面：頁面本身的大標題（新增教室、修改用戶、AI 預防保養設定…）跟對話框標題重複，不顯示。
+   有內容的標題（報修案件名稱、知識庫文章名稱、零件名稱、設備編號）沒有 data-modal-hide，照常顯示。
+   標題外面只包標題的那一層也一起藏起來，上面不留空白。 */
+.tb-embedded [data-modal-hide] { display: none !important; }
+.tb-embedded :is(.d-flex, .page-header, div):has(> [data-modal-hide]:only-child) { display: none !important; }
+/* 表格的表頭列（教室代碼、教室名稱…操作）：底色填滿外框的顏色，跟表單分區標題列一樣（全站的風格 B 表格）。 */
+.tb-body .tb-table > thead > tr > th { background: var(--tb-border); box-shadow: none; }
+/* 分區標題列（form-section-title：表單分區、知識庫文章的「常見故障現象／自助排除步驟」、身分的權限分組）：底色填滿外框的顏色。
+   零件履歷、設備履歷這種裡面有表格的詳細頁，卡片標題列不填滿（白底），讓表格的表頭列比較明顯。 */
+.tb-body .app-content .card > .card-header.form-section-title { background: var(--tb-border) !important; border-bottom-color: var(--tb-border); color: var(--tb-text); }
+.tb-body .app-content .card > .card-header:not(.form-section-title) { background: var(--tb-surface) !important; color: var(--tb-text); }
+.tb-body .form-section-title { color: var(--tb-text); }
+/* 標題列上的小按鈕（身分的「全選」「全部取消」）：白底、深色字、圓角，在米色底上看得清楚。 */
+.tb-body .tb-chip-btn { --bs-btn-bg: #FFFFFF; --bs-btn-border-color: #FFFFFF; --bs-btn-color: var(--tb-text);
+    --bs-btn-hover-bg: var(--tb-accent); --bs-btn-hover-border-color: var(--tb-accent); --bs-btn-hover-color: #FFFFFF;
+    border-radius: 999px; padding: 2px 12px; font-size: .8125rem; font-weight: 600; }
+/* 知識庫的查看次數：灰色、不能按的膠囊（眼睛圖示＋次數），形狀跟按鈕一樣。 */
+.tb-body .tb-view-count { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border: 1px solid #CFC7B8; border-radius: 999px;
+    color: var(--tb-muted); background: var(--tb-surface); font-size: .875rem; font-weight: 500; line-height: 1.4; cursor: default; user-select: none; white-space: nowrap; }
+/* 列表的第一欄（名稱、帳號、代碼…這一列是誰）一律粗體。 */
+.tb-body .tb-table-wrap[data-no-fit] .tb-table > tbody > tr > td:first-child { font-weight: 600; }
+/* 空間預約課表裡的「可預約」：格子很窄（尤其手機），不套用全站狀態標籤的固定留白與不換行，跟著格子縮小、需要時換行。 */
+.tb-body .app-content .tt-fit .badge { padding: .2em .5em; font-size: .75em; white-space: normal; max-width: 100%; line-height: 1.25; }
+/* 對話框本身不捲動（裡面的頁面自己捲動）：外層不會多出一條捲軸，寬度也不會因為捲軸出現／消失而來回跳。 */
+.tb-body #frameModal .modal-body, .tb-body #frameModalTop .modal-body { overflow: hidden; }
+/* 對話框裡的頁面還沒載入好：整個對話框先不顯示（灰色背景照常），載入好才出現。 */
+.tb-body .modal-content.tb-frame-loading { visibility: hidden; }
+/* 詳細頁的「名稱／內容」清單（dl.row：設備詳細、設備履歷、零件庫存、報修／保養詳細…）全站統一：
+   名稱一律灰色一般粗細、內容一律內文顏色同樣大小；行距一樣。
+   手機（窄螢幕）：名稱跟內容也排在同一行（名稱固定寬度在左、內容在右；內容太長就在右邊那一欄裡換行）。 */
+.tb-body .app-content dl.row > dt { color: var(--tb-muted); font-weight: 400; }
+.tb-body .app-content dl.row > dd { color: var(--tb-text); font-size: 1rem; margin-bottom: 0; }
+.tb-body .app-content dl.row { --bs-gutter-y: .5rem; }
+@media (max-width: 575.98px) {
+    /* 名稱欄的寬度＝最長的名稱（最多半列），不寫死；名稱放不下就自己換行，不會壓到右邊的內容。每一列的內容仍從同一個位置開始。 */
+    .tb-body .app-content dl.row { display: grid; grid-template-columns: fit-content(50%) minmax(0, 1fr); }
+    .tb-body .app-content dl.row > dt { width: auto; max-width: none; white-space: normal !important; overflow-wrap: anywhere; }
+    .tb-body .app-content dl.row > dd { width: auto; max-width: none; overflow-wrap: anywhere; }
+}
+
+/* 詳細頁的名稱／內容清單：每一列的高度跟狀態標籤（正常、庫存充足…）一樣（26px），有標籤的那一列不會比較高。 */
+.tb-body .app-content dl.row > dt, .tb-body .app-content dl.row > dd { line-height: 26px; }
+.tb-body .app-content dl.row > dd > .badge { vertical-align: top; }
+/* 表格裡有文字的小按鈕（查看履歷、回報結果、核准建單、駁回…）：高度跟同一列的狀態標籤一樣（26px），圓角膠囊。 */
+.tb-body .tb-table td .btn-sm:not(.icon-btn), .tb-body .tb-table td .tb-btn-sm { min-height: 0; padding: 3px 12px; font-size: .8125rem; line-height: 1.4; border-radius: 999px; }
+/* 有格線的表格（tb-table-bordered：AI 風險評估的評分項目）：每一格都有框線，連同表頭，看起來像一般表格。 */
+.tb-body .tb-table.tb-table-bordered { border: 1px solid #D9D2C3; border-collapse: separate; border-spacing: 0; border-radius: var(--bs-card-border-radius, 16px); overflow: hidden; }
+.tb-body .tb-table.tb-table-bordered > thead > tr > th, .tb-body .tb-table.tb-table-bordered > tbody > tr > td { border: 0; border-right: 1px solid #D9D2C3; border-bottom: 1px solid #D9D2C3; }
+.tb-body .tb-table.tb-table-bordered > * > tr > :last-child { border-right: 0; }
+.tb-body .tb-table.tb-table-bordered > tbody > tr:last-child > td { border-bottom: 0; }
+/* 卡片標題列一律同樣高（48px，剛好放得下右邊的小按鈕）：有按鈕（零件履歷的修改基本資料）和沒按鈕（設備履歷）的標題列一樣高。 */
+.tb-body .app-content .card > .card-header { padding-top: 0; padding-bottom: 0; min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.tb-body .app-content .card > .card-header.d-flex { justify-content: space-between; }
+/* 頁首一律同樣高（跟右上角的按鈕一樣）：沒有按鈕的頁面（設備履歷）內容也從同一個高度開始。 */
+.tb .tb-header { min-height: 46px; }
+@media (max-width: 575.98px) { .tb .tb-header { min-height: 36px; } }
+
+/* 卡片標題列：圖示跟文字之間只留圖示本身的間隔（跟其他頁面一樣），不再多加一段空隙；左右兩邊有東西的（d-flex）才用 gap 分開。 */
+.tb-body .app-content .card > .card-header:not(.d-flex) { gap: 0; }
+/* 零件履歷的基本資料：名稱與內容的距離跟設備履歷一樣（名稱欄佔整列的 1/4，跟 dl.row 的 col-sm-3 相同）。 */
+@media (min-width: 576px) { .tb-body .tb-dl.tb-dl-roomy { grid-template-columns: calc(25% - .375rem) minmax(0, 1fr); column-gap: .75rem; } }
+@media (max-width: 575.98px) { .tb-body .tb-dl.tb-dl-roomy { grid-template-columns: 6.5em minmax(0, 1fr); column-gap: 0; } }

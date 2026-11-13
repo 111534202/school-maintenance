@@ -4,7 +4,9 @@
 {{-- 沒有傳 $entry 進來（= 新增）就當成 null。 --}}
 @php($entry = $entry ?? null)
 
-<div class="card shadow-sm">
+{{-- 分成三個框：基本資料（標題、分類、上架）、常見故障現象、自助排除步驟；每個框上面有底色填滿的標題列。 --}}
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white form-section-title"><i class="bi bi-journal-text me-2"></i>基本資料</div>
     <div class="card-body p-4">
         <div class="row g-3">
             <div class="col-md-8">
@@ -17,16 +19,6 @@
                 <input type="text" class="form-control" id="category" name="category" value="{{ old('category', $entry->category ?? '') }}" placeholder="{{ __('knowledge_base.form.category_placeholder') }}">
             </div>
             <div class="col-12">
-                <label for="symptom" class="form-label">{{ __('knowledge_base.form.symptom') }}</label>
-                {{-- 常見故障現象（多行文字框）。 --}}
-                <textarea class="form-control" id="symptom" name="symptom" rows="4" required>{{ old('symptom', $entry->symptom ?? '') }}</textarea>
-            </div>
-            <div class="col-12">
-                <label for="solution" class="form-label">{{ __('knowledge_base.form.solution') }}</label>
-                {{-- 自助排除步驟（多行文字框），建議一行寫一個步驟。 --}}
-                <textarea class="form-control" id="solution" name="solution" rows="6" required>{{ old('solution', $entry->solution ?? '') }}</textarea>
-            </div>
-            <div class="col-12">
                 {{-- 瀏覽器在 checkbox 未勾選時完全不會送出這個欄位，靠這個隱藏欄位確保一定會送出 0 或 1，
                      checkbox 若勾選會排在後面覆蓋隱藏欄位的值，是 Laravel 處理 checkbox 的標準寫法。 --}}
                 <input type="hidden" name="is_published" value="0">
@@ -37,6 +29,23 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-white form-section-title"><i class="bi bi-exclamation-triangle me-2"></i>{{ __('knowledge_base.form.symptom') }}</div>
+    <div class="card-body p-4">
+        {{-- 標題列已經寫了欄位名稱，標籤只給螢幕閱讀器用。 --}}
+        <label for="symptom" class="form-label visually-hidden">{{ __('knowledge_base.form.symptom') }}</label>
+        {{-- 常見故障現象（多行文字框）。 --}}
+        <textarea class="form-control" id="symptom" name="symptom" rows="4" required>{{ old('symptom', $entry->symptom ?? '') }}</textarea>
+    </div>
+</div>
+<div class="card shadow-sm">
+    <div class="card-header bg-white form-section-title"><i class="bi bi-list-ol me-2"></i>{{ __('knowledge_base.form.solution') }}</div>
+    <div class="card-body p-4">
+        <label for="solution" class="form-label visually-hidden">{{ __('knowledge_base.form.solution') }}</label>
+        {{-- 自助排除步驟（多行文字框），建議一行寫一個步驟。 --}}
+        <textarea class="form-control" id="solution" name="solution" rows="6" required>{{ old('solution', $entry->solution ?? '') }}</textarea>
     </div>
 </div>
 {{-- 表單底部的「取消／儲存」按鈕：放在外框外面、靠右。 --}}

@@ -7,7 +7,7 @@
 
 @section('content')
     <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-pc-display me-2"></i>{{ __('devices.show.title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-0">{{ __('devices.show.title') }}</h1>
         {{-- 在設備主檔的對話框裡打開（?modal=1）時不放「修改」按鈕（修改在列表的鉛筆按鈕）。 --}}
         @unless (request()->boolean('modal'))
             <div class="d-inline-flex gap-1">
@@ -49,17 +49,17 @@
                             （{{ $device->classroom->department->name ?? __('devices.no_department') }}）
                         </dd>
 
-                        <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.status') }}</dt>
-                        <dd class="col-sm-8 mb-0"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
-
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.is_core') }}</dt>
                         <dd class="col-sm-8 mb-0">
                             @if ($device->is_core)
                                 <span class="badge text-bg-warning">{{ __('devices.yes') }}</span>
                             @else
-                                <span class="text-muted">{{ __('devices.no') }}</span>
+                                {{ __('devices.no') }}
                             @endif
                         </dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.status') }}</dt>
+                        <dd class="col-sm-8 mb-0"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
                     </dl>
                 </div>
             </div>

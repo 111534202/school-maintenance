@@ -7,7 +7,7 @@
      自己提出的申請與目前狀態，表格／清單依視窗大小自動切換；點一筆在同一個對話框裡打開「預約詳細」。 --}}
 <div class="tb">
     @unless (request()->boolean('modal'))
-        <h1 class="tb-title">我的申請</h1>
+        <h1 data-modal-hide class="tb-title">我的申請</h1>
     @endunless
     @if ($myReservations->isEmpty())
         <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>

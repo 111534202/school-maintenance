@@ -9,6 +9,7 @@
 @endisset
 
 <div class="card shadow-sm">
+<div class="card-header bg-white form-section-title"><i class="bi bi-building me-2"></i>教室資料</div>
 <div class="card-body p-4">
 {{-- 負責單位、位置、教室資料放在同一頁（不分上一步／下一步），依序往下排。 --}}
 <div class="row g-3">

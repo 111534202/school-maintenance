@@ -7,13 +7,14 @@
 @section('title', $guest ? '查詢課表' : ($showMine ?? true ? '空間申請' : '空間預約'))
 
 @section('content')
-<div class="container-fluid py-4">
-    <div class="mb-4">
+{{-- 外層不加額外留白：大標題跟頂端列的距離、左右邊距都跟其他頁面一樣（reservation-page 給下面免登入的點擊判斷用）。 --}}
+<div class="reservation-page pt-1">
+    <div class="mb-3">
         @if ($guest)
-            <h1 class="h3 mb-1">查詢課表</h1>
+            <h1 class="tb-title mb-1">查詢課表</h1>
             <p class="text-muted mb-0">不用登入即可查詢教室課表；若需預約教室，請先登入。</p>
         @else
-            <h1 class="h3 mb-1">{{ ($showMine ?? true) ? '空間申請' : '空間預約' }}</h1>
+            <h1 class="tb-title mb-1">{{ ($showMine ?? true) ? '空間申請' : '空間預約' }}</h1>
             <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
         @endif
     </div>
@@ -51,7 +52,7 @@
                         <div>
 
                             <div class="d-flex flex-wrap gap-2 align-items-center">
-                                <button type="button" id="timetable_query" class="btn btn-outline-primary">
+                                <button type="button" id="timetable_query" class="btn btn-primary">
                                     查詢課表
                                 </button>
                                 {{-- 只在出錯時顯示紅字（例如還沒選教室、課表查詢失敗），放在「教室／日期／查詢課表」那一列下面。 --}}
@@ -223,20 +224,15 @@
                                 <label class="form-check-label" for="is_all_or_nothing">
                                     其中一節無法借用時，整筆申請都不要（自動整筆拒絕）
                                 </label>
-                                <div class="form-text">不勾選的話，可能只借到其中幾節（例如第 5 節已被借走，第 6 節仍可借）。</div>
+                                <div class="form-text">未勾選的話，可能只借到其中幾節。</div>
                             </div>
                         </div>
                     </div>
 
 
                     <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
-                        <a href="{{ route('reservations.create') }}" class="btn btn-outline-secondary">
-                            取消
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-send me-1"></i>
-                            送出預約申請
-                        </button>
+                        <a href="{{ route('reservations.create') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>取消</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>送出預約申請</button>
                     </div>
                 </form>
             @endif
@@ -302,7 +298,7 @@
             if ((event.key === 'Enter' || event.key === ' ') && event.target.closest && event.target.closest('#timetable_result [role="button"]')) ask(event);
         }, true);
         document.addEventListener('submit', function (event) {
-            if (event.target.closest('.container-fluid')) ask(event);
+            if (event.target.closest('.reservation-page')) ask(event);
         }, true);
     });
     </script>
@@ -323,8 +319,10 @@
     .rq-date-group > .rq-controls { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; }
     /* 很窄的時候（手機）「查詢課表」縮小一點，跟日期擠得下同一行。 */
     @container (max-width: 360px) {
-        #timetable_query { padding: 0.3rem 0.75rem; font-size: 0.875rem; }
+        #timetable_query { padding: 0 0.75rem; font-size: 0.875rem; }
     }
+    /* 「查詢課表」跟旁邊的日期欄位一樣高（字縮小時也不會變矮）。 */
+    #timetable_query { min-height: calc(1.5rem + 0.75rem + 2px); }
     /* 教室下拉清單：外框畫在清單本身（圓角），選項只留分隔線。原本外框在每個選項上，
        最後一個看得到的選項不是 :last-child（後面還有隱藏的「找不到符合的教室」），下面兩個角就沒有圓角。 */
     #classroom_options { border: var(--bs-border-width) solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg); background: var(--bs-body-bg); }
@@ -685,7 +683,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const backButton = document.createElement('button');
     backButton.type = 'button';
     backButton.className = 'btn btn-outline-secondary mb-3';
-    backButton.textContent = '返回課表重新選擇';
+    // 前面加「‹」返回符號（跟頂端列的「返回」一樣的圖示）。
+    backButton.innerHTML = '<i class="bi bi-chevron-left me-1" aria-hidden="true"></i>返回課表重新選擇';
     backButton.addEventListener('click', function () {
         step2.hidden = true;
         step1.hidden = false;
@@ -1125,7 +1124,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (occupied) {
                     // 已有課堂時保留班級與課程資訊，不額外顯示不可選標籤。
                 } else if (isPast) {
-                    addScheduleText(cell, 'span', '時間已過', 'badge text-bg-light border text-muted');
+                    // 格子太窄需要換行時，只會斷成「時間／已過」兩行（每兩個字不拆開）。
+                    addScheduleText(cell, 'span', '', 'badge text-bg-light border text-muted tt-past').innerHTML = '<span class="text-nowrap">時間</span><wbr><span class="text-nowrap">已過</span>';
                 } else {
                     cell.style.cursor = 'pointer';
                     cell.title = pending.length

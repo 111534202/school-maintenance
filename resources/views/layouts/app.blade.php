@@ -495,6 +495,23 @@
             (function () { const d = document.getElementById('stockTimelineDialog'); if (d && d.showModal) d.showModal(); })();
         </script>
     @endif
+    {{-- 量出右邊保留給捲軸的寬度（寬螢幕的 Windows 捲軸約 15px；手機、Mac 是 0），給對話框左右置中用（theme-b.css 的 --tb-sbw）。 --}}
+    <script>
+    (function () {
+        // 用一個看不見、左右貼齊畫面的固定定位小方塊來量：它的寬度＝畫面扣掉右邊保留的捲軸寬度。
+        function measure() {
+            var probe = document.createElement('div');
+            probe.style.cssText = 'position:fixed;left:0;right:0;top:0;height:0;visibility:hidden;pointer-events:none;';
+            document.body.appendChild(probe);
+            var w = window.innerWidth - probe.getBoundingClientRect().width;
+            probe.remove();
+            document.documentElement.style.setProperty('--tb-sbw', Math.max(0, Math.round(w)) + 'px');
+        }
+        if (document.body) measure(); else document.addEventListener('DOMContentLoaded', measure);
+        window.addEventListener('resize', measure);
+        document.addEventListener('show.bs.modal', measure, true);
+    })();
+    </script>
     {{-- 可以輸入也可以下拉選的欄位（跟空間預約的「選擇教室」一樣）：<input data-suggest='["選項1","選項2"]'>。
          點進欄位就列出全部選項，打字會篩出包含這些字的選項；點一個選項（或用上下鍵＋Enter）就填進去。
          加 data-suggest-submit 時，選了就直接送出表單（篩選列用）。樣式在 public/css/theme-b.css 的 .tb-suggest。 --}}
@@ -596,14 +613,14 @@
     @include('layouts.partials.list-onion')
     {{-- 表格的一列加上 data-modal-frame-href（與 data-modal-title）：點這一列（或按 Enter）就在畫面中的對話框打開那個網址，
          跟 data-modal-frame 連結一樣；清單模式點一筆也一樣（list-onion 會呼叫 tbOpenRow）。
-         在對話框裡面（例如「我的申請」視窗）點一列：直接在同一個對話框裡打開。點到列裡的按鈕、連結不算。 --}}
+         在對話框裡面（例如「我的申請」視窗）點一列：在那個對話框上面再開一個對話框。點到列裡的按鈕、連結不算。 --}}
     <script>
     (function () {
         window.tbOpenRow = function (tr) {
             var href = tr.getAttribute('data-modal-frame-href');
             if (!href) return;
             if (window.parent !== window) {   // 已經在對話框裡（例如對話框裡的清單）：請外面的對話框疊一層打開，關掉這一層會回到原本的清單
-                window.parent.postMessage({ type: 'modal-push', url: new URL(href, window.location.href).href, title: tr.getAttribute('data-modal-title') || '' }, window.location.origin);
+                window.parent.postMessage({ type: 'modal-push', url: new URL(href, window.location.href).href, title: tr.getAttribute('data-modal-title') || '', size: tr.getAttribute('data-modal-size') || '' }, window.location.origin);
                 return;
             }
             var a = document.createElement('a');
@@ -665,7 +682,7 @@
                 // 對話框裡的 data-modal-frame 連結（例如報修案件裡的「填寫維修紀錄」）：在同一個對話框疊一層打開，關掉回到原本那一層。
                 if (a.hasAttribute('data-modal-frame')) {
                     event.preventDefault();
-                    post({ type: 'modal-push', url: a.href, title: a.getAttribute('data-modal-title') || a.textContent.trim() });
+                    post({ type: 'modal-push', url: a.href, title: a.getAttribute('data-modal-title') || a.textContent.trim(), size: a.getAttribute('data-modal-size') || '' });
                     return;
                 }
                 event.preventDefault();
@@ -757,6 +774,7 @@
             function showActions() { actionsBox.hidden = stack.length > 0 || !actionsBox.children.length; }
             // 對話框裡的頁面本身已經有同一個按鈕（例如保養工單詳細的「回報保養結果」）：標題旁就不重複放。
             frame.addEventListener('load', function () {
+                setTimeout(function () { contentReady(modalEl, '_tbLoaded'); }, 0);   // 下面先整理標題旁的按鈕，再顯示
                 if (stack.length || !actionsBox.children.length) return;
                 var doc;
                 try { doc = frame.contentDocument; } catch (e) { return; }
@@ -781,21 +799,51 @@
             var topTitle = document.getElementById('frameModalTopTitle');
             var topDialog = topEl.querySelector('.modal-dialog');
             var changed = false;   // 上層送出過：關掉整個對話框時重新整理列表
+            // 對話框剛打開、裡面的頁面還沒載入好時先不顯示（不會先看到一個空白的對話框再跳出內容）：
+            // 等裡面的頁面載入完成（標題旁重複的按鈕也整理好）、而且回報過高度（modal-size）才顯示；萬一太久，2.5 秒後也會顯示。
+            function waitForContent(el) {
+                el.querySelector('.modal-content').classList.add('tb-frame-loading');
+                el._tbLoaded = false;
+                el._tbSized = false;
+                clearTimeout(el._tbLoadTimer);
+                el._tbLoadTimer = setTimeout(function () { showContent(el); }, 2500);
+            }
+            function contentReady(el, what) {
+                el[what] = true;
+                if (el._tbLoaded && el._tbSized) showContent(el);
+            }
+            function showContent(el) {
+                clearTimeout(el._tbLoadTimer);
+                el.querySelector('.modal-content').classList.remove('tb-frame-loading');
+            }
+            // 對話框裡頁面的最高高度＝視窗高度－對話框上下留白－標題列高度（裡面的頁面自己捲動，對話框本身不出現捲軸）。
+            function maxFrameHeight(el) {
+                var dlg = el.querySelector('.modal-dialog');
+                var head = el.querySelector('.modal-header');
+                var margin = dlg ? parseFloat(getComputedStyle(dlg).marginTop) * 2 : 56;
+                return Math.max(200, Math.floor(window.innerHeight - margin - (head ? head.offsetHeight : 80) - 4));
+            }
             function topModal() { return window.bootstrap.Modal.getOrCreateInstance(topEl); }
             function openTop(a) {
-                var url = new URL(a.href, window.location.href);
+                openTopUrl(a.href, a.getAttribute('data-modal-title') || a.getAttribute('title') || a.textContent.trim(), a.getAttribute('data-modal-size'));
+            }
+            // 在目前的對話框上面再開一個對話框（下面那個保持不動，關掉上面就回到下面，不用重新載入）。
+            function openTopUrl(href, newTitle, size) {
+                var url = new URL(href, window.location.href);
                 url.searchParams.set('modal', '1');
-                topTitle.textContent = a.getAttribute('data-modal-title') || a.getAttribute('title') || a.textContent.trim();
+                topTitle.textContent = newTitle || '';
                 topFrame.title = topTitle.textContent;
                 topFrame.style.height = '240px';
-                topDialog.classList.toggle('modal-lg', a.getAttribute('data-modal-size') === 'lg');
-                topDialog.classList.toggle('modal-xl', a.getAttribute('data-modal-size') === 'xl');
+                topDialog.classList.toggle('modal-lg', size === 'lg');
+                topDialog.classList.toggle('modal-xl', size === 'xl');
+                waitForContent(topEl);
                 topFrame.src = url.href;
                 // 下面那個對話框會把游標留在自己裡面（Bootstrap 的 focus trap）：上層打開時先暫停，不然上層的欄位不能打字。
                 var under = modal();
                 if (under && under._focustrap) under._focustrap.deactivate();
                 topModal().show();
             }
+            topFrame.addEventListener('load', function () { contentReady(topEl, '_tbLoaded'); });
             topEl.addEventListener('hidden.bs.modal', function () {
                 topFrame.src = 'about:blank';
                 var under = modal();
@@ -807,7 +855,8 @@
                 if (event.origin !== window.location.origin || event.source !== topFrame.contentWindow || !event.data) return;
                 var data = event.data;
                 if (data.type === 'modal-size') {
-                    topFrame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
+                    topFrame.style.height = Math.min(data.height, maxFrameHeight(topEl)) + 'px';
+                    contentReady(topEl, '_tbSized');
                 } else if (data.type === 'modal-push') {
                     var next = new URL(data.url, window.location.href);
                     next.searchParams.set('modal', '1');
@@ -850,6 +899,7 @@
                 dialog.classList.toggle('modal-xl', a.getAttribute('data-modal-size') === 'xl');
                 stack = [];
                 setActions(a.closest('tr[data-modal-frame-href]'), url);
+                waitForContent(modalEl);
                 frame.src = url.href;
                 // 從另一個已打開的視窗裡點（例如低庫存品項視窗）：先關掉那個視窗，再打開這個。
                 var host = a.closest('.modal.show');
@@ -865,14 +915,19 @@
                 var data = event.data;
                 if (data.type === 'modal-size') {
                     // 最高到瀏覽器視窗扣掉對話框標題與上下留白；比較高的表單在對話框裡捲動。
-                    frame.style.height = Math.min(data.height, window.innerHeight - 140) + 'px';
+                    var h = Math.min(data.height, maxFrameHeight(modalEl));
+                    if (Math.abs(h - parseFloat(frame.style.height || 0)) > 1) frame.style.height = h + 'px';
+                    contentReady(modalEl, '_tbSized');
                 } else if (data.type === 'modal-push') {
-                    // 在對話框裡的清單點一筆（例如清單→詳細）：記下目前這一層，換成新的一層；
-                    // 之後按關閉、點外面或按 Esc，會先回到上一層（見下面的 hide.bs.modal），不會整個關掉。
-                    pushLayer(data.url, data.title);
+                    // 在對話框裡點一筆（例如申請清單→預約詳細、清單→詳細）：在目前的對話框上面再開一個對話框，
+                    // 不把下面那一層換掉（不用等重新載入），關掉上面那個就回到原本的清單。
+                    openTopUrl(data.url, data.title, data.size);
                 } else if (data.type === 'modal-width') {
                     // 對話框寬度＝表格需要的寬度（加上對話框本身的框線），最寬到瀏覽器視窗左右各留 16px。
-                    dialog.style.maxWidth = Math.min(data.width + 2, window.innerWidth - 32) + 'px';
+                    // 同一次打開只會變寬、不會變窄：捲軸出現／消失會讓量到的寬度差一點點，來回調整會讓對話框晃動。
+                    var w = Math.min(data.width + 2, window.innerWidth - 32);
+                    var cur = parseFloat(dialog.style.maxWidth || 0);
+                    if (!cur || w > cur + 1) dialog.style.maxWidth = w + 'px';
                 } else if (data.type === 'modal-done') {
                     var done = new URL(data.url, window.location.href);
                     // 疊上去的一層送出成功、要回到上一層的頁面（例如報修案件裡「填寫維修紀錄」送出後回到案件）：

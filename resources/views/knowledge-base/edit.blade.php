@@ -7,7 +7,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-pencil-square me-2"></i>{{ __('knowledge_base.edit_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('knowledge_base.edit_title') }}</h1>
 
         {{-- 表單送出到 PUT /knowledge-base/{id}（KnowledgeBaseController::update）。 --}}
         <form method="POST" action="{{ route('knowledge-base.update', $knowledgeBase) }}">
