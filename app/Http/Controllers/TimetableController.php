@@ -56,6 +56,7 @@ class TimetableController extends Controller
                 ->map(function ($reservation) {
                     return [
                         'class_name' => $reservation->class_name,
+                        'mine' => $reservation->mine,
                         'start_time' => substr((string) $reservation->start_time, 0, 5),
                         'end_time' => substr((string) $reservation->end_time, 0, 5),
                         'status' => $reservation->status,
@@ -66,11 +67,13 @@ class TimetableController extends Controller
         }
         unset($period);
 
-        // 預約的班級名稱只給有空間申請審核權限的人。
+        // 預約的班級名稱只給有空間申請審核權限的人，以及申請人自己（mine＝這筆是登入者自己的申請，課表上才認得出哪一筆是自己的）。
         if (! $request->user()?->hasPermission('reservations.manage')) {
             foreach ($schedule as &$periodData) {
                 foreach ($periodData['reservations'] as &$reservationData) {
-                    unset($reservationData['class_name']);
+                    if (empty($reservationData['mine'])) {
+                        unset($reservationData['class_name']);
+                    }
                 }
                 unset($reservationData);
             }
@@ -161,6 +164,7 @@ class TimetableController extends Controller
                     ->map(function ($reservation) {
                         return [
                             'class_name' => $reservation->class_name,
+                            'mine' => $reservation->mine,
                             'start_time' => substr((string) $reservation->start_time, 0, 5),
                             'end_time' => substr((string) $reservation->end_time, 0, 5),
                             'status' => $reservation->status,
@@ -178,12 +182,14 @@ class TimetableController extends Controller
             ];
         }
 
-        // 預約的班級名稱只給有空間申請審核權限的人（課表上顯示「班級＋已借用」）；其他人只看到「已借用」。
+        // 預約的班級名稱只給有空間申請審核權限的人（課表上顯示「班級＋已借用」）與申請人自己（mine）；其他人只看到「已借用」。
         if (! $request->user()?->hasPermission('reservations.manage')) {
             foreach ($days as &$dayData) {
                 foreach ($dayData['periods'] as &$periodData) {
                     foreach ($periodData['reservations'] as &$reservationData) {
-                        unset($reservationData['class_name']);
+                        if (empty($reservationData['mine'])) {
+                            unset($reservationData['class_name']);
+                        }
                     }
                     unset($reservationData);
                 }
@@ -288,13 +294,15 @@ class TimetableController extends Controller
                 $query->where('classroom_id', $classroomId)
                     ->whereIn('status', ['pending', 'approved', 'partially_approved']);
             })
-            ->with('reservation:id,classroom_id,class_name,status')
+            ->with('reservation:id,classroom_id,class_name,status,requester_id')
             ->orderBy('start_time')
             ->get()
             ->filter(fn ($slot) => in_array($slot->effectiveStatus(), ['pending', 'approved'], true))
             ->map(function ($slot) {
                 return (object) [
                     'class_name' => $slot->reservation->class_name,
+                    // 是不是登入者自己的申請（沒登入一定是 false）；只回傳這個布林值，不洩漏申請人是誰。
+                    'mine' => auth()->id() !== null && $slot->reservation->requester_id === auth()->id(),
                     'start_time' => $slot->start_time,
                     'end_time' => $slot->end_time,
                     'status' => $slot->effectiveStatus(),

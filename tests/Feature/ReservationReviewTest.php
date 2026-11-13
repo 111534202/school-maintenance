@@ -242,10 +242,17 @@ class ReservationReviewTest extends TestCase
         $approved = collect($week->json('days'))->pluck('periods')->flatten(1)->pluck('reservations')->flatten(1)->where('status', 'approved');
         $this->assertSame('補審班', $approved->first()['class_name'] ?? null);
 
-        // 沒有審核權限的人只看到「已借用」，不知道是哪一班。
-        $this->actingAs($this->applicant);
+        // 沒有審核權限、也不是申請人的人只看到「已借用」，不知道是哪一班。
+        $this->actingAs($this->makeUserWithRole('student', '學生'));
         $week = $this->getJson(route('reservations.timetable.week', ['classroom_id' => $this->classroom->id, 'date' => now()->toDateString()]))->assertOk();
         $this->assertStringNotContainsString(trim(json_encode('補審班'), '"'), $week->getContent());
+
+        // 申請人自己看得到自己的班級，而且標示 mine（才認得出哪一格是自己借的）。
+        $this->actingAs($this->applicant);
+        $week = $this->getJson(route('reservations.timetable.week', ['classroom_id' => $this->classroom->id, 'date' => now()->toDateString()]))->assertOk();
+        $mine = collect($week->json('days'))->pluck('periods')->flatten(1)->pluck('reservations')->flatten(1)->where('status', 'approved')->first();
+        $this->assertSame('補審班', $mine['class_name'] ?? null);
+        $this->assertTrue($mine['mine'] ?? false);
         Carbon::setTestNow();
     }
 

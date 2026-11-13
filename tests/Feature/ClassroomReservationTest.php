@@ -555,7 +555,10 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        // 一般使用者看不到是哪一班預約的；有審核權限的人看得到。
+        // 一般使用者（不是申請人）看不到是哪一班預約的；申請人自己與有審核權限的人看得到。
+        $this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))
+            ->assertOk()->assertJsonPath('periods.1.reservations.0.class_name', '測試預約班級')->assertJsonPath('periods.1.reservations.0.mine', true);
+        $this->actingAs($this->makeUserWithRole('student', '學生'));
         $this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))
             ->assertOk()->assertJsonMissingPath('periods.1.reservations.0.class_name')->assertJsonPath('periods.1.reservations.0.status', 'pending');
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
@@ -841,5 +844,43 @@ class ClassroomReservationTest extends TestCase
 
         $this->assertTrue(ClassroomReservation::where('class_name', '整筆班')->firstOrFail()->is_all_or_nothing);
         $this->assertFalse(ClassroomReservation::where('class_name', '逐節班')->firstOrFail()->is_all_or_nothing);
+    }
+
+    // 教師、學生（沒有審核權限）在課表上要認得出「哪一格是自己的申請」：自己的保留班級名稱並標示 mine，
+    // 別人的仍然只有「有班申請待審核／已借用」，不透露是哪一班、也不透露申請人。
+    public function test_timetable_marks_my_own_reservations_and_keeps_other_classes_anonymous(): void
+    {
+        $classroom = $this->makeClassroom('IT-401');
+        $date = now()->addDays(3)->toDateString();
+        $other = $this->makeUserWithRole('student', '學生');
+
+        $mine = ClassroomReservation::create([...$this->payload($classroom, ['reservation_date' => $date, 'class_name' => '我自己的班']), 'requester_id' => $this->applicant->id, 'status' => 'pending']);
+        $theirs = ClassroomReservation::create([...$this->payload($classroom, ['reservation_date' => $date, 'class_name' => '別人的班']), 'requester_id' => $other->id, 'status' => 'pending']);
+        foreach ([$mine, $theirs] as $reservation) {
+            \App\Models\ClassroomReservationSlot::create(['classroom_reservation_id' => $reservation->id, 'reservation_date' => $date, 'start_time' => '09:10', 'end_time' => '09:30', 'period_number' => 2]);
+        }
+
+        $response = $this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))->assertOk();
+        $entries = collect($response->json('periods'))->pluck('reservations')->flatten(1)->values();
+
+        $this->assertCount(2, $entries);
+        $own = $entries->firstWhere('mine', true);
+        $this->assertSame('我自己的班', $own['class_name']);                       // 自己的：看得到班級
+        $foreign = $entries->firstWhere('mine', false);
+        $this->assertArrayNotHasKey('class_name', $foreign);                         // 別人的：班級不透露
+        $this->assertStringNotContainsString('別人的班', json_encode($response->json(), JSON_UNESCAPED_UNICODE));
+        $this->assertArrayNotHasKey('requester_id', $own);                           // 也不回傳申請人編號
+
+        // 週課表同樣標示 mine。
+        $week = $this->getJson(route('reservations.timetable.week', ['classroom_id' => $classroom->id, 'date' => $date]))->assertOk();
+        $weekText = json_encode($week->json(), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('我自己的班', $weekText);
+        $this->assertStringNotContainsString('別人的班', $weekText);
+
+        // 另一個人（學生）看同一天，自己的才有班級；老師那筆對他來說是匿名的。
+        $this->actingAs($other);
+        $asStudent = json_encode($this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))->assertOk()->json(), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('別人的班', $asStudent);
+        $this->assertStringNotContainsString('我自己的班', $asStudent);
     }
 }

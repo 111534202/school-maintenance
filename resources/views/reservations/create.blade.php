@@ -1092,8 +1092,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (hasApproved) {
                     // 有審核權限的人看得到借用的班級（第一行粗體班級、第二行「已借用」）；其他人只看到「已借用」。
                     // 時間已過但後來補同意的節次，一樣顯示已借用。
-                    const approvedItem = reservations.find(function (item) { return item.status === 'approved'; });
-                    if (approvedItem && approvedItem.class_name) {
+                    // 申請人自己的申請（mine）優先顯示，並標示「我的預約」，這樣教師、學生才認得出哪一格是自己借的。
+                    const approvedItem = reservations.find(function (item) { return item.status === 'approved' && item.mine; }) ||
+                        reservations.find(function (item) { return item.status === 'approved'; });
+                    if (approvedItem && approvedItem.mine) {
+                        cell.classList.add('border', 'border-2', 'border-primary');
+                        addScheduleText(cell, 'div', approvedItem.class_name || '', 'fw-bold');
+                        addScheduleText(cell, 'div', '我的預約（已借用）', 'small mb-2 text-primary fw-semibold');
+                    } else if (approvedItem && approvedItem.class_name) {
                         addScheduleText(cell, 'div', approvedItem.class_name, 'fw-bold');
                         addScheduleText(cell, 'div', '已借用', 'small mb-2');
                     } else {
@@ -1105,12 +1111,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         );
                     }
                 } else if (pending.length) {
-                    addScheduleText(
-                        cell,
-                        'div',
-                        '有 ' + pending.length + ' 班申請待審核',
-                        'small mb-2'
-                    );
+                    // 自己的待審核申請：標示「我的預約」與班級；其餘班級只顯示數量（不透露是哪一班）。
+                    const minePending = pending.filter(function (item) { return item.mine; });
+                    if (minePending.length) {
+                        cell.classList.add('border', 'border-2', 'border-primary');
+                        addScheduleText(cell, 'div', minePending[0].class_name || '', 'fw-bold');
+                        addScheduleText(cell, 'div', '我的預約（待審核）', 'small text-primary fw-semibold');
+                    }
+                    const others = pending.length - minePending.length;
+                    if (others > 0) {
+                        addScheduleText(
+                            cell,
+                            'div',
+                            (minePending.length ? '另有 ' : '有 ') + others + ' 班申請待審核',
+                            'small mb-2'
+                        );
+                    }
                 }
 
                 if (!occupied && pending.length && !isPast) {
