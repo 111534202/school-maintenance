@@ -56,7 +56,8 @@ class NavMenu
                 $link(__('common.nav.preventive_ai'), 'bi-robot', 'preventive-candidates.index', ['preventive-candidates.*', 'ai-settings.*'], $can('ai-maintenance.manage')),
             ]],
             ['type' => 'group', 'id' => 'space', 'label' => __('common.nav.resource_section'), 'icon' => 'bi-building', 'children' => [
-                $link(__('common.nav.reservations'), 'bi-calendar-check', 'reservations.index', ['reservations.*']),
+                // 空間申請（空間預約已合併進來）：有審核權限的人看到全部申請，其他人看到有課表的申請頁與「我的申請」。
+                $link(__('common.nav.reservation_requests'), 'bi-calendar-check', 'reservations.index', ['reservations.index', 'reservations.show', 'reservations.create', 'reservations.mine']),
                 // 零件庫存需要 parts.manage（身分主檔勾選；設備管理員預設有）。
                 $link(__('common.nav.parts'), 'bi-box-seam', 'parts.index', ['parts.*'], $can('parts.manage')),
                 // 成本分析報表：統計維修用掉的零件與材料費，沿用 maintenance.view 權限。

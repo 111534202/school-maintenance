@@ -9,22 +9,25 @@
 
 {{-- 從這裡開始是「放進主版面中間」的內容，到 @endsection 結束。 --}}
 @section('content')
+<div class="tb">
     {{-- 頁面標題列：左邊標題、右邊「新增用戶」按鈕。 --}}
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-people me-2"></i>{{ __('users.index_title') }}</h1>
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('users.index_title') }}</h1>
+        </div>
         <div class="d-flex gap-2">
-            @include('charts._button')
-            <a class="btn btn-primary" href="{{ route('users.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('users.add_user') }}
+            @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            <a class="tb-btn tb-btn-primary" href="{{ route('users.create') }}" data-modal-frame data-modal-title="{{ __('users.add_user') }}" data-modal-size="lg">
+                <i class="bi bi-plus-lg"></i>{{ __('users.add_user') }}
             </a>
         </div>
     </div>
 
-    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
+    {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
+    <div class="tb-card tb-card-pad">
+        <div>
             {{-- 篩選表單：用 GET 送出，條件會出現在網址上（例如 ?role_id=3），所以可以被書籤、圖表連結直接帶入。 --}}
-            <form method="GET" action="{{ route('users.index') }}" class="filter-bar">
+            <form method="GET" action="{{ route('users.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
                 <div>
                     {{-- 關鍵字（帳號／姓名／Email／電話）。request('keyword') 會把目前網址上的條件帶回輸入框。 --}}
                     <label for="keyword" class="form-label small mb-1">{{ __('users.filter.keyword') }}</label>
@@ -62,29 +65,20 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="d-inline-flex gap-1">
-                    {{-- 篩選按鈕（漏斗圖示）。全站規則：按鈕一律用 Bootstrap Icons 圖示，不用 emoji。 --}}
-                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
-                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
-                    {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('keyword') || request('role_id') || request('department_id') || request('status'))
-                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('users.index') }}"
-                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('users.index'), 'fields' => ['keyword', 'role_id', 'department_id', 'status']])
             </form>
         </div>
     </div>
 
     {{-- 查不到任何用戶時顯示提示；否則顯示表格。 --}}
     @if ($users->isEmpty())
-        <div class="alert alert-info mb-0">{{ __('users.empty_list') }}</div>
+        <div class="tb-card tb-empty">{{ __('users.empty_list') }}</div>
     @else
-        <div class="card shadow-sm">
+        <section class="tb-table-wrap" data-no-fit>
             <div class="table-responsive">
-                {{-- 資料表格：table-bordered 有框線、table-hover 滑鼠移上去會變色（全站表格都要有框線）。 --}}
-                <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,4">
-                    <thead class="table-light">
+                {{-- 資料表格（風格 B）：螢幕夠大用表格、不夠用清單（全站自動切換）；整頁一起捲動，表頭固定在頂端列下方（data-no-fit）。 --}}
+                <table class="tb-table tb-table-hover" data-onion-primary="1,4">
+                    <thead>
                         <tr>
                             <th>{{ __('users.table.account') }}</th>
                             <th>{{ __('users.table.name') }}</th>
@@ -94,7 +88,7 @@
                             <th>{{ __('users.table.department') }}</th>
                             <th class="text-center">{{ __('users.table.status') }}</th>
                             <th>{{ __('users.table.last_login_at') }}</th>
-                            <th class="text-center">{{ __('users.table.actions') }}</th>
+                            <th class="text-end tb-col-fit">{{ __('users.table.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -103,38 +97,38 @@
                             {{-- 先算出「這一列是不是目前登入的自己」，等下用來停用自己的刪除／停用按鈕。 --}}
                             @php($isSelf = $user->id === auth()->id())
                             {{-- 已刪除（軟刪除）的用戶整列用灰色背景標示。 --}}
-                            {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）；已刪除的用戶只能還原，沒有編輯頁。 --}}
-                            <tr class="{{ $user->trashed() ? 'table-secondary' : '' }}" @unless ($user->trashed()) data-href="{{ route('users.edit', $user) }}" @endunless>
+                            {{-- 點這一列的任何地方都會在畫面中的對話框打開編輯頁（data-modal-frame-href，行為在共用版型）；已刪除的用戶只能還原，沒有編輯頁。 --}}
+                            <tr class="{{ $user->trashed() ? 'tb-row-muted' : '' }}" @unless ($user->trashed()) data-modal-frame-href="{{ route('users.edit', $user) }}" data-modal-title="修改用戶" data-modal-size="lg" tabindex="0" role="link" @endunless>
                                 <td>
                                     <span class="fw-semibold">{{ $user->account ?? '—' }}</span>
                                     {{-- 標出「這是你自己」的徽章。 --}}
                                     @if ($isSelf)
-                                        <span class="badge text-bg-info ms-1">{{ __('users.current_user_badge') }}</span>
+                                        <span class="badge tb-pill tb-pill-info ms-1">{{ __('users.current_user_badge') }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $user->name }}</td>
                                 <td>{{ $user->email }}</td>
                                 <td>{{ $user->phone ?? '—' }}</td>
                                 {{-- 身分名稱；沒有身分時顯示破折號。 --}}
-                                <td><span class="badge text-bg-primary">{{ $user->role->name ?? '—' }}</span></td>
+                                <td><span class="badge tb-pill tb-pill-info">{{ $user->role->name ?? '—' }}</span></td>
                                 <td>{{ $user->department->name ?? __('users.no_department') }}</td>
                                 <td class="text-center">
                                     @if ($user->trashed())
-                                        <span class="badge text-bg-danger">{{ __('users.status.deleted') }}</span>
+                                        <span class="badge tb-pill tb-pill-danger">{{ __('users.status.deleted') }}</span>
                                     @elseif ($user->is_active)
-                                        <span class="badge text-bg-success">{{ __('users.status.active') }}</span>
+                                        <span class="badge tb-pill tb-pill-ok">{{ __('users.status.active') }}</span>
                                     @else
-                                        <span class="badge text-bg-secondary">{{ __('users.status.inactive') }}</span>
+                                        <span class="badge tb-pill tb-pill-muted">{{ __('users.status.inactive') }}</span>
                                     @endif
                                 </td>
                                 {{-- 最後登入時間（已依台北時區儲存）；從未登入過就顯示「從未登入」。 --}}
                                 <td>{{ $user->last_login_at?->format('Y-m-d H:i') ?? __('users.never_logged_in') }}</td>
-                                <td class="text-center">
+                                <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">
                                         @if ($user->trashed())
-                                            {{-- 已刪除的用戶只提供「還原」按鈕。onsubmit 的 confirm 是送出前的確認視窗。 --}}
+                                            {{-- 已刪除的用戶只提供「還原」按鈕。data-confirm：送出前先跳出全站共用的確認視窗（跟刪除一樣）。 --}}
                                             <form method="POST" action="{{ route('users.restore', $user) }}"
-                                                onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('users.confirm.restore', ['name' => $user->name])) }});">
+                                                data-confirm="{{ __('users.confirm.restore', ['name' => $user->name]) }}" data-confirm-ok="確認還原" data-confirm-variant="primary">
                                                 @csrf
                                                 {{-- 瀏覽器的表單只能 GET/POST，@method 用隱藏欄位偽裝成 PATCH / PUT / DELETE。 --}}
                                                 @method('PATCH')
@@ -143,12 +137,12 @@
                                             </form>
                                         @else
                                             {{-- 編輯按鈕（鉛筆圖示）。 --}}
-                                            <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('users.edit', $user) }}"
+                                            <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('users.edit', $user) }}" data-modal-frame data-modal-title="修改用戶" data-modal-size="lg"
                                                 title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
 
-                                            {{-- 啟用／停用切換按鈕：目前啟用中才會跳出確認視窗；自己不能停用自己（@disabled）。 --}}
+                                            {{-- 啟用／停用切換按鈕：目前啟用中才會跳出確認視窗（全站共用的彈出視窗）；自己不能停用自己（@disabled）。 --}}
                                             <form method="POST" action="{{ route('users.toggle', $user) }}"
-                                                @if ($user->is_active) onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('users.confirm.deactivate', ['name' => $user->name])) }});" @endif>
+                                                @if ($user->is_active) data-confirm="{{ __('users.confirm.deactivate', ['name' => $user->name]) }}" data-confirm-ok="確認停用" @endif>
                                                 @csrf
                                                 @method('PATCH')
                                                 <button class="btn btn-outline-warning btn-sm icon-btn" type="submit" @disabled($isSelf)
@@ -174,13 +168,14 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <div class="mt-3">
+        <div>
             {{-- 分頁按鈕（上一頁／下一頁／頁碼），樣式在 AppServiceProvider 設定成 Bootstrap。 --}}
-            {{ $users->links() }}
+            @include('layouts.pager', ['paginator' => $users])
         </div>
     @endif
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
+</div>
 @endsection

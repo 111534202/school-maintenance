@@ -3,6 +3,7 @@
 // 這裡放「自訂的終端機指令」（php artisan xxx）與排程（Schedule）。
 // 範例指令 inspire 是 Laravel 預設附的；保養/AI 模組（王佑恩）的排程在檔案下方。
 
+use App\Console\Commands\CleanupReservations;
 use App\Console\Commands\GenerateDueMaintenanceOrders;
 use App\Console\Commands\ScanPreventiveCandidates;
 use Illuminate\Foundation\Inspiring;          // 產生勵志名言的內建工具
@@ -40,6 +41,17 @@ Schedule::command(GenerateDueMaintenanceOrders::class)
 Schedule::command(ScanPreventiveCandidates::class)
     ->dailyAt('02:00')
     ->name('ai:scan-preventive')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
+ * 空間預約：每月第二、四個週日跨到週一的 0 點，清除「已拒絕」與「時段已過還沒審核」的申請（劉家芸）。
+ * 排在每週一 0 點檢查，只有前一天是當月第二個週日（8～14 號）或第四個週日（22～28 號）才執行。
+ */
+Schedule::command(CleanupReservations::class)
+    ->weeklyOn(1, '00:00')
+    ->when(fn () => in_array(now()->subDay()->day, [...range(8, 14), ...range(22, 28)], true))
+    ->name('reservations:cleanup')
     ->withoutOverlapping()
     ->onOneServer();
 

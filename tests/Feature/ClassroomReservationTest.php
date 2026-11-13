@@ -52,10 +52,43 @@ class ClassroomReservationTest extends TestCase
         ], $overrides);
     }
 
-    public function test_user_can_view_reservation_page_and_create_form(): void
+    /** 沒有審核權限的人：選單的「空間申請」就是有課表的申請頁，下方是「我的申請」；看不到別人的申請，也沒有右上角的兩個按鈕。 */
+    public function test_user_without_review_permission_sees_timetable_and_own_requests(): void
     {
-        $this->get(route('reservations.index'))->assertOk();
-        $this->get(route('reservations.create'))->assertOk();
+        $classroom = $this->makeClassroom();
+        $other = $this->makeUserWithRole('teacher2', '教師二');
+        $this->makeReservation([...$this->payload($classroom, ['class_name' => '別人的班級']), 'requester_id' => $other->id, 'status' => 'pending']);
+        $this->makeReservation([...$this->payload($classroom, ['class_name' => '我的班級']), 'requester_id' => $this->applicant->id, 'status' => 'pending']);
+
+        $this->get(route('reservations.index'))
+            ->assertOk()
+            ->assertSee('id="my-requests"', false)
+            ->assertSee('我的申請')
+            ->assertDontSee(route('reservations.mine'), false)
+            ->assertSee('我的班級')
+            ->assertDontSee('別人的班級');
+        $this->get(route('reservations.create'))->assertOk()->assertSee('id="my-requests"', false);
+    }
+
+    /** 有審核權限的人：空間申請是全部申請列表，右上角「空間預約」換到有課表的頁面、「我的申請」在對話框打開；有課表的頁面不再顯示「我的申請」。 */
+    public function test_reviewer_sees_request_list_with_reservation_and_mine_buttons(): void
+    {
+        $classroom = $this->makeClassroom();
+        $reviewer = $this->loginAsAnyUser();
+        $this->makeReservation([...$this->payload($classroom, ['class_name' => '審核者的班級']), 'requester_id' => $reviewer->id, 'status' => 'pending']);
+
+        $this->actingAs($reviewer)->get(route('reservations.index'))
+            ->assertOk()
+            ->assertSee('href="' . route('reservations.create') . '"', false)
+            ->assertSee('href="' . route('reservations.mine') . '" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="我的申請"', false);
+        $this->actingAs($reviewer)->get(route('reservations.create'))
+            ->assertOk()
+            ->assertSee('空間預約')
+            ->assertDontSee('id="my-requests"', false);
+        $this->actingAs($reviewer)->get(route('reservations.mine', ['modal' => 1]))
+            ->assertOk()
+            ->assertSee('審核者的班級')
+            ->assertSee('tb-table-wrap', false);
     }
 
 
@@ -86,7 +119,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
 
         $this->post(route('reservations.store'), $this->payload($classroom))
-            ->assertRedirect(route('reservations.index'))
+            ->assertRedirect(route('reservations.index') . '#my-requests')
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('classroom_reservations', [
@@ -97,7 +130,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_user_can_only_see_their_own_reservations(): void
+    public function test_my_requests_only_lists_the_users_own_reservations(): void
     {
         $classroom = $this->makeClassroom();
 
@@ -118,8 +151,10 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->get(route('reservations.index'))
+        // 「我的申請」只列自己提出的申請。
+        $this->get(route('reservations.create'))
             ->assertOk()
+            ->assertSee('href="' . route('reservations.show', $own) . '"', false)
             ->assertSee($own->class_name)
             ->assertDontSee('二年乙班');
     }
@@ -319,7 +354,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_approval_is_rejected_when_another_approved_reservation_overlaps(): void
+    public function test_request_overlapping_an_approved_reservation_is_rejected_automatically(): void
     {
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
@@ -346,18 +381,21 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
+        // 和已核准的時段重疊：這一節不能同意。
         $this->post(route('reservations.approve', $pending))
-            ->assertRedirect(route('reservations.index'))
             ->assertSessionHas('error');
+        $this->assertSame('pending', $pending->fresh()->status);
 
+        // 打開空間申請列表時，重疊的那一節自動拒絕；這筆只有這一節，所以整筆變成已拒絕（審核人是系統）。
+        $this->get(route('reservations.index'))->assertOk();
         $this->assertDatabaseHas('classroom_reservations', [
             'id' => $pending->id,
-            'status' => 'pending',
+            'status' => 'rejected',
             'reviewed_by' => null,
         ]);
     }
 
-    public function test_approval_is_rejected_when_a_later_date_slot_overlaps(): void
+    public function test_request_whose_later_date_overlaps_keeps_the_free_date_pending(): void
     {
         $classroom = $this->makeClassroom();
         $manager = $this->loginAsAnyUser();
@@ -414,15 +452,12 @@ class ClassroomReservationTest extends TestCase
         ]);
 
         $this->post(route('reservations.approve', $pending))
-            ->assertRedirect(route('reservations.index'))
             ->assertSessionHas('error');
 
-        $this->assertDatabaseHas('classroom_reservations', [
-            'id' => $pending->id,
-            'status' => 'pending',
-            'reviewed_by' => null,
-            'reviewed_at' => null,
-        ]);
+        // 逐節審核：只有重疊的第二天自動拒絕，第一天仍待審核、可以同意。
+        $this->get(route('reservations.index'))->assertOk();
+        $this->assertSame('pending', $pending->fresh()->status);
+        $this->assertSame([null, 'rejected'], $pending->fresh('slots')->slots->pluck('status')->all());
     }
     public function test_approval_is_rejected_when_classroom_becomes_abnormal(): void
     {
@@ -455,7 +490,7 @@ class ClassroomReservationTest extends TestCase
         ]);
     }
 
-    public function test_rejection_reason_is_required(): void
+    public function test_rejection_reason_is_optional(): void
     {
         $classroom = $this->makeClassroom();
         $this->loginAsAnyUser();
@@ -466,17 +501,14 @@ class ClassroomReservationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->from(route('reservations.index'))
-            ->post(route('reservations.reject', $reservation), [
-                'rejection_reason' => '',
-            ])
+        $this->post(route('reservations.reject', $reservation), ['rejection_reason' => ''])
             ->assertRedirect(route('reservations.index'))
-            ->assertSessionHasErrors('rejection_reason');
+            ->assertSessionHas('success', '預約已拒絕。');
 
         $this->assertDatabaseHas('classroom_reservations', [
             'id' => $reservation->id,
-            'status' => 'pending',
-            'reviewed_by' => null,
+            'status' => 'rejected',
+            'rejection_reason' => null,
         ]);
     }
 
@@ -522,6 +554,11 @@ class ClassroomReservationTest extends TestCase
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
+
+        // 一般使用者看不到是哪一班預約的；有審核權限的人看得到。
+        $this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))
+            ->assertOk()->assertJsonMissingPath('periods.1.reservations.0.class_name')->assertJsonPath('periods.1.reservations.0.status', 'pending');
+        $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
 
         $this->getJson(route('reservations.timetable', [
             'classroom_id' => $classroom->id,
@@ -637,6 +674,9 @@ class ClassroomReservationTest extends TestCase
             'end_time' => '09:30',
             'period_number' => 2,
         ]);
+
+        // 班級名稱只給有審核權限的人看（課表上顯示「班級＋已借用」）。
+        $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
 
         $this->getJson(route('reservations.timetable.week', [
             'classroom_id' => $classroom->id,
@@ -787,5 +827,19 @@ class ClassroomReservationTest extends TestCase
         $this->post(route('reservations.store'), $this->payload($classroom, [
             'reservation_date' => $today, 'start_time' => '13:10', 'end_time' => '14:00',
         ]))->assertSessionHas('success');
+    }
+
+    /** 送出申請時可以勾選「其中一節無法借用就整筆不要」；表單上看得到這個選項。 */
+    public function test_requester_can_choose_all_or_nothing_when_submitting(): void
+    {
+        $classroom = $this->makeClassroom();
+
+        $this->get(route('reservations.create'))->assertSee('其中一節無法借用時，整筆申請都不要');
+
+        $this->post(route('reservations.store'), $this->payload($classroom, ['class_name' => '整筆班', 'is_all_or_nothing' => '1']))->assertSessionHasNoErrors();
+        $this->post(route('reservations.store'), $this->payload($classroom, ['class_name' => '逐節班', 'start_time' => '13:00', 'end_time' => '14:00']))->assertSessionHasNoErrors();
+
+        $this->assertTrue(ClassroomReservation::where('class_name', '整筆班')->firstOrFail()->is_all_or_nothing);
+        $this->assertFalse(ClassroomReservation::where('class_name', '逐節班')->firstOrFail()->is_all_or_nothing);
     }
 }

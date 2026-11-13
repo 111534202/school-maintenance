@@ -56,12 +56,11 @@ class StoreRepairLogRequest extends FormRequest
             // 保留舊欄位相容性，不再把它當成正式的庫存扣除依據。
             'parts_used_note' => ['nullable', 'string', 'max:255'],
 
-            // 最多 5 個附件，每個不超過 20 MB。
-            'attachments' => ['nullable', 'array', 'max:5'],
+            // 最多 5 個附件，加起來 5 MB 以內（單檔不另外限制；上限在 App\Support\AttachmentLimit）。
+            'attachments' => ['nullable', 'array', 'max:' . \App\Support\AttachmentLimit::MAX_FILES, \App\Support\AttachmentLimit::totalSizeRule()],
             'attachments.*' => [
                 'file',
                 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm',
-                'max:20480',
             ],
         ];
     }

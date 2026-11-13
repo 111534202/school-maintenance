@@ -13,8 +13,9 @@
         </div>
     </div>
 
-    <form action="{{ route('maintenance-orders.results.store', $order) }}" method="POST" class="bg-white p-4 rounded shadow-sm">
+    <form action="{{ route('maintenance-orders.results.store', $order) }}" method="POST">
         @csrf
+        <div class="tb-form-card">
 
         <div class="mb-3">
             <label class="form-label">保養結果 <span class="text-danger">*</span></label>
@@ -68,8 +69,12 @@
             <div class="form-text mb-2">如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。</div>
             @include('parts._usage-picker', ['parts' => $parts])
         </div>
+        </div>
 
-        <button type="submit" class="btn btn-primary">送出</button>
-        <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary">取消</a>
+        {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-outline-secondary">取消</a>
+            <button type="submit" class="btn btn-primary">送出</button>
+        </div>
     </form>
 @endsection

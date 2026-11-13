@@ -31,13 +31,17 @@ class CostReportSelectedExportTest extends TestCase
         RepairPartUsage::create(['repair_log_id' => $repairLog->id, 'part_id' => $part->id, 'quantity' => $quantity, 'unit_price' => $unitPrice]);
     }
 
-    public function test_page_offers_an_export_preview(): void
+    public function test_page_shows_the_filter_inline_and_offers_an_export_preview(): void
     {
         $user = $this->makeUserWithPermissions(['maintenance.view']);
         $this->makeUsage($user, 'HDMI 線', 12, 10);
 
         $this->actingAs($user)->get(route('repair-cost-analysis.index'))
             ->assertOk()
+            ->assertSee('class="filter-bar tb-form-row tb-filter cost-filter" data-no-onion', false)   // 篩選不收進右邊滑出的面板
+            ->assertDontSee('以表格檢視')
+            ->assertSee('data-onion-panel-title="材料費明細" data-onion-list-only', false)
+            ->assertSeeInOrder(['NT$ 120', '共 12 條'])                                      // 數量緊接在金額右邊
             ->assertSee('匯出成本分析報表')
             ->assertSeeInOrder(['成本總覽', '備品使用彙總', '材料費明細', '報廢明細'])
             ->assertSee('name="cols[details][]"', false);

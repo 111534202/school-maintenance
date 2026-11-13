@@ -161,7 +161,7 @@
                             </form>
                         {{-- 狀態三：處理中 → 顯示「填寫維修紀錄」按鈕（送出後案件自動變成待驗收）。 --}}
                         @elseif ($showFillLog)
-                            <a class="btn btn-primary w-100" href="{{ route('repair-logs.create', $repairRequest) }}"><i class="bi bi-journal-plus me-1"></i>{{ __('repair_requests.show.fill_repair_log') }}</a>
+                            <a class="btn btn-primary w-100" href="{{ route('repair-logs.create', $repairRequest) }}" data-modal-frame data-modal-title="{{ __('repair_requests.show.fill_repair_log') }}" data-modal-size="lg"><i class="bi bi-journal-plus me-1"></i>{{ __('repair_requests.show.fill_repair_log') }}</a>
                         {{-- 狀態四：待驗收 → 顯示驗收區：通過直接結案；不通過展開輸入框填退回原因。 --}}
                         @elseif ($showAccept)
                             <h2 class="h6 mb-3"><i class="bi bi-clipboard-check me-2"></i>{{ __('repair_requests.show.acceptance_heading') }}</h2>
@@ -296,7 +296,7 @@
                                     <tr>
                                         <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
                                         <td>#{{ $log->id }}</td>
-                                        <td class="text-end">{{ $usage->quantity }}</td>
+                                        <td class="text-end text-nowrap">{{ $usage->quantity }} {{ $usage->part?->unit }}</td>
                                         <td class="text-end">
                                             @if ($usage->unit_price === null)
                                                 <span class="text-danger">缺少單價</span>

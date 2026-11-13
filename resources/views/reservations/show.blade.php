@@ -6,179 +6,209 @@
 @php
     [$statusText, $statusColor] = $reservation->statusLabel();
     $canReview = $canManage && ! $reservation->isReviewed();
-    // 每個時段的狀態文字與顏色（時段沒有自己的結果時跟著整筆申請）。
-    $slotLabel = fn ($slot) => match ($slot->effectiveStatus()) {
-        'approved' => ['同意', 'success'],
-        'rejected' => ['拒絕', 'danger'],
-        default => ['待審核', 'warning'],
-    };
+    $undecided = $reservation->slots->whereNull('status');
+    $inModal = request()->boolean('modal');   // 在空間申請列表的對話框裡打開
+    $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    // 逐節審核：只要有任何一節已經有結果（例如部分核准、或有一節被別人借走而自動拒絕），每一節各自標示同意／拒絕／待審核。
+    $showSlotResult = $reservation->slots->whereNotNull('status')->isNotEmpty() && $reservation->status !== \App\Models\ClassroomReservation::STATUS_REJECTED;
 @endphp
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="h3 mb-0">預約詳細：{{ $reservation->class_name }}</h1>
-</div>
+{{-- 預約詳細：空間申請列表點一筆時，在畫面中的對話框（標題「預約詳細」）裡打開這一頁（?modal=1，不顯示頁首）；
+     直接開網址時是一般頁面。內容依序：申請狀態、送出時間、教室、申請班級、申請人、申請時段、用途。 --}}
+@unless ($inModal)
+    <h1 class="h3 mb-3">預約詳細</h1>
+@endunless
 
-<div class="card mb-3">
-    <div class="card-header">申請資料</div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3">申請狀態</dt>
-            <dd class="col-sm-9"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>
+<div class="{{ $inModal ? '' : 'card p-4' }}" style="max-width: 720px;">
+    <dl class="mb-0 reservation-detail" id="reservationDetail">
+        <dt>申請狀態</dt>
+        <dd><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>
 
-            <dt class="col-sm-3">教室</dt>
-            <dd class="col-sm-9">{{ $reservation->classroom ? $reservation->classroom->name . '（' . $reservation->classroom->classroom_code . '）' : '教室資料不存在' }}</dd>
+        <dt>送出時間</dt>
+        <dd>{{ $reservation->created_at?->format('Y-m-d H:i') }}</dd>
 
-            <dt class="col-sm-3">申請班級</dt>
-            <dd class="col-sm-9">{{ $reservation->class_name }}</dd>
+        <dt>教室</dt>
+        <dd>{{ $reservation->classroom ? $reservation->classroom->name . '（' . $reservation->classroom->classroom_code . '）' : '教室資料不存在' }}</dd>
 
-            <dt class="col-sm-3">用途</dt>
-            <dd class="col-sm-9">{{ $reservation->purpose ?: '—' }}</dd>
+        <dt>申請班級</dt>
+        <dd>{{ $reservation->class_name }}</dd>
 
-            <dt class="col-sm-3">申請人</dt>
-            <dd class="col-sm-9">{{ $reservation->requester?->name ?? '使用者資料不存在' }}</dd>
+        <dt>申請人</dt>
+        <dd>{{ $reservation->requester?->name ?? '使用者資料不存在' }}</dd>
 
-            <dt class="col-sm-3">申請時間</dt>
-            <dd class="col-sm-9">{{ $reservation->created_at?->format('Y-m-d H:i') }}</dd>
-
-            <dt class="col-sm-3">審核人</dt>
-            <dd class="col-sm-9">{{ $reservation->reviewer?->name ?? '—' }}</dd>
-
-            <dt class="col-sm-3">審核時間</dt>
-            <dd class="col-sm-9">{{ $reservation->reviewed_at?->format('Y-m-d H:i') ?? '—' }}</dd>
-        </dl>
-    </div>
-</div>
-
-{{-- 教室設備狀況：教室裡有設備在報修／故障時提醒申請人與審核人（核心設備故障時教室會暫停預約，無法核准）。 --}}
-<div class="card mb-3 {{ $classroomSuspended ? 'border-danger' : ($repairNotices ? 'border-warning' : '') }}">
-    <div class="card-header">教室設備狀況</div>
-    <div class="card-body">
-        @if ($repairNotices)
-            <ul class="mb-0 ps-3">
-                @foreach ($repairNotices as $notice)
-                    <li class="{{ $classroomSuspended && $notice['core'] ? 'text-danger' : 'text-warning-emphasis' }}">
-                        <i class="bi bi-exclamation-triangle me-1"></i>{{ $notice['text'] }}
-                        @if ($notice['core'])<span class="badge text-bg-danger ms-1">核心設備</span>@endif
+        {{-- 申請時段只顯示日期與節次；起訖時間仍記在資料裡（判斷重疊、時間是否已過），沒有節次的時段才顯示時間。 --}}
+        <dt>申請時段</dt>
+        <dd>
+            <ul class="list-unstyled mb-0">
+                @foreach ($reservation->slots as $slot)
+                    <li>
+                        {{ $slot->reservation_date->format('Y-m-d') }}（{{ $weekdays[$slot->reservation_date->dayOfWeek] }}）{{ $slot->periodOrTime() }}
+                        @if ($showSlotResult)
+                            @php($slotStatus = $slot->status)
+                            <span class="badge text-bg-{{ $slotStatus === 'approved' ? 'success' : ($slotStatus === 'rejected' ? 'danger' : 'warning') }} ms-1">{{ $slotStatus === 'approved' ? '同意' : ($slotStatus === 'rejected' ? '拒絕' : '待審核') }}</span>
+                            @if ($slotStatus === 'rejected' && $slot->rejection_reason)
+                                <span class="small text-muted ms-1 text-wrap">{{ $slot->rejection_reason }}</span>
+                            @endif
+                        @endif
                     </li>
                 @endforeach
             </ul>
-        @elseif (! $classroomSuspended)
-            <span class="text-success"><i class="bi bi-check-circle me-1"></i>目前沒有設備在報修。</span>
-        @endif
-        @if ($classroomSuspended)
-            <p class="small text-danger mt-2 mb-0">核心設備正在維修，這間教室目前暫停預約，無法核准任何時段（仍可拒絕）。</p>
-        @endif
-    </div>
-</div>
+        </dd>
 
-{{-- 預約時段：每個時段分別審核。未審核時，有預約管理權限的人可以在這裡逐一選擇同意或拒絕。 --}}
-<div class="card mb-3">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <span>預約時段（{{ $reservation->slots->count() }}）</span>
-        @if ($canReview)
-            <span class="small text-muted">每個時段都要選「同意」或「拒絕」才能送出；拒絕請填寫原因。</span>
-        @endif
-    </div>
+        <dt>用途</dt>
+        <dd class="rd-wrap">{{ $reservation->purpose ?: '—' }}</dd>
 
-    @if ($canReview)
-        <form method="POST" action="{{ route('reservations.review', $reservation) }}" id="reviewForm">
-            @csrf
+        {{-- 申請時勾選「其中一節無法借用就整筆不要」（只能整筆同意或拒絕）才顯示：只有這句紅字粗體，不加欄位名稱，佔滿一整行。 --}}
+        @if ($reservation->is_all_or_nothing)
+            <dd class="rd-wrap rd-full text-danger fw-bold">其中一節無法借用就整筆不要</dd>
+        @endif
+
+        @if ($reservation->isReviewed())
+            <dt>審核人</dt>
+            {{-- 已審核但沒有審核人＝系統自動拒絕（節次已被別人借走）。 --}}
+            <dd>{{ $reservation->reviewer?->name ?? '系統自動' }}</dd>
+
+            <dt>審核時間</dt>
+            <dd>{{ $reservation->reviewed_at?->format('Y-m-d H:i') ?? '—' }}</dd>
+
+            @if ($reservation->status === 'rejected')
+                <dt>拒絕原因</dt>
+                <dd class="rd-wrap {{ $reservation->rejection_reason ? 'text-danger' : '' }}">{{ $reservation->rejection_reason ?: '—' }}</dd>
+            @endif
+        @endif
+    </dl>
+
+    {{-- 教室設備狀況：沒有設備在報修就不顯示。每次打開都重新檢查，所以送出申請後才報修的設備也會出現在這裡。 --}}
+    @if ($repairNotices || $classroomSuspended)
+        <div class="alert {{ $classroomSuspended ? 'alert-danger' : 'alert-warning' }} small mt-3 mb-0">
+            <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>教室設備報修中</div>
+            @if ($repairNotices)
+                <ul class="mb-0 ps-3">
+                    @foreach ($repairNotices as $notice)
+                        <li>
+                            {{ $notice['text'] }}
+                            @if ($notice['core'])<span class="badge text-bg-danger ms-1">核心設備</span>@endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            @if ($classroomSuspended)
+                <div class="mt-1">核心設備正在維修，這間教室目前暫停預約，無法核准（仍可拒絕）。</div>
+            @endif
+        </div>
     @endif
 
-    <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th class="text-nowrap">預約日期</th>
-                    <th class="text-nowrap">使用時段</th>
-                    <th class="text-nowrap">節次</th>
-                    <th class="text-nowrap">審核結果</th>
-                    <th>{{ $canReview ? '拒絕原因（拒絕時必填）' : '拒絕原因' }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{-- 每筆申請至少有一個時段；使用時間只記在時段明細。 --}}
-                @foreach ($reservation->slots as $slot)
-                    @php([$slotText, $slotColor] = $slotLabel($slot))
-                    <tr>
-                        <td class="text-nowrap">{{ $slot->reservation_date->format('Y-m-d') }}</td>
-                        <td class="text-nowrap">{{ substr((string) $slot->start_time, 0, 5) }}–{{ substr((string) $slot->end_time, 0, 5) }}</td>
-                        <td class="text-nowrap">{{ $slot->periodLabel() ?? '—' }}</td>
-                        <td class="text-nowrap">
-                            @if ($canReview)
-                                @php($old = old("decisions.{$slot->id}.decision"))
-                                <div class="btn-group btn-group-sm" role="group" aria-label="{{ $slot->label() }} 的審核結果">
-                                    <input type="radio" class="btn-check slot-decision" name="decisions[{{ $slot->id }}][decision]" id="approve_{{ $slot->id }}" value="approved" required @checked($old === 'approved')>
-                                    <label class="btn btn-outline-success" for="approve_{{ $slot->id }}">同意</label>
-                                    <input type="radio" class="btn-check slot-decision" name="decisions[{{ $slot->id }}][decision]" id="reject_{{ $slot->id }}" value="rejected" @checked($old === 'rejected')>
-                                    <label class="btn btn-outline-danger" for="reject_{{ $slot->id }}">拒絕</label>
-                                </div>
-                            @else
-                                <span class="badge text-bg-{{ $slotColor }}">{{ $slotText }}</span>
-                            @endif
-                        </td>
-                        <td>
-                            @if ($canReview)
-                                <input type="text" class="form-control form-control-sm slot-reason @error("decisions.{$slot->id}.reason") is-invalid @enderror"
-                                    name="decisions[{{ $slot->id }}][reason]" maxlength="500" placeholder="例如：該時段已安排設備維護"
-                                    value="{{ old("decisions.{$slot->id}.reason") }}" aria-label="{{ $slot->label() }} 的拒絕原因"
-                                    @disabled($old !== 'rejected') @required($old === 'rejected')>
-                                @error("decisions.{$slot->id}.reason")<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            @else
-                                {{ $slot->effectiveStatus() === 'rejected' ? ($slot->rejection_reason ?? $reservation->rejection_reason ?? '—') : '—' }}
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+    {{-- 審核：一筆申請只能整筆核准或整筆拒絕。拒絕原因選填；
+         核准後，和這筆時段重疊的其他待審核申請會整筆自動拒絕（下面黃色框先列出來，按核准時再確認一次）。 --}}
+    {{-- 欄位名稱與內容：放得下就左右並排；除了「用途」「拒絕原因」（可能很長、會自動換行）以外，
+         只要有一項內容在這個寬度放不下，才改成名稱在上、內容在下（is-stacked）。 --}}
+    <style>
+        .reservation-detail { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.5rem 2.5rem; }
+        .reservation-detail dt { font-weight: 700; }
+        .reservation-detail dd { margin: 0; min-width: 0; white-space: nowrap; }
+        .reservation-detail dd.rd-wrap { white-space: normal; overflow-wrap: anywhere; }
+        .reservation-detail dd.rd-full { grid-column: 1 / -1; }
+        .reservation-detail.is-stacked dd.rd-full { margin-top: 0.75rem; }
+        .reservation-detail.is-stacked { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .reservation-detail.is-stacked dt:not(:first-child) { margin-top: 0.75rem; }
+        .reservation-detail.is-stacked dd { white-space: normal; }
+    </style>
+    <script>
+        (function () {
+            var dl = document.getElementById('reservationDetail');
+            function layout() {
+                dl.classList.remove('is-stacked');
+                var tooWide = Array.prototype.some.call(dl.querySelectorAll('dd:not(.rd-wrap)'), function (dd) {
+                    return dd.scrollWidth > dd.clientWidth + 1;
+                });
+                dl.classList.toggle('is-stacked', tooWide);
+            }
+            layout();
+            window.addEventListener('resize', layout);
+        })();
+    </script>
 
+    {{-- 審核：逐節選「同意」或「拒絕」後送出。申請人選了整筆（is_all_or_nothing）時，只能全部同意或全部拒絕。
+         同意的節次如果已經核准給別人就不能選同意（畫面上會標出來）；同意後，其他申請裡重疊的節次會自動拒絕。
+         拒絕原因選填，套用在這次被拒絕的節次。按送出時會先跳出確認視窗（data-confirm）。 --}}
     @if ($canReview)
-            <div class="card-body d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-success" id="approveAll">全部同意</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="rejectAll">全部拒絕</button>
+        @php($conflictTexts = collect(app(\App\Services\ReservationReviewService::class)->conflictLabels($reservation, $undecided))->keyBy('slot'))
+        <form method="POST" action="{{ route('reservations.review', $reservation) }}" class="mt-4" id="reviewForm"
+            data-confirm="確定要送出這筆申請的審核結果嗎？{{ $willAutoReject ? '同意的節次如果和其他待審核申請重疊，那些節次會自動拒絕。' : '' }}" data-confirm-ok="確認送出">
+            @csrf
+            <div class="fw-semibold mb-2">
+                審核
+                @if ($reservation->is_all_or_nothing)
+                    <span class="small text-muted fw-normal ms-1">申請人選了整筆：只能全部同意或全部拒絕</span>
+                @endif
+            </div>
+            <div class="list-group mb-2" id="slotDecisions">
+                @foreach ($undecided as $slot)
+                    @php($blocked = $conflictTexts->get($slot->label()))
+                    <div class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                        <span class="me-auto">{{ $slot->reservation_date->format('Y-m-d') }}（{{ $weekdays[$slot->reservation_date->dayOfWeek] }}）{{ $slot->periodOrTime() }}
+                            @if ($blocked)<span class="small text-danger ms-1">已核准給 {{ $blocked['class_name'] }}</span>@endif
+                        </span>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="{{ $slot->label() }} 的審核結果">
+                            <input type="radio" class="btn-check" name="decisions[{{ $slot->id }}]" id="approve_{{ $slot->id }}" value="approved"
+                                @checked(! $blocked && old("decisions.{$slot->id}", 'approved') === 'approved') @disabled($blocked || $classroomSuspended)>
+                            <label class="btn btn-outline-success" for="approve_{{ $slot->id }}">同意</label>
+                            <input type="radio" class="btn-check" name="decisions[{{ $slot->id }}]" id="reject_{{ $slot->id }}" value="rejected"
+                                @checked($blocked || $classroomSuspended || old("decisions.{$slot->id}") === 'rejected')>
+                            <label class="btn btn-outline-danger" for="reject_{{ $slot->id }}">拒絕</label>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @if ($undecided->count() > 1)
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-link btn-sm p-0" data-decide-all="approved" @disabled($classroomSuspended)>全部同意</button>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-danger" data-decide-all="rejected">全部拒絕</button>
                 </div>
+            @endif
+
+            <label for="rejection_reason" class="form-label">拒絕原因（選填，套用在被拒絕的節次）</label>
+            <input type="text" id="rejection_reason" name="rejection_reason" maxlength="500"
+                class="form-control @error('rejection_reason') is-invalid @enderror"
+                placeholder="例如：該時段已安排設備維護" value="{{ old('rejection_reason') }}">
+            @error('rejection_reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+
+            @if ($willAutoReject)
+                <div class="alert alert-warning small mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>同意後，下列申請因為時段重疊、而且選了「其中一節無法借用就整筆不要」，會整筆自動拒絕：
+                    <ul class="mb-0 mt-1 ps-3">
+                        @foreach ($willAutoReject as $other)
+                            <li>{{ $other['reservation']->class_name }}（重疊 {{ $other['slot'] }}）</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn btn-primary">送出審核</button>
             </div>
         </form>
+
+        <script>
+            (function () {
+                var form = document.getElementById('reviewForm');
+                var allOrNothing = @json((bool) $reservation->is_all_or_nothing);
+                // 「全部同意／全部拒絕」：一次選好每一節（已借給別人的節次不能同意）。
+                form.querySelectorAll('[data-decide-all]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var value = button.getAttribute('data-decide-all');
+                        form.querySelectorAll('input[type=radio][value="' + value + '"]:not(:disabled)').forEach(function (r) { r.checked = true; });
+                    });
+                });
+                // 整筆制：改其中一節，其他節跟著一起改（只能全部同意或全部拒絕）。
+                if (allOrNothing) {
+                    form.addEventListener('change', function (event) {
+                        if (!event.target.matches('input[type=radio]')) return;
+                        form.querySelectorAll('input[type=radio][value="' + event.target.value + '"]:not(:disabled)').forEach(function (r) { r.checked = true; });
+                    });
+                }
+            })();
+        </script>
     @endif
 </div>
-
-@if ($canReview)
-<script>
-// 選「拒絕」才開放並要求填原因；選「同意」就清掉原因。「全部同意／全部拒絕」只是幫忙一次點選，仍要按「送出審核」。
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('reviewForm');
-
-    function sync(radio) {
-        const row = radio.closest('tr');
-        const reason = row.querySelector('.slot-reason');
-        const rejected = row.querySelector('input[value="rejected"]').checked;
-        reason.disabled = !rejected;
-        reason.required = rejected;
-        if (!rejected) { reason.value = ''; reason.classList.remove('is-invalid'); }
-        if (rejected && radio.value === 'rejected' && radio.checked) { reason.focus(); }
-    }
-
-    form.querySelectorAll('.slot-decision').forEach(function (radio) {
-        radio.addEventListener('change', function () { sync(radio); });
-    });
-
-    function setAll(value) {
-        form.querySelectorAll('.slot-decision[value="' + value + '"]').forEach(function (radio) {
-            radio.checked = true;
-            sync(radio);
-        });
-        if (value === 'rejected') {
-            const first = form.querySelector('.slot-reason:not([disabled])');
-            if (first) { first.focus(); }
-        }
-    }
-    document.getElementById('approveAll').addEventListener('click', function () { setAll('approved'); });
-    document.getElementById('rejectAll').addEventListener('click', function () { setAll('rejected'); });
-});
-</script>
-@endif
 @endsection

@@ -66,6 +66,17 @@ class TimetableController extends Controller
         }
         unset($period);
 
+        // 預約的班級名稱只給有空間申請審核權限的人。
+        if (! $request->user()?->hasPermission('reservations.manage')) {
+            foreach ($schedule as &$periodData) {
+                foreach ($periodData['reservations'] as &$reservationData) {
+                    unset($reservationData['class_name']);
+                }
+                unset($reservationData);
+            }
+            unset($periodData);
+        }
+
         return response()->json([
             'classroom' => [
                 'id' => $classroom->id,
@@ -79,7 +90,7 @@ class TimetableController extends Controller
 
     /**
      * 免登入查詢課表用（GET /schedule/timetable/week）：和 week() 相同，但只留「有沒有課」與預約的時間、狀態：
-     * 拿掉課程的班級與課名、預約的班級名稱，不透露是哪一班在哪間教室上什麼課或預約。
+     * 拿掉課程的班級與課名、預約的班級名稱，不透露是哪一班在哪間教室上什麼課或預約。（同步 integrate/all f3a55bf）
      */
     public function publicWeek(Request $request, TimetableProvider $provider): JsonResponse
     {
@@ -165,6 +176,20 @@ class TimetableController extends Controller
                 'weekday' => $date->isoFormat('dddd'),
                 'periods' => $schedule,
             ];
+        }
+
+        // 預約的班級名稱只給有空間申請審核權限的人（課表上顯示「班級＋已借用」）；其他人只看到「已借用」。
+        if (! $request->user()?->hasPermission('reservations.manage')) {
+            foreach ($days as &$dayData) {
+                foreach ($dayData['periods'] as &$periodData) {
+                    foreach ($periodData['reservations'] as &$reservationData) {
+                        unset($reservationData['class_name']);
+                    }
+                    unset($reservationData);
+                }
+                unset($periodData);
+            }
+            unset($dayData);
         }
 
         return response()->json([

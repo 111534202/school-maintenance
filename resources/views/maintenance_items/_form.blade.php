@@ -1,5 +1,8 @@
 @csrf
 
+{{-- 外框只包欄位。 --}}
+<div class="tb-form-card">
+
 <div class="mb-3">
     <label for="name" class="form-label">名稱 <span class="text-danger">*</span></label>
     <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
@@ -42,12 +45,17 @@
     @enderror
 </div>
 
-<div class="form-check mb-4">
+<div class="form-check">
     <input type="hidden" name="is_active" value="0">
     <input type="checkbox" name="is_active" id="is_active" class="form-check-input" value="1"
         {{ old('is_active', $item->is_active) ? 'checked' : '' }}>
     <label for="is_active" class="form-check-label">啟用</label>
 </div>
 
-<button type="submit" class="btn btn-primary">儲存</button>
-<a href="{{ route('maintenance-items.index') }}" class="btn btn-outline-secondary">取消</a>
+</div>
+
+{{-- 「取消／儲存」在外框下面、靠右（跟其他主檔表單一致）。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
+    <a href="{{ route('maintenance-items.index') }}" class="btn btn-outline-secondary">取消</a>
+    <button type="submit" class="btn btn-primary">儲存</button>
+</div>

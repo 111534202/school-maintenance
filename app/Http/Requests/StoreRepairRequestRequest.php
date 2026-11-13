@@ -35,11 +35,10 @@ class StoreRepairRequestRequest extends FormRequest
             'device_note' => ['nullable', 'string', 'max:255'],
             // 設備地點：可不填；有填就必須是現有、啟用中的教室（只能從清單選，不能自由輸入）。
             'classroom_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('classrooms', 'id')->whereNull('deleted_at')->where('is_active', true)],
-            // 附件：圖片/PDF/影片都允許（依《第四週個人工作計畫》第 2 項「故障照片/影片」新增
-            // 影片格式），單檔上限提高到 20MB 以容納短片，避免任意檔案類型。
-            // 最多 5 個檔案（max:5）；單檔最大 20480 KB = 20 MB；想放寬或限制就改這裡的數字與副檔名。
-            'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm', 'max:20480'],
+            // 附件：圖片/PDF/影片都允許（依《第四週個人工作計畫》第 2 項「故障照片/影片」新增影片格式）。
+            // 一筆最多 5 個檔案、加起來 5 MB 以內，單檔不另外限制（上限在 App\Support\AttachmentLimit）。
+            'attachments' => ['nullable', 'array', 'max:' . \App\Support\AttachmentLimit::MAX_FILES, \App\Support\AttachmentLimit::totalSizeRule()],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm'],
         ];
     }
 }

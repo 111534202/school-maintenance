@@ -14,7 +14,7 @@ return [
         'ended_at' => 'End Time',
         'parts_used_note' => 'Parts Used (optional, e.g. Replaced projector bulb x1)',
         'parts_used_note_hint' => "The parts master table hasn't been merged yet; using free text for now — will switch to a dropdown with automatic inventory deduction later.",
-        'attachments' => 'Before/After Photos/Videos (optional, up to 5 files, jpg/png/pdf/mp4/mov/webm, max 20MB each)',
+        'attachments' => 'Before/After Photos/Videos (optional, up to 5 files, jpg/png/pdf/mp4/mov/webm, 5MB in total)',
     ],
 
     'submit' => 'Submit Repair Log (case will move to Pending Review)',

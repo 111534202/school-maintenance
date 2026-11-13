@@ -3,16 +3,26 @@
 @section('title', '保養計畫')
 
 @section('content')
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">保養計畫</h1>
+{{-- 風格 B：表格／清單自動切換，整頁捲動、表頭固定（data-no-fit）；有管理權限時點一列在對話框修改。 --}}
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">保養計畫</h1>
+        </div>
         @can('maintenance.manage')
-            <a href="{{ route('maintenance-plans.create') }}" class="btn btn-primary">新增保養計畫</a>
+            <a href="{{ route('maintenance-plans.create') }}" class="tb-btn tb-btn-primary" data-modal-frame data-modal-title="新增保養計畫" data-modal-size="lg">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>新增保養計畫
+            </a>
         @endcan
     </div>
 
+    @if ($plans->isEmpty())
+        <div class="tb-card tb-empty">目前沒有保養計畫</div>
+    @else
+    <section class="tb-table-wrap" data-no-fit>
     <div class="table-responsive">
-        <table class="table table-bordered bg-white align-middle text-nowrap" data-onion-primary="4">
-            <thead class="table-light">
+        <table class="tb-table tb-table-hover" data-onion-primary="4">
+            <thead>
                 <tr>
                     <th>計畫名稱</th>
                     <th>設備類別</th>
@@ -20,12 +30,12 @@
                     <th>項目數</th>
                     <th>下次到期日</th>
                     <th>狀態</th>
-                    <th class="text-end">操作</th>
+                    <th class="text-end tb-col-fit">操作</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse ($plans as $plan)
-                    <tr>
+                @foreach ($plans as $plan)
+                    <tr @can('maintenance.manage') data-modal-frame-href="{{ route('maintenance-plans.edit', $plan) }}" data-modal-title="修改保養計畫" data-modal-size="lg" tabindex="0" role="link" @endcan>
                         <td>{{ $plan->name }}</td>
                         <td>{{ $plan->categoryName() ?? '—' }}</td>
                         <td>{{ $plan->cycle_days }}</td>
@@ -33,14 +43,14 @@
                         <td>{{ $plan->next_due_date?->format('Y-m-d') ?? '—' }}</td>
                         <td>
                             @if ($plan->is_active)
-                                <span class="badge text-bg-success">啟用中</span>
+                                <span class="badge tb-pill tb-pill-ok">啟用中</span>
                             @else
-                                <span class="badge text-bg-secondary">已停用</span>
+                                <span class="badge tb-pill tb-pill-muted">已停用</span>
                             @endif
                         </td>
-                        <td class="text-end text-nowrap">
+                        <td class="text-end tb-col-fit">
                             @can('maintenance.manage')
-                                <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                                <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改保養計畫" data-modal-size="lg">修改</a>
                                 <form action="{{ route('maintenance-plans.toggle-status', $plan) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
@@ -59,14 +69,13 @@
                             @endcan
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="text-center text-muted py-4">目前沒有保養計畫</td>
-                    </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
     </div>
+    </section>
 
-    {{ $plans->links('pagination::bootstrap-5') }}
+    <div>@include('layouts.pager', ['paginator' => $plans])</div>
+    @endif
+</div>
 @endsection

@@ -35,9 +35,9 @@
             </div>
         </div>
     </div>
-    {{-- 表單底部的「取消／儲存」按鈕。 --}}
-    <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
-        <a class="btn btn-outline-secondary" href="{{ route('departments.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
-        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
-    </div>
+</div>
+{{-- 表單底部的「取消／儲存」按鈕：放在欄位外框的下面（外框只包欄位）。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
+    <a class="btn btn-outline-secondary" href="{{ route('departments.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

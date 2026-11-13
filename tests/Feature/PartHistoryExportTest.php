@@ -26,15 +26,16 @@ class PartHistoryExportTest extends TestCase
         return $part->fresh();
     }
 
-    public function test_history_page_offers_an_export_preview_and_a_scrap_section(): void
+    public function test_history_tables_have_no_table_view_and_offer_an_export_preview(): void
     {
         $this->loginAsAnyUser();
         $part = $this->makePart();
 
         $this->get(route('parts.show', $part))
             ->assertOk()
+            ->assertSee('採購紀錄" data-onion-list-only', false)
             ->assertSee('匯出零件履歷')
-            ->assertSeeInOrder(['基本資料', '採購紀錄', '使用紀錄', '報廢紀錄'])   // 報廢紀錄接在最後
+            ->assertSeeInOrder(['基本資料', '使用紀錄', '採購紀錄', '報廢紀錄'])
             ->assertSee('name="cols[purchases][]"', false)
             ->assertSee('五金行');
     }
@@ -53,4 +54,17 @@ class PartHistoryExportTest extends TestCase
         $this->get(route('parts.history.export', [$part, 'excel']))->assertSessionHasErrors('sections');
     }
 
+    /** 有低庫存零件時，右上角（新增零件左邊）才有「目前低庫存零件 N」按鈕；不再顯示紅色提示卡片。 */
+    public function test_low_stock_button_shows_only_when_there_are_low_stock_parts(): void
+    {
+        $this->loginAsAnyUser();
+        $this->get(route('parts.index'))->assertOk()->assertDontSee('目前低庫存零件');
+
+        Part::create(['name' => '網路線', 'specification' => '3公尺', 'unit' => '條', 'current_stock' => 0, 'safety_stock' => 3]);
+
+        $this->get(route('parts.index'))->assertOk()
+            ->assertSeeInOrder(['目前低庫存零件', '>1</span>', '新增零件'], false)
+            ->assertDontSee('低於安全庫存</div>', false)
+            ->assertDontSee('class="tb-alert', false);
+    }
 }

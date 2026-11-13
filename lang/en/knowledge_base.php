@@ -39,7 +39,8 @@ return [
     // 知識庫新增／編輯表單的欄位名稱。
     'form' => [
         'title' => 'Title',
-        'category' => 'Category (optional, e.g. Projector / Computer / Network)',
+        'category' => 'Category (optional)',
+        'category_placeholder' => 'e.g. Projector, Computer, Network',
         'symptom' => 'Common Symptoms',
         'solution' => 'Self-Help Steps',
         'is_published' => 'Publish (visible to users)',

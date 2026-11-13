@@ -19,13 +19,14 @@ class FormStepperTest extends TestCase
     public static function forms(): array
     {
         // 欄位：路由名稱、預期的步驟數、這張表單原本就有的欄位 name
+        // 設備、教室、用戶、身分、保養計畫在對話框裡打開，改成同一頁依序排下來（0 步＝不分步驟），欄位一個都不能少。
         return [
-            '新增設備' => ['devices.create', 3, ['device_code', 'asset_code', 'device_category_id', 'classroom_id', 'brand', 'model', 'serial_number', 'warranty_end_date', 'status', 'is_core']],
-            '新增教室' => ['classrooms.create', 3, ['department_id', 'manager_id', 'campus', 'building', 'floor', 'classroom_code', 'name', 'type']],
-            '新增用戶' => ['users.create', 3, ['account', 'name', 'email', 'password']],
-            '新增報修單' => ['repairs.create', 3, ['title', 'description', 'impact_level', 'classroom_id', 'attachments[]']],
-            '新增身分' => ['roles.create', 2, ['name', 'permissions[]']],
-            '新增保養計畫' => ['maintenance-plans.create', 3, ['name', 'device_category_id', 'cycle_days', 'start_date', 'is_active']],
+            '新增設備' => ['devices.create', 0, ['device_code', 'asset_code', 'device_category_id', 'classroom_id', 'brand', 'model', 'serial_number', 'warranty_end_date', 'status', 'is_core']],
+            '新增教室' => ['classrooms.create', 0, ['department_id', 'manager_id', 'campus', 'building', 'floor', 'classroom_code', 'name', 'type']],
+            '新增用戶' => ['users.create', 0, ['account', 'name', 'email', 'password']],
+            '新增報修單' => ['repairs.create', 0, ['title', 'description', 'impact_level', 'classroom_id', 'attachments[]']],
+            '新增身分' => ['roles.create', 0, ['name', 'permissions[]']],
+            '新增保養計畫' => ['maintenance-plans.create', 0, ['name', 'device_category_id', 'cycle_days', 'start_date', 'is_active']],
         ];
     }
 
@@ -51,11 +52,13 @@ class FormStepperTest extends TestCase
         $this->assertSame(0, substr_count($html, 'data-step="'));
     }
 
-    public function test_edit_user_form_has_two_steps_because_password_is_only_for_new_users(): void
+    public function test_edit_user_form_is_one_page_with_reset_password_below(): void
     {
         $admin = $this->makeUser('admin');
         $html = $this->actingAs($admin)->get(route('users.edit', $admin))->assertOk()->getContent();
 
-        $this->assertSame(2, substr_count($html, 'data-step="'));
+        // 帳號資料、聯絡與所屬、重設密碼依序排在同一頁；密碼欄有「顯示密碼」小眼睛（data-reveal）。
+        $this->assertSame(0, substr_count($html, 'data-step="'));
+        $this->assertSame(2, substr_count($html, 'data-reveal>'));
     }
 }

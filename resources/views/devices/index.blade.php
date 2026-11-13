@@ -7,21 +7,24 @@
 
 {{-- 從這裡開始是「放進主版面中間」的內容，到 @endsection 結束。 --}}
 @section('content')
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-pc-display me-2"></i>{{ __('devices.index_title') }}</h1>
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('devices.index_title') }}</h1>
+        </div>
         <div class="d-flex gap-2">
-            @include('charts._button')
-            <a class="btn btn-primary" href="{{ route('devices.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('devices.add_device') }}
+            @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            <a class="tb-btn tb-btn-primary" href="{{ route('devices.create') }}" data-modal-frame data-modal-title="{{ __('devices.add_device') }}" data-modal-size="xl">
+                <i class="bi bi-plus-lg"></i>{{ __('devices.add_device') }}
             </a>
         </div>
     </div>
 
-    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
+    {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
+    <div class="tb-card tb-card-pad">
+        <div>
             {{-- 篩選表單：用 GET 送出，條件會出現在網址上。 --}}
-            <form method="GET" action="{{ route('devices.index') }}" class="filter-bar">
+            <form method="GET" action="{{ route('devices.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
                 <div>
                     <label for="keyword" class="form-label small mb-1">{{ __('devices.filter.keyword') }}</label>
                     <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 16rem;"
@@ -61,15 +64,7 @@
                 @if (request('abnormal'))
                     <input type="hidden" name="abnormal" value="1">
                 @endif
-                <div class="d-inline-flex gap-1">
-                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
-                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
-                    {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('keyword') || request('classroom_id') || request('device_category_id') || request('status') || request('abnormal'))
-                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('devices.index') }}"
-                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('devices.index'), 'fields' => ['keyword', 'classroom_id', 'device_category_id', 'status', 'abnormal']])
             </form>
         </div>
     </div>
@@ -82,11 +77,11 @@
         </div>
     @endif
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
+    <section class="tb-table-wrap" data-no-fit>
+            <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="3,6">
-                <thead class="table-light">
+            <table class="tb-table tb-table-hover" data-onion-primary="3,6">
+                <thead>
                     <tr>
                         <th>{{ __('devices.table.code') }}</th>
                         <th>{{ __('devices.table.category') }}</th>
@@ -95,13 +90,13 @@
                         <th class="text-center">{{ __('devices.table.status') }}</th>
                         <th class="text-center">{{ __('devices.table.core') }}</th>
                         <th class="text-center">{{ __('devices.table.open_repairs') }}</th>
-                        <th class="text-center">{{ __('devices.table.actions') }}</th>
+                        <th class="text-end tb-col-fit">{{ __('devices.table.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{-- 逐筆列出設備；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($devices as $device)
-                        <tr data-href="{{ route('devices.show', $device) }}">
+                        <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link">
                             <td>
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a>
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
@@ -120,27 +115,26 @@
                             <td class="text-center">
                                 {{-- 核心設備才顯示「核心」徽章。 --}}
                                 @if ($device->is_core)
-                                    <span class="badge text-bg-warning">{{ __('devices.core_badge') }}</span>
+                                    <span class="badge tb-pill tb-pill-warn">{{ __('devices.core_badge') }}</span>
                                 @endif
                             </td>
                             {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這台設備的報修單。 --}}
                             <td class="text-center">
                                 @if ($device->open_repairs_count > 0)
-                                    <a class="badge text-bg-primary text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id]) }}"
                                         title="{{ __('devices.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $device->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>
                                 @endif
                             </td>
-                            <td class="text-center">
+                            <td class="text-end tb-col-fit">
                                 <div class="d-inline-flex gap-1">
-                                    <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('devices.show', $device) }}"
-                                        title="{{ __('devices.actions.detail') }}" aria-label="{{ __('devices.actions.detail') }}"><i class="bi bi-eye"></i></a>
-                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}"
+                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}" data-modal-frame data-modal-title="修改設備" data-modal-size="lg"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
-                                    {{-- 停用按鈕：送出前先跳出確認視窗；停用 = 狀態改 disabled 並軟刪除。 --}}
+                                    {{-- 停用按鈕：送出前先跳出全站共用的確認視窗；停用 = 狀態改 disabled 並軟刪除。
+                                         （詳細資料：點這一列在對話框打開，所以不另外放「查看」按鈕。） --}}
                                     <form method="POST" action="{{ route('devices.disable', $device) }}"
-                                        onsubmit="return confirm({{ \Illuminate\Support\Js::from(__('devices.confirm.disable')) }});">
+                                        data-confirm="{{ __('devices.confirm.disable') }}" data-confirm-ok="確認停用">
                                         @csrf
                                         {{-- 用隱藏欄位把 POST 偽裝成 PATCH。 --}}
                                         @method('PATCH')
@@ -157,10 +151,11 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     {{-- 分頁按鈕。 --}}
-    <div class="mt-3">{{ $devices->links() }}</div>
+    <div>@include('layouts.pager', ['paginator' => $devices])</div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
+</div>
 @endsection

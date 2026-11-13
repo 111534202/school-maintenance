@@ -12,10 +12,11 @@
             <h1 class="h4 mb-0">{{ $knowledgeBase->title }}</h1>
             <div class="d-inline-flex gap-1 flex-shrink-0">
                 {{-- 只有管理權限者看得到「編輯」按鈕。 --}}
-                @can('knowledge-base.manage')
+                {{-- 在知識庫列表的對話框裡打開（?modal=1）時不放（修改在列表的鉛筆按鈕）。 --}}
+                @if (auth()->user()->can('knowledge-base.manage') && ! request()->boolean('modal'))
                     <a class="btn btn-outline-primary icon-btn" href="{{ route('knowledge-base.edit', $knowledgeBase) }}"
                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
-                @endcan
+                @endif
             </div>
         </div>
 

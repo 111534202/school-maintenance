@@ -7,7 +7,6 @@ use App\Models\ClassroomReservation;
 use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 /**
@@ -16,7 +15,6 @@ use Tests\TestCase;
  */
 class GuestScheduleTest extends TestCase
 {
-    use CreatesReservations;
     use RefreshDatabase;
 
     private function classroom(string $name = 'A101 教室'): Classroom
@@ -31,7 +29,7 @@ class GuestScheduleTest extends TestCase
     {
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('查詢課表（免登入）')
+            ->assertSee('>查詢課表</a>', false)
             ->assertSee(route('schedule'), false);
     }
 
@@ -61,7 +59,7 @@ class GuestScheduleTest extends TestCase
     {
         $classroom = $this->classroom();
         $date = now()->addDays(7)->startOfWeek()->addDay();
-        $this->makeReservation([
+        $reservation = ClassroomReservation::create([
             'classroom_id' => $classroom->id,
             'requester_id' => User::factory()->create()->id,
             'class_name' => '資五孝',
@@ -71,6 +69,7 @@ class GuestScheduleTest extends TestCase
             'purpose' => '班級活動',
             'status' => 'approved',
         ]);
+        $reservation->slots()->create(['reservation_date' => $date->toDateString(), 'start_time' => '08:10', 'end_time' => '09:00']);
 
         $response = $this->getJson(route('schedule.timetable.week', ['classroom_id' => $classroom->id, 'date' => $date->toDateString()]))
             ->assertOk();
@@ -83,6 +82,22 @@ class GuestScheduleTest extends TestCase
         $this->assertArrayNotHasKey('class_name', $reservations->first());
     }
 
+    public function test_guest_cannot_submit_a_reservation(): void
+    {
+        $classroom = $this->classroom();
+
+        $this->post(route('reservations.store'), ['classroom_id' => $classroom->id, 'class_name' => '資五孝'])
+            ->assertRedirect(route('login'));
+        $this->assertSame(0, ClassroomReservation::count());
+    }
+
+    public function test_login_button_returns_to_the_reservation_page_after_signing_in(): void
+    {
+        $this->get(route('schedule.login'))->assertRedirect(route('login'));
+        $this->assertSame(route('reservations.create'), session('url.intended'));
+    }
+
+    // 以下兩個測試同步自 integrate/all f3a55bf：免登入時不洩漏課程班級、課名與報修單標題。
     public function test_guest_timetable_hides_course_and_class_names_but_keeps_busy_periods(): void
     {
         $classroom = $this->classroom();
@@ -118,20 +133,5 @@ class GuestScheduleTest extends TestCase
     private function escaped(string $text): string
     {
         return trim(json_encode($text), '"');
-    }
-
-    public function test_guest_cannot_submit_a_reservation(): void
-    {
-        $classroom = $this->classroom();
-
-        $this->post(route('reservations.store'), ['classroom_id' => $classroom->id, 'class_name' => '資五孝'])
-            ->assertRedirect(route('login'));
-        $this->assertSame(0, ClassroomReservation::count());
-    }
-
-    public function test_login_button_returns_to_the_reservation_page_after_signing_in(): void
-    {
-        $this->get(route('schedule.login'))->assertRedirect(route('login'));
-        $this->assertSame(route('reservations.create'), session('url.intended'));
     }
 }

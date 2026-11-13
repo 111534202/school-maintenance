@@ -85,7 +85,7 @@ return [
         'description_prefill' => "已依「:title」的排除步驟嘗試過，仍無法解決：\n",
         'impact_level_label' => '影響程度',
         'affects_class_label' => '目前正影響上課',
-        'attachments_label' => '故障照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，單檔 20MB 以內）',
+        'attachments_label' => '故障照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，加起來 5MB 以內）',
         'submit' => '送出報修',
     ],
 
