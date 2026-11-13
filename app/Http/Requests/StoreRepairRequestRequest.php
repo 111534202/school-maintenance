@@ -18,6 +18,25 @@ class StoreRepairRequestRequest extends FormRequest
     }
 
     /**
+     * 設備條碼（device_id）、設備位置／描述（device_note）、設備地點（classroom_id）三項至少要有一項，
+     * 否則維修人員不知道是哪裡的哪個設備；只填標題與故障描述不能送出。
+     */
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                $hasDevice = $this->filled('device_id');
+                $hasNote = trim((string) $this->input('device_note')) !== '';
+                $hasClassroom = $this->filled('classroom_id');
+
+                if (! $hasDevice && ! $hasNote && ! $hasClassroom) {
+                    $validator->errors()->add('device_note', '請至少提供一項：掃描或輸入設備條碼、填寫設備位置／描述，或選擇設備地點。');
+                }
+            },
+        ];
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>

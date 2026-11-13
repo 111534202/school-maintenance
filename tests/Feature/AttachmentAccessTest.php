@@ -123,7 +123,7 @@ class AttachmentAccessTest extends TestCase
         $this->loginAsAnyUser();
 
         $this->post(route('repairs.store'), [
-            'title' => '附件測試', 'description' => '描述', 'impact_level' => 'low', 'is_class_affected' => '0',
+            'title' => '附件測試', 'description' => '描述', 'device_note' => 'A101 投影機', 'impact_level' => 'low', 'is_class_affected' => '0',
             'attachments' => [UploadedFile::fake()->image('broken.jpg')],
         ])->assertRedirect();
 

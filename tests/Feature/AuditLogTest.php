@@ -118,7 +118,7 @@ class AuditLogTest extends TestCase
         $technician->update(['name' => '陳大成']);
 
         $this->post(route('repairs.store'), [
-            'title' => 'A101 投影機壞了', 'description' => '開不了機', 'impact_level' => 'high', 'is_class_affected' => '1',
+            'title' => 'A101 投影機壞了', 'description' => '開不了機', 'device_note' => 'A101 投影機', 'impact_level' => 'high', 'is_class_affected' => '1',
         ]);
         $case = RepairRequest::firstWhere('title', 'A101 投影機壞了');
         $this->assertSame('新增報修單「A101 投影機壞了」', $this->lastLog('created')->description);

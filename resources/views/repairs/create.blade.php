@@ -60,7 +60,9 @@
                         <div class="col-md-7">
                             <label for="device_note" class="form-label">{{ __('repair_requests.create.device_note_label') }}</label>
                             {{-- 沒有條碼的設備：手動描述設備與地點，當作後備資料。 --}}
-                            <input type="text" class="form-control" id="device_note" name="device_note" value="{{ old('device_note') }}">
+                            <input type="text" class="form-control @error('device_note') is-invalid @enderror" id="device_note" name="device_note" value="{{ old('device_note') }}">
+                            {{-- 設備條碼、設備位置／描述、設備地點三項都沒填時的提醒（至少要填一項，才找得到是哪裡的設備）。 --}}
+                            @error('device_note')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-5 position-relative">
                             {{-- 設備地點：只能從現有教室選（可輸入關鍵字搜尋），掃描設備時會自動帶入設備所在的教室。 --}}

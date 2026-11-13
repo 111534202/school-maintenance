@@ -342,6 +342,20 @@
             box.hidden = !box.childNodes.length;
             input.classList.toggle('is-invalid', !box.hidden);
         }
+        // 錯誤訊息後面加一顆「不附這些檔案，繼續」：按了才算處理完，才能送出表單（也可以改選較小的檔案，重新選檔會清掉）。
+        function addAcknowledge(input) {
+            var box = input._fileError;
+            if (!box || box.querySelector('.file-ack')) return;
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-secondary btn-sm mt-1 file-ack';
+            btn.textContent = '不附這些檔案，繼續';
+            btn.addEventListener('click', function () {
+                input._rejected = false;
+                showFileError(input, '');
+            });
+            box.appendChild(btn);
+        }
         document.addEventListener('change', function (event) {
             var input = event.target;
             if (!input.matches || !input.matches('input[type=file]')) return;
@@ -365,7 +379,11 @@
                     known.push(fileKey(f));
                 });
                 setFiles(input, current);
-                showFileError(input, Array.from(new Set(messages)));
+                var unique = Array.from(new Set(messages));
+                showFileError(input, unique);
+                // 有檔案因超過上限沒有加入：記下來，送出前一定要先處理（見 submit 檢查），避免「選了超過上限的檔案卻照樣送出」。
+                input._rejected = unique.length > 0;
+                if (input._rejected) addAcknowledge(input);
                 return;
             }
 
@@ -391,6 +409,11 @@
                 input.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i]._rejected) {
+                    stop(inputs[i], '有檔案因為超過上限，沒有加入附件。請改選較小的檔案，或按下方「不附這些檔案，繼續」之後再送出。');
+                    addAcknowledge(inputs[i]);
+                    return;
+                }
                 var big = tooBig(inputs[i]);
                 if (big) {
                     return stop(inputs[i], '「' + big.file.name + '」有 ' + mb(big.file.size) + '，超過上限 ' + mb(big.limit) + '，請改選較小的檔案。');
