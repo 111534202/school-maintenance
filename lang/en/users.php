@@ -55,7 +55,7 @@ return [
         'deactivate' => 'Deactivate ":name"? They will no longer be able to log in and any active sessions will be signed out.',
         'delete' => 'Delete ":name"? The account is marked as deleted (it can be restored) and any active sessions are signed out.',
         'restore' => 'Restore ":name"?',
-        'force_delete' => 'Permanently delete ":name"? This cannot be undone — the record is actually removed from the database and will no longer appear under the "Deleted" filter.',
+        'force_delete' => 'Permanently delete ":name"? This cannot be undone — the record is actually removed from the database. (Only accounts with no related records such as repair requests or audit logs can be permanently deleted.)',
     ],
 
     // 新增／編輯表單的標題、欄位名稱與說明文字。
@@ -103,6 +103,6 @@ return [
         'self_protected' => 'You cannot delete or deactivate your own account, or change your own role.',
         'last_admin' => 'The system must keep at least one active administrator; this account cannot be deleted, deactivated or demoted.',
         'not_deleted_yet' => 'The account must be deleted (soft-deleted) first before it can be permanently deleted.',
-        'force_delete_blocked' => 'Cannot permanently delete ":name": this account still has history records that must be kept (such as classroom reservation requests), which the database intentionally protects. Resolve those records first, then try again.',
+        'force_delete_blocked' => 'Cannot permanently delete ":name": this account still has related records (:records). Deleting it would make those records untraceable, so only accounts with no related records at all can be permanently deleted.',
     ],
 ];

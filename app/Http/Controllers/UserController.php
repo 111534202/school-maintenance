@@ -9,6 +9,7 @@ use App\Models\Department;                         // 部門主檔的資料表�
 use App\Models\Role;                               // 身分主檔的資料表模型
 use App\Models\User;                               // 用戶（帳號）資料表模型
 use App\Services\AuditLogger;                      // 共用的「操作紀錄」寫入工具
+use App\Support\UserRelatedRecords;                // 找出還指向某個用戶的關聯資料（永久刪除前檢查）
 use Illuminate\Http\RedirectResponse;              // 「導向到別的網址」這種回應的型別
 use Illuminate\Http\Request;                       // 代表瀏覽器送來的這一次請求（表單內容、網址參數都在裡面）
 use Illuminate\Support\Arr;                        // 陣列小工具（這裡用來「去掉某個欄位」）
@@ -236,8 +237,9 @@ class UserController extends Controller
 
     /**
      * 永久刪除（DELETE /users/{user}/force，路由有 withTrashed()）：真的從資料庫移除，無法還原。
-     * 只能對「已經軟刪除」的帳號操作，一般刪除要先做過一次。
-     * 有些紀錄（例如空間預約申請）資料庫故意設計成擋下刪除、保留歷史，遇到就接住並顯示清楚的錯誤訊息。
+     * 只能對「已經軟刪除」的帳號操作，而且只限「完全沒有任何關聯資料」的帳號（例如建立了但從沒用過的帳號）。
+     * 原因：報修單的報修人、操作紀錄的操作人、教室管理人等，資料庫設計成「帳號被刪就把欄位變成空白」，
+     * 永久刪除會讓這些紀錄永遠查不到是誰，所以只要還有任何一筆指向這個帳號，就擋下並說明是哪些資料。
      */
     public function forceDestroy(User $user): RedirectResponse
     {
@@ -245,10 +247,26 @@ class UserController extends Controller
             return back()->with('error', __('users.errors.not_deleted_yet'));
         }
 
+        $related = UserRelatedRecords::for($user);
+        if ($related) {
+            return back()->with('error', __('users.errors.force_delete_blocked', [
+                'name' => $user->name,
+                'records' => UserRelatedRecords::describe($related),
+            ]));
+        }
+
         try {
-            $user->forceDelete();
+            DB::transaction(function () use ($user) {
+                // 沒有外鍵的登入連線紀錄（sessions）一併清掉，避免留下指向不存在帳號的資料。
+                DB::table('sessions')->where('user_id', $user->getKey())->delete();
+                $user->forceDelete();
+            });
         } catch (\Illuminate\Database\QueryException $e) {
-            return back()->with('error', __('users.errors.force_delete_blocked', ['name' => $user->name]));
+            // 保險：檢查之後才有人新增了關聯資料，資料庫會擋下，這裡接住而不是出現 500。
+            return back()->with('error', __('users.errors.force_delete_blocked', [
+                'name' => $user->name,
+                'records' => '—',
+            ]));
         }
 
         // forceDelete() 之後 $user 這個物件還在記憶體裡（屬性都還在），只是資料庫那筆已經真的沒了，

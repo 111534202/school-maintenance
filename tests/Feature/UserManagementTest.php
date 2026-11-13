@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AuditLog;
 use App\Models\Classroom;
 use App\Models\Department;
+use App\Models\RepairRequest;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -420,6 +421,49 @@ class UserManagementTest extends TestCase
 
         $this->delete(route('users.force-destroy', $user))->assertSessionHas('error');
         $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    // 只能永久刪除「完全沒有任何關聯資料」的帳號：留有報修單時擋下，並在訊息裡說明是哪一類、幾筆。
+    // 否則資料庫會把報修單的報修人欄位悄悄設成空白，報修紀錄就永遠查不到是誰報修的。
+    public function test_force_delete_is_blocked_when_the_account_has_repair_requests_and_names_them(): void
+    {
+        $user = $this->makeStaff('has_repairs');
+        RepairRequest::factory()->count(2)->create(['requester_id' => $user->id]);
+        $user->delete();
+
+        $response = $this->delete(route('users.force-destroy', $user));
+
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('報修單（報修人） 2 筆', session('error'));
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+        $this->assertSame(2, RepairRequest::where('requester_id', $user->id)->count());   // 報修人沒有被清成空白
+    }
+
+    // 操作紀錄的「操作人」也算關聯資料：帳號做過任何會留下紀錄的操作，就不能永久刪除。
+    public function test_force_delete_is_blocked_when_the_account_appears_as_actor_in_the_audit_log(): void
+    {
+        $user = $this->makeStaff('has_logs');
+        AuditLog::create(['user_id' => $user->id, 'action' => 'created', 'description' => '測試操作']);
+        $user->delete();
+
+        $this->delete(route('users.force-destroy', $user))->assertSessionHas('error');
+
+        $this->assertStringContainsString('操作紀錄（操作人） 1 筆', session('error'));
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+        $this->assertSame(1, AuditLog::where('user_id', $user->id)->count());
+    }
+
+    // 完全沒有關聯資料的帳號（建立後從沒用過）可以永久刪除，連沒有外鍵的登入連線紀錄也一起清掉。
+    public function test_force_delete_works_for_an_unused_account_and_clears_its_sessions(): void
+    {
+        $user = $this->makeStaff('never_used');
+        DB::table('sessions')->insert(['id' => 'leftover', 'user_id' => $user->id, 'payload' => '', 'last_activity' => time()]);
+        $user->delete();
+
+        $this->delete(route('users.force-destroy', $user))->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('sessions', ['id' => 'leftover']);
     }
 
     // ---------- 登入限制與最後登入時間 ----------
