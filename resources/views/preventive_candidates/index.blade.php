@@ -19,11 +19,57 @@
     </div>
 
     <div class="tb-card tb-card-pad small">
-        目前設定：風險門檻 <strong>{{ number_format($settings['risk_threshold'], 2) }}</strong>、
-        至少 {{ $settings['min_completed_orders'] }} 筆保養紀錄才評分、
-        去重天數 {{ $settings['dedup_window_days'] }} 天、
-        {{ $settings['require_approval'] ? '需主管審核後才建立工單' : '達門檻直接建立 AI 工單（不需審核）' }}。
-        風險分數是依保養紀錄用固定規則計算的（規則式，非機器學習），展開「評分明細」可看到每一項怎麼算。
+        系統依設備的保養紀錄算出風險分數，分數達到門檻
+        {{ $settings['require_approval'] ? '就會產生一筆待審核候選，由主管決定要不要建立保養工單' : '就會直接建立保養工單' }}。
+        <details class="mt-1">
+            <summary>這個功能在做什麼？分數怎麼算？（點我展開）</summary>
+            <div class="mt-2">
+                <p class="mb-2">
+                    <strong>這是什麼：</strong>
+                    系統會檢查每一台「正常」狀態的設備過去的<strong>保養紀錄</strong>，算出一個 0～1 的「風險分數」。
+                    分數越高，代表這台設備最近保養時越常被標記異常（NG）、或是已經很久沒保養了，
+                    值得優先安排一次預防性保養，而不是放著不管、等到真的故障才處理。
+                    可以按右上角「立即掃描設備風險」手動掃描一次，平常則是每天自動掃描。
+                </p>
+                <p class="mb-2">
+                    <strong>分數怎麼算：</strong>
+                    風險分數 ＝ <code>0.5 × 最近幾筆保養的 NG 比例</code>
+                    ＋ <code>0.3 × 結尾連續 NG 次數（最多計到 3 次）</code>
+                    ＋ <code>0.2 × 保養逾期程度（距上次保養 45 天內不計分，90 天以上計滿分，中間照比例）</code>。
+                    這是<strong>固定公式</strong>算出來的（規則式），<strong>不是訓練出來的機器學習模型</strong>——
+                    同一份保養紀錄、同一天算，結果一定一樣，每一項的原始數值、權重、貢獻分數都攤開在表格的「評分明細」裡可以展開查看。
+                    目前只看「保養紀錄」，還沒把報修／維修次數算進去。
+                </p>
+                <p class="mb-2">
+                    <strong>分數達到門檻之後會怎樣：</strong>
+                    @if ($settings['require_approval'])
+                        不會自動建單，而是先產生一筆「<span class="badge text-bg-warning">待審核</span>」候選，
+                        要主管按「核准建單」才會正式建立保養工單；按「駁回」則這台設備這次不建單。
+                    @else
+                        系統會直接建立一筆「AI 來源」的保養工單，不需要人工審核，
+                        這筆候選會標成「<span class="badge text-bg-info">自動建單</span>」，只是留做紀錄方便追蹤。
+                    @endif
+                    如果這台設備保養紀錄太少、分數還沒到門檻，或是短期內已經有其他保養工單在處理同一台設備，
+                    這次掃描就會直接略過、不會產生候選（掃描完成後的訊息會列出各種略過的數量）。
+                </p>
+                <p class="mb-2">
+                    <strong>狀態欄位意思：</strong>
+                    <span class="badge text-bg-warning">待審核</span> 等主管決定
+                    <span class="badge text-bg-success">已核准</span> 已建立保養工單
+                    <span class="badge text-bg-secondary">已駁回</span> 主管決定這次不處理
+                    <span class="badge text-bg-info">自動建單</span> 設定為不需審核，系統直接建單
+                    <span class="badge text-bg-dark">重複未建單</span> 核准當下發現已經有其他工單在處理，所以沒有真的建單。
+                </p>
+                <p class="mb-0">
+                    <strong>目前設定：</strong>風險門檻 <strong>{{ number_format($settings['risk_threshold'], 2) }}</strong>
+                    （分數達到或超過這個值才會建議）、
+                    至少要有 {{ $settings['min_completed_orders'] }} 筆已完成的保養紀錄才會評分（資料太少無法判斷趨勢）、
+                    去重天數 {{ $settings['dedup_window_days'] }} 天（這段時間內已經有保養工單在處理的設備不會重複提醒）、
+                    目前{{ $settings['require_approval'] ? '需要主管審核後才建立工單' : '達門檻就直接建立工單，不需審核' }}。
+                    這些數字可以在右上角「AI 設定」調整。
+                </p>
+            </div>
+        </details>
     </div>
 
     <div class="tb-card tb-card-pad">
