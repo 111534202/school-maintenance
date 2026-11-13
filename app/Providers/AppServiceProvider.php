@@ -96,7 +96,7 @@ class AppServiceProvider extends ServiceProvider
      * - 有「派工」權限：新報修還沒派工的案件
      * - 有「驗收」權限：等待驗收的案件
      * - 有「處理維修」權限：指派給自己、還沒做完的案件
-     * - 有「空間申請審核」權限：待審核的空間申請（已逾期的不算）
+     * - 有「空間申請審核」權限：待審核的空間申請（時段全部已過的不算）
      * 每一項都帶著點下去要跳轉的網址（直接帶篩選條件到報修看板）。
      *
      * 【想新增一種通知】照下面的格式再加一個 if 區塊即可：判斷權限 → 算數量 → 數量大於 0 才加進 $items；
@@ -158,14 +158,14 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // 有空間申請審核權限的人：提醒「有幾筆空間申請待審核」。
-        // 已經有時段開始（逾期、打開空間申請頁時會自動拒絕）的不算，規則同 ReservationReviewService::expireOverdue。
+        // 只算還有「沒開始、還沒審核」節次的申請；時段全部已過的（仍可補審核，但不再提醒）不算。
         if ($user->can('reservations.manage')) {
             $today = now()->toDateString();
             $time = now()->format('H:i:s');
             $count = ClassroomReservation::query()
                 ->where('status', ClassroomReservation::STATUS_PENDING)
-                ->whereDoesntHave('slots', fn ($q) => $q->where(fn ($q) => $q->whereDate('reservation_date', '<', $today)
-                    ->orWhere(fn ($q) => $q->whereDate('reservation_date', $today)->where('start_time', '<=', $time))))
+                ->whereHas('slots', fn ($q) => $q->whereNull('status')->where(fn ($q) => $q->whereDate('reservation_date', '>', $today)
+                    ->orWhere(fn ($q) => $q->whereDate('reservation_date', $today)->where('start_time', '>', $time))))
                 ->count();
             if ($count > 0) {
                 $items[] = [

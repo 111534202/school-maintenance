@@ -210,20 +210,22 @@ class PartProfileAndStockTest extends TestCase
 
         $html = $this->get(route('parts.index'))
             ->assertOk()
-            ->assertSee('查看目前低庫存品項')
+            ->assertSee('目前低庫存零件')
             ->assertSee('目前低庫存品項（1）')
-            ->assertSee('data-href="' . route('parts.show', $low) . '"', false)
+            ->assertSee('data-modal-frame-href="' . route('parts.summary', $low) . '" data-modal-title="零件庫存"', false)
+            ->assertDontSee('data-modal-frame-href="' . route('parts.show', $low) . '"', false)   // 不會直接跳到零件履歷
             ->getContent();
 
-        // 低庫存視窗裡只有 LOW-1。
+        // 低庫存視窗裡只有 LOW-1；跟列表一樣是表格，依視窗大小自動切換成清單。
         $modal = substr($html, strpos($html, 'id="lowStockModal"'));
-        // 頁尾還有兩個匯出預覽視窗（會列出所有零件），只檢查低庫存視窗本身。
-        $modal = substr($modal, 0, strpos($modal, 'id="partsExportModal"') ?: strlen($modal));
+        $modal = substr($modal, 0, strpos($modal, 'id="lowStockExportModal"') ?: strlen($modal));
         $this->assertStringContainsString('LOW-1', $modal);
         $this->assertStringNotContainsString('OK-1', $modal);
+        $this->assertStringContainsString('tb-table-wrap', $modal);
 
-        // 列表上「低庫存」標籤在數量前面。
-        $this->assertMatchesRegularExpression('/低庫存<\/span>\s*(<span[^>]*>)?\s*2/u', $html);
+        // 列表：低庫存顯示「低庫存」，其他顯示「庫存充足」。
+        $this->assertStringContainsString('<span class="badge tb-pill tb-pill-danger">⚠ 低庫存</span>', $html);
+        $this->assertStringContainsString('<span class="badge tb-pill tb-pill-ok">庫存充足</span>', $html);
     }
 
     public function test_low_stock_parts_can_be_exported_to_excel(): void
@@ -311,7 +313,77 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('attachments.show', $purchase->attachments->first()))->assertOk();
     }
 
-    /** 一筆採購最多 5 個附件，每個 2 MB；修改時可以只刪其中幾個、再加新的。 */
+    public function test_the_attachment_shows_as_a_button_and_can_be_removed_without_uploading_a_new_one(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+
+        $this->post(route('parts.purchases.store', $part), [
+            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20,
+            'invoice' => UploadedFile::fake()->image('receipt-2026.jpg'),
+        ]);
+        $purchase = PartPurchase::firstOrFail();
+        $path = $purchase->attachments->first()->file_path;
+        Storage::disk('local')->assertExists($path);
+
+        // 履歷頁只顯示「附件」按鈕，不在頁面上直接列出檔名；按鈕帶著預覽用的網址、檔案類型與檔名（打開預覽時顯示在標題旁邊）。
+        $this->get(route('parts.show', $part))
+            ->assertSee('data-bs-target="#attachmentModal"', false)
+            ->assertSee('&quot;mime&quot;:&quot;image\/jpeg&quot;', false)
+            ->assertSee('&quot;filename&quot;:&quot;receipt-2026.jpg&quot;', false)
+            ->assertDontSeeText('receipt-2026.jpg');
+
+        $this->put(route('parts.purchases.update', [$part, $purchase]), [
+            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20, 'remove_invoice' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertCount(0, $purchase->fresh()->attachments);
+        Storage::disk('local')->assertMissing($path);
+        $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
+    }
+
+    /** 一筆採購最多 5 個附件、加起來 5 MB 以內（單檔不另外限制）；修改時可以只刪其中幾個、再加新的。 */
+    public function test_a_purchase_keeps_up_to_five_attachments_of_two_megabytes_each(): void
+    {
+        Storage::fake('local');
+        $this->loginAsAnyUser();
+        $part = $this->makePart();
+        $base = ['purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20];
+
+        $this->post(route('parts.purchases.store', $part), $base + [
+            'invoices' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->create('b.pdf', 100, 'application/pdf')],
+        ])->assertSessionHasNoErrors();
+        $purchase = PartPurchase::firstOrFail();
+        $this->assertCount(2, $purchase->attachments);
+
+        // 保留的附件（約 100 KB）＋新的檔案（5050 KB）加起來超過 5 MB 不收；只看新檔案的話還沒超過。
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'invoices' => [UploadedFile::fake()->create('big.pdf', 5050, 'application/pdf')],
+        ])->assertSessionHasErrors('invoices');
+        $this->assertCount(2, $purchase->fresh()->attachments);
+
+        // 已有 2 個，再加 4 個會超過 5 個。
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 4)),
+        ])->assertSessionHasErrors('invoices');
+        $this->assertCount(2, $purchase->fresh()->attachments);
+
+        // 勾選刪除第一個，再加 3 個：剛好 4 個。
+        $first = $purchase->attachments->first();
+        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
+            'remove_attachments' => [$first->id],
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 3)),
+        ])->assertSessionHasNoErrors();
+        $this->assertCount(4, $purchase->fresh()->attachments);
+        $this->assertNull($purchase->fresh()->attachments->firstWhere('id', $first->id));
+
+        // 履歷頁只有一顆「附件」按鈕，4 個附件都在按鈕的資料裡（在預覽視窗左右切換）。
+        $html = $this->get(route('parts.show', $part))->getContent();
+        $this->assertSame(1, substr_count($html, 'data-bs-target="#attachmentModal"'));
+        $this->assertSame(4, substr_count($html, '&quot;url&quot;'));
+        $this->assertStringNotContainsString('附件 2', $html);
+    }
 
     public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void
     {

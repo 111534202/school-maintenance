@@ -59,13 +59,35 @@
             steps[0].parentNode.insertBefore(head, steps[0]);
 
             // 下方的「上一步／下一步」。
+            // 排法：左邊「上一步」，右邊「下一步」；表單原本的「取消／儲存」那一排也搬進同一列：
+            //   第一步：左邊「取消」、右邊「下一步」；中間的步驟：左邊「上一步、取消」、右邊「下一步」；
+            //   最後一步：左邊「上一步」、右邊「取消、儲存」（跟原本表單底部的順序一樣）。
             var nav = document.createElement('div');
-            nav.className = 'stepper-nav d-flex justify-content-between mt-3';
-            nav.innerHTML = '<button type="button" class="btn btn-outline-secondary" data-step-prev><i class="bi bi-arrow-left me-1"></i>上一步</button>' +
-                '<button type="button" class="btn btn-primary" data-step-next>下一步<i class="bi bi-arrow-right ms-1"></i></button>';
+            nav.className = 'stepper-nav d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-4';
+            nav.innerHTML = '<div class="d-flex flex-wrap gap-2" data-step-left>' +
+                '<button type="button" class="btn btn-outline-secondary" data-step-prev><i class="bi bi-arrow-left me-1"></i>上一步</button></div>' +
+                '<div class="d-flex flex-wrap gap-2 ms-auto" data-step-right>' +
+                '<button type="button" class="btn btn-primary" data-step-next>下一步<i class="bi bi-arrow-right ms-1"></i></button></div>';
             var prev = nav.querySelector('[data-step-prev]');
             var next = nav.querySelector('[data-step-next]');
+            var left = nav.querySelector('[data-step-left]');
+            var right = nav.querySelector('[data-step-right]');
             steps[last].parentNode.insertBefore(nav, steps[last].nextSibling);
+
+            // 表單原本的按鈕列（送出按鈕所在的那一排，不在任何步驟裡）：整排搬到右邊；只有一顆送出按鈕時就搬那一顆。
+            var actions = null;
+            var cancel = null;
+            if (submits.length) {
+                var holder = submits[0].parentElement;
+                actions = (holder !== form && !steps.some(function (st) { return st.contains(holder); })) ? holder : submits[0];
+                if (!steps.some(function (st) { return st.contains(actions); })) {
+                    actions.classList.remove('mt-4', 'mb-4', 'mt-3', 'mb-3', 'justify-content-end');
+                    right.appendChild(actions);
+                    if (actions !== submits[0]) { cancel = actions.querySelector('a.btn'); }
+                } else {
+                    actions = null;
+                }
+            }
 
             // 這一步的欄位都合格才放行（用瀏覽器內建的驗證，跟原本送出時的檢查一樣）。
             function valid(i) {
@@ -86,9 +108,14 @@
                     p.querySelector('.stepper-num').innerHTML = idx < i ? '<i class="bi bi-check-lg"></i>' : String(idx + 1);
                 });
                 bar.firstChild.style.width = ((i + 1) / steps.length * 100) + '%';
-                prev.style.visibility = i === 0 ? 'hidden' : 'visible';
+                prev.hidden = i === 0;
                 next.hidden = i === last;
                 submits.forEach(function (b) { b.hidden = i !== last; });
+                if (actions && actions !== submits[0]) { actions.style.display = i === last ? '' : 'none'; }   // 按鈕列有 d-flex，hidden 屬性蓋不過，所以用 style
+                // 「取消」：最後一步跟「儲存」放在右邊，其他步驟放在左邊。
+                if (cancel) {
+                    if (i === last) { actions.insertBefore(cancel, actions.firstChild); } else { left.appendChild(cancel); }
+                }
                 if (!quiet) head.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
             }
 

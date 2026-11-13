@@ -21,12 +21,12 @@ class SidebarNavigationTest extends TestCase
         return $this->actingAs($user)->get(route('dashboard'))->assertOk()->getContent();
     }
 
-    // 教師：只有報修服務與空間預約（空間與零件只剩預約一項，直接變成第一層的連結）；沒有保養管理、零件庫存、主檔、系統。
+    // 教師：只有報修服務與空間申請（空間與零件只剩空間申請一項，直接變成第一層的連結）；沒有保養管理、零件庫存、主檔、系統。
     public function test_teacher_sees_only_repair_services_and_reservations(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('teacher', '教師'));
 
-        foreach (['報修服務', '自助知識庫', '空間預約'] as $text) {
+        foreach (['報修服務', '自助知識庫', '空間申請'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
         foreach (['保養管理', '保養項目', '零件庫存', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
@@ -72,6 +72,8 @@ class SidebarNavigationTest extends TestCase
     public function test_sections_appear_in_the_documented_order(): void
     {
         $html = $this->dashboardAs($this->makeUserWithRole('admin', '系統管理員'));
+        // 只看漢堡選單（寬螢幕上方列的下拉選單也有同樣的連結，順序一樣，但不在這裡比）。
+        $html = substr($html, (int) strpos($html, 'id="drill-drawer"'));
 
         $positions = array_map(fn ($text) => strpos($html, $text), [
             'data-drill-open="master"', 'data-drill-open="work"', 'data-drill-open="maintenance"', 'data-drill-open="space"',
@@ -91,7 +93,7 @@ class SidebarNavigationTest extends TestCase
         $html = $this->actingAs($admin)->withSession(['locale' => 'en'])->get(route('dashboard'))->assertOk()->getContent();
 
         // 先確認真的是英文介面（避免語言沒切成功而讓下面的檢查白白通過）。
-        foreach (['Repair Services', 'Maintenance Items', 'Space Reservations', 'Parts Inventory', 'AI Preventive Maintenance'] as $text) {
+        foreach (['Repair Services', 'Maintenance Items', 'Space Requests', 'Parts Inventory', 'AI Preventive Maintenance'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
         $this->assertStringNotContainsString('common.nav.', $html);

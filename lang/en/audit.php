@@ -11,6 +11,7 @@ return [
         'updated' => 'Updated',
         'deleted' => 'Deleted',
         'restored' => 'Restored',
+        'downloaded' => 'Downloaded',
         'status_changed' => 'Status changed',
         'password_reset' => 'Password reset',
         'core_flag_changed' => 'Core flag changed',

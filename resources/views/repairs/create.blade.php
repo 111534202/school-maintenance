@@ -25,7 +25,7 @@
 
             {{-- 區塊一：設備。掃描或輸入設備條碼，JS 會自動查詢並帶入設備資訊與標題建議，
                  device_id 是真正寫進資料庫的外鍵；沒有條碼的設備才需要自己填文字描述。 --}}
-            <div class="card shadow-sm mb-3" data-step="{{ __('repair_requests.create.section_device') }}">
+            <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.create.section_device') }}</div>
                 <div class="card-body">
                     <label for="device_code_input" class="form-label">{{ __('repair_requests.create.device_code_label') }}</label>
@@ -91,7 +91,7 @@
             </div>
 
             {{-- 區塊二：問題描述 --}}
-            <div class="card shadow-sm mb-3" data-step="{{ __('repair_requests.create.section_issue') }}">
+            <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-exclamation-triangle me-2"></i>{{ __('repair_requests.create.section_issue') }}</div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -128,12 +128,12 @@
             </div>
 
             {{-- 區塊三：附件 --}}
-            <div class="card shadow-sm mb-4" data-step="{{ __('repair_requests.create.section_attachments') }}">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.create.section_attachments') }}</div>
                 <div class="card-body">
                     <label for="attachments" class="form-label">{{ __('repair_requests.create.attachments_label') }}</label>
-                    {{-- 附件：可一次選多個檔案（欄位名稱以 [] 結尾 = 陣列）；accept 只是提示瀏覽器的檔案類型，真正的限制（最多 5 個、單檔 20MB）在後端 StoreRepairRequestRequest。 --}}
-                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm">
+                    {{-- 附件：可一次選多個檔案（欄位名稱以 [] 結尾 = 陣列）；accept 只是提示瀏覽器的檔案類型，真正的限制（最多 5 個、加起來 5 MB）在後端 StoreRepairRequestRequest（App\Support\AttachmentLimit）。 --}}
+                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
                 </div>
             </div>
 

@@ -27,7 +27,7 @@ class PartExportTest extends TestCase
         return $part->fresh();
     }
 
-    public function test_list_offers_an_export_preview(): void
+    public function test_list_has_no_table_toggle_and_offers_an_export_preview(): void
     {
         $this->loginAsAnyUser();
         $hdmi = $this->makePart('HDMI 線', 9, 10);
@@ -35,6 +35,8 @@ class PartExportTest extends TestCase
 
         $this->get(route('parts.index'))
             ->assertOk()
+            ->assertSee('tb-table-wrap', false)
+            ->assertSee('顯示第 1 到 2 筆，共 2 筆')
             ->assertSee('匯出 Excel／PDF')
             ->assertSee('匯出零件清單')
             ->assertSeeInOrder(['零件編號', '名稱', '規格', '品牌/型號', '平均單價', '目前庫存', '安全庫存'])
@@ -82,4 +84,30 @@ class PartExportTest extends TestCase
         $this->get(route('parts.export', ['excel', 'ids' => [$hdmi->id]]))->assertSessionHasErrors('columns');
     }
 
+    public function test_list_shows_fifteen_parts_per_page_with_chinese_pagination(): void
+    {
+        $this->loginAsAnyUser();
+        foreach (range(1, 16) as $i) {
+            Part::create(['name' => '零件' . $i, 'unit' => '個', 'current_stock' => 5, 'safety_stock' => 1]);
+        }
+
+        $this->get(route('parts.index'))
+            ->assertSee('顯示第')->assertSee('筆，共')->assertDontSee('Showing')
+            ->assertSee('零件15 的零件資料')->assertDontSee('零件16 的零件資料');   // 第 16 筆在第 2 頁（匯出預覽仍列出全部）
+        $this->get(route('parts.index', ['page' => 2]))->assertSee('零件16 的零件資料');
+    }
+
+    public function test_clicking_a_part_opens_a_summary_popup_with_a_link_to_the_history(): void
+    {
+        $this->loginAsAnyUser();
+        $hdmi = $this->makePart('HDMI 線', 2, 10);   // 安全庫存 3 → 低庫存
+
+        $this->get(route('parts.summary', ['part' => $hdmi, 'modal' => 1]))
+            ->assertOk()
+            ->assertSeeInOrder([$hdmi->part_code, 'HDMI 線', '庫存狀態', '⚠ 低庫存', '品牌/型號', '平均單價', '目前庫存', '安全庫存', '查看履歷'])
+            ->assertSee('NT$ 10')
+            ->assertSee('href="' . route('parts.show', $hdmi) . '"', false)
+            ->assertDontSee('<h1', false)
+            ->assertDontSee('在零件庫存列表的對話框裡打開');
+    }
 }

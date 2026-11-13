@@ -6,60 +6,58 @@
 @section('title', __('device_categories.index_title'))
 
 @section('content')
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-tags me-2"></i>{{ __('device_categories.index_title') }}</h1>
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('device_categories.index_title') }}</h1>
+        </div>
         <div class="d-flex gap-2">
-            @include('charts._button')
-            <a class="btn btn-primary" href="{{ route('device-categories.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('device_categories.add_category') }}
+            @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            <a class="tb-btn tb-btn-primary" href="{{ route('device-categories.create') }}" data-modal-frame data-modal-title="{{ __('device_categories.add_category') }}">
+                <i class="bi bi-plus-lg"></i>{{ __('device_categories.add_category') }}
             </a>
         </div>
     </div>
 
     {{-- 搜尋列：單行不換行，按鈕一律用圖示。 --}}
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
+    <div class="tb-card tb-card-pad">
+        <div>
             {{-- 搜尋表單：用 GET 送出，關鍵字會出現在網址上。 --}}
-            <form method="GET" action="{{ route('device-categories.index') }}" class="filter-bar">
+            <form method="GET" action="{{ route('device-categories.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
                 <div>
                     <label for="keyword" class="form-label small mb-1">{{ __('device_categories.filter.keyword') }}</label>
+                    {{-- 可以輸入，也可以從下拉清單直接選一個類別（data-suggest，行為在共用版型；選了就直接篩選）。 --}}
                     <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 15rem;"
-                        value="{{ request('keyword') }}" placeholder="{{ __('device_categories.filter.keyword_placeholder') }}">
+                        value="{{ request('keyword') }}" placeholder="{{ __('device_categories.filter.keyword_placeholder') }}"
+                        data-suggest='@json($categoryNames)' data-suggest-submit>
                 </div>
-                <div class="d-inline-flex gap-1">
-                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
-                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
-                    @if (request('keyword'))
-                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('device-categories.index') }}"
-                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('device-categories.index'), 'fields' => ['keyword']])
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
+    <section class="tb-table-wrap" data-no-fit>
+            <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1">
-                <thead class="table-light">
+            <table class="tb-table tb-table-hover" data-onion-primary="1">
+                <thead>
                     <tr>
                         <th>{{ __('device_categories.table.name') }}</th>
                         <th class="text-center">{{ __('device_categories.table.devices_count') }}</th>
-                        <th class="text-center">{{ __('device_categories.table.actions') }}</th>
+                        <th class="text-end tb-col-fit">{{ __('device_categories.table.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{-- 逐筆列出類別；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($categories as $category)
-                        {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
-                        <tr data-href="{{ route('device-categories.edit', $category) }}">
+                        {{-- 點這一列的任何地方都會在畫面中的對話框打開編輯頁（data-modal-frame-href，行為在共用版型）。 --}}
+                        <tr data-modal-frame-href="{{ route('device-categories.edit', $category) }}" data-modal-title="修改設備類別" tabindex="0" role="link">
                             <td>{{ $category->name }}</td>
                             {{-- 這個類別底下有幾台設備（Controller 用 withCount 先算好）。 --}}
                             <td class="text-center">{{ $category->devices_count }}</td>
-                            <td class="text-center">
+                            <td class="text-end tb-col-fit">
                                 <div class="d-inline-flex gap-1">
-                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('device-categories.edit', $category) }}"
+                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('device-categories.edit', $category) }}" data-modal-frame data-modal-title="修改設備類別"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                     {{-- 刪除按鈕：送出前先確認；還有設備在用的類別，後端會擋下並說明。 --}}
                                     <form method="POST" action="{{ route('device-categories.destroy', $category) }}"
@@ -80,10 +78,11 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     {{-- 分頁按鈕。 --}}
-    <div class="mt-3">{{ $categories->links() }}</div>
+    <div>@include('layouts.pager', ['paginator' => $categories])</div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
+</div>
 @endsection

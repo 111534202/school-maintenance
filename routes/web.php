@@ -39,8 +39,8 @@ use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceResultController;
 use App\Http\Controllers\PreventiveCandidateController;
 use App\Http\Controllers\PartController;
-use App\Http\Controllers\PartScrapController;
 use App\Http\Controllers\PartPurchaseController;
+use App\Http\Controllers\PartScrapController;
 use App\Http\Controllers\RepairLogController;
 use App\Http\Controllers\RepairRequestController;
 use App\Http\Controllers\RepairCostAnalysisController;
@@ -48,7 +48,6 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// 網站首頁（網址 /）：Laravel 預設的歡迎頁。
 // 首頁：已登入就到主控台，沒登入就到登入頁（原本是 Laravel 預設的歡迎頁，分享網址給別人時會先看到它）。
 Route::get('/', function () {
     return redirect()->route(auth()->check() ? 'dashboard' : 'login');
@@ -220,23 +219,30 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/create', [ClassroomReservationController::class, 'create'])
             ->name('create');
 
+        // 我的申請（有審核權限的人在空間申請右上角打開的對話框）
+        Route::get('/mine', [ClassroomReservationController::class, 'mine'])
+            ->name('mine');
+
         Route::post('/', [ClassroomReservationController::class, 'store'])
             ->name('store');
 
-        // 核准預約
+        // 逐節審核：每一節選同意或拒絕（申請人選了「整筆」的，只能全部同意或全部拒絕）
+        Route::post('/{reservation}/review', [
+            ClassroomReservationController::class,
+            'review',
+        ])->name('review');
+
+        // 整筆同意（所有還沒審核的節次都同意）
         Route::post('/{reservation}/approve', [
             ClassroomReservationController::class,
             'approve',
         ])->name('approve');
 
-        // 拒絕預約
+        // 整筆拒絕
         Route::post('/{reservation}/reject', [
             ClassroomReservationController::class,
             'reject',
         ])->name('reject');
-
-        // 分時段審核（每個時段同意或拒絕）
-        Route::post('/{reservation}/review', [ClassroomReservationController::class, 'review'])->name('review');
 
         // 預約詳細頁（放最後，避免 /timetable、/create 被當成預約編號）
         Route::get('/{reservation}', [ClassroomReservationController::class, 'show'])
@@ -257,6 +263,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
         // 零件清單匯出（excel／pdf）：預覽視窗勾選的零件與欄位
         Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel', 'pdf'])->name('parts.export');
+        // 零件庫存列表點一筆：在畫面中的對話框顯示零件基本資料（再按「查看詳細」進零件履歷）
+        Route::get('parts/{part}/summary', [PartController::class, 'summary'])->name('parts.summary');
         // 零件履歷匯出（excel／pdf）：預覽視窗勾選的區塊與欄位
         Route::get('parts/{part}/history-export/{format}', [PartController::class, 'exportHistory'])->whereIn('format', ['excel', 'pdf'])->name('parts.history.export');
         Route::resource('parts', PartController::class);

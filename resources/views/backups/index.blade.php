@@ -51,13 +51,14 @@
                     <li class="list-group-item d-flex flex-wrap align-items-center gap-2 py-3 px-4">
                         <div class="me-auto">
                             <div class="fw-bold tb-num">{{ $backup['created_at']->format('Y-m-d H:i') }}</div>
-                            <div class="text-muted small">{{ $backup['reason_label'] }} · {{ number_format($backup['size'] / 1024, 1) }} KB</div>
+                            <div class="text-muted small">{{ $backup['reason_label'] }} · {{ \App\Support\UploadLimit::human($backup['size']) }} · {{ $backup['with_attachments'] ? '資料庫＋附件' : '只有資料庫（舊格式）' }}</div>
                         </div>
                         <a href="{{ route('backups.download', $backup['name']) }}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-download" aria-hidden="true"></i> 下載
                         </a>
                         <form method="POST" action="{{ route('backups.restore', $backup['name']) }}"
-                            data-confirm="請問確定要把所有資料還原到 {{ $backup['created_at']->format('Y-m-d H:i') }} 的備份嗎？這個時間之後新增或修改的資料都會不見（還原前會先自動備份目前的資料）。" data-confirm-ok="確認還原">
+                            data-confirm="請問確定要把所有資料還原到 {{ $backup['created_at']->format('Y-m-d H:i') }} 的備份嗎？這個時間之後新增或修改的資料都會不見（還原前會先自動備份目前的資料）。"
+                            data-confirm-ok="確認還原">
                             @csrf
                             <button type="submit" class="btn btn-sm btn-outline-danger">還原</button>
                         </form>
@@ -68,7 +69,7 @@
     </div>
 
     <p class="text-muted small mb-0">
-        備份只包含資料庫內容（零件、報修、預約、帳號等），不包含上傳的附件檔案（發票、照片）。
+        備份包含資料庫內容（零件、報修、預約、帳號等）與上傳的附件檔案（報修照片、採購發票等）；還原時兩者一起換回備份的內容。
         還原後，登入中的帳號如果在備份裡不存在，需要重新登入。
     </p>
 </div>

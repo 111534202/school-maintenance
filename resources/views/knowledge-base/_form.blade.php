@@ -14,7 +14,7 @@
             </div>
             <div class="col-md-4">
                 <label for="category" class="form-label">{{ __('knowledge_base.form.category') }}</label>
-                <input type="text" class="form-control" id="category" name="category" value="{{ old('category', $entry->category ?? '') }}">
+                <input type="text" class="form-control" id="category" name="category" value="{{ old('category', $entry->category ?? '') }}" placeholder="{{ __('knowledge_base.form.category_placeholder') }}">
             </div>
             <div class="col-12">
                 <label for="symptom" class="form-label">{{ __('knowledge_base.form.symptom') }}</label>
@@ -38,9 +38,9 @@
             </div>
         </div>
     </div>
-    {{-- 表單底部的「取消／儲存」按鈕。 --}}
-    <div class="card-footer bg-white d-flex justify-content-end gap-2 py-3">
-        <a class="btn btn-outline-secondary" href="{{ route('knowledge-base.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
-        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
-    </div>
+</div>
+{{-- 表單底部的「取消／儲存」按鈕：放在外框外面、靠右。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
+    <a class="btn btn-outline-secondary" href="{{ route('knowledge-base.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

@@ -7,21 +7,24 @@
 
 {{-- 從這裡開始是「放進主版面中間」的內容，到 @endsection 結束。 --}}
 @section('content')
-    <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-building me-2"></i>{{ __('classrooms.index_title') }}</h1>
+<div class="tb">
+    <div class="tb-header">
+        <div>
+            <h1 class="tb-title">{{ __('classrooms.index_title') }}</h1>
+        </div>
         <div class="d-flex gap-2">
-            @include('charts._button')
-            <a class="btn btn-primary" href="{{ route('classrooms.create') }}">
-                <i class="bi bi-plus-lg me-1"></i>{{ __('classrooms.add_classroom') }}
+            @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            <a class="tb-btn tb-btn-primary" href="{{ route('classrooms.create') }}" data-modal-frame data-modal-title="{{ __('classrooms.add_classroom') }}" data-modal-size="lg">
+                <i class="bi bi-plus-lg"></i>{{ __('classrooms.add_classroom') }}
             </a>
         </div>
     </div>
 
-    {{-- 篩選列：全部放同一排、不換行（視窗太窄時整列左右捲動），按鈕一律用圖示。 --}}
-    <div class="card shadow-sm mb-3">
-        <div class="card-body py-3">
+    {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
+    <div class="tb-card tb-card-pad">
+        <div>
             {{-- 篩選表單：用 GET 送出，條件會出現在網址上；request('欄位') 把目前的條件帶回輸入框。 --}}
-            <form method="GET" action="{{ route('classrooms.index') }}" class="filter-bar">
+            <form method="GET" action="{{ route('classrooms.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
                 <div>
                     <label for="keyword" class="form-label small mb-1">{{ __('classrooms.filter.keyword') }}</label>
                     <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 15rem;"
@@ -54,24 +57,16 @@
                         <option value="1" @selected(request('abnormal') === '1')>{{ __('classrooms.filter.devices_abnormal') }}</option>
                     </select>
                 </div>
-                <div class="d-inline-flex gap-1">
-                    <button class="btn btn-primary btn-sm icon-btn" type="submit"
-                        title="{{ __('common.buttons.filter') }}" aria-label="{{ __('common.buttons.filter') }}"><i class="bi bi-funnel"></i></button>
-                    {{-- 有套用任何篩選條件時，才顯示「清除篩選」按鈕。 --}}
-                    @if (request('keyword') || request('department_id') || request()->filled('is_active') || request('abnormal'))
-                        <a class="btn btn-outline-secondary btn-sm icon-btn" href="{{ route('classrooms.index') }}"
-                            title="{{ __('common.buttons.clear_filter') }}" aria-label="{{ __('common.buttons.clear_filter') }}"><i class="bi bi-x-circle"></i></a>
-                    @endif
-                </div>
+                @include('layouts.partials.filter-actions', ['reset' => route('classrooms.index'), 'fields' => ['keyword', 'department_id', 'is_active', 'abnormal']])
             </form>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="table-responsive">
+    <section class="tb-table-wrap" data-no-fit>
+            <div class="table-responsive">
             {{-- 資料表格（有框線）。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,6,7">
-                <thead class="table-light">
+            <table class="tb-table tb-table-hover" data-onion-primary="1,6,7">
+                <thead>
                     <tr>
                         <th>{{ __('classrooms.table.code') }}</th>
                         <th>{{ __('classrooms.table.name') }}</th>
@@ -82,15 +77,15 @@
                         <th class="text-center">{{ __('classrooms.table.abnormal_devices') }}</th>
                         <th class="text-center">{{ __('classrooms.table.open_repairs') }}</th>
                         <th class="text-center">{{ __('classrooms.table.status') }}</th>
-                        <th class="text-center">{{ __('classrooms.table.actions') }}</th>
+                        <th class="text-end tb-col-fit">{{ __('classrooms.table.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {{-- @forelse：逐筆列出教室；一筆都沒有時改顯示下面 @empty 的「尚無教室資料」。 --}}
                     @forelse ($classrooms as $classroom)
                         {{-- 有異常設備的教室整列用淡紅色標示，一眼就能看出是哪間教室。 --}}
-                        {{-- 點這一列的任何地方都會進入編輯頁（data-href，行為在共用版型）。 --}}
-                        <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}" data-href="{{ route('classrooms.edit', $classroom) }}">
+                        {{-- 點這一列的任何地方都會在畫面中的對話框打開編輯頁（data-modal-frame-href，行為在共用版型）。 --}}
+                        <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}" data-modal-frame-href="{{ route('classrooms.edit', $classroom) }}" data-modal-title="修改教室" data-modal-size="lg" tabindex="0" role="link">
                             <td>{{ $classroom->classroom_code }}</td>
                             <td>{{ $classroom->name }}</td>
                             <td>{{ $classroom->department->name ?? __('classrooms.no_value') }}</td>
@@ -105,10 +100,10 @@
                                  如果其中有「核心設備」異常（教室被標成設備異常，會影響預約判斷），另外加一個「核心」徽章。 --}}
                             <td class="text-center">
                                 @if ($classroom->abnormal_devices_count > 0)
-                                    <a class="badge text-bg-danger text-decoration-none" href="{{ route('devices.index', ['classroom_id' => $classroom->id, 'abnormal' => 1]) }}"
+                                    <a class="badge tb-pill tb-pill-danger text-decoration-none" href="{{ route('devices.index', ['classroom_id' => $classroom->id, 'abnormal' => 1]) }}"
                                         title="{{ __('classrooms.links.view_abnormal_devices') }}"><i class="bi bi-exclamation-triangle me-1"></i>{{ $classroom->abnormal_devices_count }}</a>
                                     @if ($classroom->reservation_status === 'abnormal')
-                                        <span class="badge text-bg-dark" title="{{ __('classrooms.links.core_abnormal_hint') }}">{{ __('classrooms.core_abnormal') }}</span>
+                                        <span class="badge tb-pill tb-pill-muted" title="{{ __('classrooms.links.core_abnormal_hint') }}">{{ __('classrooms.core_abnormal') }}</span>
                                     @endif
                                 @else
                                     <span class="text-muted">0</span>
@@ -117,7 +112,7 @@
                             {{-- 進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這間教室設備的報修單。 --}}
                             <td class="text-center">
                                 @if ($classroom->open_repairs_count > 0)
-                                    <a class="badge text-bg-primary text-decoration-none" href="{{ route('repairs.index', ['classroom_id' => $classroom->id]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['classroom_id' => $classroom->id]) }}"
                                         title="{{ __('classrooms.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $classroom->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>
@@ -126,15 +121,15 @@
                             <td class="text-center">
                                 {{-- 啟用狀態徽章：綠色「啟用中」或灰色「已停用」。 --}}
                                 @if ($classroom->is_active)
-                                    <span class="badge text-bg-success">{{ __('classrooms.status.active') }}</span>
+                                    <span class="badge tb-pill tb-pill-ok">{{ __('classrooms.status.active') }}</span>
                                 @else
-                                    <span class="badge text-bg-secondary">{{ __('classrooms.status.inactive') }}</span>
+                                    <span class="badge tb-pill tb-pill-muted">{{ __('classrooms.status.inactive') }}</span>
                                 @endif
                             </td>
-                            <td class="text-center">
+                            <td class="text-end tb-col-fit">
                                 <div class="d-inline-flex gap-1">
                                     {{-- 編輯按鈕（鉛筆圖示）。 --}}
-                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('classrooms.edit', $classroom) }}"
+                                    <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('classrooms.edit', $classroom) }}" data-modal-frame data-modal-title="修改教室" data-modal-size="lg"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
                                     {{-- 啟用／停用切換按鈕（教室不提供刪除，只能停用）。 --}}
                                     <form method="POST" action="{{ route('classrooms.toggle', $classroom) }}">
@@ -157,10 +152,11 @@
                 </tbody>
             </table>
         </div>
-    </div>
+    </section>
 
     {{-- 分頁按鈕。 --}}
-    <div class="mt-3">{{ $classrooms->links() }}</div>
+    <div>@include('layouts.pager', ['paginator' => $classrooms])</div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
+</div>
 @endsection

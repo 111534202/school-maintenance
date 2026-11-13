@@ -4,16 +4,20 @@
 
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">零件履歷：{{ $part->displayName() }}</h1>
+        {{-- 窄的時候只在「零件履歷：」後面換行，零件編號與名稱整段放到下一行。 --}}
+        <h1 class="h3 mb-0">零件履歷：<span class="d-inline-block">{{ $part->displayName() }}</span></h1>
     </div>
 
     {{-- 基本資料：修改基本資料、刪除零件都在這裡（權限與零件庫存相同）。 --}}
     @php($average = $part->averageUnitPrice())
+    {{-- 清單檢視點一筆時的對話框標題：零件名稱（規格）＋ 哪一種紀錄。 --}}
+    @php($panelName = $part->name . ($part->specification ? '（' . $part->specification . '）' : ''))
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>基本資料</span>
+            {{-- 區塊標題統一用 .tb-section-title（字型、大小、顏色在 theme-b.css 最上面的變數設定）。 --}}
+            <h2 class="tb-section-title">基本資料</h2>
             <div class="d-flex gap-2">
-                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary">修改基本資料</a>
+                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
                 <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？採購紀錄也會一起刪除。">
                     @csrf
                     @method('DELETE')
@@ -22,53 +26,109 @@
             </div>
         </div>
         <div class="card-body">
-            <dl class="row mb-0">
-                <dt class="col-sm-3">零件編號</dt>
-                <dd class="col-sm-9">{{ $part->part_code }}</dd>
+            {{-- 名稱與內容固定同一行（.tb-dl，見 theme-b.css）；零件編號、名稱、單位用固定字數，超過以「…」結尾（滑鼠停留看完整）；
+                 規格不限字數，同一行放得下就整段顯示，放不下才以「…」結尾；
+                 品牌/型號不限字數，太長就換行。 --}}
+            <dl class="tb-dl tb-dl-roomy mb-0">
+                <dt>零件編號</dt>
+                <dd><span class="tb-clip tb-clip-code" title="{{ $part->part_code }}">{{ $part->part_code }}</span></dd>
 
-                <dt class="col-sm-3">名稱</dt>
-                <dd class="col-sm-9">{{ $part->name }}</dd>
+                <dt>名稱</dt>
+                <dd><span class="tb-clip tb-clip-name" title="{{ $part->name }}">{{ $part->name }}</span></dd>
 
-                <dt class="col-sm-3">規格</dt>
-                <dd class="col-sm-9">{{ $part->specification ?? '—' }}</dd>
+                <dt>規格</dt>
+                <dd><span class="tb-clip" title="{{ $part->specification }}">{{ $part->specification ?? '—' }}</span></dd>
 
-                <dt class="col-sm-3">品牌／型號</dt>
-                <dd class="col-sm-9">{{ $part->brandModel() ?? '—' }}</dd>
+                <dt>品牌/型號</dt>
+                <dd class="tb-dl-wrap">{{ $part->brandModel() ?? '—' }}</dd>
 
-                <dt class="col-sm-3">單位</dt>
-                <dd class="col-sm-9">{{ $part->unit }}</dd>
+                <dt>單位</dt>
+                <dd><span class="tb-clip tb-clip-unit" title="{{ $part->unit }}">{{ $part->unit }}</span></dd>
 
-                <dt class="col-sm-3">目前庫存</dt>
-                <dd class="col-sm-9">
+                <dt>目前庫存</dt>
+                <dd>
                     {{ $part->withUnit($part->current_stock) }}
                     @if ($part->isLowStock())
                         <span class="badge text-bg-danger">⚠ 低庫存</span>
                     @endif
                 </dd>
 
-                <dt class="col-sm-3">安全庫存</dt>
-                <dd class="col-sm-9">{{ $part->withUnit($part->safety_stock) }}</dd>
+                <dt>安全庫存</dt>
+                <dd>{{ $part->withUnit($part->safety_stock) }}</dd>
 
-                <dt class="col-sm-3">平均單價</dt>
-                <dd class="col-sm-9">
+                <dt>平均單價</dt>
+                <dd class="tb-dl-wrap">
                     {{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}
-                    <span class="text-muted small">（目前庫存的加權平均；用料成本依先進先出，先扣最早買進的批次）</span>
                 </dd>
+                {{-- 說明放在「平均單價」的下一行、靠左（寬窄畫面都一樣）。 --}}
+                <dd class="tb-dl-full text-muted small">（用料成本依先進先出，先扣最早買進的批次）</dd>
             </dl>
         </div>
+    </div>
+
+    {{-- 卡片順序：使用紀錄 → 採購紀錄 → 報廢紀錄。三張表都固定清單（data-onion-list-only，沒有表格檢視），點一筆跳出詳細。 --}}
+    {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
+    <div class="card mb-3">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h2 class="tb-section-title">使用紀錄</h2>
+            <span class="text-muted small">共使用 {{ $part->withUnit($usages->sum('quantity')) }}</span>
+        </div>
+        @if ($usages->isEmpty())
+            <div class="card-body text-muted small">目前沒有使用紀錄。</div>
+        @else
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}使用紀錄" data-onion-list-only>
+                    <thead class="table-light">
+                        <tr>
+                            {{-- 欄位順序決定清單的標題與副標題：標題＝使用日期，副標題＝狀態 · 單號。 --}}
+                            <th class="tb-col-fit text-center">來源</th>
+                            <th class="text-nowrap">使用日期</th>
+                            <th>狀態</th>
+                            <th class="text-nowrap">單號</th>
+                            <th>執行人</th>
+                            <th class="text-end text-nowrap">數量</th>
+                            <th class="text-end text-nowrap">單價</th>
+                            <th class="text-end text-nowrap">小計</th>
+                            <th class="text-nowrap">扣用批次</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($usages as $usage)
+                            <tr>
+                                <td class="tb-col-fit text-center"><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
+                                <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
+                                <td>{{ $usage['status'] ?? '—' }}</td>
+                                <td class="text-nowrap">
+                                    @if ($usage['link'])
+                                        <a href="{{ $usage['link'] }}">{{ $usage['reference_label'] }}</a>
+                                    @else
+                                        {{ $usage['reference_label'] }}
+                                    @endif
+                                </td>
+                                <td>{{ $usage['executor'] ?? '—' }}</td>
+                                <td class="text-end">{{ $usage['quantity'] }}</td>
+                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '缺少單價' : 'NT$ ' . number_format($usage['unit_price']) }}</td>
+                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '—' : 'NT$ ' . number_format($usage['quantity'] * $usage['unit_price']) }}</td>
+                                <td class="text-nowrap">{{ $usage['batch'] ? $usage['batch']->purchase_date->format('Y-m-d') . ' 採購' : '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
     </div>
 
     {{-- 採購紀錄：每一筆是一個進貨批次。新增會增加庫存；已被用過的批次不能改數量、單價，也不能刪除。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>採購紀錄</span>
-            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-primary">新增採購</a>
+            <h2 class="tb-section-title">採購紀錄</h2>
+            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
         </div>
         @if ($purchases->isEmpty())
             <div class="card-body text-muted small">目前沒有採購紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}採購紀錄" data-onion-list-only>
                     <thead class="table-light">
                         <tr>
                             <th class="text-nowrap">採購日期</th>
@@ -78,29 +138,31 @@
                             <th class="text-end text-nowrap">總價</th>
                             <th class="text-end text-nowrap">剩餘數量</th>
                             <th>備註</th>
-                            <th class="text-end">操作</th>
+                            {{-- 操作欄只跟按鈕一樣寬（tb-col-fit）：欄位的分隔線剛好在最左邊的按鈕旁邊；標題與按鈕都靠右。 --}}
+                            <th class="text-end tb-col-fit">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($purchases as $purchase)
                             <tr>
                                 <td class="text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
-                                <td>{{ $purchase->vendor_name ?? '—' }}</td>
-                                <td class="text-end">{{ $purchase->quantity }}</td>
+                                {{-- 沒填廠商也顯示文字（不用「—」），清單的副標題才會固定是「廠商 · 數量」。 --}}
+                                <td>{{ filled($purchase->vendor_name) ? $purchase->vendor_name : '未填廠商' }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($purchase->quantity) }}</td>
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->unit_price) }}</td>
                                 <td class="text-end text-nowrap">NT$ {{ number_format($purchase->totalPrice()) }}</td>
-                                <td class="text-end">{{ $purchase->remaining_quantity }}</td>
+                                <td class="text-end text-nowrap">{{ $part->withUnit($purchase->remaining_quantity) }}</td>
                                 <td>{{ $purchase->note ?? '—' }}</td>
-                                <td class="text-end text-nowrap">
-                                    {{-- 附件：在目前畫面用視窗預覽（圖片、PDF），不會另開分頁。 --}}
-                                    @if ($attachment = $purchase->attachments->first())
+                                <td class="text-end tb-col-fit">
+                                    {{-- 附件：有附件時只放一個「附件」按鈕，在目前畫面用視窗預覽（圖片、PDF）；有好幾個附件時在視窗裡左右切換。 --}}
+                                    @if ($purchase->attachments->isNotEmpty())
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
-                                            data-url="{{ route('attachments.show', $attachment) }}" data-mime="{{ $attachment->mime_type }}"
+                                            data-attachments="{{ $purchase->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values()->toJson() }}"
                                             data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
                                             <i class="bi bi-paperclip"></i> 附件
                                         </button>
                                     @endif
-                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary">修改</a>
+                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改採購紀錄">修改</a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
                                             data-confirm="請問確定要刪除 {{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的採購紀錄（{{ $part->withUnit($purchase->quantity) }}）嗎？庫存會減少 {{ $part->withUnit($purchase->quantity) }}。">
@@ -118,147 +180,47 @@
         @endif
     </div>
 
-    {{-- 附件預覽視窗：圖片直接顯示、PDF 用內嵌檢視器；其他格式提供下載連結。 --}}
-    <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalTitle" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title h5" id="attachmentModalTitle">附件</h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
-                </div>
-                <div class="modal-body text-center bg-light" id="attachmentModalBody"></div>
-                <div class="modal-footer">
-                    <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟／下載</a>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- 附件預覽視窗（零件履歷與修改採購共用）：見 parts/_attachment-modal.blade.php。 --}}
+    @include('parts._attachment-modal')
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const modal = document.getElementById('attachmentModal');
-        const body = document.getElementById('attachmentModalBody');
-
-        modal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const url = button.dataset.url;
-            const mime = button.dataset.mime || '';
-            document.getElementById('attachmentModalTitle').textContent = button.dataset.title;
-            document.getElementById('attachmentModalOpen').href = url;
-            body.innerHTML = '';
-
-            if (mime.startsWith('image/')) {
-                const img = document.createElement('img');
-                img.src = url;
-                img.alt = button.dataset.title;
-                img.className = 'img-fluid rounded';
-                img.style.maxHeight = '75vh';
-                body.appendChild(img);
-            } else if (mime === 'application/pdf') {
-                const frame = document.createElement('iframe');
-                frame.src = url;
-                frame.title = button.dataset.title;
-                frame.style.width = '100%';
-                frame.style.height = '75vh';
-                frame.style.border = '0';
-                body.appendChild(frame);
-            } else {
-                body.innerHTML = '<p class="text-muted my-4">這個檔案格式無法在這裡預覽，請按下方「在新分頁開啟／下載」。</p>';
-            }
-        });
-
-        // 關閉時清空，避免下次打開先閃過上一個附件。
-        modal.addEventListener('hidden.bs.modal', function () { body.innerHTML = ''; });
-    });
-    </script>
-
-    {{-- 使用紀錄：維修（報修單）與保養用掉的零件。跨兩個採購批次的用料會分成兩列，各自顯示那一批的單價。 --}}
-    <div class="card mb-3">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span>使用紀錄</span>
-            <span class="text-muted small">共使用 {{ $part->withUnit($usages->sum('quantity')) }}</span>
-        </div>
-        @if ($usages->isEmpty())
-            <div class="card-body text-muted small">目前沒有使用紀錄。</div>
-        @else
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>來源</th>
-                            <th class="text-nowrap">單號</th>
-                            <th>狀態</th>
-                            <th class="text-nowrap">使用日期</th>
-                            <th>執行人</th>
-                            <th class="text-end text-nowrap">數量</th>
-                            <th class="text-end text-nowrap">單價</th>
-                            <th class="text-end text-nowrap">小計</th>
-                            <th class="text-nowrap">扣用批次</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($usages as $usage)
-                            <tr>
-                                <td><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
-                                <td class="text-nowrap">
-                                    @if ($usage['link'])
-                                        <a href="{{ $usage['link'] }}">{{ $usage['reference_label'] }}</a>
-                                    @else
-                                        {{ $usage['reference_label'] }}
-                                    @endif
-                                </td>
-                                <td>{{ $usage['status'] ?? '—' }}</td>
-                                <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
-                                <td>{{ $usage['executor'] ?? '—' }}</td>
-                                <td class="text-end">{{ $usage['quantity'] }}</td>
-                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '缺少單價' : 'NT$ ' . number_format($usage['unit_price']) }}</td>
-                                <td class="text-end text-nowrap">{{ $usage['unit_price'] === null ? '—' : 'NT$ ' . number_format($usage['quantity'] * $usage['unit_price']) }}</td>
-                                <td class="text-nowrap">{{ $usage['batch'] ? $usage['batch']->purchase_date->format('Y-m-d') . ' 採購' : '—' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
     {{-- 報廢紀錄：零件還沒用就壞掉、過期或遺失時登記，從庫存扣掉（先進先出，跟用料一樣）。
          報廢損失＝扣到的各批數量×那一批的單價。登記錯了可以「取消報廢」，數量加回原本的批次。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             {{-- 標題旁邊寫共報廢多少（損失金額在每一筆的詳細與匯出裡）；右邊是「登記報廢」。 --}}
             <div class="d-flex flex-wrap align-items-baseline gap-2">
-                <span>報廢紀錄</span>
+                <h2 class="tb-section-title">報廢紀錄</h2>
                 @if ($scraps->isNotEmpty())
                     <span class="text-muted small">共報廢 {{ $part->withUnit($scraps->sum('quantity')) }}</span>
                 @endif
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-outline-danger">登記報廢</a>
+                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-outline-danger" data-modal-frame data-modal-title="登記報廢">登記報廢</a>
             </div>
         </div>
         @if ($scraps->isEmpty())
             <div class="card-body text-muted small">目前沒有報廢紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
+                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄" data-onion-list-only>
                     <thead class="table-light">
                         <tr>
+                            {{-- 欄位順序：報廢日期、登記人、數量、損失金額、扣用批次、原因、備註、操作。 --}}
                             <th class="text-nowrap">報廢日期</th>
-                            <th>原因</th>
+                            <th>登記人</th>
                             <th class="text-end text-nowrap">數量</th>
                             <th class="text-end text-nowrap">損失金額</th>
                             <th class="text-nowrap">扣用批次</th>
-                            <th>登記人</th>
+                            <th>原因</th>
                             <th>備註</th>
-                            <th class="text-nowrap">操作</th>
+                            <th class="text-end tb-col-fit">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($scraps as $scrap)
                             <tr>
                                 <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
-                                <td>{{ $scrap->reason }}</td>
+                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
                                 <td class="text-end text-nowrap">{{ $part->withUnit($scrap->quantity) }}</td>
                                 <td class="text-end text-nowrap">
                                     NT$ {{ number_format($scrap->lossAmount()) }}
@@ -269,9 +231,9 @@
                                         <div>{{ $batch->purchase ? $batch->purchase->purchase_date->format('Y-m-d') . ' 採購' : '—' }} × {{ $batch->quantity }}</div>
                                     @endforeach
                                 </td>
-                                <td>{{ $scrap->recorder?->name ?? '—' }}</td>
+                                <td>{{ $scrap->reason }}</td>
                                 <td>{{ $scrap->note ?? '—' }}</td>
-                                <td class="text-nowrap">
+                                <td class="text-end tb-col-fit">
                                     <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
                                         data-confirm="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" data-confirm-ok="確認取消報廢">
                                         @csrf

@@ -1,6 +1,7 @@
 @csrf
 
-<div data-step="基本資料">
+<div class="tb-form-card">
+<div>
 <div class="mb-3">
     <label for="name" class="form-label">計畫名稱 <span class="text-danger">*</span></label>
     <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
@@ -24,7 +25,7 @@
 </div>
 </div>
 
-<div class="row" data-step="保養週期">
+<div class="row">
     <div class="col-md-6 mb-3">
         <label for="cycle_days" class="form-label">保養週期（天） <span class="text-danger">*</span></label>
         <input type="number" name="cycle_days" id="cycle_days" min="1" max="3650"
@@ -46,7 +47,7 @@
     </div>
 </div>
 
-<div data-step="保養項目與啟用">
+<div>
 <div class="mb-3">
     <label class="form-label">保養項目（可複選） <span class="text-danger">*</span></label>
     <div class="border rounded p-3 @error('item_ids') is-invalid @enderror" style="max-height: 260px; overflow-y: auto;">
@@ -74,13 +75,17 @@
     @enderror
 </div>
 
-<div class="form-check mb-4">
+<div class="form-check">
     <input type="hidden" name="is_active" value="0">
     <input type="checkbox" name="is_active" id="is_active" class="form-check-input" value="1"
         {{ old('is_active', $plan->is_active) ? 'checked' : '' }}>
     <label for="is_active" class="form-check-label">啟用</label>
 </div>
 </div>
+</div>
 
-<button type="submit" class="btn btn-primary">儲存</button>
-<a href="{{ route('maintenance-plans.index') }}" class="btn btn-outline-secondary">取消</a>
+{{-- 取消／送出按鈕放在外框外面、靠右。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
+    <a href="{{ route('maintenance-plans.index') }}" class="btn btn-outline-secondary">取消</a>
+    <button type="submit" class="btn btn-primary">儲存</button>
+</div>

@@ -11,6 +11,7 @@ return [
         'updated' => '修改',
         'deleted' => '刪除',
         'restored' => '還原',
+        'downloaded' => '下載',
         'status_changed' => '狀態變更',
         'password_reset' => '重設密碼',
         'core_flag_changed' => '核心設備標記變更',

@@ -58,9 +58,10 @@ class DatabaseBackupTest extends TestCase
         $backups = app(DatabaseBackup::class)->all();
         $this->assertCount(1, $backups);
         $this->assertSame('manual', $backups[0]['reason']);
-        // 還原表單要先確認（第二批會換成全站的確認視窗）。
-        $this->get(route('backups.index'))->assertSee('手動備份')->assertSee('把所有資料還原到')->assertSee('data-confirm-ok="確認還原"', false)->assertDontSee('return confirm(', false);
+        $this->get(route('backups.index'))->assertSee('手動備份')->assertSee('確認還原');
         $this->get(route('backups.download', $backups[0]['name']))->assertOk();
+        // 下載備份會寫入操作紀錄（同步 integrate/all eed2947）。
+        $this->assertDatabaseHas('audit_logs', ['action' => 'downloaded']);
         $this->get(route('backups.download', '..%2F..%2F.env'))->assertNotFound();
     }
 

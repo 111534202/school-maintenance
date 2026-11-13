@@ -105,7 +105,7 @@ class PartFifoTimelineTest extends TestCase
         $this->assertSame($stockBefore, (int) $part->fresh()->current_stock);
     }
 
-    public function test_the_scrap_form_shows_the_error_on_the_page(): void
+    public function test_the_scrap_form_shows_the_error_as_a_popup(): void
     {
         $this->actingAs($this->makeUserWithPermissions(['parts.manage']));
         $part = $this->part();
@@ -113,10 +113,12 @@ class PartFifoTimelineTest extends TestCase
         $this->buy($part, '2026-11-09', 4, 10);
         $this->scrap($part, '2026-11-02', '10:00', 10);
 
-        // 送出後導回表單，錯誤訊息顯示在畫面上（彈出視窗是第二批）。
+        // 送出後導回表單，畫面會跳出「錯誤，請重新確認」視窗。
         $this->followingRedirects()
             ->from(route('parts.scraps.create', $part))
             ->post(route('parts.scraps.store', $part), ['scrap_date' => '2026-11-01', 'scrap_time' => '09:00', 'quantity' => 2, 'reason' => '損壞'])
+            ->assertSee('id="stockTimelineDialog"', false)
+            ->assertSee('錯誤，請重新確認')
             ->assertSee('這樣登記會導致 2026-11-02 的報廢當時庫存不足');
         $this->assertSame(1, PartScrap::count());
     }

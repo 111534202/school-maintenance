@@ -32,6 +32,7 @@ class KnowledgeBase extends Model
     // 型別轉換：is_published 資料庫存 0/1 → PHP 的 true/false。
     protected $casts = [
         'is_published' => 'boolean',
+        'view_count' => 'integer',   // 查看次數（打開文章時加 1，不在 fillable，表單改不到）
     ];
 
     /**

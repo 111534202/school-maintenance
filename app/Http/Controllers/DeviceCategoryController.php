@@ -28,7 +28,8 @@ class DeviceCategoryController extends Controller
             ->withQueryString();   // 換頁時保留搜尋條件
 
         $chart = \App\Services\MasterCharts::deviceCategoryRepairRanking($request->user());   // 頁首「統計圖表」按鈕的圖表資料
-        return view('device-categories.index', compact('categories', 'chart'));
+        $categoryNames = DeviceCategory::orderBy('name')->pluck('name');   // 篩選欄位的下拉選項（可以輸入，也可以直接選）
+        return view('device-categories.index', compact('categories', 'chart', 'categoryNames'));
     }
 
     /** 顯示新增類別表單（GET /device-categories/create）。 */

@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
-{{-- $guest：免登入查詢課表（/schedule）。同一個頁面，不能送出申請，點空堂／送出會跳出「若需預約請先登入」。 --}}
+{{-- $guest：免登入查詢課表（/schedule）。同一個頁面，不顯示「我的申請」，點空堂／送出會跳出「若需預約請先登入」。 --}}
 @php $guest = $guest ?? false; @endphp
 
-@section('title', $guest ? '查詢課表' : '新增空間預約')
+{{-- $showMine：沒有審核權限的人（空間申請＝這一頁）下方顯示「我的申請」；有審核權限的人在空間申請右上角另外有「我的申請」按鈕。 --}}
+@section('title', $guest ? '查詢課表' : ($showMine ?? true ? '空間申請' : '空間預約'))
 
 @section('content')
 <div class="container-fluid py-4">
@@ -12,7 +13,7 @@
             <h1 class="h3 mb-1">查詢課表</h1>
             <p class="text-muted mb-0">不用登入即可查詢教室課表；若需預約教室，請先登入。</p>
         @else
-            <h1 class="h3 mb-1">新增空間預約</h1>
+            <h1 class="h3 mb-1">{{ ($showMine ?? true) ? '空間申請' : '空間預約' }}</h1>
             <p class="text-muted mb-0">請填寫教室及使用時段，送出後將進入待審核狀態。</p>
         @endif
     </div>
@@ -29,11 +30,7 @@
                     <input type="hidden" id="confirm_pending_conflict"
                            name="confirm_pending_conflict" value="0">
 
-                    @if (session('error'))
-                        <div class="alert alert-danger" role="alert">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    {{-- 錯誤訊息（例如時段已經過去）只顯示在頁面最上方那一個（layouts/app），這裡不再重複。 --}}
 
                     @if (session('pending_conflict'))
                         <div class="alert alert-warning" role="alert">
@@ -57,7 +54,8 @@
                                 <button type="button" id="timetable_query" class="btn btn-outline-primary">
                                     查詢課表
                                 </button>
-                                <span id="timetable_status" class="small text-muted" role="status" aria-live="polite"></span>
+                                {{-- 只在出錯時顯示紅字（例如還沒選教室、課表查詢失敗），放在「教室／日期／查詢課表」那一列下面。 --}}
+                                <div id="timetable_status" class="small text-danger" role="alert"></div>
                             </div>
                             {{-- 選好教室後，若該教室有設備在等待維修，這裡會顯示提醒（內容由下方程式依 repairNotices 填入）：
                                  一般情況黃色；教室因核心設備維修而暫停預約時紅色（可查課表、不能送出）。 --}}
@@ -216,12 +214,23 @@
                             @error('purpose')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+
+                            {{-- 一次申請好幾節時：其中一節被別人借走（或被拒絕）就整筆都不要。
+                                 不勾＝可以只借到其中幾節（審核時逐節同意）；勾了＝只能整筆同意或整筆拒絕。
+                                 只選一節時沒有意義，所以選了兩節以上才顯示（見下方 updateNextStepButtonState）。 --}}
+                            <div class="form-check mt-3" id="allOrNothingBox" hidden>
+                                <input class="form-check-input" type="checkbox" value="1" id="is_all_or_nothing" name="is_all_or_nothing" @checked(old('is_all_or_nothing'))>
+                                <label class="form-check-label" for="is_all_or_nothing">
+                                    其中一節無法借用時，整筆申請都不要（自動整筆拒絕）
+                                </label>
+                                <div class="form-text">不勾選的話，可能只借到其中幾節（例如第 5 節已被借走，第 6 節仍可借）。</div>
+                            </div>
                         </div>
                     </div>
 
 
                     <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
-                        <a href="{{ route('reservations.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('reservations.create') }}" class="btn btn-outline-secondary">
                             取消
                         </a>
                         <button type="submit" class="btn btn-primary">
@@ -233,6 +242,22 @@
             @endif
         </div>
     </div>
+
+    {{-- 我的申請：自己提出的空間預約申請與目前狀態（表格，螢幕不夠大自動變清單）；點一筆在畫面中的對話框打開「預約詳細」。
+         只給沒有審核權限的人；有審核權限的人在空間申請右上角按「我的申請」打開視窗。 --}}
+    @if (! $guest && ($showMine ?? true))
+    <section id="my-requests" class="tb mt-4" aria-labelledby="my-requests-title">
+        <h2 class="h5 mb-0" id="my-requests-title">我的申請</h2>
+        @if ($myReservations->isEmpty())
+            <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>
+        @else
+            <section class="tb-table-wrap" data-no-fit aria-label="我的申請">
+                @include('reservations._table', ['reservations' => $myReservations, 'mine' => true])
+            </section>
+            @include('layouts.pager', ['paginator' => $myReservations])
+        @endif
+    </section>
+    @endif
 </div>
 
 @if ($guest)
@@ -284,6 +309,54 @@
 @endif
 
 <style>
+    /* 第一步「教室／日期／查詢課表」：寬度不夠時換行，不用左右滑動。 */
+    /* 教室一段、「日期＋查詢課表」一段；寬度不夠時教室自己一行，日期和「查詢課表」永遠在同一行，按鈕靠最右邊。 */
+    #reservation_query_row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; container-type: inline-size; }
+    /* 放得下同一列時，多出來的寬度都給「選擇教室」，日期和「查詢課表」緊接在後面，中間不留大片空白。 */
+    #reservation_query_row > .rq-classroom { flex: 1 1 240px; min-width: 0; }
+    #reservation_query_row > .rq-date-group { flex: 0 1 auto; min-width: 0; display: flex; align-items: flex-end; gap: 0.5rem; }
+    .rq-date-group > .rq-date { flex: 0 1 190px; min-width: 0; }
+    /* 窄到教室自己一行時，「日期＋查詢課表」佔滿下一行，按鈕靠最右邊。 */
+    @container (max-width: 560px) {
+        #reservation_query_row > .rq-date-group { flex-grow: 1; }
+    }
+    .rq-date-group > .rq-controls { flex: 0 0 auto; margin-left: auto; display: flex; align-items: center; }
+    /* 很窄的時候（手機）「查詢課表」縮小一點，跟日期擠得下同一行。 */
+    @container (max-width: 360px) {
+        #timetable_query { padding: 0.3rem 0.75rem; font-size: 0.875rem; }
+    }
+    /* 教室下拉清單：外框畫在清單本身（圓角），選項只留分隔線。原本外框在每個選項上，
+       最後一個看得到的選項不是 :last-child（後面還有隱藏的「找不到符合的教室」），下面兩個角就沒有圓角。 */
+    #classroom_options { border: var(--bs-border-width) solid var(--bs-border-color); border-radius: var(--bs-border-radius-lg); background: var(--bs-body-bg); }
+    #classroom_options > .list-group-item { border-width: 0 0 var(--bs-border-width); border-radius: 0; }
+    #classroom_options > .list-group-item.is-last-visible { border-bottom-width: 0; }
+    #timetable_status { margin: -0.5rem 0 0.75rem; }
+    #timetable_status:empty { display: none; }
+
+    /* 上一週／教室與週次／下一週：寬的時候排成一列；窄的時候教室與週次在上面置中，下一行上一週在左、下一週在右。 */
+    #timetable_result { container-type: inline-size; }
+    .tt-weeknav { display: grid; grid-template-columns: auto auto auto; grid-template-areas: "prev head next"; justify-content: start; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .tt-weeknav .tt-prev { grid-area: prev; justify-self: start; }
+    .tt-weeknav .tt-next { grid-area: next; justify-self: end; }
+    .tt-weeknav .tt-head { grid-area: head; margin: 0 0.25rem; }
+    /* 教室與週次各自不拆開：要換行時只會在「教室」和「日期～日期」之間換行。 */
+    .tt-weeknav .tt-head > span { display: inline-block; white-space: nowrap; }
+    .tt-weeknav .tt-head > span + span { margin-left: 1em; }
+    @container (max-width: 640px) {
+        .tt-weeknav { grid-template-columns: auto 1fr auto; grid-template-areas: "head head head" "prev . next"; justify-content: stretch; }
+        .tt-weeknav .tt-head { margin: 0; text-align: center; }
+    }
+
+    /* 課表：跟著畫面寬度等比例縮小字型與留白，欄位平均分配，不用左右滑動。 */
+    .tt-fit { container-type: inline-size; }
+    .tt-fit table { width: 100%; table-layout: fixed; margin-bottom: 0; font-size: clamp(0.6rem, 1.45cqi, 1rem); }
+    .tt-fit th, .tt-fit td { vertical-align: middle; padding: clamp(2px, 0.7cqi, 0.5rem) !important; white-space: normal !important; overflow-wrap: anywhere; }
+    .tt-fit th:first-child { width: 11%; }
+    .tt-fit th { text-align: center; }   /* 左邊的節次與時間也置中，跟其他格子一致 */
+    .tt-fit .badge { font-size: 0.8em; white-space: normal; }
+    .tt-fit .small { font-size: 0.85em; }
+    @container (max-width: 640px) { .tt-fit .tt-year { display: none; } }
+
     /* 有設備在報修的教室：深黃色字（Bootstrap 的亮黃色在白底上看不清楚）。 */
     .room-has-repair { color: #b07800 !important; }
 </style>
@@ -392,6 +465,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         noResults.style.display = visibleCount === 0 ? '' : 'none';
+        // 最後一個看得到的選項不畫分隔線（下面就是清單外框），避免底部變成兩條線。
+        let lastVisible = null;
+        options.forEach(function (option) {
+            option.classList.remove('is-last-visible');
+            if (option.style.display !== 'none') lastVisible = option;
+        });
+        if (lastVisible) lastVisible.classList.add('is-last-visible');
         optionsList.style.display = '';
         searchInput.setAttribute('aria-expanded', 'true');
     }
@@ -615,25 +695,22 @@ document.addEventListener('DOMContentLoaded', function () {
     const step2Fields = document.createElement('div');
     step2Fields.className = 'row g-3';
 
+    // 教室／日期／查詢課表排成一列，寬度不夠時自動換行（樣式見上方 #reservation_query_row）。
     const queryRow = document.createElement('div');
-    queryRow.className = 'd-flex flex-nowrap align-items-end gap-2 mb-3';
-    queryRow.style.width = '100%';
-    queryRow.style.overflowX = 'auto';
+    queryRow.id = 'reservation_query_row';
+    queryRow.className = 'mb-3';
 
-    classroomColumn.className = 'flex-grow-1';
-    classroomColumn.style.flex = '0 0 280px';
-    classroomColumn.style.minWidth = '280px';
-    classroomColumn.style.width = '280px';
-
-    dateColumn.className = 'flex-shrink-0';
-    dateColumn.style.flex = '0 0 190px';
-    dateColumn.style.width = '190px';
-
-    queryControls.className = 'd-flex flex-nowrap align-items-center gap-2 flex-shrink-0';
+    classroomColumn.className = 'rq-classroom';
+    dateColumn.className = 'rq-date';
+    queryControls.className = 'rq-controls';
     timetableButton.style.whiteSpace = 'nowrap';
 
-    queryRow.append(classroomColumn, dateColumn, queryControls);
+    const dateGroup = document.createElement('div');
+    dateGroup.className = 'rq-date-group';
+    dateGroup.append(dateColumn, queryControls);
+    queryRow.append(classroomColumn, dateGroup);
     cardBody.insertBefore(queryRow, timetableResult);
+    cardBody.insertBefore(timetableStatus, timetableResult);   // 錯誤紅字在那一列下面
     // 報修提醒放在「教室／日期／查詢課表」那一列的下面。
     if (repairNotice) {
         cardBody.insertBefore(repairNotice, timetableResult);
@@ -749,6 +826,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         nextStepButton.disabled = selectedPeriods.length === 0;
+
+        // 「其中一節無法借用時，整筆申請都不要」：選了兩節以上才顯示；只剩一節時收起來並取消勾選。
+        const allOrNothingBox = document.getElementById('allOrNothingBox');
+        if (allOrNothingBox) {
+            const multiple = selectedPeriods.length >= 2;
+            allOrNothingBox.hidden = !multiple;
+            if (!multiple) {
+                document.getElementById('is_all_or_nothing').checked = false;
+            }
+        }
     }
 
     pendingConfirmationCheckbox.addEventListener('change', function () {
@@ -883,19 +970,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const weekdayNames = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];
         // 週切換：上一週／下一週（和報修派工的課表視窗相同），切換後直接重新查詢。
         const weekNav = document.createElement('div');
-        weekNav.className = 'd-flex flex-wrap align-items-center gap-2 mb-2';
+        weekNav.className = 'tt-weeknav';   // 版面見上方 .tt-weeknav（窄的時候上一週、下一週同一行）
         const prevWeek = document.createElement('button');
         prevWeek.type = 'button';
-        prevWeek.className = 'btn btn-sm btn-outline-secondary';
+        prevWeek.className = 'btn btn-sm btn-outline-secondary tt-prev';
         prevWeek.innerHTML = '<i class="bi bi-chevron-left"></i> 上一週';
         const nextWeek = document.createElement('button');
         nextWeek.type = 'button';
-        nextWeek.className = 'btn btn-sm btn-outline-secondary';
+        nextWeek.className = 'btn btn-sm btn-outline-secondary tt-next';
         nextWeek.innerHTML = '下一週 <i class="bi bi-chevron-right"></i>';
         const heading = document.createElement('h6');
-        heading.className = 'mb-0 mx-1';
-        heading.textContent = data.classroom.name + '（' + data.classroom.classroom_code + '）　' +
-            data.week_start + ' ～ ' + data.week_end;
+        heading.className = 'mb-0 tt-head';
+        // 教室、週次分成兩段（.tt-head > span），窄的時候整段換到下一行，不會把日期拆開。
+        const headRoom = document.createElement('span');
+        headRoom.textContent = data.classroom.name + '（' + data.classroom.classroom_code + '）';
+        const headWeek = document.createElement('span');
+        headWeek.textContent = data.week_start + ' ～ ' + data.week_end;
+        heading.append(headRoom, headWeek);
         weekNav.append(prevWeek, heading, nextWeek);
         timetableResult.appendChild(weekNav);
 
@@ -920,12 +1011,12 @@ document.addEventListener('DOMContentLoaded', function () {
             'small text-muted'
         );
 
+        // 課表跟著寬度等比例縮小（.tt-fit），不再固定 1000px 寬、也不用左右滑動。
         const responsive = document.createElement('div');
-        responsive.className = 'table-responsive';
+        responsive.className = 'tt-fit';
 
         const table = document.createElement('table');
         table.className = 'table table-bordered align-middle text-center';
-        table.style.minWidth = '1000px';
 
         const thead = document.createElement('thead');
         thead.className = 'table-light';
@@ -935,13 +1026,13 @@ document.addEventListener('DOMContentLoaded', function () {
         addScheduleText(headerRow, 'th', '時間', 'text-nowrap');
 
         data.days.forEach(function (day, index) {
-            const th = addScheduleText(
-                headerRow,
-                'th',
-                day.date + '\n' + weekdayNames[index],
-                'text-nowrap'
-            );
-            th.style.whiteSpace = 'pre-line';
+            // 日期：窄的時候省略年份（2026-11-10 → 11-10），見 .tt-year。
+            const th = document.createElement('th');
+            const year = document.createElement('span');
+            year.className = 'tt-year';
+            year.textContent = day.date.slice(0, 5);
+            th.append(year, day.date.slice(5), document.createElement('br'), weekdayNames[index]);
+            headerRow.appendChild(th);
             if (day.date === data.selected_date) {
                 th.className += ' table-primary';
             }
@@ -959,7 +1050,6 @@ document.addEventListener('DOMContentLoaded', function () {
             data.days.forEach(function (day) {
                 const period = day.periods[periodIndex];
                 const cell = document.createElement('td');
-                cell.style.minWidth = '120px';
 
                 if (!period) {
                     cell.textContent = '—';
@@ -1000,12 +1090,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 if (hasApproved) {
-                    addScheduleText(
-                        cell,
-                        'div',
-                        '已借用',
-                        'small mb-2 fw-bold'
-                    );
+                    // 有審核權限的人看得到借用的班級（第一行粗體班級、第二行「已借用」）；其他人只看到「已借用」。
+                    // 時間已過但後來補同意的節次，一樣顯示已借用。
+                    const approvedItem = reservations.find(function (item) { return item.status === 'approved'; });
+                    if (approvedItem && approvedItem.class_name) {
+                        addScheduleText(cell, 'div', approvedItem.class_name, 'fw-bold');
+                        addScheduleText(cell, 'div', '已借用', 'small mb-2');
+                    } else {
+                        addScheduleText(
+                            cell,
+                            'div',
+                            '已借用',
+                            'small mb-2 fw-bold'
+                        );
+                    }
                 } else if (pending.length) {
                     addScheduleText(
                         cell,
@@ -1150,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         clearTimetable();
         timetableButton.disabled = true;
-        timetableStatus.textContent = '正在查詢課表……';
+        timetableStatus.textContent = '';
 
         try {
             const url = new URL(
@@ -1170,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             renderTimetable(data);
-            timetableStatus.textContent = '課表載入完成。';
+            timetableStatus.textContent = '';
         } catch (error) {
             timetableStatus.textContent = error.message || '課表查詢失敗，請稍後再試。';
         } finally {

@@ -45,6 +45,7 @@ class KnowledgeBaseController extends Controller
                     ->orWhere('solution', 'like', $like));
             })
             ->when($category !== '', fn ($query) => $query->where('category', $category))
+            ->orderByDesc('view_count')   // 查看次數多的在前面（大家最常遇到的問題）
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -79,6 +80,11 @@ class KnowledgeBaseController extends Controller
             $knowledgeBase->is_published || auth()->user()->can('knowledge-base.manage'),
             404
         );
+
+        // 查看次數＋1（列表依這個數字排序）；用 increment 直接加，不會動到 updated_at，修改內容也不會歸零。
+        $knowledgeBase->timestamps = false;
+        $knowledgeBase->increment('view_count');
+        $knowledgeBase->timestamps = true;
 
         return view('knowledge-base.show', compact('knowledgeBase'));
     }

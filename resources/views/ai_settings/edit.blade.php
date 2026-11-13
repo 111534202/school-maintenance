@@ -7,10 +7,11 @@
         <h1 class="h3 mb-0">AI 預防保養設定</h1>
     </div>
 
-    <form method="POST" action="{{ route('ai-settings.update') }}" class="card" style="max-width: 640px;">
+    <form method="POST" action="{{ route('ai-settings.update') }}" style="max-width: 640px;">
         @csrf
         @method('PUT')
-        <div class="card-body">
+        {{-- 欄位放在細線外框裡；「儲存設定」在外框外面、靠右，上面不加分隔線。 --}}
+        <div class="tb-form-card">
             <div class="mb-3">
                 <label for="risk_threshold" class="form-label">風險分數門檻（0.05 ~ 1）</label>
                 <input type="number" step="0.01" min="0.05" max="1" name="risk_threshold" id="risk_threshold"
@@ -51,7 +52,7 @@
                 以上預設值皆為工程實作決定，待全組確認；調整後下一次掃描立即生效，已產生的候選不受影響（候選會保留當時的分數與門檻）。
             </div>
         </div>
-        <div class="card-footer text-end">
+        <div class="d-flex justify-content-end mt-3">
             <button type="submit" class="btn btn-primary">儲存設定</button>
         </div>
     </form>

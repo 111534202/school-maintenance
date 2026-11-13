@@ -8,7 +8,10 @@
     @method('PUT')
 @endisset
 
-<div class="row g-3" data-step="基本資料">
+<div class="card shadow-sm">
+<div class="card-body p-4">
+{{-- 基本資料、規格與保固、狀態放在同一頁（不分上一步／下一步），依序往下排。 --}}
+<div class="row g-3">
     <div class="col-md-6">
         <label for="device_code" class="form-label">{{ __('devices.form.code') }}</label>
         {{-- 設備編號：整個系統不可重複，QR Code 網址就是用它。old(欄位, 預設值) 會在驗證失敗導回時帶回剛輸入的內容。 --}}
@@ -55,8 +58,7 @@
             @endforeach
         </select>
     </div>
-</div>
-<div class="row g-3" data-step="規格與保固">
+
     <div class="col-md-4">
         <label for="brand" class="form-label">{{ __('devices.form.brand') }}</label>
         {{-- 品牌（選填）。 --}}
@@ -83,8 +85,7 @@
         {{-- 保固期限（日期選擇器）；optional(...) 是「沒有資料也不要報錯」。 --}}
         <input type="date" id="warranty_end_date" name="warranty_end_date" class="form-control @error('warranty_end_date') is-invalid @enderror" value="{{ old('warranty_end_date', optional($device->warranty_end_date ?? null)->format('Y-m-d')) }}">
     </div>
-</div>
-<div class="row g-3" data-step="狀態">
+
     <div class="col-md-4">
         <label for="status" class="form-label">{{ __('devices.form.status') }}</label>
         {{-- 狀態下拉選單：選項來自 Device::STATUSES，顯示名稱用 Device::statusLabel() 轉成中文。 --}}
@@ -103,9 +104,11 @@
         </div>
     </div>
 </div>
+</div>
+</div>
 
-{{-- 表單底部的「取消／儲存」按鈕（和用戶、部門主檔的表單一致）。 --}}
-<div class="d-flex justify-content-end gap-2 mt-4">
+{{-- 表單底部的「取消／儲存」按鈕（和用戶、部門主檔的表單一致）：在外框下面、靠右。 --}}
+<div class="d-flex justify-content-end gap-2 mt-3">
     <a class="btn btn-outline-secondary" href="{{ route('devices.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

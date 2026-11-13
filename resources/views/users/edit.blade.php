@@ -26,28 +26,29 @@
         {{-- 重設密碼：獨立的表單，只改密碼，不會動到上面的其他資料。 --}}
         <form method="POST" action="{{ route('users.reset-password', $user) }}">
             @csrf
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white form-section-title"><i class="bi bi-key me-2"></i>{{ __('users.form.section_reset_password') }}</div>
+            {{-- 標題在外框上面；外框只包新密碼、確認密碼與說明文字。 --}}
+            <h2 class="h6 form-section-title mb-2"><i class="bi bi-key me-2"></i>{{ __('users.form.section_reset_password') }}</h2>
+            <div class="card shadow-sm mb-3">
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="reset_password" class="form-label">{{ __('users.form.new_password') }}</label>
                             {{-- 新密碼（至少 8 碼）。 --}}
-                            <input type="password" class="form-control" id="reset_password" name="password" autocomplete="new-password" required>
+                            <input type="password" class="form-control" id="reset_password" name="password" autocomplete="new-password" required data-reveal>
                             <div class="form-text">{{ __('users.form.password_hint') }}</div>
                         </div>
                         <div class="col-md-6">
                             <label for="reset_password_confirmation" class="form-label">{{ __('users.form.password_confirmation') }}</label>
                             {{-- 確認新密碼：必須和上面一致。 --}}
-                            <input type="password" class="form-control" id="reset_password_confirmation" name="password_confirmation" autocomplete="new-password" required>
+                            <input type="password" class="form-control" id="reset_password_confirmation" name="password_confirmation" autocomplete="new-password" required data-reveal>
                         </div>
                     </div>
                     <div class="form-text mt-2">{{ __('users.form.reset_password_hint') }}</div>
                 </div>
-                {{-- 送出重設密碼的按鈕（紅色邊框提醒這是會讓對方被強制登出的動作）。 --}}
-                <div class="card-footer bg-white d-flex justify-content-end py-3">
-                    <button class="btn btn-outline-danger" type="submit"><i class="bi bi-key me-1"></i>{{ __('users.actions.reset_password') }}</button>
-                </div>
+            </div>
+            {{-- 送出重設密碼的按鈕（紅色邊框提醒這是會讓對方被強制登出的動作）：放在外框下面，外框只包密碼欄位與說明。 --}}
+            <div class="d-flex justify-content-end mb-4">
+                <button class="btn btn-outline-danger" type="submit"><i class="bi bi-key me-1"></i>{{ __('users.actions.reset_password') }}</button>
             </div>
         </form>
     </div>

@@ -105,7 +105,7 @@ class DrilldownNavigationTest extends TestCase
         }
     }
 
-    public function test_the_only_menu_is_the_one_in_the_hamburger_drawer(): void
+    public function test_the_drawer_menu_appears_once_without_a_fixed_sidebar(): void
     {
         $html = $this->page('admin');
 
@@ -115,13 +115,15 @@ class DrilldownNavigationTest extends TestCase
         $this->assertStringContainsString('id="sidebarOffcanvas"', $html);
     }
 
-    // 選單只放在漢堡抽屜裡，所以漢堡按鈕在任何螢幕寬度都要看得到：不能帶 d-lg-none 之類「大螢幕隱藏」的類別，否則電腦版就沒有選單入口。
+    // 選單只放在漢堡抽屜裡（不採用寬螢幕上方選單 top-nav，同 integrate/all），所以漢堡按鈕在任何螢幕寬度都要看得到：
+    // 不能帶 d-lg-none 之類「大螢幕隱藏」的類別，否則電腦版就沒有選單入口。
     public function test_the_hamburger_button_is_visible_at_every_screen_width(): void
     {
         $html = $this->page('admin');
 
         $this->assertSame(1, preg_match('/<button[^>]*data-bs-target="#sidebarOffcanvas"[^>]*>/', $html, $button));
         $this->assertDoesNotMatchRegularExpression('/\bd-(sm|md|lg|xl|xxl)-none\b|\bd-none\b/', $button[0]);
+        $this->assertStringNotContainsString('tb-topnav', $html);
     }
 
     // 最內層的清單頁（用戶主檔、空間預約…）也要有「返回」；主控台是最上層，不需要。
@@ -132,18 +134,27 @@ class DrilldownNavigationTest extends TestCase
         foreach (['users.index', 'reservations.index', 'classrooms.index', 'repairs.index', 'maintenance-orders.index'] as $route) {
             $html = $this->page('admin', $route);
             $this->assertStringContainsString('data-page-back aria-label=', $html, "{$route} 缺少返回按鈕");
-            $this->assertStringContainsString('href="'.route('dashboard').'" class="btn btn-outline-light btn-sm flex-shrink-0" data-page-back', $html);
+            $this->assertStringContainsString('href="'.route('dashboard').'" class="btn btn-outline-light btn-sm tb-nav-btn flex-shrink-0" data-page-back', $html);
         }
     }
 
-    // 點頂端列的網站名稱可以回到主控台（任何頁面都一樣；沒登入的畫面只是標題，不是連結）。
+    // 點頂端列的網站名稱可以回到主控台（任何頁面都一樣；沒登入的畫面只是標題，不是連結）。同步自 integrate/all（5cc43ed）。
     public function test_the_site_title_links_back_to_the_dashboard_when_signed_in(): void
     {
-        foreach (['dashboard', 'users.index', 'reservations.index'] as $route) {
+        foreach (['dashboard', 'users.index', 'reservations.index', 'parts.index'] as $route) {
             $this->assertStringContainsString('<a href="'.route('dashboard').'" class="navbar-brand', $this->page('admin', $route), "{$route} 的網站名稱沒有連到主控台");
         }
 
         $this->get(route('login'))->assertOk()->assertDontSee('<a href="'.route('dashboard').'" class="navbar-brand', false);
+    }
+
+    // 頂端列高度固定 56px：上下留白各 0.5rem（Bootstrap 預設），洋蔥的「一個畫面」以這個高度計算清單能放幾筆。
+    public function test_the_top_bar_keeps_the_fixed_56px_height(): void
+    {
+        $css = file_get_contents(public_path('css/theme-b.css'));
+
+        $this->assertStringContainsString('.tb-navbar { padding-top: 0.5rem; padding-bottom: 0.5rem; }', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.tb-navbar\s*\{[^}]*padding-(top|bottom):\s*(?!0\.5rem)[0-9.]+rem/', $css, '頂端列的上下留白被改成 0.5rem 以外的值，高度就不是 56px');
     }
 
     public function test_group_containing_current_page_is_opened_by_default(): void
@@ -164,5 +175,13 @@ class DrilldownNavigationTest extends TestCase
 
         $this->assertDoesNotMatchRegularExpression('/drill-sub is-open/', $menu);
         $this->assertStringNotContainsString('drill-root is-pushed', $menu);
+    }
+
+    // 返回鍵和漢堡選單同樣高度（tb-nav-btn，寬窄畫面都套用）。
+    public function test_back_button_and_menu_button_share_the_same_size_class(): void
+    {
+        $html = $this->page('admin', 'users.index');
+        $this->assertMatchesRegularExpression('/class="[^"]*tb-nav-btn[^"]*"[^>]*data-bs-target="#sidebarOffcanvas"/', $html);
+        $this->assertMatchesRegularExpression('/class="[^"]*tb-nav-btn[^"]*"[^>]*data-page-back/', $html);
     }
 }

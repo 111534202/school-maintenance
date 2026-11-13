@@ -85,7 +85,7 @@ return [
         'description_prefill' => "Already tried the steps from \":title\", still not resolved:\n",
         'impact_level_label' => 'Impact Level',
         'affects_class_label' => 'Currently affecting class',
-        'attachments_label' => 'Photos/Videos of the issue (optional, up to 5 files, jpg/png/pdf/mp4/mov/webm, max 20MB each)',
+        'attachments_label' => 'Photos/Videos of the issue (optional, up to 5 files, jpg/png/pdf/mp4/mov/webm, 5MB in total)',
         'submit' => 'Submit Repair Request',
     ],
 

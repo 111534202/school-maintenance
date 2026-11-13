@@ -15,12 +15,12 @@
     <style>
         /* 登入頁：上方一條墨綠色的網站名稱列，下方暖白底置中一張圓角卡片。 */
         .login-band { background: var(--tb-accent); color: #FFFFFF; padding: 14px 24px; }
-        .login-band .brand { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
+        .login-band .brand { font-family: var(--tb-font-heading, 'Noto Serif TC', serif); font-weight: 700; font-size: 1.25rem; letter-spacing: 0.04em; }
         .login-card { width: 100%; max-width: 420px; border-radius: 20px; }
-        .login-title { font-family: 'Noto Serif TC', serif; font-weight: 700; letter-spacing: 0.02em; }
+        .login-title { font-family: var(--tb-font-heading, 'Noto Serif TC', serif); font-weight: 700; letter-spacing: 0.02em; }
         .login-card .form-control { min-height: 46px; }
         .login-card .btn-primary { min-height: 48px; font-size: 1.05rem; }
-        .login-card .login-schedule-btn { min-height: 46px; }
+        .login-card .login-schedule-btn { min-height: 46px; display: flex; align-items: center; justify-content: center; }
         .login-divider { display: flex; align-items: center; gap: 12px; color: #8a8a8a; font-size: .875rem; }
         .login-divider::before, .login-divider::after { content: ''; flex: 1; border-top: 1px solid #e3ded3; }
     </style>
@@ -67,9 +67,7 @@
                 </form>
                 {{-- 不用登入也能查詢教室課表（/schedule）；要預約時再登入。 --}}
                 <div class="login-divider my-4"><span>或</span></div>
-                <a href="{{ route('schedule') }}" class="btn btn-outline-primary w-100 login-schedule-btn">
-                    查詢課表（免登入）
-                </a>
+                <a href="{{ route('schedule') }}" class="btn btn-outline-primary w-100 login-schedule-btn">查詢課表</a>
             </div>
         </div>
     </div>

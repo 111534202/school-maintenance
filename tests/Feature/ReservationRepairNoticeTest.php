@@ -162,7 +162,7 @@ class ReservationRepairNoticeTest extends TestCase
 
         $this->get(route('reservations.show', $reservation))
             ->assertOk()
-            ->assertSee('教室設備狀況')
+            ->assertSee('教室設備報修中')
             ->assertSee('投影機正在等待維修')
             ->assertSee('暫停預約');
 

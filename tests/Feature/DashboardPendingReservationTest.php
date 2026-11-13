@@ -31,15 +31,15 @@ class DashboardPendingReservationTest extends TestCase
         ]);
     }
 
-    private function reservation(User $requester, string $status, string $className): ClassroomReservation
+    private function reservation(User $requester, string $status, string $className, string $start = '09:00', string $end = '10:00'): ClassroomReservation
     {
         return $this->makeReservation([
             'classroom_id' => $this->classroom->id,
             'requester_id' => $requester->id,
             'class_name' => $className,
             'reservation_date' => now()->addDays(3)->toDateString(),
-            'start_time' => '09:00',
-            'end_time' => '10:00',
+            'start_time' => $start,
+            'end_time' => $end,
             'purpose' => '班級活動',
             'status' => $status,
         ]);
@@ -51,7 +51,7 @@ class DashboardPendingReservationTest extends TestCase
         $other = $this->makeUserWithRole('teacher', '教師');
         $this->reservation($teacher, 'pending', '一年甲班');
         $this->reservation($other, 'pending', '二年乙班');
-        $this->reservation($other, 'approved', '三年丙班');
+        $this->reservation($other, 'approved', '三年丙班', '13:00', '14:00');   // 不同時段，不會讓待審核的被自動拒絕
 
         // 預約管理者：算全部待審核。
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))
@@ -69,8 +69,8 @@ class DashboardPendingReservationTest extends TestCase
     {
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $this->reservation($teacher, 'pending', '一年甲班');
-        $this->reservation($teacher, 'approved', '三年丙班');
-        $this->reservation($teacher, 'partially_approved', '四年丁班');
+        $this->reservation($teacher, 'approved', '三年丙班', '13:00', '14:00');
+        $this->reservation($teacher, 'partially_approved', '四年丁班', '15:00', '16:00');
 
         $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
 

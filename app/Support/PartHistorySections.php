@@ -57,14 +57,15 @@ class PartHistorySections
             ],
             'scraps' => [
                 'title' => '報廢紀錄',
-                'headings' => ['報廢日期', '原因', '數量', '損失金額', '扣用批次', '登記人', '備註'],
+                // 跟零件履歷畫面上的報廢紀錄同樣順序。
+                'headings' => ['報廢日期', '登記人', '數量', '損失金額', '扣用批次', '原因', '備註'],
                 'rows' => $scraps->map(fn ($s) => [
                     $s->scrap_date->format('Y-m-d'),
-                    $s->reason,
+                    $s->recorder?->name ?? '—',
                     $part->withUnit($s->quantity),
                     (float) $s->lossAmount(),
                     $s->batches->map(fn ($b) => ($b->purchase ? $b->purchase->purchase_date->format('Y-m-d') . ' 採購' : '—') . ' × ' . $b->quantity)->join('、') ?: '—',
-                    $s->recorder?->name ?? '—',
+                    $s->reason,
                     $s->note ?? '—',
                 ])->values()->all(),
                 'numeric' => [2, 3],
