@@ -223,8 +223,8 @@ protected function setUp(): void
                 }
             }
         }
-        // 部門 2 個（停用、刪除）、用戶 3 個（停用、刪除、還原）、身分 1 個、知識庫 1 個。
-        $this->assertSame(7, $checked);
+        // 部門 2 個（停用、刪除）、用戶 4 個（停用、刪除、還原、永久刪除）、身分 1 個、知識庫 1 個。
+        $this->assertSame(8, $checked);
     }
 
     // ---------- 4. 報修單歸屬權限 ----------
@@ -377,7 +377,8 @@ protected function setUp(): void
         RepairRequest::factory()->count(2)->create(['status' => 'pending', 'requester_id' => $teacher1->id]);
         RepairRequest::factory()->count(5)->create(['status' => 'pending', 'requester_id' => $teacher2->id]);
 
-        $this->actingAs($teacher1)->get(route('dashboard'))->assertSeeInOrder(['待派工', '2']);
+        // 教師沒有派工權限：看不到「待派工」卡片（不是顯示 0），「待修數」只算自己的 2 張。
+        $this->actingAs($teacher1)->get(route('dashboard'))->assertSeeInOrder(['待修數', '2'])->assertDontSee('待派工');
         $this->actingAs($this->makeUserWithRole('executive', '主管'))->get(route('dashboard'))->assertSeeInOrder(['待派工', '7']);
     }
 

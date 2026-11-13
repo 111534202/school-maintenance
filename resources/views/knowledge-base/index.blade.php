@@ -62,11 +62,16 @@
                         <tr>
                             <th>{{ __('knowledge_base.table.title') }}</th>
                             <th>{{ __('knowledge_base.table.category') }}</th>
-                            <th class="text-center">{{ __('knowledge_base.table.status') }}</th>
+                            {{-- 上架狀態與操作欄只給有管理權限的人：一般使用者看到的文章一定都是已上架，操作欄也沒有任何按鈕，整欄不顯示。 --}}
+                            @can('knowledge-base.manage')
+                                <th class="text-center">{{ __('knowledge_base.table.status') }}</th>
+                            @endcan
                             <th>{{ __('knowledge_base.table.updated_at') }}</th>
                             {{-- 查看次數：打開文章一次加 1，列表依這個數字由多到少排；所有人都看得到。 --}}
                             <th class="text-end text-nowrap">查看次數</th>
-                            <th class="text-end tb-col-fit">{{ __('knowledge_base.table.actions') }}</th>
+                            @can('knowledge-base.manage')
+                                <th class="text-end tb-col-fit">{{ __('knowledge_base.table.actions') }}</th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody>
@@ -76,6 +81,7 @@
                             <tr data-modal-frame-href="{{ route('knowledge-base.show', $entry) }}" data-modal-title="知識庫文章" data-modal-size="xl" tabindex="0" role="link">
                                 <td class="fw-semibold">{{ $entry->title }}</td>
                                 <td>{{ $entry->category ?? __('knowledge_base.uncategorized') }}</td>
+                                @can('knowledge-base.manage')
                                 <td class="text-center">
                                     {{-- 上架狀態徽章：綠色「已上架」或灰色「未上架」。 --}}
                                     @if ($entry->is_published)
@@ -84,9 +90,11 @@
                                         <span class="badge tb-pill tb-pill-muted">{{ __('knowledge_base.unpublished') }}</span>
                                     @endif
                                 </td>
+                                @endcan
                                 {{-- 最後更新時間，格式化成「年-月-日 時:分」。 --}}
                                 <td>{{ $entry->updated_at->format('Y-m-d H:i') }}</td>
                                 <td class="text-end tb-num">{{ number_format($entry->view_count) }}</td>
+                                @can('knowledge-base.manage')
                                 <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">
                                         {{-- 閱讀文章：點這一列在對話框打開（不另外放「查看」按鈕）。 --}}
@@ -105,6 +113,7 @@
                                         @endcan
                                     </div>
                                 </td>
+                                @endcan
                             </tr>
                         @endforeach
                     </tbody>

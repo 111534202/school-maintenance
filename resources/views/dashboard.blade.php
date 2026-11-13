@@ -24,6 +24,7 @@
             'unit' => __('dashboard.cards.unit_hours'),
             'icon' => 'bi-clock-history',
             'color' => 'primary',
+            'can' => ['repairs.process', 'repairs.dispatch', 'repairs.accept'],   // 維修、派工、驗收的人才需要看工時統計
             'url' => route('repairs.index', ['status' => 'completed']),
             'note' => $repairDurationMissingCount > 0
                 ? __('dashboard.cards.repair_hours_missing', [
@@ -33,13 +34,15 @@
         ],
         ['label' => __('dashboard.cards.pending_repairs'), 'value' => $pendingRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index'), 'note' => null],
         ['label' => __('dashboard.cards.in_progress'), 'value' => $inProgressCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'in_progress']), 'note' => null],
-        ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null],
-        ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null],
+        ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null, 'can' => ['repairs.dispatch']],
+        ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null, 'can' => ['repairs.accept']],
         // 空間預約待審核：點了進到只列「未審核」的預約列表。
-        ['label' => __('dashboard.cards.pending_reservations'), 'value' => $pendingReservationCount, 'unit' => __('dashboard.cards.unit_reservations'), 'icon' => 'bi-calendar-check', 'color' => 'primary', 'url' => auth()->user()->hasPermission('reservations.manage') ? route('reservations.index', ['status' => 'pending']) : route('reservations.create') . '#my-requests', 'note' => null],
+        ['label' => __('dashboard.cards.pending_reservations'), 'value' => $pendingReservationCount, 'unit' => __('dashboard.cards.unit_reservations'), 'icon' => 'bi-calendar-check', 'color' => 'primary', 'url' => route('reservations.index', ['status' => 'pending']), 'note' => null, 'can' => ['reservations.manage']],
         // 逾時工單：還沒結案、且已經超過預計處理時間（沒填預計時間的不算），紅色提醒主管該催進度了。
-        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['overdue' => 1]), 'note' => null],
+        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['overdue' => 1]), 'note' => null, 'can' => ['repairs.process', 'repairs.dispatch', 'repairs.accept']],
     ];
+    // 沒有權限的卡片整張不顯示（不是顯示 0）：每張卡片的 'can' 是需要的權限（任一個即可），沒有 'can' 的所有人都看得到。
+    //（'can' 之外，下面三張主檔卡片另外由 Controller 依權限決定要不要算。）
     // 下面三張卡片依權限才加入：Controller 沒算（null）就代表這個人沒有對應主檔的權限。
     if ($deviceTotal !== null) {
         $cards[] = ['label' => __('dashboard.cards.devices'), 'value' => $deviceTotal, 'unit' => __('dashboard.cards.unit_devices'), 'icon' => 'bi-pc-display', 'color' => 'success', 'url' => route('devices.index'), 'note' => null];
@@ -51,6 +54,19 @@
         $cards[] = ['label' => __('dashboard.cards.classrooms'), 'value' => $classroomTotal, 'unit' => __('dashboard.cards.unit_classrooms'), 'icon' => 'bi-building', 'color' => 'danger', 'url' => route('classrooms.index'),
             'note' => $classroomAbnormal > 0 ? __('dashboard.cards.classrooms_abnormal', ['count' => $classroomAbnormal]) : null];
     }
+
+    $cards = array_values(array_filter($cards, function ($card) {
+        if (empty($card['can'])) {
+            return true;
+        }
+        foreach ($card['can'] as $permission) {
+            if (auth()->user()->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }));
 
     // 圖表資料統一整理成 {labels, counts, colors, urls}，前端 JS 只要照著畫、點了就跳 urls。
     $charts = [];
