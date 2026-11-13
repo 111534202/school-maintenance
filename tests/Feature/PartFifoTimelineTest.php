@@ -147,4 +147,16 @@ class PartFifoTimelineTest extends TestCase
         $this->assertSame([[150, 4]], $this->batches($late));
         $this->assertSame([[150, 6], [10, 4]], $this->batches($a));
     }
+
+    // 沒有任何批次明細的報廢紀錄（資料不完整）不能讓整個重算出現 500 錯誤：略過它，其他紀錄照常重算。
+    public function test_a_scrap_without_batch_rows_is_skipped_instead_of_crashing_the_rebuild(): void
+    {
+        $part = $this->part();
+        $this->buy($part, '2026-11-01', 10, 100);
+        PartScrap::create(['part_id' => $part->id, 'scrap_date' => '2026-11-02', 'quantity' => 1, 'reason' => '資料不完整的舊紀錄']);
+
+        $this->assertSame([], $this->stock->rebuild($part));
+        $scrap = $this->scrap($part, '2026-11-03', '10:00', 2);   // 正常的報廢之後仍然可以登記
+        $this->assertSame(2, (int) $scrap->batches->sum('quantity'));
+    }
 }

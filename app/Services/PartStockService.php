@@ -346,8 +346,10 @@ class PartStockService
 
         PartScrap::query()->where('part_id', $part->id)->with('batches')->orderBy('id')->lockForUpdate()->get()
             ->each(function (PartScrap $scrap) use ($events) {
-                if ($scrap->batches->isNotEmpty() && $scrap->batches->every(fn ($row) => $row->part_purchase_id === null)) {
-                    return;   // 舊資料：不重新計算
+                // 舊資料（沒有扣用批次明細，或每一列都沒有扣用批次）：不重新計算。沒有任何批次明細的報廢一定要略過，
+                // 否則後面「沿用第一列的建立時間」會讀到空值而讓整個重算出現 500 錯誤。
+                if ($scrap->batches->isEmpty() || $scrap->batches->every(fn ($row) => $row->part_purchase_id === null)) {
+                    return;
                 }
                 // 報廢時間沒填（舊資料）就用登記當下的時間，日期仍以報廢日期為準。
                 $time = $scrap->scrap_time ?: $scrap->created_at->format('H:i:s');
