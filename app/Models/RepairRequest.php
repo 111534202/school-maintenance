@@ -7,6 +7,7 @@ use App\Policies\RepairRequestPolicy;   // 報修單的歸屬權限（誰看得�
 use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;   // 軟刪除
 use Illuminate\Database\Eloquent\Relations\BelongsTo;   // 「屬於某一筆」關聯的型別
 use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型關聯」的型別
 
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型
 class RepairRequest extends Model
 {
     use HasFactory;   // 可以用 RepairRequest::factory() 產生測試資料
+    use SoftDeletes;  // 取消／刪除＝軟刪除（deleted_at 有時間就是已取消，看板與統計不再列出，資料仍保留）
 
     // 資料表名稱（明確寫出來，避免 Laravel 自己猜錯）。
     protected $table = 'repair_requests';

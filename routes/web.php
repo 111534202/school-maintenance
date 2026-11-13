@@ -148,6 +148,13 @@ Route::middleware(['auth', 'active'])->group(function () {
             Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
         });
 
+        // 修改排定日期與取消（刪除）保養工單：需要 maintenance.manage（取消與刪除是同一件事，軟刪除）。
+        Route::middleware('can:maintenance.manage')->group(function () {
+            Route::get('/{maintenanceOrder}/edit', [MaintenanceOrderController::class, 'edit'])->name('edit');
+            Route::put('/{maintenanceOrder}', [MaintenanceOrderController::class, 'update'])->name('update');
+            Route::delete('/{maintenanceOrder}', [MaintenanceOrderController::class, 'destroy'])->name('destroy');
+        });
+
         // 查看類：需要 maintenance.view。第 3 週任務 3：結果詳細頁獨立一頁，不只嵌在工單詳細頁裡。
         Route::middleware('can:maintenance.view')->group(function () {
             Route::get('/', [MaintenanceOrderController::class, 'index'])->name('index');
@@ -356,6 +363,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('can:repairs.dispatch')->group(function () {
         Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])->name('repairs.assign');
         Route::post('repairs/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])->name('repairs.reassign');
+        // 修改與取消（刪除）報修單：同樣需要 repairs.dispatch（取消與刪除是同一件事，軟刪除）。
+        Route::get('repairs/{repair_request}/edit', [RepairRequestController::class, 'edit'])->name('repairs.edit');
+        Route::put('repairs/{repair_request}', [RepairRequestController::class, 'update'])->name('repairs.update');
+        Route::delete('repairs/{repair_request}', [RepairRequestController::class, 'destroy'])->name('repairs.destroy');
         // 派工時查詢報修地點那間教室的一週課表，挑空堂當建議處理時間。
         Route::get('repairs/{repair_request}/timetable', [\App\Http\Controllers\TimetableController::class, 'repairWeek'])->name('repairs.timetable');
     });

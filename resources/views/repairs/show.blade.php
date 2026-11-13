@@ -50,6 +50,23 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
+        {{-- 修改、取消（刪除）：只給有派工權限的人。已結案不能改；已填維修紀錄（待驗收、已結案）不能取消（見 RepairRequestController::destroy）。
+             取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
+        @can('repairs.dispatch')
+            <div class="d-inline-flex gap-2 flex-shrink-0">
+                @if ($status !== \App\Enums\RepairRequestStatus::Completed)
+                    <a class="btn btn-outline-primary btn-sm" href="{{ route('repairs.edit', $repairRequest) }}"><i class="bi bi-pencil me-1"></i>修改</a>
+                @endif
+                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed], true))
+                    <form method="POST" action="{{ route('repairs.destroy', $repairRequest) }}"
+                        data-confirm="請問確定要取消報修單「{{ $repairRequest->title }}」嗎？取消後會從看板與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-x-circle me-1"></i>取消工單</button>
+                    </form>
+                @endunless
+            </div>
+        @endcan
     </div>
 
     {{-- 版面：寬螢幕（992px 以上）左欄是設備資料與故障描述，右欄是派工與處理；

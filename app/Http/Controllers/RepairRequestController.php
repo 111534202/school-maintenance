@@ -12,6 +12,7 @@ use App\Models\User;                                    // 用戶資料表的模
 use App\Http\Requests\AssignRepairRequestRequest;       // 「派工」表單的驗證規則
 use App\Http\Requests\RejectRepairRequestRequest;       // 「驗收退回」表單的驗證規則
 use App\Http\Requests\StoreRepairRequestRequest;        // 「新增報修」表單的驗證規則
+use App\Http\Requests\UpdateRepairRequestRequest;       // 「修改報修單」表單的驗證規則
 use App\Services\AttachmentUploader;                    // 負責存放上傳附件（照片）的服務
 use App\Services\AuditLogger;                           // 共用的操作紀錄寫入工具
 use App\Services\RepairAssignmentNotifier;              // 派工後寄通知信的服務
@@ -442,5 +443,64 @@ class RepairRequestController extends Controller
         return redirect()
             ->route('repairs.show', $repairRequest)
             ->with('error', $exception->getMessage());   // 錯誤訊息文字來自 Workflow 丟出例外時寫的說明
+    }
+
+    /**
+     * 「修改報修單」表單（GET /repairs/{id}/edit）：只有有派工權限的人能改（路由 can:repairs.dispatch）。
+     * 已結案的報修單不能再改。可以改標題、描述、影響程度、是否影響上課、設備位置／描述、設備地點。
+     */
+    public function edit(RepairRequest $repairRequest)
+    {
+        if ($repairRequest->status === RepairRequestStatus::Completed) {
+            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
+        }
+
+        $classrooms = Classroom::query()
+            ->where(fn ($query) => $query->where('is_active', true)->orWhere('id', $repairRequest->classroom_id))
+            ->orderBy('classroom_code')
+            ->get();
+
+        return view('repairs.edit', compact('repairRequest', 'classrooms'));
+    }
+
+    /** 儲存修改（PUT /repairs/{id}）：只改上面這幾個欄位，狀態、報修人、維修人員不變；寫操作紀錄。 */
+    public function update(UpdateRepairRequestRequest $request, RepairRequest $repairRequest)
+    {
+        if ($repairRequest->status === RepairRequestStatus::Completed) {
+            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
+        }
+
+        $repairRequest->fill($request->validated());
+        $changes = [];
+        foreach ($repairRequest->getDirty() as $field => $new) {
+            $changes[$field] = ['old' => $repairRequest->getOriginal($field), 'new' => $new];
+        }
+        $repairRequest->save();
+
+        if ($changes) {
+            AuditLogger::log('updated', $repairRequest, $changes, '修改報修單「' . $repairRequest->title . '」');
+        }
+
+        return redirect()->route('repairs.show', $repairRequest)->with('success', '報修單已修改。');
+    }
+
+    /**
+     * 取消（刪除）報修單（DELETE /repairs/{id}）：取消與刪除是同一件事，做法是軟刪除，
+     * 看板與統計不再列出，資料與操作紀錄仍保留。只有有派工權限的人能做（路由 can:repairs.dispatch）。
+     * 已進入待驗收、已結案的報修單已經有維修紀錄與用料（會影響零件庫存與成本），不能取消。
+     */
+    public function destroy(RepairRequest $repairRequest)
+    {
+        if (in_array($repairRequest->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
+            return redirect()->route('repairs.show', $repairRequest)
+                ->with('error', '已經填寫維修紀錄（待驗收、已結案）的報修單不能取消，因為維修紀錄與用料已經記入零件庫存與成本。');
+        }
+
+        $title = $repairRequest->title;
+        $repairRequest->delete();
+
+        AuditLogger::log('deleted', $repairRequest, ['title' => $title, 'status' => $repairRequest->status->value], '取消（刪除）報修單「' . $title . '」');
+
+        return redirect()->route('repairs.index')->with('success', '報修單「' . $title . '」已取消。');
     }
 }

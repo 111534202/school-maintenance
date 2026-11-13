@@ -33,7 +33,8 @@ class DueMaintenanceOrderGenerator
             ->where('next_due_date', '<=', $asOf->toDateString())
             ->orderBy('id')
             ->each(function (MaintenancePlan $plan) use (&$created) {
-                $alreadyGenerated = MaintenanceOrder::query()
+                // withTrashed：已取消（軟刪除）的工單也算「這一期已經產生過」，不然取消後隔天又被排程重新產生。
+                $alreadyGenerated = MaintenanceOrder::withTrashed()
                     ->where('maintenance_plan_id', $plan->id)
                     ->whereDate('scheduled_date', $plan->next_due_date)
                     ->exists();

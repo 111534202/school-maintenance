@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'maintenance_plan_id',
@@ -21,6 +22,7 @@ class MaintenanceOrder extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceOrderFactory> */
     use HasFactory;
+    use SoftDeletes;   // 取消／刪除＝軟刪除（deleted_at 有時間就是已取消，列表與統計不再列出，資料仍保留）
 
     // 工單來源：定期排程 / AI 辨識（本週僅會用到 SOURCE_PERIODIC，SOURCE_AI 由後續 AI 任務接手）
     public const SOURCE_PERIODIC = 'periodic';

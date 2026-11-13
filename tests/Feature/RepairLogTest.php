@@ -37,7 +37,11 @@ class RepairLogTest extends TestCase
         $repairRequest = RepairRequest::factory()->create();
         RepairLog::factory()->create(['repair_request_id' => $repairRequest->id]);
 
+        // 報修單現在是軟刪除（取消＝標記 deleted_at，維修紀錄跟著保留）；真的從資料庫移除（forceDelete）時，外鍵才會連帶刪掉它的維修紀錄。
         $repairRequest->delete();
+        $this->assertDatabaseCount('repair_logs', 1);
+
+        $repairRequest->forceDelete();
 
         $this->assertDatabaseCount('repair_logs', 0);
     }
