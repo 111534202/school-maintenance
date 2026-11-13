@@ -47,6 +47,7 @@ return [
         'deactivate' => 'Deactivate account',
         'restore' => 'Restore account',
         'reset_password' => 'Reset password',
+        'force_delete' => 'Permanently delete',
     ],
 
     // 刪除或停用前跳出的確認視窗文字（:name 之類帶冒號的字會被換成實際名稱）。
@@ -54,6 +55,7 @@ return [
         'deactivate' => 'Deactivate ":name"? They will no longer be able to log in and any active sessions will be signed out.',
         'delete' => 'Delete ":name"? The account is marked as deleted (it can be restored) and any active sessions are signed out.',
         'restore' => 'Restore ":name"?',
+        'force_delete' => 'Permanently delete ":name"? This cannot be undone — the record is actually removed from the database and will no longer appear under the "Deleted" filter.',
     ],
 
     // 新增／編輯表單的標題、欄位名稱與說明文字。
@@ -93,11 +95,14 @@ return [
         'password_reset' => 'Password reset.',
         'deleted' => 'User deleted (use the "Deleted" filter to restore).',
         'restored' => 'User restored.',
+        'force_deleted' => 'User permanently deleted.',
     ],
 
     // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'self_protected' => 'You cannot delete or deactivate your own account, or change your own role.',
         'last_admin' => 'The system must keep at least one active administrator; this account cannot be deleted, deactivated or demoted.',
+        'not_deleted_yet' => 'The account must be deleted (soft-deleted) first before it can be permanently deleted.',
+        'force_delete_blocked' => 'Cannot permanently delete ":name": this account still has history records that must be kept (such as classroom reservation requests), which the database intentionally protects. Resolve those records first, then try again.',
     ],
 ];

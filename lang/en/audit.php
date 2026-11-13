@@ -12,6 +12,7 @@ return [
         'deleted' => 'Deleted',
         'restored' => 'Restored',
         'downloaded' => 'Downloaded',
+        'force_deleted' => 'Permanently deleted',
         'status_changed' => 'Status changed',
         'password_reset' => 'Password reset',
         'core_flag_changed' => 'Core flag changed',

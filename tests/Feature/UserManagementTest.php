@@ -3,24 +3,27 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\CreatesReservations;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
  * 用戶主檔（帳號管理）：權限、列表篩選、新增／編輯驗證、防呆規則、啟用停用、
- * 密碼重設、刪除還原，以及停用／刪除後不能登入。
+ * 密碼重設、刪除還原、永久刪除，以及停用／刪除後不能登入。
  */
 class UserManagementTest extends TestCase
 {
     // 每個測試開始前都重建一份乾淨的資料庫，測試之間不會互相影響。
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use CreatesReservations;
 
     private User $admin;
 
@@ -370,6 +373,53 @@ class UserManagementTest extends TestCase
         $this->patch(route('users.restore', $user->id))->assertSessionHas('success');
         $this->assertFalse($user->fresh()->trashed());
         $this->assertDatabaseHas('audit_logs', ['action' => 'restored', 'loggable_id' => $user->id]);
+    }
+
+    // 永久刪除要先軟刪除過；還是啟用中的帳號不能直接整個清掉。
+    public function test_force_delete_requires_the_account_to_be_soft_deleted_first(): void
+    {
+        $user = $this->makeStaff('not_deleted_yet');
+
+        $this->delete(route('users.force-destroy', $user))->assertSessionHas('error');
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
+
+    // 永久刪除是真的從資料庫移除（不是標記 deleted_at），操作紀錄也會記下來。
+    public function test_force_delete_actually_removes_the_row_from_the_database(): void
+    {
+        $user = $this->makeStaff('to_purge');
+        $user->delete();
+
+        $this->delete(route('users.force-destroy', $user))->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'force_deleted', 'loggable_id' => $user->id]);
+    }
+
+    // 帳號還留著資料庫刻意擋下刪除的歷史紀錄（例如空間預約申請，見 classroom_reservations.requester_id
+    // 的 restrictOnDelete）時，永久刪除要被擋下、顯示清楚的錯誤訊息，資料不變，不能讓系統出現 500 錯誤。
+    public function test_force_delete_is_blocked_when_the_account_has_protected_reservation_history(): void
+    {
+        $user = $this->makeStaff('has_reservation_history');
+        $classroom = Classroom::create([
+            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F',
+            'classroom_code' => 'FD101', 'name' => 'FD101 教室', 'type' => '一般教室',
+            'is_active' => true, 'reservation_status' => 'normal',
+        ]);
+        $this->makeReservation([
+            'classroom_id' => $classroom->id,
+            'requester_id' => $user->id,
+            'class_name' => '一年甲班',
+            'reservation_date' => now()->addDays(3)->toDateString(),
+            'start_time' => '09:00',
+            'end_time' => '10:00',
+            'purpose' => '班級活動',
+            'status' => 'pending',
+        ]);
+        $user->delete();
+
+        $this->delete(route('users.force-destroy', $user))->assertSessionHas('error');
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
     }
 
     // ---------- 登入限制與最後登入時間 ----------
