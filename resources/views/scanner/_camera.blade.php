@@ -6,7 +6,7 @@
      掃得準的做法（比照一般掃碼 App）：
        1. 用高解析度（最高 1080p）後鏡頭、連續自動對焦，每一格畫面都用原始解析度解碼（不縮小）；
        2. 每一輪依序用「原大、放大 2 倍、放大 3 倍」三種大小解碼：小條碼、細條碼放大後才讀得出來（等於自動數位變焦）；
-       3. 解碼引擎：瀏覽器內建的 BarcodeDetector（有就用，最快）；沒有就載入 zxing-wasm（BarcodeDetector 的相容實作，從 CDN 載入）；
+       3. 解碼引擎：瀏覽器內建的 BarcodeDetector（有就用，最快）；沒有就載入 zxing-wasm（BarcodeDetector 的相容實作，放在 public/vendor）；
        4. 鏡頭支援時可以用滑桿光學放大、開手電筒；
        5. 還是掃不到：「拍照／選照片掃描」用照片原始解析度解碼。
      瀏覽器只允許在 HTTPS 或 localhost 開啟相機。 --}}
@@ -35,7 +35,7 @@
                     <div id="codeScannerMessage" class="small text-muted mt-3" role="status">{{ __('scanner.hint') }}</div>
                     {{-- 還是掃不到：拍一張照片（手機會直接開相機）或選圖片，用照片原始大小解碼。 --}}
                     <div class="mt-3">
-                        <label class="btn btn-outline-primary btn-sm mb-0">
+                        <label class="btn btn-outline-primary btn-sm mb-0" data-scanner-photo-btn>
                             <i class="bi bi-image me-1"></i>{{ __('scanner.from_photo') }}
                             <input type="file" accept="image/*" capture="environment" class="d-none" data-scanner-file>
                         </label>
@@ -57,13 +57,16 @@
         // 一頁只載入一次。
         if (window.CodeScanner) return;
 
-        var PONYFILL_URL = 'https://cdn.jsdelivr.net/npm/barcode-detector@3.0.8/+esm';   // zxing-wasm 版 BarcodeDetector
+        // zxing-wasm 版 BarcodeDetector 與它的解碼檔（.wasm）都放在專案裡（public/vendor），不連外部網站：校內網路擋外網或斷線也能掃描。
+        var PONYFILL_URL = @json(asset('vendor/barcode-detector/index.js'));
+        var ZXING_WASM_URL = @json(asset('vendor/zxing/zxing_reader.wasm'));
         var FORMATS = ['qr_code', 'code_128', 'code_39', 'code_93', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'codabar', 'data_matrix'];
         var DIGITAL_ZOOMS = [1, 2, 3];        // 每一輪依序用這幾種放大倍率解碼（裁切畫面中央再放大）
         var TEXT = {
             hint: @json(__('scanner.hint')),
             loading: @json(__('scanner.loading')),
             insecure: @json(__('scanner.insecure')),
+            insecurePhoto: @json(__('scanner.insecure_photo')),
             cameraError: @json(__('scanner.camera_error')),
             libraryError: @json(__('scanner.library_error')),
             photoNotFound: @json(__('scanner.photo_not_found')),
@@ -115,6 +118,8 @@
                     } catch (e) { /* 內建的有問題就改用 zxing-wasm */ }
                 }
                 var mod = await import(PONYFILL_URL);
+                // 解碼檔改從自己的網站載入（套件預設會去外部網站抓）。
+                mod.setZXingModuleOverrides({ locateFile: function (name, prefix) { return /\.wasm$/.test(name) ? ZXING_WASM_URL : prefix + name; } });
                 return (detector = new mod.BarcodeDetector({ formats: FORMATS }));
             })().catch(function (e) { detectorPromise = null; throw e; });
             return detectorPromise;
@@ -204,7 +209,16 @@
         }
 
         async function startCamera() {
-            if (!window.isSecureContext || !navigator.mediaDevices) return say(TEXT.insecure, true);
+            if (!window.isSecureContext || !navigator.mediaDevices) {
+                // 用 http 開啟（例如校內網路的 IP 網址）時，瀏覽器不允許即時開鏡頭。改成「拍照掃描」：
+                // 按鈕變大變醒目，並直接打開手機的相機（手機瀏覽器會跳出相機或選照片），從拍下的照片讀取條碼／QR。
+                var photoBtn = modalEl.querySelector('[data-scanner-photo-btn]');
+                photoBtn.classList.remove('btn-outline-primary', 'btn-sm');
+                photoBtn.classList.add('btn-primary', 'btn-lg', 'w-100');
+                say(TEXT.insecurePhoto, false);
+                try { fileInput.click(); } catch (e) { /* 瀏覽器不讓自動打開就算了，使用者按下方大按鈕 */ }
+                return;
+            }
             say(TEXT.loading, false);
             try {
                 await getDetector();
@@ -247,7 +261,8 @@
             } catch (e) {
                 say(TEXT.photoNotFound, true);
             }
-            startCamera();
+            // 能即時開鏡頭才把鏡頭開回來；http 下沒有即時鏡頭，留在訊息上讓使用者再拍一次。
+            if (window.isSecureContext && navigator.mediaDevices) startCamera();
         });
 
         zoomRange.addEventListener('input', function () { applyZoom(parseFloat(zoomRange.value)); });

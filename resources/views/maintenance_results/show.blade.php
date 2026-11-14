@@ -97,9 +97,17 @@
 
     <div class="card">
         <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>附件</div>
-        <div class="card-body text-muted small">
-            共用附件機制尚未建立（規劃在本週之後）。等正式納入後，這裡會沿用該共用機制顯示這筆保養結果的附件，
-            不會另外做一套附件上傳邏輯。
+        <div class="card-body">
+            {{-- 附件和報修共用同一套機制：檔案放私有磁碟，點下去先檢查權限（maintenance.view）才輸出。 --}}
+            @forelse ($result->attachments as $attachment)
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-paperclip text-muted"></i>
+                    <a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener">{{ $attachment->file_name }}</a>
+                    <span class="text-muted small">{{ $attachment->size_bytes >= 1048576 ? round($attachment->size_bytes / 1048576, 1) . ' MB' : max(1, round($attachment->size_bytes / 1024)) . ' KB' }}</span>
+                </div>
+            @empty
+                <span class="text-muted small">這筆保養結果沒有附件。</span>
+            @endforelse
         </div>
     </div>
 @endsection

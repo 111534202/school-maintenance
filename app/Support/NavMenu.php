@@ -40,6 +40,7 @@ class NavMenu
                 $link(__('common.nav.users'), 'bi-people', 'users.index', ['users.*'], $can('users.manage')),
                 $link(__('common.nav.roles'), 'bi-shield-lock', 'roles.index', ['roles.*'], $can('roles.manage')),
                 $link(__('common.nav.departments'), 'bi-diagram-3', 'departments.index', ['departments.*'], $can('departments.manage')),
+                $link(__('common.nav.majors'), 'bi-mortarboard', 'majors.index', ['majors.*'], $can('majors.manage')),
                 $link(__('common.nav.classrooms'), 'bi-building', 'classrooms.index', ['classrooms.*'], $can('classrooms.manage')),
                 $link(__('common.nav.device_categories'), 'bi-tags', 'device-categories.index', ['device-categories.*'], $can('device-categories.manage')),
                 $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
@@ -66,6 +67,7 @@ class NavMenu
             ['type' => 'group', 'id' => 'system', 'label' => __('common.nav.system_section'), 'icon' => 'bi-gear', 'children' => [
                 $link(__('common.nav.audit_logs'), 'bi-clock-history', 'audit-logs.index', ['audit-logs.*'], $can('audit-logs.view')),
                 $link(__('common.nav.backups'), 'bi-cloud-arrow-up', 'backups.index', ['backups.*'], $can('backups.manage')),
+                $link(__('common.nav.mail_settings'), 'bi-envelope-at', 'mail-settings.edit', ['mail-settings.*'], $can('mail-settings.manage')),
             ]],
         ];
 

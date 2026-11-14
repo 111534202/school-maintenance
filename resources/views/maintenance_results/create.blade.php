@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    <form action="{{ route('maintenance-orders.results.store', $order) }}" method="POST">
+    <form action="{{ route('maintenance-orders.results.store', $order) }}" method="POST" enctype="multipart/form-data">
         @csrf
         <div class="card shadow-sm">
             <div class="card-header bg-white form-section-title"><i class="bi bi-clipboard-check me-2"></i>保養結果</div>
@@ -71,6 +71,15 @@
         <div class="mb-4">
             <label class="form-label">零件使用明細</label>
             @include('parts._usage-picker', ['parts' => $parts])
+        </div>
+
+        {{-- 附件（可不填）：保養前後照片、檢查單等；和報修共用同一套規則（最多 5 個、加起來 5 MB，jpg/png/pdf/mp4/mov/webm）。 --}}
+        <div class="mb-2">
+            <label for="attachments" class="form-label">附件（選填，{{ \App\Support\AttachmentLimit::hint() }}）</label>
+            <input type="file" class="form-control @error('attachments') is-invalid @enderror @error('attachments.*') is-invalid @enderror" id="attachments" name="attachments[]" multiple
+                accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
+            @error('attachments')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            @error('attachments.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         </div>
         </div>

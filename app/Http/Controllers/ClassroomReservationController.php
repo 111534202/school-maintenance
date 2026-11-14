@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TableExport;
 use App\Models\Classroom;
 use App\Models\ClassroomReservation;
+use App\Models\Major;
 use App\Services\AuditLogger;
 use App\Services\ClassroomRepairNotices;
 use App\Services\ReservationReviewService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ClassroomReservationController extends Controller
 {
@@ -53,6 +57,52 @@ class ClassroomReservationController extends Controller
         $reservations = $query->paginate(15)->withQueryString();
 
         return view('reservations.index', compact('reservations', 'counts'));
+    }
+
+    /**
+     * 匯出 Excel（GET /reservations/export）：匯出「目前搜尋與狀態篩選」下的全部空間申請（不分頁）。
+     * 有審核權限的人匯出全部申請；其他人只匯出自己提出的申請；寫一筆操作紀錄。
+     */
+    public function export(Request $request)
+    {
+        $request->validate(['keyword' => ['nullable', 'string', 'max:100']]);
+        $canManage = $request->user()->hasPermission('reservations.manage');
+
+        $query = ClassroomReservation::with(['requester', 'classroom', 'slots', 'reviewer'])->orderByDesc('created_at');
+        if (! $canManage) {
+            $query->where('requester_id', $request->user()->id);
+        }
+        $this->applyKeyword($query, trim((string) $request->input('keyword')));
+        if ($request->query('status') === 'pending') {
+            $query->where('status', ClassroomReservation::STATUS_PENDING);
+        } elseif ($request->query('status') === 'reviewed') {
+            $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
+        }
+
+        $rows = $query->get()->map(function (ClassroomReservation $r) {
+            [$slotText, $slotCount] = $r->slotSummary();
+
+            return [
+                $r->id,
+                $r->class_name,
+                $r->requester?->name,
+                $r->classroom?->name,
+                $slotText,
+                $slotCount,
+                $r->purpose,
+                $r->statusLabel()[0],
+                $r->is_all_or_nothing ? '是' : '否',
+                $r->reviewer?->name ?? ($r->isReviewed() ? '系統自動' : null),
+                $r->reviewed_at?->format('Y-m-d H:i'),
+                $r->rejection_reason,
+                $r->created_at?->format('Y-m-d H:i'),
+            ];
+        })->all();
+
+        $file = '空間申請-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出空間申請 {$file}（" . count($rows) . ' 筆）');
+
+        return Excel::download(new TableExport('空間申請', ['申請編號', '申請班級', '申請人', '教室', '申請時段', '節數', '用途', '申請狀態', '其中一節不能借就整筆不要', '審核人', '審核時間', '拒絕原因', '送出時間'], $rows), $file);
     }
 
     /**
@@ -143,7 +193,9 @@ class ClassroomReservationController extends Controller
         $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
         $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
-        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine'));
+        $majors = $this->majorOptions();
+
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine', 'majors'));
     }
 
     /** 我的申請（有審核權限的人從空間申請右上角打開的對話框；?modal=1）。 */
@@ -152,6 +204,20 @@ class ClassroomReservationController extends Controller
         $reviewService->sweep();
 
         return view('reservations.mine', ['myReservations' => $this->myReservations($request)]);
+    }
+
+    /**
+     * 「科系 → 年級 → 班級」下拉選單的資料（只列啟用中的科系；驗證失敗導回時，原本選的科系即使已停用也保留）。
+     *
+     * @return list<array{id: int, name: string, abbreviation: string, grade_count: int, class_count: int}>
+     */
+    private function majorOptions(): array
+    {
+        return Major::forSelect((int) old('major_id'))
+            ->get(['id', 'name', 'abbreviation', 'grade_count', 'class_count'])
+            ->map(fn (Major $m) => ['id' => $m->id, 'name' => $m->name, 'abbreviation' => $m->abbreviation, 'grade_count' => $m->grade_count, 'class_count' => $m->class_count])
+            ->values()
+            ->all();
     }
 
     /** 自己提出的申請：待審核的在前、新的在前，每頁 10 筆。 */
@@ -192,6 +258,7 @@ class ClassroomReservationController extends Controller
             'suspendedIds' => $suspendedIds,
             'myReservations' => null,
             'guest' => true,
+            'majors' => $this->majorOptions(),
         ]);
     }
 
@@ -224,7 +291,12 @@ class ClassroomReservationController extends Controller
 
         $validated = $request->validate([
             'classroom_id' => ['required', 'integer', 'exists:classrooms,id'],
-            'class_name' => ['required', 'string', 'max:100'],
+            // 班級：科系主檔有啟用中的科系時，用「科系 → 年級 → 班級」下拉選單（major_id、class_grade、class_section），
+            // class_name 由系統組成（例如資一忠），不信任前端送來的文字；科系主檔還是空的時才允許自己輸入班級名稱。
+            'class_name' => ['required_without:major_id', 'nullable', 'string', 'max:100'],
+            'major_id' => ['nullable', 'integer', Rule::exists('majors', 'id')->where('is_active', true)],
+            'class_grade' => ['required_with:major_id', 'nullable', 'integer', 'min:1', 'max:' . Major::MAX_GRADES],
+            'class_section' => ['required_with:major_id', 'nullable', 'integer', 'min:1', 'max:' . count(Major::SECTION_NAMES)],
             'reservation_date' => ['required', 'date', 'after_or_equal:today'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
@@ -236,6 +308,17 @@ class ClassroomReservationController extends Controller
             'purpose' => ['nullable', 'string', 'max:255'],
             'is_all_or_nothing' => ['nullable', 'boolean'],   // 其中一節無法借用就整筆不要
         ]);
+
+        // 班級名稱：選了科系就由系統組成；科系主檔已經有啟用中的科系卻沒選（例如繞過畫面直接送出）一律擋下。
+        if (! empty($validated['major_id'])) {
+            $major = Major::query()->findOrFail($validated['major_id']);
+            if (! $major->hasClass((int) $validated['class_grade'], (int) $validated['class_section'])) {
+                return back()->withInput()->withErrors(['class_section' => '「' . $major->name . '」沒有這個年級或班級，請重新選擇。']);
+            }
+            $validated['class_name'] = $major->classLabel((int) $validated['class_grade'], (int) $validated['class_section']);
+        } elseif (Major::query()->where('is_active', true)->exists()) {
+            return back()->withInput()->withErrors(['major_id' => '請選擇科系、年級與班級。']);
+        }
 
         $slots = $validated['slots'] ?? [[
             'reservation_date' => $validated['reservation_date'],
@@ -325,6 +408,9 @@ class ClassroomReservationController extends Controller
                 'classroom_id' => $classroom->id,
                 'requester_id' => $request->user()->id,
                 'class_name' => $validated['class_name'],
+                'major_id' => $validated['major_id'] ?? null,
+                'class_grade' => ! empty($validated['major_id']) ? (int) $validated['class_grade'] : null,
+                'class_section' => ! empty($validated['major_id']) ? (int) $validated['class_section'] : null,
                 'status' => 'pending',
                 'purpose' => $validated['purpose'] ?? null,
                 'is_all_or_nothing' => (bool) ($validated['is_all_or_nothing'] ?? false),
@@ -383,10 +469,10 @@ class ClassroomReservationController extends Controller
         }
 
 
+        // 送出後一律回到「空間申請」主畫面（reservations.index），不停留在送出申請的畫面：
+        // 有審核權限的人回到全部申請的列表，其他人回到有課表的申請頁（頁面最上面看得到成功訊息）。
         return redirect()
-            ->to($request->user()->hasPermission('reservations.manage')
-                ? route('reservations.create')
-                : route('reservations.index') . '#my-requests')
+            ->route('reservations.index')
             ->with('success', $request->user()->hasPermission('reservations.manage')
                 ? '已送出預約申請，請等待審核。可以在空間申請右上角的「我的申請」查看進度。'
                 : '已送出預約申請，請等待審核。可以在下方「我的申請」查看進度。');

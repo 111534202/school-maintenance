@@ -16,8 +16,10 @@
         @endcan
     </div>
 
+    @include('layouts.partials.keyword-search', ['action' => route('maintenance-plans.index'), 'placeholder' => '計畫名稱、設備、設備類別'])
+
     @if ($plans->isEmpty())
-        <div class="tb-card tb-empty">目前沒有保養計畫</div>
+        <div class="tb-card tb-empty">{{ request('keyword') ? '找不到符合搜尋條件的保養計畫' : '目前沒有保養計畫' }}</div>
     @else
     <section class="tb-table-wrap" data-no-fit>
     <div class="table-responsive">

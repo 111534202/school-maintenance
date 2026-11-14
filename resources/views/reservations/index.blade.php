@@ -15,6 +15,8 @@
         </div>
         {{-- 右上角：「我的申請」在畫面中的對話框打開自己的申請（表格／清單自動切換）；「空間預約」換到有課表的申請頁。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end">
+            {{-- 匯出 Excel：匯出目前搜尋與「未審核／已審核」篩選下的全部申請（不分頁）。 --}}
+            <a href="{{ route('reservations.export', request()->only(['keyword', 'status'])) }}" class="tb-btn tb-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
             <a href="{{ route('reservations.mine') }}" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="我的申請"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>我的申請</a>
             <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-primary"><i class="bi bi-calendar-plus" aria-hidden="true"></i>空間預約</a>
         </div>

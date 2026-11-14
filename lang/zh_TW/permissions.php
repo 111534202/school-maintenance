@@ -27,6 +27,9 @@ return [
         'departments' => [
             'manage' => ['name' => '部門主檔', 'description' => '新增、編輯、停用、刪除部門'],
         ],
+        'majors' => [
+            'manage' => ['name' => '科系主檔', 'description' => '新增、編輯、停用、刪除科系，設定每個科系的年級數與班數（空間申請的科系／年級／班級下拉選單）'],
+        ],
         'classrooms' => [
             'manage' => ['name' => '教室主檔', 'description' => '新增、編輯、啟用或停用教室'],
         ],
@@ -41,6 +44,9 @@ return [
         ],
         'backups' => [
             'manage' => ['name' => '資料備份與還原', 'description' => '立即備份、下載備份、把資料還原到某一份備份、設定保留天數'],
+        ],
+        'mail-settings' => [
+            'manage' => ['name' => '寄信設定', 'description' => '設定系統寄信用的信箱帳號（忘記密碼信、派工通知信）、寄測試信'],
         ],
         'repairs' => [
             'create' => ['name' => '提出報修', 'description' => '新增報修單、用條碼掃描帶入設備'],

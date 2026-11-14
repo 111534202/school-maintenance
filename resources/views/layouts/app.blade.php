@@ -12,10 +12,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {{-- 瀏覽器分頁標題：各頁面用 @section('title', ...) 提供；沒提供就用網站名稱。 --}}
     <title>@yield('title', __('common.site_title'))</title>
-    {{-- 載入 Bootstrap 5 樣式（網格、按鈕、表格、表單等，從網路 CDN 載入，離線時不會有樣式）。 --}}
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    {{-- 載入 Bootstrap 5 樣式（網格、按鈕、表格、表單等，放在 public/vendor/bootstrap，不連外部網站，離線也有樣式）。 --}}
+    <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     {{-- Bootstrap Icons：全站按鈕統一用圖示（筆=編輯、垃圾桶=刪除…），不使用 emoji。 --}}
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
     {{-- 以下是本站自訂的樣式，補強 Bootstrap 不足的地方。 --}}
     <style>
         /* 頁面至少和視窗一樣高。 */
@@ -67,8 +67,6 @@
     </style>
     {{-- 全站風格 B「校園溫和」：墨綠導覽列、暖白底、思源黑體／宋體、Bootstrap 主色換成墨綠（說明見 public/css/theme-b.css 開頭）。
          洋蔥式元件（清單詳細面板、篩選面板、分步驟表單、洋蔥式選單、主控台入口）的配色也在那個檔案的「3. 洋蔥式元件」。 --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
 </head>
 {{-- 頁面主體：暖白色背景（tb-body，見 theme-b.css）。 --}}
@@ -608,7 +606,7 @@
     })();
     </script>
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     @auth
         <script>
             // 「返回」：上一頁是本站的頁面才用瀏覽器的上一頁；否則維持連結本身（回主控台）。
@@ -672,6 +670,8 @@
     @include('layouts.partials.auto-table')
     {{-- 讓列表頁剛好一個畫面：電腦版清單在固定外框內捲動，手機版一次只顯示放得下的幾筆並用上一頁／下一頁切換。 --}}
     @include('layouts.partials.fit-screen')
+    {{-- 表單防呆：防連點、離開提醒、自動暫存（見檔頭說明）。 --}}
+    @include('layouts.partials.form-guard')
 
     {{-- 「在畫面中」開啟的表單（例如零件履歷的「新增採購」「修改」）：連結加上 data-modal-frame，點了不換頁，
          而是在目前畫面中央的對話框裡打開（iframe 載入同一個網址，加上 ?modal=1 用精簡版面）。

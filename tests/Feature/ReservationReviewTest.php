@@ -348,4 +348,21 @@ class ReservationReviewTest extends TestCase
         }
         $this->get(route('reservations.index'))->assertSee('顯示第')->assertSee('筆，共')->assertDontSee('Showing')->assertDontSee('results');
     }
+
+    // 列表的「申請狀態」欄顯示實際結果：已核准、已拒絕各自標清楚，不能都寫成「已審核」。
+    public function test_list_status_column_shows_approved_and_rejected_instead_of_just_reviewed(): void
+    {
+        $this->request([[3, '09:00', '10:00']], ['class_name' => '通過的班', 'status' => 'approved', 'reviewed_at' => now()]);
+        $this->request([[4, '09:00', '10:00']], ['class_name' => '被拒的班', 'status' => 'rejected', 'reviewed_at' => now()]);
+        $this->request([[5, '09:00', '10:00']], ['class_name' => '等待的班']);
+
+        $html = $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))->get(route('reservations.index'))->assertOk()->getContent();
+
+        foreach (['通過的班' => '已核准', '被拒的班' => '已拒絕', '等待的班' => '待審核'] as $class => $label) {
+            $row = substr($html, strpos($html, $class));
+            $row = substr($row, 0, strpos($row, '</tr>'));
+            $this->assertStringContainsString($label, $row, "{$class} 的狀態應該顯示「{$label}」");
+            $this->assertStringNotContainsString('已審核', $row, "{$class} 的列不該只寫「已審核」");
+        }
+    }
 }

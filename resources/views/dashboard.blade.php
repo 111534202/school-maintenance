@@ -1,6 +1,6 @@
 {{-- 主控台（登入後的首頁，對應 DashboardController）：數字卡片與兩張重要圖表（工單狀態、近 14 日新增報修）。功能入口走左上角的漢堡選單；其餘圖表收進對應的主檔頁面（統計圖表按鈕）。 --}}
 {{-- 每張卡片、每一塊圖表點下去都會跳到對應的功能區（並帶好篩選條件）；沒有權限的人看不到對應的統計。 --}}
-{{-- 畫圖使用 Chart.js 這個外部函式庫（從網路 CDN 載入，離線時圖表不會顯示，但數字卡片仍正常）。 --}}
+{{-- 畫圖使用 Chart.js（放在 public/vendor/chartjs，不連外部網站，離線也能畫圖）。 --}}
 {{-- 【想新增一張卡片】在下面 PHP 區塊的 $cards 陣列加一筆；【想新增一張圖表】在 $charts 加一筆（需要的資料先在 DashboardController 算好傳進來）。 --}}
 {{-- （Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 {{-- 套用主版面。 --}}
@@ -156,7 +156,7 @@
     </style>
 
     {{-- 載入 Chart.js 函式庫（提供全域的 Chart 類別）。 --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
     <script>
         (function () {
             // 把 PHP 整理好的圖表資料轉成 JavaScript 物件。

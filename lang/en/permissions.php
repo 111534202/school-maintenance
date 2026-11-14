@@ -27,6 +27,9 @@ return [
         'departments' => [
             'manage' => ['name' => 'Department Master', 'description' => 'Add, edit, deactivate and delete departments'],
         ],
+        'majors' => [
+            'manage' => ['name' => 'Major Master', 'description' => 'Add, edit, deactivate and delete majors, and set the number of grades and classes of each major (feeds the major, grade and class drop-downs of space requests)'],
+        ],
         'classrooms' => [
             'manage' => ['name' => 'Classroom Master', 'description' => 'Add, edit, activate or deactivate classrooms'],
         ],
@@ -41,6 +44,9 @@ return [
         ],
         'backups' => [
             'manage' => ['name' => 'Backup & Restore', 'description' => 'Back up now, download backups, restore data to a backup, set how long backups are kept'],
+        ],
+        'mail-settings' => [
+            'manage' => ['name' => 'Mail Settings', 'description' => 'Set the mailbox the system sends mail with (password reset, dispatch notices) and send test mails'],
         ],
         'repairs' => [
             'create' => ['name' => 'Submit Repairs', 'description' => 'Create repair requests, fill in devices by scanning a barcode'],

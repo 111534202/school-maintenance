@@ -8,6 +8,7 @@ use App\Models\User;                       // 用戶資料表模型（登入失�
 use App\Services\AuditLogger;              // 共用的操作紀錄寫入工具
 use Illuminate\Http\Request;              // 這一次瀏覽器送來的請求
 use Illuminate\Support\Facades\Auth;       // Laravel 內建的「登入驗證」功能
+use Illuminate\Support\Facades\Hash;       // 比對臨時密碼
 use Illuminate\Support\Facades\RateLimiter; // 次數限制：記錄一段時間內失敗了幾次
 use Illuminate\Support\Str;                // 字串小工具（這裡用來把帳號統一轉小寫）
 
@@ -78,8 +79,33 @@ class LoginController extends Controller
             // forceFill：略過 $fillable 保護直接寫入欄位，因為最後登入時間是系統寫的，不是使用者填的。
             Auth::user()->forceFill(['last_login_at' => now()])->save();
             AuditLogger::log('logged_in', Auth::user(), [], __('audit.messages.login', ['name' => Auth::user()->name]));
-            // intended：如果使用者原本想去某個頁面但被擋下來要求登入，登入後就送他回去那一頁；沒有就去主控台。
-            return redirect()->intended('/dashboard');
+            // 登入後一律回到主控台，不回到上次最後停留的畫面（登出後再登入、登入逾時後重新登入都一樣）。
+            // 唯一例外：從公開「查詢課表」頁按「登入」是要去申請空間預約（routes/web.php 的 schedule.login），這個要保留。
+            $intended = (string) $request->session()->pull('url.intended', '');
+            if ($intended !== '' && parse_url($intended, PHP_URL_PATH) === parse_url(route('reservations.create', [], false), PHP_URL_PATH)) {
+                return redirect($intended);
+            }
+
+            return redirect()->route('dashboard');
+        }
+
+        // 密碼不對時，再看看是不是「忘記密碼」寄出的臨時密碼（30 分鐘內有效、只能用一次）。
+        // 用臨時密碼登入成功後，帳號被標記為「一定要先設定新密碼」，在設定之前哪裡都不能去（RequirePasswordChange）。
+        $user = User::query()->where($field, $input['login'])->where('is_active', true)->first();
+        if ($user && $user->temporary_password && $user->temporary_password_expires_at?->isFuture()
+            && Hash::check((string) $input['password'], $user->temporary_password)) {
+            Auth::login($user, $request->boolean('remember'));
+            $request->session()->regenerate();
+            RateLimiter::clear($throttleKey);
+            $user->forceFill([
+                'temporary_password' => null,                 // 用掉就作廢
+                'temporary_password_expires_at' => null,
+                'is_password_change_required' => true,
+                'last_login_at' => now(),
+            ])->save();
+            AuditLogger::log('logged_in', $user, [], "「{$user->name}」用臨時密碼登入（需設定新密碼）");
+
+            return redirect()->route('password.change');
         }
 
         // 登入失敗：兩個限制各計一次（DECAY_SECONDS 秒後自動歸零）。

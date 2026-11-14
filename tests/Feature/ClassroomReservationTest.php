@@ -119,7 +119,7 @@ class ClassroomReservationTest extends TestCase
         $classroom = $this->makeClassroom();
 
         $this->post(route('reservations.store'), $this->payload($classroom))
-            ->assertRedirect(route('reservations.index') . '#my-requests')
+            ->assertRedirect(route('reservations.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('classroom_reservations', [
@@ -882,5 +882,19 @@ class ClassroomReservationTest extends TestCase
         $asStudent = json_encode($this->getJson(route('reservations.timetable', ['classroom_id' => $classroom->id, 'date' => $date]))->assertOk()->json(), JSON_UNESCAPED_UNICODE);
         $this->assertStringContainsString('別人的班', $asStudent);
         $this->assertStringNotContainsString('我自己的班', $asStudent);
+    }
+
+    // 送出空間預約申請後，不論有沒有審核權限，都回到「空間申請」主畫面，不停留在送出申請的畫面。
+    public function test_after_submitting_a_request_everyone_goes_back_to_the_main_reservation_screen(): void
+    {
+        $classroom = $this->makeClassroom('A301');
+
+        $this->post(route('reservations.store'), $this->payload($classroom))->assertRedirect(route('reservations.index'));
+
+        $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'));
+        $this->post(route('reservations.store'), $this->payload($classroom, ['start_time' => '11:00', 'end_time' => '12:00']))
+            ->assertRedirect(route('reservations.index'));
+        // 有審核權限的人回到的是全部申請的列表（不是送出申請的表單頁）。
+        $this->followingRedirects()->get(route('reservations.index'))->assertOk()->assertSee('全部申請');
     }
 }

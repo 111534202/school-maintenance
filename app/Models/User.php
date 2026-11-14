@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;                // 讓用戶可以收通
 // 允許批次寫入的欄位白名單（create / update 只會接受這些欄位）。
 #[Fillable(['name', 'account', 'email', 'phone', 'password', 'role_id', 'department_id', 'is_active', 'last_login_at'])]
 // 轉成 JSON / 陣列時一律隱藏密碼與「記住我」token，避免意外洩漏。
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'temporary_password', 'remember_token'])]
 /**
  * 用戶（帳號，users 資料表）。每個用戶屬於一個身分（Role）與一個部門（Department），
  * 能使用哪些功能由身分的權限決定（hasPermission）。管理介面見 UserController。
@@ -37,6 +37,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'temporary_password' => 'hashed',   // 忘記密碼寄出的臨時密碼：和密碼一樣只存雜湊
+            'temporary_password_expires_at' => 'datetime',
+            'is_password_change_required' => 'boolean',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
         ];

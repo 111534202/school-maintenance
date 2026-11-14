@@ -31,11 +31,13 @@ return [
         'users' => '用戶主檔',
         'roles' => '身分主檔',
         'departments' => '部門主檔',
+        'majors' => '科系主檔',
         'classrooms' => '教室主檔',
         'device_categories' => '設備類別',
         'devices' => '設備主檔',
         'audit_logs' => '操作紀錄',
         'backups' => '資料備份',
+        'mail_settings' => '寄信設定',
     ],
 
     // 語言切換選單裡的語言名稱。

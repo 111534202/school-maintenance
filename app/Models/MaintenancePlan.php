@@ -76,6 +76,29 @@ class MaintenancePlan extends Model
      *
      * @return BelongsToMany<MaintenanceItem, $this>
      */
+    /**
+     * 做完（或取消）一張工單之後，把計畫的「下次到期日」往後推一個週期，這樣排程才會每個週期自動產生下一張。
+     *
+     * 只在這張工單就是計畫目前這一期（排定日 ＝ 下次到期日）時才推，避免補做舊工單或手動建的工單亂改日期。
+     * 新的到期日 ＝ 這張工單的排定日 ＋ 週期天數；如果已經過了今天（很久沒做），就繼續往後加到今天以後，不會一次補產生一堆過期工單。
+     */
+    public function advanceDueDateAfter(MaintenanceOrder $order): void
+    {
+        if ($this->next_due_date === null || $this->cycle_days < 1 || $order->scheduled_date === null) {
+            return;
+        }
+        if ($order->scheduled_date->toDateString() !== $this->next_due_date->toDateString()) {
+            return;
+        }
+
+        $next = $order->scheduled_date->copy()->addDays($this->cycle_days);
+        while ($next->lt(now()->startOfDay())) {
+            $next->addDays($this->cycle_days);
+        }
+
+        $this->update(['next_due_date' => $next->toDateString()]);
+    }
+
     public function maintenanceItems(): BelongsToMany
     {
         return $this->belongsToMany(

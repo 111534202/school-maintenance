@@ -8,4 +8,7 @@ return [
     'pending_review' => ':count repair(s) waiting for acceptance',
     'assigned_to_me' => ':count case(s) assigned to you',
     'pending_reservations' => ':count reservation request(s) awaiting review',
+    'maintenance_due' => ':count maintenance order(s) due within 7 days',
+    'maintenance_due_with_overdue' => ':count maintenance order(s) due within 7 days (:overdue overdue)',
+    'maintenance_unassigned' => ':count maintenance order(s) without an assignee',
 ];

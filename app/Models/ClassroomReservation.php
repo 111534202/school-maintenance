@@ -27,6 +27,9 @@ class ClassroomReservation extends Model
         'classroom_id',
         'requester_id',
         'class_name',
+        'major_id',        // 下拉選的科系（舊資料與沒有科系主檔時是空白，class_name 仍有文字）
+        'class_grade',     // 年級（1～）
+        'class_section',   // 班別（1＝忠、2＝孝、3＝仁、4＝愛）
         'status',
         'purpose',
         'is_all_or_nothing',   // 申請人勾選「其中一節無法借用就整筆不要」：只能整筆同意或整筆拒絕
@@ -41,6 +44,11 @@ class ClassroomReservation extends Model
             'reviewed_at' => 'datetime',
             'is_all_or_nothing' => 'boolean',
         ];
+    }
+
+    public function major(): BelongsTo
+    {
+        return $this->belongsTo(Major::class);
     }
 
     public function classroom(): BelongsTo

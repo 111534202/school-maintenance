@@ -6,6 +6,7 @@ use App\Http\Requests\StoreMaintenanceResultRequest;
 use App\Models\MaintenanceOrder;
 use App\Models\MaintenanceResult;
 use App\Models\Part;
+use App\Services\AttachmentUploader;
 use App\Services\NgToRepairService;
 use App\Services\PartStockService;
 use DomainException;
@@ -22,6 +23,8 @@ class MaintenanceResultController extends Controller
     public function create(MaintenanceOrder $maintenanceOrder): View
     {
         abort_if($maintenanceOrder->result()->exists(), 422, '這張工單已經回報過保養結果了');
+        // 工單指派了負責人：只有負責人與保養管理者可以回報（沒指派時有回報權限的人都可以）。
+        abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以回報。');
 
         // 保養用料選單：列出全部零件（沒有庫存的顯示庫存 0、不能選），和維修紀錄的選法相同。
         $parts = Part::query()->orderBy('id')->get();
@@ -38,7 +41,7 @@ class MaintenanceResultController extends Controller
     {
         abort_unless($maintenanceOrder->result()->exists(), 404);
 
-        $maintenanceOrder->load(['result.partUsages.part', 'maintenancePlan']);
+        $maintenanceOrder->load(['result.partUsages.part', 'result.attachments', 'maintenancePlan']);
 
         return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result]);
     }
@@ -46,16 +49,17 @@ class MaintenanceResultController extends Controller
     /**
      * 儲存保養結果，並將工單標記為已完成；若結果為 NG，交給 NgToRepairService 轉報修。
      */
-    public function store(StoreMaintenanceResultRequest $request, MaintenanceOrder $maintenanceOrder, NgToRepairService $ngToRepairService, PartStockService $stock): RedirectResponse
+    public function store(StoreMaintenanceResultRequest $request, MaintenanceOrder $maintenanceOrder, NgToRepairService $ngToRepairService, PartStockService $stock, AttachmentUploader $attachmentUploader): RedirectResponse
     {
         abort_if($maintenanceOrder->result()->exists(), 422, '這張工單已經回報過保養結果了');
+        abort_unless($maintenanceOrder->canBeReportedBy($request->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以回報。');
 
         $validated = $request->validated();
         $partUsages = $validated['part_usages'] ?? [];
-        unset($validated['part_usages']);
+        unset($validated['part_usages'], $validated['attachments']);
 
         // 保養結果、用料扣庫存、工單完成放在同一個交易：任何一個零件庫存不足，整筆都不會寫入。
-        $result = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock) {
+        $result = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock, $attachmentUploader) {
             $result = MaintenanceResult::create([
                 ...$validated,
                 'executed_by' => $request->user()->id,   // 執行人 = 登入帳號（外鍵 users.id），不能自己亂填
@@ -88,10 +92,18 @@ class MaintenanceResultController extends Controller
                 }
             }
 
+            // 附件（保養前後照片等）：和報修共用同一個上傳服務與限制（最多 5 個、加起來 5 MB）。
+            if ($request->hasFile('attachments')) {
+                $attachmentUploader->storeMany($result, $request->file('attachments'));
+            }
+
             $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_COMPLETED]);
 
             return $result;
         });
+
+        // 做完的是計畫目前這一期：下次到期日往後推一個週期，排程才會每個週期自動產生下一張工單。
+        $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
 
         $ngToRepairService->convert($result);
 

@@ -9,6 +9,7 @@ use App\Models\Device;                                  // 設備資料表的模
 use App\Models\KnowledgeBase;                           // 知識庫文章的模型
 use App\Models\RepairRequest;                           // 報修單資料表的模型
 use App\Models\User;                                    // 用戶資料表的模型
+use App\Exports\TableExport;                          // 列表匯出 Excel 用的共用匯出類別
 use App\Http\Requests\AssignRepairRequestRequest;       // 「派工」表單的驗證規則
 use App\Http\Requests\RejectRepairRequestRequest;       // 「驗收退回」表單的驗證規則
 use App\Http\Requests\StoreRepairRequestRequest;        // 「新增報修」表單的驗證規則
@@ -20,6 +21,7 @@ use App\Services\RepairRequestWorkflow;                 // 報修單狀態轉換
 use DomainException;                                    // 「違反業務規則」的例外，狀態轉換不合法時由 Workflow 丟出
 use Illuminate\Http\Request;                            // 這一次瀏覽器送來的請求
 use Illuminate\Support\Facades\Auth;                    // 取得目前登入的人
+use Maatwebsite\Excel\Facades\Excel;                 // Excel 匯出
 use Illuminate\Support\Facades\Gate;                    // 權限判斷：Gate::authorize 不通過就直接回 403
 
 /**
@@ -54,35 +56,7 @@ class RepairRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $repairRequests = RepairRequest::query()
-            // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
-            ->visibleTo($request->user())
-            // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
-            // 設備另外帶上「近 30 天這台設備被報修幾次」，看板才能直接標示重複報修的設備（不用再連去設備主檔才看得到）。
-            ->with([
-                'device' => fn ($query) => $query->with('classroom')
-                    ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
-                        ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))]),
-                'classroom',
-                'assignedTechnician',
-            ])
-            // 設備／教室篩選（教室主檔與設備主檔的連結會帶這兩個參數過來）：
-            //   ?device_id=   只看這台設備的報修單；
-            //   ?classroom_id= 只看這間教室的報修單：報修單的設備地點是這間教室，或報修的設備現在在這間教室。
-            ->when($request->filled('device_id'), fn ($query) => $query->where('device_id', $request->integer('device_id')))
-            ->when($request->filled('classroom_id'), fn ($query) => $query->where(fn ($q) => $q
-                ->where('classroom_id', $request->integer('classroom_id'))
-                ->orWhereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id')))))
-            // 狀態篩選：有帶 ?status= 才套用。
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
-            ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
-            // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
-            ->when($request->filled('assignee'), fn ($query) => $query->whereHas(
-                'assignedTechnician',
-                fn ($uq) => $uq->where('name', 'like', '%' . $request->string('assignee') . '%')
-            ))
-            ->latest()            // 依建立時間，最新的排最前面
+        $repairRequests = $this->indexQuery($request)
             ->paginate(10)        // 每頁 10 張
             ->withQueryString();  // 換頁時保留篩選條件
 
@@ -104,6 +78,89 @@ class RepairRequestController extends Controller
         $filteredDevice = $request->filled('device_id') ? Device::find($request->integer('device_id')) : null;
 
         return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice'));
+    }
+
+    /**
+     * 看板的查詢（列表與匯出共用）：只列這位用戶看得到的案件，再套用網址上的搜尋與篩選條件，最新的在前面。
+     */
+    private function indexQuery(Request $request)
+    {
+        return RepairRequest::query()
+            // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
+            ->visibleTo($request->user())
+            // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
+            // 設備另外帶上「近 30 天這台設備被報修幾次」，看板才能直接標示重複報修的設備（不用再連去設備主檔才看得到）。
+            ->with([
+                'device' => fn ($query) => $query->with('classroom')
+                    ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
+                        ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))]),
+                'classroom',
+                'assignedTechnician',
+            ])
+            // 設備／教室篩選（教室主檔與設備主檔的連結會帶這兩個參數過來）：
+            //   ?device_id=   只看這台設備的報修單；
+            //   ?classroom_id= 只看這間教室的報修單：報修單的設備地點是這間教室，或報修的設備現在在這間教室。
+            ->when($request->filled('device_id'), fn ($query) => $query->where('device_id', $request->integer('device_id')))
+            ->when($request->filled('classroom_id'), fn ($query) => $query->where(fn ($q) => $q
+                ->where('classroom_id', $request->integer('classroom_id'))
+                ->orWhereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id')))))
+            // 關鍵字搜尋：標題、故障描述、設備位置文字、設備（編號、資產編號、品牌、型號、序號）、教室（名稱、代碼）、報修人姓名；
+            // 輸入 12 或 #12 也找得到編號 12 的報修單。
+            ->when($request->filled('keyword'), function ($query) use ($request) {
+                $keyword = trim($request->string('keyword')->toString());
+                $like = '%' . $keyword . '%';
+                $query->where(function ($q) use ($like, $keyword) {
+                    $q->where('title', 'like', $like)
+                        ->orWhere('description', 'like', $like)
+                        ->orWhere('device_note', 'like', $like)
+                        ->orWhereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
+                        ->orWhereHas('classroom', fn ($room) => $room->where('name', 'like', $like)->orWhere('classroom_code', 'like', $like))
+                        ->orWhereHas('requester', fn ($user) => $user->where('name', 'like', $like));
+                    if (ctype_digit(ltrim($keyword, '#'))) {
+                        $q->orWhere('id', (int) ltrim($keyword, '#'));
+                    }
+                });
+            })
+            // 狀態篩選：有帶 ?status= 才套用。
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
+            ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
+            // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
+            ->when($request->filled('assignee'), fn ($query) => $query->whereHas(
+                'assignedTechnician',
+                fn ($uq) => $uq->where('name', 'like', '%' . $request->string('assignee') . '%')
+            ))
+            ->latest();           // 依建立時間，最新的排最前面
+    }
+
+    /**
+     * 匯出 Excel（GET /repairs/export）：匯出「目前搜尋與篩選條件」下的全部報修單（不分頁），
+     * 和看板一樣只含這位用戶看得到的案件；寫一筆操作紀錄。
+     */
+    public function export(Request $request)
+    {
+        $impact = ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'];
+        $rows = $this->indexQuery($request)->with(['requester', 'device.category'])->get()->map(fn (RepairRequest $r) => [
+            $r->id,
+            $r->title,
+            $r->status->label(),
+            $impact[$r->impact_level] ?? $r->impact_level,
+            $r->is_class_affected ? '是' : '否',
+            $r->device?->device_code,
+            $r->device ? trim(($r->device->category?->name ?? '') . ' ' . $r->device->brand . ' ' . $r->device->model) : null,
+            $r->device_note,
+            $r->locationLabel(),
+            $r->requester?->name,
+            $r->assignedTechnician?->name,
+            $r->scheduled_at?->format('Y-m-d H:i'),
+            $r->created_at?->format('Y-m-d H:i'),
+            $r->description,
+        ])->all();
+
+        $file = '報修單-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出報修單 {$file}（" . count($rows) . ' 筆）');
+
+        return Excel::download(new TableExport('報修單', ['編號', '報修標題', '狀態', '影響程度', '影響上課', '設備編號', '設備（類別 品牌 型號）', '設備位置／描述', '設備地點', '報修人', '維修人員', '預計處理時間', '送出時間', '故障描述'], $rows), $file);
     }
 
     /**

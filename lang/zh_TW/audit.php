@@ -15,6 +15,7 @@ return [
         'force_deleted' => '永久刪除',
         'status_changed' => '狀態變更',
         'password_reset' => '重設密碼',
+        'password_changed' => '變更密碼',
         'core_flag_changed' => '核心設備標記變更',
         'logged_in' => '登入',
         'logged_out' => '登出',
@@ -22,6 +23,7 @@ return [
         'assigned' => '派工',
         'reassigned' => '重新指派',
         'rejected' => '驗收退回',
+        'mail_tested' => '寄送測試信',
     ],
 
     // 對象類型名稱：鍵是 Model 的類別名稱（不含路徑），值是操作紀錄頁顯示的名稱。
@@ -37,6 +39,7 @@ return [
         'KnowledgeBase' => '知識庫文章',
         'Part' => '零件',
         'PartPurchase' => '零件採購紀錄',
+        'MailSetting' => '寄信設定',
     ],
 
     // 操作紀錄頁篩選列的文字。

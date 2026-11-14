@@ -1,5 +1,5 @@
 {{-- 主檔頁面的統計圖表視窗（資料由 App\Services\MasterCharts 提供，傳進 $chart）。
-     點圖上的扇形／長條會跳到對應功能區（網址已經帶好篩選條件）。畫圖用 Chart.js（從 CDN 載入，離線時圖表不會顯示，但頁面其他功能正常）。 --}}
+     點圖上的扇形／長條會跳到對應功能區（網址已經帶好篩選條件）。畫圖用 Chart.js（放在 public/vendor，不連外部網站，離線也能畫圖）。 --}}
 <div class="modal fade" id="masterChartModal" tabindex="-1" aria-labelledby="masterChartTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -19,7 +19,7 @@
     </div>
 </div>
 @if (array_sum($chart['counts']) > 0)
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
     <script>
         (function () {
             var spec = @json($chart);

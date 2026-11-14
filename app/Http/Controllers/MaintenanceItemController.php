@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateMaintenanceItemRequest;
 use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
@@ -18,13 +19,21 @@ use Illuminate\View\View;
  */
 class MaintenanceItemController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $items = MaintenanceItem::query()
             ->with('deviceCategory')
+            // 關鍵字搜尋：項目名稱、說明、適用的設備類別名稱。
+            ->when($request->filled('keyword'), function ($query) use ($request) {
+                $like = '%' . trim($request->string('keyword')->toString()) . '%';
+                $query->where(fn ($q) => $q->where('name', 'like', $like)
+                    ->orWhere('description', 'like', $like)
+                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
+            })
             ->orderByDesc('is_active')
             ->orderBy('name')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('maintenance_items.index', compact('items'));
     }

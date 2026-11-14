@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'device_category_id',
     'source',
     'status',
+    'assigned_to',
     'scheduled_date',
 ])]
 class MaintenanceOrder extends Model
@@ -88,6 +89,48 @@ class MaintenanceOrder extends Model
         return $this->hasOne(MaintenanceResult::class);
     }
 
+    /** 負責人（由保養管理者指派，沒指派是空白）。 */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /** 還沒做完（待處理、進行中）的工單。 */
+    public function scopeUnfinished(Builder $query): Builder
+    {
+        return $query->whereIn('status', [self::STATUS_PENDING, self::STATUS_IN_PROGRESS]);
+    }
+
+    /** 逾期：還沒做完，而且排定保養日期早於今天。 */
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->unfinished()->whereNotNull('scheduled_date')->whereDate('scheduled_date', '<', now()->toDateString());
+    }
+
+    /** 一週內到期（含已逾期）：還沒做完，而且排定保養日期在今天起算 $days 天以內。 */
+    public function scopeDueWithin(Builder $query, int $days = 7): Builder
+    {
+        return $query->unfinished()->whereNotNull('scheduled_date')->whereDate('scheduled_date', '<=', now()->addDays($days)->toDateString());
+    }
+
+    /** 這張工單是不是已經逾期。 */
+    public function isOverdue(): bool
+    {
+        return in_array($this->status, [self::STATUS_PENDING, self::STATUS_IN_PROGRESS], true)
+            && $this->scheduled_date !== null
+            && $this->scheduled_date->toDateString() < now()->toDateString();
+    }
+
+    /** 這位用戶能不能回報這張工單的結果：沒指派負責人時有回報權限就行；指派了只有負責人與保養管理者。 */
+    public function canBeReportedBy(User $user): bool
+    {
+        if (! $user->can('maintenance.report')) {
+            return false;
+        }
+
+        return $this->assigned_to === null || $this->assigned_to === $user->id || $user->can('maintenance.manage');
+    }
+
     /**
      * 給設備履歷、Dashboard 等其他模組使用的穩定查詢介面（第 2 週任務 6）：
      * 只回傳已完成的保養工單，不用讓其他模組自己拼 where 條件。
@@ -118,6 +161,13 @@ class MaintenanceOrder extends Model
      */
     public function statusLabel(): array
     {
+        // 保養結果是 NG 的工單不顯示「已完成」，直接顯示去向：已轉成報修單（或還沒轉成）；後續維修由報修單追蹤。
+        if ($this->status === self::STATUS_COMPLETED && ($result = $this->result) && $result->isNg()) {
+            return $result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_CONVERTED
+                ? ['已轉報修', 'info']
+                : ['待轉報修', 'warning'];
+        }
+
         return match ($this->status) {
             self::STATUS_IN_PROGRESS => ['進行中', 'primary'],
             self::STATUS_COMPLETED => ['已完成', 'success'],

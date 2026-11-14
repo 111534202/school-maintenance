@@ -1,7 +1,7 @@
 {{-- 被 repairs/create.blade.php 用 @include 引入：新增報修頁的「設備掃描」功能（HTML 視窗 + JavaScript）。 --}}
 {{-- 三種輸入方式共用同一個查詢流程：條碼槍（等於鍵盤輸入加 Enter）、手動輸入、手機／筆電鏡頭掃 QR 或條碼。 --}}
 {{-- 查詢是用 fetch 呼叫後端 repairs.device-lookup（RepairRequestController::deviceLookup），找到設備後自動填入表單。 --}}
-{{-- 相機掃描見 scanner/_camera（html5-qrcode 從 CDN 載入；瀏覽器只允許在 HTTPS 或 localhost 開啟相機）。 --}}
+{{-- 相機掃描見 scanner/_camera（解碼函式庫放在 public/vendor；瀏覽器只允許在 HTTPS 或 localhost 開啟相機）。 --}}
 {{-- 新增報修頁的「設備掃描」：條碼槍／手動輸入／相機掃描三種方式，共用同一個查詢流程。 --}}
 
 {{-- 相機掃描視窗與掃描器已搬到共用元件 scanner/_camera（新增設備也用同一份）；掃到內容後它會填入輸入框並觸發 code-scanned 事件。 --}}

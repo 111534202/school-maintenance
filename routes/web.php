@@ -23,6 +23,7 @@ use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PasswordRecoveryController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\ClassroomReservationController;
 use App\Http\Controllers\DashboardController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceEntryController;
 use App\Http\Controllers\DeviceProfileController;
 use App\Http\Controllers\KnowledgeBaseController;
+use App\Http\Controllers\MajorController;
 use App\Http\Controllers\MaintenanceCompletionRateController;
 use App\Http\Controllers\MaintenanceItemController;
 use App\Http\Controllers\MaintenanceOrderController;
@@ -58,7 +60,8 @@ Route::get('/', function () {
 // 放在 auth 群組外面，這樣未登入的登入頁也能切換語言。
 Route::get('locale/{locale}', function (string $locale) {
     // {locale} 是網址上的變數，例如 /locale/en 時 $locale 就是 'en'。
-    if (in_array($locale, ['zh_TW', 'en'], true)) {
+    // 語言切換目前關閉（維持中文介面，config('app.locale_switcher')）：直接打網址也不會切成英文。
+    if (config('app.locale_switcher') && in_array($locale, ['zh_TW', 'en'], true)) {
         session(['locale' => $locale]);   // 存進 session，之後每個請求都會套用
     }
 
@@ -76,6 +79,9 @@ Route::get('repair-requests/{path?}', function (?string $path = null) {
 // 登入、登出：不需要登入就能進（否則沒人進得去登入頁）。
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');   // 顯示登入表單
 Route::post('/login', [LoginController::class, 'login']);                          // 送出帳號密碼
+// 忘記密碼：用註冊帳號時的 Email 收臨時密碼（同一個 IP 一分鐘最多 5 次），登入後再設定新密碼。
+Route::get('/forgot-password', [PasswordRecoveryController::class, 'showRequestForm'])->name('password.request');
+Route::post('/forgot-password', [PasswordRecoveryController::class, 'sendTemporaryPassword'])->middleware('throttle:5,1')->name('password.email');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');        // 登出
 
 // ---- 免登入查詢課表 ----
@@ -98,7 +104,11 @@ Route::middleware('throttle:60,1')->group(function () {
 // 每個身分有哪些權限由「身分主檔」勾選決定；系統管理員永遠全開）。
 // 下面整個群組套用 'auth'：一定要先登入，沒登入會被導到登入頁；
 // 再套用 'active'：帳號被停用的人（包含靠「記住我」cookie 自動登入的）會被強制登出。
-Route::middleware(['auth', 'active'])->group(function () {
+Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
+    // 設定新密碼：用臨時密碼登入後只能來這裡（password.fresh 中介層）；平常登入的人也能自己改。
+    Route::get('/password/change', [PasswordRecoveryController::class, 'showChangeForm'])->name('password.change');
+    Route::post('/password/change', [PasswordRecoveryController::class, 'change'])->name('password.update');
+
     // 主控台（登入後的首頁）：所有登入者都能看，卡片與圖表依權限顯示不同內容。
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
@@ -152,12 +162,14 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::middleware('can:maintenance.manage')->group(function () {
             Route::get('/{maintenanceOrder}/edit', [MaintenanceOrderController::class, 'edit'])->name('edit');
             Route::put('/{maintenanceOrder}', [MaintenanceOrderController::class, 'update'])->name('update');
+            Route::patch('/{maintenanceOrder}/assign', [MaintenanceOrderController::class, 'assign'])->name('assign');   // 指派負責人
             Route::delete('/{maintenanceOrder}', [MaintenanceOrderController::class, 'destroy'])->name('destroy');
         });
 
         // 查看類：需要 maintenance.view。第 3 週任務 3：結果詳細頁獨立一頁，不只嵌在工單詳細頁裡。
         Route::middleware('can:maintenance.view')->group(function () {
             Route::get('/', [MaintenanceOrderController::class, 'index'])->name('index');
+            Route::get('/export', [MaintenanceOrderController::class, 'export'])->name('export');   // 匯出 Excel（要在 /{maintenanceOrder} 之前）
             Route::get('/{maintenanceOrder}', [MaintenanceOrderController::class, 'show'])->name('show');
             Route::get('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'show'])->name('results.show');
         });
@@ -226,6 +238,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/create', [ClassroomReservationController::class, 'create'])
             ->name('create');
 
+        // 匯出 Excel：有審核權限的人匯出全部申請，其他人只匯出自己的。
+        Route::get('/export', [ClassroomReservationController::class, 'export'])
+            ->name('export');
+
         // 我的申請（有審核權限的人在空間申請右上角打開的對話框）
         Route::get('/mine', [ClassroomReservationController::class, 'mine'])
             ->name('mine');
@@ -287,6 +303,13 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
     });
 
+    // 寄信設定：需要 mail-settings.manage（預設只有系統管理員）。填寄信用的信箱帳號、寄測試信；密碼加密存放。
+    Route::middleware('can:mail-settings.manage')->prefix('mail-settings')->name('mail-settings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\MailSettingController::class, 'edit'])->name('edit');
+        Route::put('/', [\App\Http\Controllers\MailSettingController::class, 'update'])->name('update');
+        Route::post('/test', [\App\Http\Controllers\MailSettingController::class, 'test'])->name('test')->middleware('throttle:10,1');
+    });
+
     // 資料備份：需要 backups.manage（預設只有系統管理員）。每月 1 號凌晨 0 點自動備份，也可手動備份、下載、還原。
     Route::middleware('can:backups.manage')->prefix('backups')->name('backups.')->group(function () {
         Route::get('/', [\App\Http\Controllers\BackupController::class, 'index'])->name('index');
@@ -317,6 +340,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // 部門主檔：用戶主檔、教室主檔的部門下拉選單都從這裡來。
+    // 科系主檔：空間申請的「科系 → 年級 → 班級」下拉選單來源，需要 majors.manage 權限。
+    Route::middleware('can:majors.manage')->group(function () {
+        Route::resource('majors', MajorController::class)->except(['show']);
+        Route::patch('majors/{major}/toggle', [MajorController::class, 'toggle'])->name('majors.toggle');   // 啟用／停用
+    });
+
     Route::middleware('can:departments.manage')->group(function () {
         Route::resource('departments', DepartmentController::class)->except(['show']);
         Route::patch('departments/{department}/toggle', [DepartmentController::class, 'toggle'])->name('departments.toggle');   // 啟用／停用
@@ -347,6 +376,9 @@ Route::middleware(['auth', 'active'])->group(function () {
             ->parameters(['repairs' => 'repair_request'])
             ->only(['create', 'store']);
     });
+
+    // 匯出 Excel（要放在 repairs/{repair_request} 之前）：和看板一樣只含這位用戶看得到的案件。
+    Route::get('repairs/export', [RepairRequestController::class, 'export'])->name('repairs.export');
 
     // 看板與詳細頁：所有登入者都能看。
     // ->parameters(...) 讓 resource 路由的網址參數也叫 repair_request，跟下面

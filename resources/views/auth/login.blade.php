@@ -7,11 +7,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登入 - 學校設備維保電子化系統</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
     {{-- 跟登入後的頁面同一套風格 B（墨綠主色、暖白底、思源黑體／宋體），見 public/css/theme-b.css。 --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
     <style>
         /* 登入頁：上方一條墨綠色的網站名稱列，下方暖白底置中一張圓角卡片。 */
@@ -39,6 +37,11 @@
             <div class="card-body p-4 p-sm-5">
                 <h1 class="h3 login-title text-center mb-1">登入</h1>
                 <p class="text-center text-muted mb-4">請使用學校帳號登入</p>
+
+                {{-- 寄出臨時密碼之後導回登入頁時的說明（成功訊息）。 --}}
+                @if (session('status'))
+                    <div class="alert alert-success">{{ session('status') }}</div>
+                @endif
 
                 {{-- 登入失敗或欄位沒填時，把錯誤訊息顯示在這裡。 --}}
                 @if ($errors->any())
@@ -74,6 +77,8 @@
                     </div>
                     <button type="submit" class="btn btn-primary w-100">登入</button>
                 </form>
+                {{-- 忘記密碼：用註冊帳號時的 Email 收臨時密碼（見 PasswordRecoveryController）。 --}}
+                <div class="text-center mt-3"><a href="{{ route('password.request') }}">忘記密碼？</a></div>
                 {{-- 不用登入也能查詢教室課表（/schedule）；要預約時再登入。 --}}
                 <div class="login-divider my-4"><span>或</span></div>
                 <a href="{{ route('schedule') }}" class="btn btn-outline-primary w-100 login-schedule-btn">查詢課表</a>
@@ -94,5 +99,6 @@
             });
         })();
     </script>
+    @include('layouts.partials.form-guard')
 </body>
 </html>

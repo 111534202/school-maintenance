@@ -8,6 +8,7 @@ use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
 use App\Models\MaintenancePlan;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
@@ -19,14 +20,22 @@ use Illuminate\View\View;
  */
 class MaintenancePlanController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $plans = MaintenancePlan::query()
             ->with(['deviceCategory', 'device.category'])
             ->withCount('maintenanceItems')
+            // 關鍵字搜尋：計畫名稱、設備（編號、資產編號、品牌、型號）、設備類別名稱。
+            ->when($request->filled('keyword'), function ($query) use ($request) {
+                $like = '%' . trim($request->string('keyword')->toString()) . '%';
+                $query->where(fn ($q) => $q->where('name', 'like', $like)
+                    ->orWhereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
+                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
+            })
             ->orderByDesc('is_active')
             ->orderBy('next_due_date')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('maintenance_plans.index', compact('plans'));
     }

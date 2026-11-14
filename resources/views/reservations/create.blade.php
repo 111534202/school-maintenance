@@ -26,7 +26,7 @@
                     目前沒有可供預約的教室。請確認教室是否已啟用，以及是否正常開放外借。
                 </div>
             @else
-                <form method="POST" action="{{ route('reservations.store') }}">
+                <form method="POST" action="{{ route('reservations.store') }}" data-no-draft>
                     @csrf
                     <input type="hidden" id="confirm_pending_conflict"
                            name="confirm_pending_conflict" value="0">
@@ -132,22 +132,105 @@
                         </div>
 
                         <div class="col-12 col-md-6">
-                            <label for="class_name" class="form-label">
-                                班級名稱 <span class="text-danger">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="class_name"
-                                name="class_name"
-                                class="form-control @error('class_name') is-invalid @enderror"
-                                value="{{ old('class_name') }}"
-                                maxlength="100"
-                                placeholder="例如:資一忠/護理英文1B班"
-                                required
-                            >
-                            @error('class_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            @if (! empty($majors))
+                                {{-- 班級用下拉選單：先選科系（科系主檔），再選年級、最後選班級（忠、孝、仁、愛）；年級數與班數由各科系自己設定。
+                                     班級名稱由系統組成（例如資一忠），隱藏欄位 class_name 只是方便畫面使用，後端會依選擇重新組一次。 --}}
+                                <label for="major_id" class="form-label">
+                                    班級 <span class="text-danger">*</span>
+                                </label>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-5">
+                                        <select id="major_id" name="major_id" class="form-select @error('major_id') is-invalid @enderror" aria-label="科系" required>
+                                            <option value="">選擇科系</option>
+                                            @foreach ($majors as $majorOption)
+                                                <option value="{{ $majorOption['id'] }}" @selected((string) old('major_id') === (string) $majorOption['id'])>{{ $majorOption['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-sm-3">
+                                        <select id="class_grade" name="class_grade" class="form-select @error('class_grade') is-invalid @enderror" aria-label="年級" required disabled>
+                                            <option value="">年級</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-sm-4">
+                                        <select id="class_section" name="class_section" class="form-select @error('class_section') is-invalid @enderror" aria-label="班級" required disabled>
+                                            <option value="">班級</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="class_name" name="class_name" value="{{ old('class_name') }}"
+                                    class="@if ($errors->hasAny(['class_name', 'major_id', 'class_grade', 'class_section'])) is-invalid @endif">
+                                @foreach (['major_id', 'class_grade', 'class_section', 'class_name'] as $classField)
+                                    @error($classField)
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                @endforeach
+                                <script>
+                                (function () {
+                                    var majors = @json($majors);
+                                    var sectionNames = @json(\App\Models\Major::SECTION_NAMES);
+                                    var numerals = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+                                    var major = document.getElementById('major_id');
+                                    var grade = document.getElementById('class_grade');
+                                    var section = document.getElementById('class_section');
+                                    var hidden = document.getElementById('class_name');
+                                    var wantGrade = @json((string) old('class_grade'));
+                                    var wantSection = @json((string) old('class_section'));
+
+                                    function current() {
+                                        for (var i = 0; i < majors.length; i++) { if (String(majors[i].id) === major.value) return majors[i]; }
+                                        return null;
+                                    }
+                                    function fill(select, count, text, placeholder, keep) {
+                                        select.innerHTML = '';
+                                        var first = document.createElement('option');
+                                        first.value = ''; first.textContent = placeholder;
+                                        select.appendChild(first);
+                                        for (var n = 1; n <= count; n++) {
+                                            var o = document.createElement('option');
+                                            o.value = String(n); o.textContent = text(n);
+                                            select.appendChild(o);
+                                        }
+                                        select.value = (keep && keep <= count) ? String(keep) : '';
+                                        select.disabled = count === 0;
+                                    }
+                                    // 換科系：年級與班級重新列出該科系的年級數、班數（各科系不同），已選的先清掉。
+                                    function rebuild(keepGrade, keepSection) {
+                                        var m = current();
+                                        fill(grade, m ? m.grade_count : 0, function (n) { return numerals[n - 1] + '年級'; }, '年級', keepGrade);
+                                        fill(section, m ? m.class_count : 0, function (n) { return sectionNames[n - 1] + '班'; }, '班級', keepSection);
+                                        compose();
+                                    }
+                                    function compose() {
+                                        var m = current();
+                                        hidden.value = (m && grade.value && section.value)
+                                            ? m.abbreviation + numerals[grade.value - 1] + sectionNames[section.value - 1] : '';
+                                    }
+                                    major.addEventListener('change', function () { rebuild(0, 0); });
+                                    grade.addEventListener('change', compose);
+                                    section.addEventListener('change', compose);
+                                    rebuild(parseInt(wantGrade, 10) || 0, parseInt(wantSection, 10) || 0);
+                                })();
+                                </script>
+                            @else
+                                {{-- 科系主檔還沒有啟用中的科系時，退回讓使用者自己輸入班級名稱（管理員到「科系主檔」新增科系後就會變成下拉選單）。 --}}
+                                <label for="class_name" class="form-label">
+                                    班級名稱 <span class="text-danger">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="class_name"
+                                    name="class_name"
+                                    class="form-control @error('class_name') is-invalid @enderror"
+                                    value="{{ old('class_name') }}"
+                                    maxlength="100"
+                                    placeholder="例如：資一忠"
+                                    required
+                                >
+                                @error('class_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            @endif
                         </div>
 
                         <div class="col-12 col-md-6">
@@ -243,7 +326,11 @@
          只給沒有審核權限的人；有審核權限的人在空間申請右上角按「我的申請」打開視窗。 --}}
     @if (! $guest && ($showMine ?? true))
     <section id="my-requests" class="tb mt-4" aria-labelledby="my-requests-title">
-        <h2 class="h5 mb-0" id="my-requests-title">我的申請</h2>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h2 class="h5 mb-0" id="my-requests-title">我的申請</h2>
+            {{-- 匯出 Excel：匯出自己提出的全部申請。 --}}
+            <a href="{{ route('reservations.export') }}" class="tb-btn tb-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
+        </div>
         @if ($myReservations->isEmpty())
             <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>
         @else
@@ -512,6 +599,7 @@ document.addEventListener('DOMContentLoaded', function () {
         previousClassroom = null;
         closeOptions();
         updateRepairNotice();
+        autoQueryTimetable();   // 選好教室就直接顯示課表，不用再按「查詢課表」
     }
 
     searchInput.addEventListener('focus', function () {
@@ -703,6 +791,8 @@ document.addEventListener('DOMContentLoaded', function () {
     dateColumn.className = 'rq-date';
     queryControls.className = 'rq-controls';
     timetableButton.style.whiteSpace = 'nowrap';
+    // 選好教室與日期之後課表自動出現，不再需要按「查詢課表」：按鈕收起來（程式內部仍用它來查詢，也當作重新查詢的入口）。
+    timetableButton.classList.add('d-none');
 
     const dateGroup = document.createElement('div');
     dateGroup.className = 'rq-date-group';
@@ -927,7 +1017,7 @@ document.addEventListener('DOMContentLoaded', function () {
         step1.hidden = true;
         step2.hidden = false;
         step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        classNameInput.focus({ preventScroll: true });
+        (document.getElementById('major_id') || classNameInput).focus({ preventScroll: true });
     });
     // 節次名稱：早自習、第1節…、午休（後端課表設定提供 label；舊資料沒有就用「第 N 節」）。
     function periodLabel(period) {
@@ -1294,6 +1384,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 搜尋或更換教室時保留目前課表；只有執行新查詢才更新課表。
     dateInput.addEventListener('change', clearTimetable);
+    // 換日期：教室已經選好就直接重新查詢。
+    dateInput.addEventListener('change', function () { autoQueryTimetable(); });
+
+    // 教室與日期都有了才自動查詢（只選一半時不跳出「請先選擇…」的錯誤，等使用者選完）。
+    function autoQueryTimetable() {
+        if (classroomInput.value && dateInput.value && !timetableButton.disabled) timetableButton.click();
+    }
     });
 </script>
 

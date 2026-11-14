@@ -4,6 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attachment;                   // 附件資料表模型
+use App\Models\MaintenanceResult;            // 保養結果（保養前後照片）
 use App\Models\PartPurchase;                 // 零件採購紀錄（發票附件）
 use App\Models\RepairLog;                    // 維修紀錄資料表模型
 use App\Models\RepairRequest;                // 報修單資料表模型
@@ -31,6 +32,13 @@ class AttachmentController extends Controller
         // 零件採購的發票：和零件庫存同一個權限（parts.manage），不屬於任何報修單。
         if ($owner instanceof PartPurchase) {
             Gate::authorize('parts.manage');
+
+            return $this->output($attachment);
+        }
+
+        // 保養結果的附件：和保養資料同一個權限（maintenance.view）。
+        if ($owner instanceof MaintenanceResult) {
+            Gate::authorize('maintenance.view');
 
             return $this->output($attachment);
         }

@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             // 3. 建立部門（教室與示範用戶會用到）。
             DepartmentSeeder::class,
+            MajorSeeder::class,   // 科系主檔示範資料（空間申請的科系／年級／班級下拉選單）
             UserDemoSeeder::class, // 用戶主檔示範資料，需要部門已存在所以排在 DepartmentSeeder 後面
             // 5. 建立教室（要在部門之後）。
             ClassroomSeeder::class,

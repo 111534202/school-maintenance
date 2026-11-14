@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\RepairRequestStatus;           // 報修單狀態列舉
 use App\Models\ClassroomReservation;        // 空間預約申請資料表模型
+use App\Models\MaintenanceOrder;             // 保養工單資料表模型
 use App\Models\RepairRequest;                // 報修單資料表模型
 use App\Models\User;                         // 用戶資料表模型
 use App\Services\AI\PredictionServiceInterface;   // AI 預測服務介面（王佑恩，第 4 週）
@@ -71,6 +72,9 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
         }
+
+        // 寄信設定：管理員在「寄信設定」頁啟用了 SMTP 帳號時，全站寄信改用那組設定（沒啟用或資料表還沒建立就維持 .env）。
+        \App\Models\MailSetting::applyEnabledToConfig();
 
         // 把權限清單裡的每個權限註冊成 Gate，之後全站用同一種寫法判斷權限：
         // 路由 ->middleware('can:users.manage')、畫面 @can('users.manage')、程式 $user->can('...')。
@@ -174,6 +178,39 @@ class AppServiceProvider extends ServiceProvider
                     'count' => $count,
                     'url' => route('reservations.index', ['status' => 'pending']),   // 空間申請，只看未審核
                 ];
+            }
+        }
+
+        // 保養工單：有保養管理權限的人看全部、只有回報權限的人只看指派給自己的。
+        // 7 天內要到期（含已逾期）的工單才算，點下去到保養工單列表，已經帶好「7 天內到期」的篩選。
+        $canManageMaintenance = $user->can('maintenance.manage');
+        if ($canManageMaintenance || $user->can('maintenance.report')) {
+            $due = MaintenanceOrder::query()->dueWithin(7)
+                ->when(! $canManageMaintenance, fn ($q) => $q->where('assigned_to', $user->id));
+            $count = (clone $due)->count();
+            if ($count > 0) {
+                $overdue = (clone $due)->overdue()->count();
+                $items[] = [
+                    'icon' => 'bi-wrench-adjustable',
+                    'text' => $overdue > 0
+                        ? __('notifications.maintenance_due_with_overdue', ['count' => $count, 'overdue' => $overdue])
+                        : __('notifications.maintenance_due', ['count' => $count]),
+                    'count' => $count,
+                    'url' => route('maintenance-orders.index', ['due' => 'week'] + ($canManageMaintenance ? [] : ['mine' => 1])),
+                ];
+            }
+
+            // 保養管理者：還沒指定負責人的未完成工單（要有人指派才會有人去做）。
+            if ($canManageMaintenance) {
+                $unassigned = MaintenanceOrder::query()->unfinished()->whereNull('assigned_to')->count();
+                if ($unassigned > 0) {
+                    $items[] = [
+                        'icon' => 'bi-person-exclamation',
+                        'text' => __('notifications.maintenance_unassigned', ['count' => $unassigned]),
+                        'count' => $unassigned,
+                        'url' => route('maintenance-orders.index', ['assignee' => 'none']),
+                    ];
+                }
             }
         }
 

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable([
     'maintenance_order_id',
@@ -56,6 +57,12 @@ class MaintenanceResult extends Model
     }
 
     /** 這次保養用掉的零件（保養用料明細）。 */
+    /** 這筆保養結果的附件（保養前後照片等），跟報修共用同一張 attachments 資料表與上傳服務。 */
+    public function attachments(): MorphMany
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
     public function partUsages(): HasMany
     {
         return $this->hasMany(MaintenancePartUsage::class);

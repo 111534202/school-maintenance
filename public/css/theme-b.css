@@ -9,8 +9,8 @@
 :root {
     /* 字型與標題樣式統一在這裡設定：要換字型（例如把宋體換成新細明體）、換標題顏色或大小，只要改這幾行，
        所有用到 var(--tb-font-heading)／.tb-section-title 的地方（導覽列網站名稱、頁面標題、區塊標題、彈出視窗標題…）都會一起變。 */
-    --tb-font-heading: 'Noto Serif TC', serif;
-    --tb-font-body: 'Noto Sans TC', system-ui, -apple-system, 'Microsoft JhengHei', sans-serif;
+    --tb-font-heading: 'Noto Serif TC', 'Source Han Serif TC', 'Songti TC', 'PMingLiU', 'MingLiU', serif;
+    --tb-font-body: 'Noto Sans TC', 'Source Han Sans TC', 'Microsoft JhengHei', 'PingFang TC', 'Heiti TC', system-ui, -apple-system, sans-serif;
     --tb-heading-color: var(--tb-text);
     --tb-section-title-size: 1.3rem;
     /* 卡片標題列下面那條分隔線的粗細（零件履歷、成本分析報表…所有卡片一起變）。 */
@@ -788,3 +788,16 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
    外框透明底，滑鼠移上去變成實心底色、白字（btn-outline-success 的效果）。 */
 .tb-body .frame-modal-actions .btn:not(.icon-btn) { height: 40px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; white-space: nowrap; font-size: .9375rem; }
 .tb-body .frame-modal-actions form { margin: 0; }
+
+/* 手機與觸控裝置：可以點的東西至少 40px 高（手指好點、不容易按錯）。
+   彭仕衡 2026-11-15：全站操作體驗檢查發現「返回」30×40、系統名稱 24px 高、篩選下拉 31px、開關 16px 太小。
+   圓形圖示按鈕在觸控裝置上本來就是 40px（上面的規則），這裡補其餘的按鈕、輸入欄、開關與頂端列。 */
+@media (max-width: 767.98px), (pointer: coarse) {
+    .tb-body .btn:not(.icon-btn):not(.btn-close), .tb-body .tb-btn, .tb-body .tb .tb-header .tb-btn { min-height: 40px; }
+    .tb-body .form-control, .tb-body .form-select { min-height: 40px; }
+    .tb-body .form-switch .form-check-input { width: 2.75em; height: 1.5em; }
+    .tb-body .form-check-input[type="checkbox"], .tb-body .form-check-input[type="radio"] { min-width: 1.25em; min-height: 1.25em; }
+    .tb-navbar .tb-nav-btn { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+    .tb-navbar .navbar-brand { display: inline-flex; align-items: center; min-height: 40px; }
+    .tb-body .pagination .page-link { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+}

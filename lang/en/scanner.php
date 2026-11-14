@@ -13,6 +13,7 @@ return [
     'photo_reading' => 'Reading the photo...',
     'photo_not_found' => 'No QR or barcode found in the photo. Move closer so the code fills the frame and try again.',
     'insecure' => 'Browsers only allow camera access on HTTPS or localhost. Use an HTTPS address, or type the value in the field.',
+    'insecure_photo' => 'This address is not HTTPS, so the browser will not open the live camera. Tap the photo button below and take a picture of the barcode or QR code (close up, filling the frame); the system reads it from the photo.',
     'camera_error' => 'Could not open the camera. Make sure the browser is allowed to use it, or type the value in the field.',
     'library_error' => 'Failed to load the scanner component (possibly a network issue). Type the value in the field.',
     'button' => 'Scan with camera',

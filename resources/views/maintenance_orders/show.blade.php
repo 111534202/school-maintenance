@@ -10,11 +10,9 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="tb-title mb-0" data-modal-hide>保養紀錄</h1>
         <div class="d-inline-flex flex-wrap gap-2">
-            @if (! $maintenanceOrder->result)
-                @can('maintenance.report')
-                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-outline-success btn-sm" data-modal-header
-                        data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報保養結果</a>
-                @endcan
+            @if (! $maintenanceOrder->result && $maintenanceOrder->canBeReportedBy(auth()->user()))
+                <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-outline-success btn-sm" data-modal-header
+                    data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報保養結果</a>
             @endif
             {{-- 修改（排定日期）與取消（刪除）：需要 maintenance.manage；已完成或已回報結果的工單不能改、不能取消。
                  取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
@@ -61,7 +59,32 @@
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>
 
                 <dt class="col-sm-3">排定保養日期</dt>
-                <dd class="col-sm-9">{{ $maintenanceOrder->scheduled_date?->format('Y-m-d') ?? '—' }}</dd>
+                <dd class="col-sm-9">
+                    {{ $maintenanceOrder->scheduled_date?->format('Y-m-d') ?? '—' }}
+                    @if ($maintenanceOrder->isOverdue())
+                        <span class="badge text-bg-danger ms-1">逾期 {{ $maintenanceOrder->scheduled_date->diffInDays(now()->startOfDay(), true) }} 天</span>
+                    @endif
+                </dd>
+
+                <dt class="col-sm-3">負責人</dt>
+                <dd class="col-sm-9">
+                    {{-- 保養管理者可以指派負責人（只能指派給有保養回報權限的人）；指派之後只有負責人與保養管理者能回報，通知鈴鐺也只提醒負責人。留空＝沒指派。 --}}
+                    @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && auth()->user()->can('maintenance.manage'))
+                        <form method="POST" action="{{ route('maintenance-orders.assign', $maintenanceOrder) }}" class="d-flex flex-wrap gap-2 align-items-center">
+                            @csrf
+                            @method('PATCH')
+                            <select name="assigned_to" class="form-select form-select-sm w-auto" aria-label="負責人">
+                                <option value="">（還沒指派）</option>
+                                @foreach ($assignees as $assignee)
+                                    <option value="{{ $assignee->id }}" @selected($maintenanceOrder->assigned_to === $assignee->id)>{{ $assignee->name }}</option>
+                                @endforeach
+                            </select>
+                            <button class="btn btn-outline-primary btn-sm" type="submit"><i class="bi bi-person-check me-1"></i>指派</button>
+                        </form>
+                    @else
+                        {{ $maintenanceOrder->assignee?->name ?? '—' }}
+                    @endif
+                </dd>
 
                 <dt class="col-sm-3">建立時間</dt>
                 <dd class="col-sm-9">{{ $maintenanceOrder->created_at?->format('Y-m-d H:i') }}</dd>

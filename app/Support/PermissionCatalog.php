@@ -25,11 +25,13 @@ class PermissionCatalog
             'users.manage',               // 用戶主檔
             'roles.manage',               // 身分主檔
             'departments.manage',         // 部門主檔
+            'majors.manage',              // 科系主檔（空間申請的科系／年級／班級下拉選單）
             'classrooms.manage',          // 教室主檔
             'device-categories.manage',   // 設備類別主檔
             'devices.manage',             // 設備主檔
             'audit-logs.view',            // 查看操作紀錄
             'backups.manage',             // 資料備份與還原（預設只有系統管理員）
+            'mail-settings.manage',       // 寄信設定：填寄信用的信箱帳號、寄測試信（預設只有系統管理員）
         ],
         // 報修流程類
         'repair' => [
@@ -65,7 +67,7 @@ class PermissionCatalog
     private const DEFAULTS = [
         'admin' => [],   // 系統管理員：永遠全開，不需要列
         'it_manager' => [   // 設備管理員（資訊組主管）
-            'classrooms.manage', 'reservations.manage', 'parts.manage', 'device-categories.manage', 'devices.manage', 'audit-logs.view',
+            'classrooms.manage', 'majors.manage', 'reservations.manage', 'parts.manage', 'device-categories.manage', 'devices.manage', 'audit-logs.view',
             'repairs.create', 'repairs.dispatch', 'repairs.notice_cc', 'knowledge-base.manage',
             // 保養模組：設備管理員四項全有（工程預設，待全組確認）
             'maintenance.view', 'maintenance.manage', 'maintenance.report', 'ai-maintenance.manage',

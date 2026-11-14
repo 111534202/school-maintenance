@@ -34,6 +34,8 @@ class GenerateSchemaDocs extends Command
         'roles' => ['角色主檔（身分）', '第 7 章 roles', '符合 3NF。勾選的權限原本是 JSON 陣列（違反 1NF），已拆成 role_permissions。'],
         'role_permissions' => ['身分權限', '規格書未列（roles 權限描述的正規化結果）', '關聯表：一列一個權限；(role_id, permission) 唯一，身分刪除時一起刪除。'],
         'departments' => ['單位主檔', '第 7 章 departments', '符合 3NF。'],
+        'mail_settings' => ['寄信設定', '規格書未列（管理員在網頁設定寄信用的信箱帳號）', '符合 3NF。整張表只會有一筆資料；登入密碼加密後存放，畫面與操作紀錄都不顯示。'],
+        'majors' => ['科系主檔', '規格書未列（空間申請的科系／年級／班級下拉選單）', '符合 3NF。每個科系各自設定年級數與每年級班數（五專、大學部共用）；班級名稱（簡稱＋年級＋班名，例如資一忠）由這三個值推得，不另存。'],
         'users' => ['使用者主檔', '第 7 章 users', '符合 3NF。一人一個身分（role_id），所屬單位以 department_id 關聯。'],
         'classrooms' => ['教室主檔', '第 7 章 classrooms', '大致符合 3NF，有兩個有意保留的例外：campus／building／floor 依規格書 4.1 直接存在教室上（同一大樓的多間教室會重複同一段文字）；reservation_status 是由「核心設備狀態」推得的快取旗標，由 DeviceStatusService 維護，避免每次列表都重算（是否保留屬待確認事項）。'],
         'device_categories' => ['設備類別', '第 7 章 device_categories', '符合 3NF。'],
@@ -70,6 +72,8 @@ class GenerateSchemaDocs extends Command
         'roles' => ['主檔', '', 'roles'],
         'role_permissions' => ['關聯明細', 'role', 'permissions'],
         'departments' => ['主檔', '', 'departments'],
+        'mail_settings' => ['主檔', '', 'mail_settings'],
+        'majors' => ['主檔', '', 'majors'],
         'users' => ['主檔', '', 'users'],
         'classrooms' => ['主檔', '', 'classrooms'],
         'device_categories' => ['主檔', 'device', 'categories'],
@@ -98,7 +102,7 @@ class GenerateSchemaDocs extends Command
 
     /** 領域詞清單：資料表名稱的前半段只能用這些（每個詞的意思見文件 1.5 節）；新增領域詞要先加在這裡。 */
     public const DOMAIN_WORDS = [
-        'ai' => 'AI 預測性維護', 'audit' => '稽核與操作日誌', 'classroom' => '教室與空間預約', 'device' => '設備',
+        'ai' => 'AI 預測性維護', 'audit' => '稽核與操作日誌', 'classroom' => '教室與空間預約', 'device' => '設備', 'mail' => '寄信設定',
         'maintenance' => '定期保養', 'part' => '零件庫存', 'preventive' => '預防保養（AI 候選）', 'repair' => '報修與維修', 'role' => '身分與權限',
     ];
 
@@ -110,10 +114,10 @@ class GenerateSchemaDocs extends Command
     private array $columnText = [
         'id' => '系統自動編號（主鍵）', 'created_at' => '建立時間', 'updated_at' => '最後修改時間', 'deleted_at' => '軟刪除時間（有值代表已停用／刪除，資料保留供履歷追溯）',
         'name' => '名稱', 'description' => '說明', 'is_active' => '是否啟用', 'status' => '狀態', 'title' => '標題', 'email' => '電子信箱', 'phone' => '電話',
-        'role_id' => '所屬身分', 'department_id' => '所屬單位', 'account' => '登入帳號（唯一）', 'password' => '密碼（雜湊後儲存，不存明碼）', 'last_login_at' => '最後登入時間',
+        'role_id' => '所屬身分', 'department_id' => '所屬單位', 'account' => '登入帳號（唯一）', 'password' => '密碼（雜湊後儲存，不存明碼）', 'last_login_at' => '最後登入時間', 'temporary_password' => '忘記密碼寄出的臨時密碼（只存雜湊，用過即作廢）', 'temporary_password_expires_at' => '臨時密碼的有效期限（寄出後 30 分鐘）', 'is_password_change_required' => '是否一定要先設定新密碼（用臨時密碼登入後為是，設定完成才取消）',
         'remember_token' => '「記住我」登入憑證', 'email_verified_at' => 'Email 驗證時間',
         'role_code' => '身分代碼（程式判斷用，唯一）', 'is_system' => '是否系統內建身分（內建的不能刪除）', 'permission' => '權限代碼（格式「功能.動作」，清單見 PermissionCatalog）',
-        'department_code' => '部門代碼（唯一）', 'campus' => '校區', 'building' => '大樓', 'floor' => '樓層', 'classroom_code' => '教室代碼（唯一）',
+        'department_code' => '部門代碼（唯一）', 'major_code' => '科系代碼（選填、唯一）', 'host' => '寄信伺服器位址', 'smtp_account' => '寄信帳號（通常是信箱）', 'encryption' => '加密方式（tls／ssl／none）', 'from_address' => '寄件人信箱', 'from_label' => '寄件人顯示名稱', 'abbreviation' => '班級名稱用的簡稱（例如資→資一忠）', 'grade_count' => '年級數（各科系不同，1～9）', 'class_count' => '每個年級的班數（1～4，依序忠孝仁愛）', 'major_id' => '申請班級的科系（majors.id，舊資料為空）', 'class_grade' => '申請班級的年級', 'class_section' => '申請班級的班別（1忠 2孝 3仁 4愛）', 'campus' => '校區', 'building' => '大樓', 'floor' => '樓層', 'classroom_code' => '教室代碼（唯一）',
         'manager_id' => '教室管理人（users.id）', 'reservation_status' => '設備異常旗標（normal 正常／abnormal 有核心設備異常，異常時不開放預約）',
         'device_code' => '設備管制編號（唯一，QR Code 內容）', 'asset_code' => '資產編號', 'device_category_id' => '設備類別（device_categories.id）', 'brand' => '品牌／製造商', 'model' => '型號規格',
         'serial_number' => '序號', 'warranty_end_date' => '保固到期日', 'classroom_id' => '所在教室（classrooms.id）', 'is_core' => '是否核心設備（異常時整間教室標示異常）',
@@ -137,7 +141,7 @@ class GenerateSchemaDocs extends Command
     /** @var array<string, string> 個別資料表裡意思不同的欄位 */
     private array $columnTextSpecific = [
         'part_scraps.quantity' => '報廢數量', 'part_scrap_batches.quantity' => '從這一批扣的數量', 'part_scrap_batches.unit_price' => '這一批的單價（報廢損失用）',
-        'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
+        'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'maintenance_orders.assigned_to' => '負責人（users.id，保養管理者指派，沒指派是空白）', 'majors.name' => '科系名稱（唯一）', 'mail_settings.password' => '寄信密碼（加密後存放，畫面不顯示）', 'mail_settings.port' => '寄信連接埠（587 或 465）', 'mail_settings.is_enabled' => '是否啟用（啟用後全站寄信改用這組設定）', 'mail_settings.updated_by' => '最後修改者（users.id）', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
         'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
     ];
 

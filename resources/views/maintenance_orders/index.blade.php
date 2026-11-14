@@ -9,10 +9,16 @@
         <div>
             <h1 class="tb-title">保養工單</h1>
         </div>
+        {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部保養工單（不分頁，含保養結果）。 --}}
+        <a class="tb-btn tb-btn-outline" href="{{ route('maintenance-orders.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
     </div>
 
     <div class="tb-card tb-card-pad">
     <form method="GET" class="filter-bar tb-form-row tb-filter" data-no-onion>
+        <div>
+            <label for="keyword" class="form-label small mb-1">關鍵字</label>
+            <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 14rem;" value="{{ request('keyword') }}" placeholder="設備、計畫、類別、負責人、編號">
+        </div>
         <div>
             <label for="status" class="form-label small mb-1">狀態</label>
             <select name="status" id="status" class="form-select form-select-sm">
@@ -20,6 +26,24 @@
                 <option value="pending" @selected(request('status') === 'pending')>待處理</option>
                 <option value="in_progress" @selected(request('status') === 'in_progress')>進行中</option>
                 <option value="completed" @selected(request('status') === 'completed')>已完成</option>
+            </select>
+        </div>
+        <div>
+            <label for="due" class="form-label small mb-1">期限</label>
+            <select name="due" id="due" class="form-select form-select-sm">
+                <option value="">全部</option>
+                <option value="overdue" @selected(request('due') === 'overdue')>已逾期</option>
+                <option value="week" @selected(request('due') === 'week')>7 天內到期（含逾期）</option>
+            </select>
+        </div>
+        <div>
+            <label for="assignee" class="form-label small mb-1">負責人</label>
+            <select name="assignee" id="assignee" class="form-select form-select-sm">
+                <option value="">全部</option>
+                <option value="none" @selected(request('assignee') === 'none')>還沒指派</option>
+                @foreach ($assignees as $assignee)
+                    <option value="{{ $assignee->id }}" @selected((string) request('assignee') === (string) $assignee->id)>{{ $assignee->name }}</option>
+                @endforeach
             </select>
         </div>
         <div>
@@ -38,7 +62,7 @@
             <label for="to" class="form-label small mb-1">排定日期（迄）</label>
             <input type="date" name="to" id="to" class="form-control form-control-sm" value="{{ request('to') }}">
         </div>
-        @include('layouts.partials.filter-actions', ['reset' => route('maintenance-orders.index'), 'fields' => ['status', 'source', 'from', 'to']])
+        @include('layouts.partials.filter-actions', ['reset' => route('maintenance-orders.index'), 'fields' => ['keyword', 'status', 'due', 'assignee', 'mine', 'source', 'from', 'to']])
     </form>
     </div>
 
@@ -55,6 +79,7 @@
                     <th>設備類別</th>
                     <th>來源</th>
                     <th>狀態</th>
+                    <th>負責人</th>
                     <th>排定保養日期</th>
                     <th>建立時間</th>
                     <th class="text-end tb-col-fit">操作</th>
@@ -76,7 +101,12 @@
                         <td>{{ $order->categoryName() ?? '—' }}</td>
                         <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
-                        <td>{{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}</td>
+                        <td>{{ $order->assignee?->name ?? '—' }}</td>
+                        <td>
+                            {{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}
+                            {{-- 還沒做完、排定日已經過了：標紅色「逾期」。 --}}
+                            @if ($order->isOverdue())<span class="badge text-bg-danger ms-1">逾期 {{ $order->scheduled_date->diffInDays(now()->startOfDay(), true) }} 天</span>@endif
+                        </td>
                         <td>{{ $order->created_at?->format('Y-m-d H:i') }}</td>
                         <td class="text-end tb-col-fit">
                             {{-- 工單詳細：點這一列在對話框打開（不另外放「詳細」按鈕）。
@@ -84,9 +114,9 @@
                             @if ($order->result)
                                 <span class="btn btn-sm btn-success mo-action disabled" aria-disabled="true">已回報</span>
                             @else
-                                @can('maintenance.report')
+                                @if (auth()->user()->can('maintenance.report') && $order->canBeReportedBy(auth()->user()))
                                     <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success mo-action" data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報結果</a>
-                                @endcan
+                                @endif
                             @endif
                         </td>
                     </tr>

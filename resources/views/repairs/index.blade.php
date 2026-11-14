@@ -12,18 +12,27 @@
         <div>
             <h1 class="tb-title">{{ __('repair_requests.board_title') }}</h1>
         </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+            {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部報修單（不分頁；只含你看得到的案件）。 --}}
+            <a class="tb-btn tb-btn-outline" href="{{ route('repairs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
         {{-- 有「提出報修」權限才顯示「新增報修」按鈕。 --}}
         @can('repairs.create')
             <a class="tb-btn tb-btn-primary" href="{{ route('repairs.create') }}" data-modal-frame data-modal-title="{{ __('repair_requests.add_request') }}" data-modal-size="xl">
                 <i class="bi bi-plus-lg"></i>{{ __('repair_requests.add_request') }}
             </a>
         @endcan
+        </div>
     </div>
 
     {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
     <div class="tb-card tb-card-pad">
         <div>
             <form method="GET" action="{{ route('repairs.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
+                <div>
+                    <label for="keyword" class="form-label small mb-1">關鍵字</label>
+                    <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 15rem;"
+                        value="{{ request('keyword') }}" placeholder="標題、設備編號、教室、報修人、編號">
+                </div>
                 <div>
                     <label for="status" class="form-label small mb-1">{{ __('repair_requests.filter.status') }}</label>
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
@@ -59,7 +68,7 @@
                 @if (request('overdue'))
                     <input type="hidden" name="overdue" value="1">
                 @endif
-                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['status', 'assignee', 'classroom_id', 'device_id', 'overdue']])
+                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue']])
             </form>
         </div>
     </div>
