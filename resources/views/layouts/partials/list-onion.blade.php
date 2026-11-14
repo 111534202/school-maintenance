@@ -135,7 +135,7 @@
             overlay.hidden = false;
             panel.removeAttribute('inert');
             panel.classList.add('is-open');
-            document.documentElement.style.overflow = 'hidden';
+            window.tbLockScroll(true);
             panel.querySelector('.onion-panel-body').scrollTop = 0;
             panel.querySelector('.onion-back').focus({ preventScroll: true });
         }
@@ -145,7 +145,7 @@
             panel.classList.remove('is-open');
             panel.setAttribute('inert', '');
             overlay.hidden = true;
-            document.documentElement.style.overflow = '';
+            window.tbLockScroll(false);
             if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
         }
 

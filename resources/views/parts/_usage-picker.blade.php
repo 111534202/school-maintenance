@@ -30,7 +30,7 @@
 <div id="partUsagePicker">
     <div id="partUsageRows"></div>
 
-    <div id="partUsageEmpty" class="text-muted small mb-2">尚未新增使用紀錄；沒有使用零件時不用新增。</div>
+    <div id="partUsageEmpty" class="text-muted small mb-2">尚未新增使用紀錄</div>
 
     <button type="button" id="partUsageAdd" class="btn btn-sm btn-outline-primary">
         <i class="bi bi-plus-lg me-1"></i>新增使用紀錄

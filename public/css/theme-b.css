@@ -41,10 +41,8 @@
 }
 
 /* ================= 1. 全站 ================= */
-/* 捲軸位置固定保留：洋蔥的詳細面板、篩選面板打開時會暫時關掉整頁捲軸，保留位置後版面寬度才不會跟著變。
-   Bootstrap 對話框打開時原本會在 body 右邊補上捲軸寬度，位置已經保留了就不用再補。 */
-html { scrollbar-gutter: stable; }
-body.tb-body.modal-open { padding-right: 0 !important; }
+/* 捲軸：不先保留位置。頁面夠長、有捲軸時，捲軸自然佔一條、內容往內縮；沒有捲軸時內容（含頂端墨綠列）就延伸到最右邊。
+   暫時關掉整頁捲軸時（Bootstrap 對話框、洋蔥的詳細面板與篩選面板），會在 body 右邊補上捲軸的寬度，版面寬度不會跳動。 */
 body.tb-body {
     font-family: var(--tb-font-body);
     background-color: var(--tb-bg);
@@ -707,10 +705,6 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     width: 40px; height: 40px; padding: 0; margin: 0 0 0 auto; flex: 0 0 40px; background-size: 1.625rem; box-sizing: border-box; }
 .tb-body #frameModal .modal-header .frame-modal-actions:not([hidden]) + .btn-close { margin-left: .25rem; }
 
-/* 寬螢幕的捲軸位置（html 的 scrollbar-gutter: stable）：打開對話框時捲軸雖然藏起來，右邊仍保留捲軸的寬度，
-   對話框看起來偏左（右邊空比較多）。左邊補同樣的寬度（--tb-sbw，由 layouts/app.blade.php 量出來），左右就一樣寬。
-   手機、Mac 這類捲軸浮在畫面上的，寬度是 0，不受影響。 */
-.tb-body #frameModal, .tb-body #frameModalTop { padding-left: var(--tb-sbw, 0px) !important; }
 
 /* 外框按鈕（鉛筆、停用、刪除…）滑鼠移上去變成實心底色時，圖示一律變白色（原本黃色的停用會變黑色）。 */
 .tb-body .btn-outline-warning, .tb-body .btn-outline-danger, .tb-body .btn-outline-success, .tb-body .btn-outline-secondary {
@@ -782,3 +776,15 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 /* 零件履歷的基本資料：名稱與內容的距離跟設備履歷一樣（名稱欄佔整列的 1/4，跟 dl.row 的 col-sm-3 相同）。 */
 @media (min-width: 576px) { .tb-body .tb-dl.tb-dl-roomy { grid-template-columns: calc(25% - .375rem) minmax(0, 1fr); column-gap: .75rem; } }
 @media (max-width: 575.98px) { .tb-body .tb-dl.tb-dl-roomy { grid-template-columns: 6.5em minmax(0, 1fr); column-gap: 0; } }
+
+/* 圓形圖示按鈕（鉛筆、停用、刪除、還原…）：外框大小不變，裡面的圖示放大，貼近外框一些（約外框的 56%）。
+   一般 32px 的圓 → 圖示 18px；觸控裝置 40px 的圓、對話框標題列 40px 的圓 → 圖示 22px。頂端列的圖示按鈕另外設定，不受影響。 */
+.tb-body .icon-btn .bi { font-size: 1.125rem; line-height: 1; }
+@media (pointer: coarse) { .tb-body .icon-btn .bi { font-size: 1.375rem; } }
+.tb-body #frameModal .frame-modal-actions .icon-btn .bi { font-size: 1.375rem; }
+.tb-navbar .icon-btn .bi { font-size: 1.4rem; }
+
+/* 對話框標題列 ✕ 左邊的文字按鈕（例如保養紀錄的「回報保養結果」）：跟旁邊的圓形按鈕一樣高（40px）的膠囊。
+   外框透明底，滑鼠移上去變成實心底色、白字（btn-outline-success 的效果）。 */
+.tb-body .frame-modal-actions .btn:not(.icon-btn) { height: 40px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; white-space: nowrap; font-size: .9375rem; }
+.tb-body .frame-modal-actions form { margin: 0; }

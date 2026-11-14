@@ -495,22 +495,20 @@
             (function () { const d = document.getElementById('stockTimelineDialog'); if (d && d.showModal) d.showModal(); })();
         </script>
     @endif
-    {{-- 量出右邊保留給捲軸的寬度（寬螢幕的 Windows 捲軸約 15px；手機、Mac 是 0），給對話框左右置中用（theme-b.css 的 --tb-sbw）。 --}}
+    {{-- 暫時關掉整頁捲軸（洋蔥的詳細面板、篩選面板）：tbLockScroll(true) 關、tbLockScroll(false) 開回來。
+         關掉時在 body 右邊補上原本捲軸的寬度，版面寬度不會跳一下（Bootstrap 對話框自己會做同樣的事）。手機、Mac 的捲軸寬度是 0，不受影響。 --}}
     <script>
-    (function () {
-        // 用一個看不見、左右貼齊畫面的固定定位小方塊來量：它的寬度＝畫面扣掉右邊保留的捲軸寬度。
-        function measure() {
-            var probe = document.createElement('div');
-            probe.style.cssText = 'position:fixed;left:0;right:0;top:0;height:0;visibility:hidden;pointer-events:none;';
-            document.body.appendChild(probe);
-            var w = window.innerWidth - probe.getBoundingClientRect().width;
-            probe.remove();
-            document.documentElement.style.setProperty('--tb-sbw', Math.max(0, Math.round(w)) + 'px');
+    window.tbLockScroll = function (lock) {
+        var html = document.documentElement;
+        if (lock) {
+            var w = window.innerWidth - html.clientWidth;
+            html.style.overflow = 'hidden';
+            document.body.style.paddingRight = w > 0 ? w + 'px' : '';
+        } else {
+            html.style.overflow = '';
+            document.body.style.paddingRight = '';
         }
-        if (document.body) measure(); else document.addEventListener('DOMContentLoaded', measure);
-        window.addEventListener('resize', measure);
-        document.addEventListener('show.bs.modal', measure, true);
-    })();
+    };
     </script>
     {{-- 可以輸入也可以下拉選的欄位（跟空間預約的「選擇教室」一樣）：<input data-suggest='["選項1","選項2"]'>。
          點進欄位就列出全部選項，打字會篩出包含這些字的選項；點一個選項（或用上下鍵＋Enter）就填進去。
@@ -761,8 +759,9 @@
                     Array.prototype.forEach.call(cell.querySelectorAll('a[href], form, .btn.disabled'), function (el) {
                         if (el.parentElement.closest('form') || (el.matches('.btn.disabled') && el.closest('a, form'))) return;
                         if (el.matches('a') && (el.hidden || new URL(el.href, window.location.href).pathname === url.pathname)) return;
-                        // 不能按的（例如系統內建身分的「刪除」、已回報的工單）：標題旁不放，免得按了沒反應。
-                        if (el.matches('.btn.disabled') || (el.matches('form') && !el.querySelector('[type="submit"]:not(:disabled)'))) return;
+                        // 不能按的「已回報」這種文字標籤不放；表單的按鈕是停用狀態的（例如不能停用、刪除自己的帳號、系統內建身分不能刪除）
+                        // 照樣放上去、顯示成灰色不能按，跟表格檢視的操作欄一樣，看得出有這個功能、只是現在不能用。
+                        if (el.matches('.btn.disabled')) return;
                         var copy = el.cloneNode(true);
                         copy.removeAttribute('id');
                         copy.querySelectorAll('[id]').forEach(function (x) { x.removeAttribute('id'); });
@@ -773,14 +772,30 @@
             }
             function showActions() { actionsBox.hidden = stack.length > 0 || !actionsBox.children.length; }
             // 對話框裡的頁面本身已經有同一個按鈕（例如保養工單詳細的「回報保養結果」）：標題旁就不重複放。
+            // 對話框裡的頁面標了 data-modal-header 的按鈕（例如保養紀錄的「回報保養結果」）：搬到標題列 ✕ 左邊（頁面裡那一個在對話框裡本來就藏起來）。
+            var hoistedPaths = [];
             frame.addEventListener('load', function () {
                 setTimeout(function () { contentReady(modalEl, '_tbLoaded'); }, 0);   // 下面先整理標題旁的按鈕，再顯示
-                if (stack.length || !actionsBox.children.length) return;
+                if (stack.length) return;
                 var doc;
                 try { doc = frame.contentDocument; } catch (e) { return; }
                 if (!doc) return;
+                // 上一次搬上來的、以及從列表那一列複製來的同一個按鈕先拿掉（例如回報完之後，頁面已經沒有這個按鈕了）。
+                actionsBox.querySelectorAll('[data-hoisted]').forEach(function (x) { x.remove(); });
+                actionsBox.querySelectorAll('a[href]').forEach(function (x) { if (hoistedPaths.indexOf(x.pathname) !== -1) x.remove(); });
+                hoistedPaths = [];
+                var hoist = Array.prototype.slice.call(doc.querySelectorAll('.app-content [data-modal-header]'));
                 var paths = Array.prototype.map.call(doc.querySelectorAll('.app-content a[href]'), function (x) { return x.pathname; });
                 actionsBox.querySelectorAll('a[href]').forEach(function (x) { if (paths.indexOf(x.pathname) !== -1) x.remove(); });
+                hoist.forEach(function (el) {
+                    var copy = document.importNode(el, true);
+                    copy.removeAttribute('data-modal-header');
+                    copy.removeAttribute('id');
+                    copy.classList.remove('btn-sm');
+                    copy.setAttribute('data-hoisted', '');
+                    if (copy.pathname) hoistedPaths.push(copy.pathname);
+                    actionsBox.appendChild(copy);
+                });
                 showActions();
             });
             // 在對話框裡疊一層打開（對話框裡的 data-modal-frame 連結、標題旁的「修改」都用這個）。

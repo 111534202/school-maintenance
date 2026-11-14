@@ -99,12 +99,8 @@
 
             {{-- 正式零件使用明細：預設沒有任何一列，按「新增使用紀錄」才加一列（選擇器見 parts/_usage-picker）。 --}}
             <div class="card shadow-sm mb-3">
-                <div class="card-header bg-white form-section-title"><i class="bi bi-box-seam me-2"></i>使用零件明細</div>
+                <div class="card-header bg-white form-section-title"><i class="bi bi-box-seam me-2"></i>零件使用明細</div>
                 <div class="card-body">
-
-                    <p class="text-muted small">
-                        如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。
-                    </p>
 
                     @include('parts._usage-picker', ['parts' => $parts])
                 </div>

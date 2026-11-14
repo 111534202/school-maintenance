@@ -5,12 +5,14 @@
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 data-modal-hide class="tb-title mb-0">保養紀錄</h1>
+    {{-- 在對話框裡打開時整列不顯示：標題跟對話框重複；「回報保養結果」有 data-modal-header，會被搬到對話框標題列（✕ 左邊）。 --}}
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3" data-modal-hide>
+        <h1 class="tb-title mb-0">保養紀錄</h1>
         <div>
             @if (! $maintenanceOrder->result)
                 @can('maintenance.report')
-                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
+                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-outline-success btn-sm" data-modal-header
+                        data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報保養結果</a>
                 @endcan
             @endif
         </div>
@@ -25,8 +27,7 @@
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">
                     @if ($maintenanceOrder->maintenancePlan)
-                        {{ $maintenanceOrder->maintenancePlan->name }}
-                        <span class="text-muted">（週期 {{ $maintenanceOrder->maintenancePlan->cycle_days }} 天）</span>
+                        @include('maintenance_orders._plan_name', ['plan' => $maintenanceOrder->maintenancePlan, 'withCycle' => true])
                     @elseif ($maintenanceOrder->source === 'ai')
                         AI 預防保養（無來源計畫，由 AI 風險候選核准建立）
                     @else
@@ -35,12 +36,7 @@
                 </dd>
 
                 <dt class="col-sm-3">設備 / 類別</dt>
-                <dd class="col-sm-9">
-                    {{ $maintenanceOrder->categoryName() ?? '—' }}
-                    @if ($maintenanceOrder->device)
-                        <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $maintenanceOrder->device) }}">{{ $maintenanceOrder->device->device_code }}</a>）</span>
-                    @endif
-                </dd>
+                <dd class="col-sm-9">@include('maintenance_orders._device_category', ['order' => $maintenanceOrder])</dd>
 
                 <dt class="col-sm-3">來源</dt>
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }}">{{ $maintenanceOrder->sourceLabel() }}</span></dd>
@@ -62,7 +58,7 @@
         <div class="card mt-3">
             <div class="card-header bg-white form-section-title d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-clipboard-check me-2"></i>保養結果</span>
-                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整詳細</a>
+                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm tb-chip-btn" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整紀錄</a>
             </div>
             <div class="card-body">
                 <dl class="row mb-0">

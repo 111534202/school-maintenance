@@ -8,8 +8,9 @@
     <div class="card mb-3">
         <div class="card-body">
             <p class="mb-1"><strong>工單編號：</strong>#{{ $order->id }}</p>
-            <p class="mb-1"><strong>來源計畫：</strong>{{ $order->maintenancePlan?->name ?? '—' }}</p>
-            <p class="mb-0"><strong>設備類別：</strong>{{ $order->categoryName() ?? '—' }}</p>
+            <p class="mb-1"><strong>來源計畫：</strong>@if ($order->maintenancePlan)@include('maintenance_orders._plan_name', ['plan' => $order->maintenancePlan])@else — @endif</p>
+            {{-- 跟保養紀錄一樣：「設備編號（類別）」，設備編號可點到設備履歷；沒有設備時只顯示類別。 --}}
+            <p class="mb-0"><strong>設備 / 類別：</strong>@include('maintenance_orders._device_category', ['order' => $order])</p>
         </div>
     </div>
 
@@ -36,14 +37,15 @@
             @error('result')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
-            <div class="form-text">選擇 NG 送出後，系統會自動建立一張報修單，並記錄在這張工單上。</div>
+            <div class="form-text">選擇 NG 送出後，會自動建立報修單，並記錄在工單上。</div>
         </div>
 
         <div class="mb-3">
             <label class="form-label">執行人</label>
             {{-- 執行人固定是登入帳號（寫入時由系統帶入 users.id），所以只顯示、不讓人改。 --}}
-            <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly>
-            <div class="form-text">由登入帳號自動帶入，不能手動修改。</div>
+            {{-- 跟零件資料的「目前庫存」一樣：灰色不能改的輸入框，下面是同樣顏色、帶鎖頭的說明。 --}}
+            <input type="text" class="form-control" value="{{ auth()->user()->name }}" disabled>
+            <div class="form-text text-warning-emphasis"><i class="bi bi-lock"></i> 由登入帳號自動帶入，不能手動修改</div>
         </div>
 
         <div class="mb-3">
@@ -67,8 +69,7 @@
 
         {{-- 保養用料（可不填）：和維修紀錄共用同一個零件選擇器；送出時依先進先出扣庫存，庫存不足會擋下。 --}}
         <div class="mb-4">
-            <label class="form-label">使用零件明細</label>
-            <div class="form-text mb-2">如有使用備品，請選擇零件並輸入數量。送出後系統會建立使用明細並扣除庫存。</div>
+            <label class="form-label">零件使用明細</label>
             @include('parts._usage-picker', ['parts' => $parts])
         </div>
         </div>

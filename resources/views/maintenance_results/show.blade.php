@@ -17,15 +17,10 @@
                 <dd class="col-sm-9">#{{ $order->id }}</dd>
 
                 <dt class="col-sm-3">來源保養計畫</dt>
-                <dd class="col-sm-9">{{ $order->maintenancePlan?->name ?? '—' }}</dd>
+                <dd class="col-sm-9">@if ($order->maintenancePlan)@include('maintenance_orders._plan_name', ['plan' => $order->maintenancePlan])@else — @endif</dd>
 
                 <dt class="col-sm-3">設備 / 類別</dt>
-                <dd class="col-sm-9">
-                    {{ $order->categoryName() ?? '—' }}
-                    @if ($order->device)
-                        <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $order->device) }}">{{ $order->device->device_code }}</a>）</span>
-                    @endif
-                </dd>
+                <dd class="col-sm-9">@include('maintenance_orders._device_category', ['order' => $order])</dd>
 
                 <dt class="col-sm-3">排定保養日期</dt>
                 <dd class="col-sm-9">{{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}</dd>
