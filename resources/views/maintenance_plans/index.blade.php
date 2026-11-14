@@ -50,20 +50,25 @@
                         </td>
                         <td class="text-end tb-col-fit">
                             @can('maintenance.manage')
-                                <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改保養計畫" data-modal-size="lg">修改</a>
+                                {{-- 操作改成圓形圖示按鈕（跟用戶、部門等主檔一樣）：鉛筆＝修改、開關＝停用／重新啟用。 --}}
+                                <div class="d-inline-flex gap-1">
+                                <a href="{{ route('maintenance-plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary icon-btn" data-modal-frame data-modal-title="修改保養計畫" data-modal-size="lg"
+                                    title="修改" aria-label="修改"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('maintenance-plans.toggle-status', $plan) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                        {{ $plan->is_active ? '停用' : '重新啟用' }}
+                                    <button type="submit" class="btn btn-sm btn-outline-warning icon-btn"
+                                        title="{{ $plan->is_active ? '停用' : '重新啟用' }}" aria-label="{{ $plan->is_active ? '停用' : '重新啟用' }}">
+                                        <i class="bi {{ $plan->is_active ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
                                     </button>
                                 </form>
                                 @if ($plan->is_active)
                                     <form action="{{ route('maintenance-plans.create-order', $plan) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-success">建立工單</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-success icon-btn" title="建立工單" aria-label="建立工單"><i class="bi bi-clipboard-plus"></i></button>
                                     </form>
                                 @endif
+                                </div>
                             @else
                                 <span class="text-muted">—</span>
                             @endcan

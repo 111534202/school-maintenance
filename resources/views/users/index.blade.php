@@ -132,7 +132,7 @@
                                                 @csrf
                                                 {{-- 瀏覽器的表單只能 GET/POST，@method 用隱藏欄位偽裝成 PATCH / PUT / DELETE。 --}}
                                                 @method('PATCH')
-                                                <button class="btn btn-outline-success btn-sm icon-btn" type="submit"
+                                                <button class="btn btn-success btn-sm icon-btn" type="submit"
                                                     title="{{ __('users.actions.restore') }}" aria-label="{{ __('users.actions.restore') }}"><i class="bi bi-arrow-counterclockwise"></i></button>
                                             </form>
                                             {{-- 永久刪除：真的從資料庫移除、無法還原，所以用實心紅色按鈕跟其他操作區隔開，並且用全站共用的二次確認視窗（data-confirm）。 --}}

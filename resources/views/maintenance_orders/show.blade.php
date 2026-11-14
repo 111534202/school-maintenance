@@ -1,16 +1,19 @@
 @extends('layouts.app')
 
-@section('title', '保養工單詳細')
+@section('title', '保養紀錄')
 
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
+    {{-- 在對話框裡打開時只有標題隱藏（跟對話框標題重複）；「回報保養結果」有 data-modal-header，會被搬到對話框標題列（✕ 左邊）；
+         修改日期、取消工單留在頁面上。 --}}
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h1 class="h3 mb-0">保養工單詳細</h1>
+        <h1 class="tb-title mb-0" data-modal-hide>保養紀錄</h1>
         <div class="d-inline-flex flex-wrap gap-2">
             @if (! $maintenanceOrder->result)
                 @can('maintenance.report')
-                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success btn-sm">回報保養結果</a>
+                    <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-outline-success btn-sm" data-modal-header
+                        data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報保養結果</a>
                 @endcan
             @endif
             {{-- 修改（排定日期）與取消（刪除）：需要 maintenance.manage；已完成或已回報結果的工單不能改、不能取消。
@@ -40,8 +43,7 @@
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">
                     @if ($maintenanceOrder->maintenancePlan)
-                        {{ $maintenanceOrder->maintenancePlan->name }}
-                        <span class="text-muted">（週期 {{ $maintenanceOrder->maintenancePlan->cycle_days }} 天）</span>
+                        @include('maintenance_orders._plan_name', ['plan' => $maintenanceOrder->maintenancePlan, 'withCycle' => true])
                     @elseif ($maintenanceOrder->source === 'ai')
                         AI 預防保養（無來源計畫，由 AI 風險候選核准建立）
                     @else
@@ -50,12 +52,7 @@
                 </dd>
 
                 <dt class="col-sm-3">設備 / 類別</dt>
-                <dd class="col-sm-9">
-                    {{ $maintenanceOrder->categoryName() ?? '—' }}
-                    @if ($maintenanceOrder->device)
-                        <span class="text-muted">（設備：<a href="{{ route('device-profile.show', $maintenanceOrder->device) }}">{{ $maintenanceOrder->device->device_code }}</a>）</span>
-                    @endif
-                </dd>
+                <dd class="col-sm-9">@include('maintenance_orders._device_category', ['order' => $maintenanceOrder])</dd>
 
                 <dt class="col-sm-3">來源</dt>
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }}">{{ $maintenanceOrder->sourceLabel() }}</span></dd>
@@ -75,9 +72,9 @@
     @if ($maintenanceOrder->result)
         @php [$resultText, $resultColor] = $maintenanceOrder->result->resultLabel(); @endphp
         <div class="card mt-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>保養結果</span>
-                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整詳細</a>
+            <div class="card-header bg-white form-section-title d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clipboard-check me-2"></i>保養結果</span>
+                <a href="{{ route('maintenance-orders.results.show', $maintenanceOrder) }}" class="btn btn-sm tb-chip-btn" data-modal-frame data-modal-title="保養結果詳細" data-modal-size="xl">查看完整紀錄</a>
             </div>
             <div class="card-body">
                 <dl class="row mb-0">
@@ -117,7 +114,7 @@
 
     @if ($maintenanceOrder->maintenancePlan?->maintenanceItems->isNotEmpty())
         <div class="card mt-3">
-            <div class="card-header">來源計畫包含的保養項目</div>
+            <div class="card-header bg-white form-section-title"><i class="bi bi-list-check me-2"></i>來源計畫包含的保養項目</div>
             <ul class="list-group list-group-flush">
                 @foreach ($maintenanceOrder->maintenancePlan->maintenanceItems as $item)
                     <li class="list-group-item">

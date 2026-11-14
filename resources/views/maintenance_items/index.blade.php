@@ -46,14 +46,19 @@
                         </td>
                         <td class="text-end tb-col-fit">
                             @can('maintenance.manage')
-                                <a href="{{ route('maintenance-items.edit', $item) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改保養項目">修改</a>
+                                {{-- 操作改成圓形圖示按鈕（跟用戶、部門等主檔一樣）：鉛筆＝修改、開關＝停用／重新啟用。 --}}
+                                <div class="d-inline-flex gap-1">
+                                <a href="{{ route('maintenance-items.edit', $item) }}" class="btn btn-sm btn-outline-primary icon-btn" data-modal-frame data-modal-title="修改保養項目"
+                                    title="修改" aria-label="修改"><i class="bi bi-pencil"></i></a>
                                 <form action="{{ route('maintenance-items.toggle-status', $item) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('PATCH')
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                        {{ $item->is_active ? '停用' : '重新啟用' }}
+                                    <button type="submit" class="btn btn-sm btn-outline-warning icon-btn"
+                                        title="{{ $item->is_active ? '停用' : '重新啟用' }}" aria-label="{{ $item->is_active ? '停用' : '重新啟用' }}">
+                                        <i class="bi {{ $item->is_active ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
                                     </button>
                                 </form>
+                                </div>
                             @else
                                 <span class="text-muted">—</span>
                             @endcan

@@ -46,7 +46,7 @@
     {{-- 頁面標題列：案件標題 + 狀態徽章，右邊是回看板的箭頭按鈕。 --}}
     <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
         <div class="d-flex align-items-center gap-3 flex-wrap">
-            <h1 class="h4 mb-0">{{ $repairRequest->title }}</h1>
+            <h1 class="tb-title mb-0">{{ $repairRequest->title }}</h1>
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
@@ -121,14 +121,14 @@
             @endif
 
             <div class="card shadow-sm mb-3">
-                <div class="card-header bg-white"><i class="bi bi-chat-left-text me-2"></i>{{ __('repair_requests.show.description_heading') }}</div>
+                <div class="card-header bg-white form-section-title"><i class="bi bi-chat-left-text me-2"></i>{{ __('repair_requests.show.description_heading') }}</div>
                 <div class="card-body" style="white-space: pre-line;">{{ $repairRequest->description }}</div>
             </div>
 
             {{-- 有上傳附件（故障照片／影片）才顯示附件卡片，點檔名會在新分頁開啟。 --}}
             @if ($repairRequest->attachments->isNotEmpty())
                 <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-white"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.show.attachments_heading') }}</div>
+                    <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.show.attachments_heading') }}</div>
                     <ul class="list-group list-group-flush">
                         @foreach ($repairRequest->attachments as $attachment)
                             <li class="list-group-item"><a href="{{ $attachment->url() }}" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark me-2"></i>{{ $attachment->file_name }}</a></li>
@@ -142,7 +142,7 @@
         @if ($hasActions)
         <div class="col-12 col-lg-5">
                 <div class="card shadow-sm">
-                    <div class="card-header bg-white"><i class="bi bi-person-gear me-2"></i>派工與處理</div>
+                    <div class="card-header bg-white form-section-title"><i class="bi bi-person-gear me-2"></i>派工與處理</div>
                     <div class="card-body">
                         {{-- 狀態一：新報修 → 顯示派工表單（挑維修人員 + 預計處理時間）。 --}}
                         @if ($showDispatch)
@@ -247,7 +247,7 @@
             {{-- 逐筆列出維修紀錄（時間、工時、原因、處置、備品、照片）。 --}}
             @foreach ($repairRequest->repairLogs as $log)
                 <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-white d-flex flex-wrap justify-content-between gap-2">
+                    <div class="card-header bg-white form-section-title d-flex flex-wrap justify-content-between gap-2">
                         <div>
                             <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
                             <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
@@ -289,16 +289,14 @@
 
     {{-- 材料費明細：彙總這張報修單所有維修紀錄的零件使用情況。 --}}
     <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">材料費明細</h5>
-        </div>
+        <div class="card-header bg-white form-section-title"><i class="bi bi-cash-coin me-2"></i>材料費明細</div>
         <div class="card-body">
             @if ($partUsages->isEmpty())
                 <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle mb-3">
-                        <thead class="table-light">
+                    <table class="tb-table tb-table-sm align-middle mb-3">
+                        <thead>
                             <tr>
                                 <th>零件名稱</th>
                                 <th>維修紀錄</th>

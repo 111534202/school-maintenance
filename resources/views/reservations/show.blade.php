@@ -16,10 +16,10 @@
 {{-- 預約詳細：空間申請列表點一筆時，在畫面中的對話框（標題「預約詳細」）裡打開這一頁（?modal=1，不顯示頁首）；
      直接開網址時是一般頁面。內容依序：申請狀態、送出時間、教室、申請班級、申請人、申請時段、用途。 --}}
 @unless ($inModal)
-    <h1 class="h3 mb-3">預約詳細</h1>
+    <h1 data-modal-hide class="tb-title mb-3">預約詳細</h1>
 @endunless
 
-<div class="{{ $inModal ? '' : 'card p-4' }}" style="max-width: 720px;">
+<div class="{{ $inModal ? '' : 'card p-4' }}">
     <dl class="mb-0 reservation-detail" id="reservationDetail">
         <dt>申請狀態</dt>
         <dd><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>

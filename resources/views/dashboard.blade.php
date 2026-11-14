@@ -94,7 +94,7 @@
 @section('content')
     {{-- 頁面頂部：歡迎訊息與目前的身分、操作提示。 --}}
     <div class="mb-2 mb-lg-3">
-        <h1 class="h4 mb-1"><i class="bi bi-speedometer2 me-2"></i>{{ __('dashboard.welcome', ['name' => Auth::user()->name]) }}</h1>
+        <h1 class="tb-title mb-1">{{ __('dashboard.welcome', ['name' => Auth::user()->name]) }}</h1>
         <div class="text-muted small">
             {{ __('dashboard.role_line', ['role' => Auth::user()->role->name ?? __('dashboard.no_role')]) }}　·　{{ __('dashboard.click_hint') }}
         </div>

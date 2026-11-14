@@ -7,7 +7,7 @@
 @section('title', $device->device_code . ' ' . __('devices.entry.title_suffix'))
 
 @section('content')
-    <h1 class="h4 mb-4"><i class="bi bi-qr-code-scan me-2"></i>{{ $device->device_code }}</h1>
+    <h1 class="tb-title mb-3">{{ $device->device_code }}</h1>
 
     <div class="row g-3">
         <div class="col-lg-7">

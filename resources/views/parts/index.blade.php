@@ -12,9 +12,9 @@
              不論螢幕寬窄都一樣，不再顯示紅色提示卡片。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end parts-actions">
             @if ($lowStockParts->isNotEmpty())
-                <button type="button" class="tb-btn tb-btn-danger-outline" data-bs-toggle="modal" data-bs-target="#lowStockModal">
+                <button type="button" class="tb-btn tb-btn-danger" data-bs-toggle="modal" data-bs-target="#lowStockModal">
                     <i class="bi bi-exclamation-triangle d-none d-sm-inline" aria-hidden="true"></i><span class="d-none d-sm-inline">目前低庫存零件</span><span class="d-sm-none">低庫存</span>
-                    <span class="tb-pill tb-pill-danger" style="padding: 1px 9px">{{ $lowStockParts->count() }}</span>
+                    <span class="tb-btn-count">{{ $lowStockParts->count() }}</span>
                 </button>
             @endif
             <a href="{{ route('parts.create') }}" class="tb-btn tb-btn-primary" data-modal-frame data-modal-title="新增零件">
@@ -44,12 +44,8 @@
             @include('parts._table', ['parts' => $parts])
         </section>
 
-        {{-- 分頁：左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數；只有一頁時也顯示筆數。 --}}
-        @if ($parts->hasPages())
-            <div>{{ $parts->links() }}</div>
-        @else
-            <p class="small text-muted mb-0">顯示第 {{ $parts->firstItem() }} 到 {{ $parts->lastItem() }} 筆，共 {{ $parts->total() }} 筆</p>
-        @endif
+        {{-- 分頁：全站共用 layouts/pager（左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數）。 --}}
+        @include('layouts.pager', ['paginator' => $parts])
 
         {{-- 匯出：先打開預覽視窗，勾選要匯出的欄位與零件，再選 Excel 或 PDF。 --}}
         <div class="d-flex justify-content-end">

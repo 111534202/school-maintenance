@@ -23,7 +23,18 @@ class MaintenanceOrderController extends Controller
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('scheduled_date', '<=', $request->date('to')))
-            ->orderByDesc('scheduled_date')
+            // 排序：
+            // 1. 待處理排最前面，進行中其次，已完成排最後。
+            // 2. 還沒完成的（待處理、進行中）：排定日期近的在上 → 同一天建立得早的在上 → 再依來源計畫名稱 A→Z。
+            // 3. 已完成的：排定日期遠的（最新的）在上 → 同一天建立得晚的在上（早的在下）→ 再依來源計畫名稱 A→Z。
+            // 最後用工單編號，讓完全相同的幾筆每次順序都一樣。
+            ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
+            ->orderByRaw('CASE WHEN status <> ? THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_COMPLETED])
+            ->orderByRaw('CASE WHEN status = ? THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_COMPLETED])
+            ->orderByRaw('CASE WHEN status <> ? THEN created_at END ASC', [MaintenanceOrder::STATUS_COMPLETED])
+            ->orderByRaw('CASE WHEN status = ? THEN created_at END DESC', [MaintenanceOrder::STATUS_COMPLETED])
+            ->orderBy(MaintenancePlan::select('name')->whereColumn('maintenance_plans.id', 'maintenance_orders.maintenance_plan_id'))
+            ->orderBy('maintenance_orders.id')
             ->paginate(15)
             ->withQueryString();
 

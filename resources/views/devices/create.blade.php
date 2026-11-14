@@ -7,7 +7,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-plus-circle me-2"></i>{{ __('devices.form.create_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('devices.form.create_title') }}</h1>
         {{-- 外框只包欄位（在 _form 裡），「取消／儲存」在外框下面、靠右。 --}}
         {{-- 表單送出到 POST /devices（DeviceController::store）。 --}}
         <form method="POST" action="{{ route('devices.store') }}">

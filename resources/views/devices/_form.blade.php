@@ -9,6 +9,7 @@
 @endisset
 
 <div class="card shadow-sm">
+<div class="card-header bg-white form-section-title"><i class="bi bi-pc-display me-2"></i>設備資料</div>
 <div class="card-body p-4">
 {{-- 基本資料、規格與保固、狀態放在同一頁（不分上一步／下一步），依序往下排。 --}}
 <div class="row g-3">

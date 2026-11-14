@@ -9,7 +9,7 @@
 @section('content')
     <div class="page-narrow">
         <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
-            <h1 class="h4 mb-0">{{ $knowledgeBase->title }}</h1>
+            <h1 class="tb-title mb-0">{{ $knowledgeBase->title }}</h1>
             <div class="d-inline-flex gap-1 flex-shrink-0">
                 {{-- 只有管理權限者看得到「編輯」按鈕。 --}}
                 {{-- 在知識庫列表的對話框裡打開（?modal=1）時不放（修改在列表的鉛筆按鈕）。 --}}
@@ -30,13 +30,13 @@
         </div>
 
         <div class="card shadow-sm mb-3">
-            <div class="card-header bg-white"><i class="bi bi-exclamation-triangle me-2"></i>{{ __('knowledge_base.show.symptom_heading') }}</div>
+            <div class="card-header bg-white form-section-title"><i class="bi bi-exclamation-triangle me-2"></i>{{ __('knowledge_base.show.symptom_heading') }}</div>
             {{-- white-space: pre-line 讓文字裡的換行照原樣顯示（排除步驟常常是一行一步）。 --}}
             <div class="card-body" style="white-space: pre-line;">{{ $knowledgeBase->symptom }}</div>
         </div>
 
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white"><i class="bi bi-list-check me-2"></i>{{ __('knowledge_base.show.solution_heading') }}</div>
+            <div class="card-header bg-white form-section-title"><i class="bi bi-list-check me-2"></i>{{ __('knowledge_base.show.solution_heading') }}</div>
             <div class="card-body" style="white-space: pre-line;">{{ $knowledgeBase->solution }}</div>
         </div>
 

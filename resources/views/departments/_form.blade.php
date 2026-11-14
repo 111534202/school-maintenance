@@ -5,6 +5,7 @@
 @php($department = $department ?? null)
 
 <div class="card shadow-sm">
+    <div class="card-header bg-white form-section-title"><i class="bi bi-diagram-3 me-2"></i>部門資料</div>
     <div class="card-body p-4">
         <div class="row g-3">
             <div class="col-md-4">

@@ -74,7 +74,8 @@
 
     {{-- 從設備主檔連過來（?device_id=）時，提醒「目前只看這台設備」，並提供清除的連結。 --}}
     @if ($filteredDevice)
-        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+        {{-- 說明文字一律用灰字（不用藍色提示框）。 --}}
+        <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2">
             <span><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.filter.only_device', ['device' => $filteredDevice->device_code]) }}</span>
             <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['device_id', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
         </div>

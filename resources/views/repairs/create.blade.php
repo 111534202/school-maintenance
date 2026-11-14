@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-plus-circle me-2"></i>{{ __('repair_requests.create.title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('repair_requests.create.title') }}</h1>
 
         {{-- 從知識庫「仍無法排除，前往報修」過來時，顯示提示（說明已看過哪篇文章）。 --}}
         @if ($fromKnowledgeBase)
@@ -130,7 +130,7 @@
             </div>
 
             {{-- 區塊三：附件 --}}
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>{{ __('repair_requests.create.section_attachments') }}</div>
                 <div class="card-body">
                     <label for="attachments" class="form-label">{{ __('repair_requests.create.attachments_label') }}</label>

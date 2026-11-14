@@ -18,7 +18,7 @@ return [
         'attachments' => '維修前後照片／影片（選填，最多 5 個檔案，jpg/png/pdf/mp4/mov/webm，加起來 5MB 以內）',
     ],
 
-    'submit' => '送出維修紀錄（送出後案件進入待驗收）',
+    'submit' => '送出維修紀錄',
 
     // 操作成功後顯示的綠色訊息。
     'flash' => [

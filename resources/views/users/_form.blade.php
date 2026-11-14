@@ -75,7 +75,7 @@
     </div>
 </div>
 
-{{-- 區塊三：登入密碼（只有新增時才在這裡設定；編輯時改用旁邊獨立的「重設密碼」，避免不小心改到密碼） --}}
+{{-- 區塊三：密碼設定（只有新增時才在這裡設定；編輯時改用旁邊獨立的「重設密碼」，避免不小心改到密碼） --}}
 {{-- @unless：不是編輯（= 新增）時才顯示密碼欄位。 --}}
 @unless ($user)
     <div class="card shadow-sm mb-3">
@@ -100,7 +100,7 @@
     </div>
 @endunless
 
-<div class="d-flex justify-content-end gap-2 mb-4">
+<div class="d-flex justify-content-end gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="{{ route('users.index') }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.cancel') }}</a>
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>

@@ -133,7 +133,7 @@
                 overlay.hidden = false;
                 panel.removeAttribute('inert');
                 panel.classList.add('is-open');
-                document.documentElement.style.overflow = 'hidden';
+                window.tbLockScroll(true);
                 body.scrollTop = 0;
                 var first = controls(form)[0];
                 if (first) first.focus({ preventScroll: true });
@@ -142,7 +142,7 @@
                 panel.classList.remove('is-open');
                 panel.setAttribute('inert', '');
                 overlay.hidden = true;
-                document.documentElement.style.overflow = '';
+                window.tbLockScroll(false);
                 openBtn.focus({ preventScroll: true });
             }
             openBtn.addEventListener('click', open);

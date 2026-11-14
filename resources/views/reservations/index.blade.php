@@ -89,12 +89,8 @@
             @include('reservations._table', ['reservations' => $reservations])
         </section>
 
-        {{-- 分頁：左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數；只有一頁時也顯示筆數。 --}}
-        @if ($reservations->hasPages())
-            <div>{{ $reservations->links() }}</div>
-        @else
-            <p class="small text-muted mb-0">顯示第 {{ $reservations->firstItem() }} 到 {{ $reservations->lastItem() }} 筆，共 {{ $reservations->total() }} 筆</p>
-        @endif
+        {{-- 分頁：全站共用 layouts/pager（左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數）。 --}}
+        @include('layouts.pager', ['paginator' => $reservations])
     @endif
 </div>
 

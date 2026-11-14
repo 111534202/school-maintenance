@@ -5,7 +5,7 @@
 @section('content')
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         {{-- 窄的時候只在「零件履歷：」後面換行，零件編號與名稱整段放到下一行。 --}}
-        <h1 class="h3 mb-0">零件履歷：<span class="d-inline-block">{{ $part->displayName() }}</span></h1>
+        <h1 class="tb-title mb-0">零件履歷：<span class="d-inline-block">{{ $part->displayName() }}</span></h1>
     </div>
 
     {{-- 基本資料：修改基本資料、刪除零件都在這裡（權限與零件庫存相同）。 --}}
@@ -17,11 +17,11 @@
             {{-- 區塊標題統一用 .tb-section-title（字型、大小、顏色在 theme-b.css 最上面的變數設定）。 --}}
             <h2 class="tb-section-title">基本資料</h2>
             <div class="d-flex gap-2">
-                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
+                <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
                 <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？採購紀錄也會一起刪除。">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger">刪除零件</button>
+                    <button type="submit" class="btn btn-sm btn-danger">刪除零件</button>
                 </form>
             </div>
         </div>
@@ -57,11 +57,11 @@
                 <dd>{{ $part->withUnit($part->safety_stock) }}</dd>
 
                 <dt>平均單價</dt>
+                {{-- 說明接在金額後面同一行（放不下才換行），基本資料不會多一行。 --}}
                 <dd class="tb-dl-wrap">
                     {{ $average === null ? '—' : 'NT$ ' . rtrim(rtrim(number_format($average, 1), '0'), '.') }}
+                    <span class="text-muted small ms-2">（用料成本依先進先出，先扣最早買進的批次）</span>
                 </dd>
-                {{-- 說明放在「平均單價」的下一行、靠左（寬窄畫面都一樣）。 --}}
-                <dd class="tb-dl-full text-muted small">（用料成本依先進先出，先扣最早買進的批次）</dd>
             </dl>
         </div>
     </div>
@@ -77,8 +77,8 @@
             <div class="card-body text-muted small">目前沒有使用紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}使用紀錄" data-onion-list-only>
-                    <thead class="table-light">
+                <table class="tb-table align-middle mb-0" data-onion-panel-title="{{ $panelName }}使用紀錄" data-onion-list-only>
+                    <thead>
                         <tr>
                             {{-- 欄位順序決定清單的標題與副標題：標題＝使用日期，副標題＝狀態 · 單號。 --}}
                             <th class="tb-col-fit text-center">來源</th>
@@ -122,14 +122,14 @@
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h2 class="tb-section-title">採購紀錄</h2>
-            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
+            <a href="{{ route('parts.purchases.create', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="新增採購紀錄">新增採購</a>
         </div>
         @if ($purchases->isEmpty())
             <div class="card-body text-muted small">目前沒有採購紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}採購紀錄" data-onion-list-only>
-                    <thead class="table-light">
+                <table class="tb-table align-middle mb-0" data-onion-panel-title="{{ $panelName }}採購紀錄" data-onion-list-only>
+                    <thead>
                         <tr>
                             <th class="text-nowrap">採購日期</th>
                             <th>廠商</th>
@@ -144,7 +144,8 @@
                     </thead>
                     <tbody>
                         @foreach ($purchases as $purchase)
-                            <tr>
+                            {{-- 點一列在對話框打開「修改採購紀錄」（跟按鉛筆一樣）。 --}}
+                            <tr data-modal-frame-href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" data-modal-title="修改採購紀錄" tabindex="0" role="link">
                                 <td class="text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
                                 {{-- 沒填廠商也顯示文字（不用「—」），清單的副標題才會固定是「廠商 · 數量」。 --}}
                                 <td>{{ filled($purchase->vendor_name) ? $purchase->vendor_name : '未填廠商' }}</td>
@@ -154,23 +155,25 @@
                                 <td class="text-end text-nowrap">{{ $part->withUnit($purchase->remaining_quantity) }}</td>
                                 <td>{{ $purchase->note ?? '—' }}</td>
                                 <td class="text-end tb-col-fit">
+                                    <div class="d-inline-flex gap-1">
                                     {{-- 附件：有附件時只放一個「附件」按鈕，在目前畫面用視窗預覽（圖片、PDF）；有好幾個附件時在視窗裡左右切換。 --}}
                                     @if ($purchase->attachments->isNotEmpty())
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                        <button type="button" class="btn btn-outline-secondary btn-sm icon-btn" title="附件" aria-label="附件" data-bs-toggle="modal" data-bs-target="#attachmentModal"
                                             data-attachments="{{ $purchase->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values()->toJson() }}"
                                             data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
-                                            <i class="bi bi-paperclip"></i> 附件
+                                            <i class="bi bi-paperclip" aria-hidden="true"></i>
                                         </button>
                                     @endif
-                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="修改採購紀錄">修改</a>
+                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-outline-primary btn-sm icon-btn" title="修改" aria-label="修改" data-modal-frame data-modal-title="修改採購紀錄"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                                     @unless ($purchase->isUsed())
                                         <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
                                             data-confirm="請問確定要刪除 {{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的採購紀錄（{{ $part->withUnit($purchase->quantity) }}）嗎？庫存會減少 {{ $part->withUnit($purchase->quantity) }}。">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">刪除</button>
+                                            <button type="submit" class="btn btn-outline-danger btn-sm icon-btn" title="刪除" aria-label="刪除"><i class="bi bi-trash3" aria-hidden="true"></i></button>
                                         </form>
                                     @endunless
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -195,15 +198,15 @@
                 @endif
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-outline-danger" data-modal-frame data-modal-title="登記報廢">登記報廢</a>
+                <a href="{{ route('parts.scraps.create', $part) }}" class="btn btn-sm btn-danger" data-modal-frame data-modal-title="登記報廢">登記報廢</a>
             </div>
         </div>
         @if ($scraps->isEmpty())
             <div class="card-body text-muted small">目前沒有報廢紀錄。</div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄" data-onion-list-only>
-                    <thead class="table-light">
+                <table class="tb-table align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄" data-onion-list-only>
+                    <thead>
                         <tr>
                             {{-- 欄位順序：報廢日期、登記人、數量、損失金額、扣用批次、原因、備註、操作。 --}}
                             <th class="text-nowrap">報廢日期</th>
@@ -238,7 +241,7 @@
                                         data-confirm="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" data-confirm-ok="確認取消報廢">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary">取消報廢</button>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm icon-btn" title="取消報廢" aria-label="取消報廢"><i class="bi bi-trash3" aria-hidden="true"></i></button>
                                     </form>
                                 </td>
                             </tr>

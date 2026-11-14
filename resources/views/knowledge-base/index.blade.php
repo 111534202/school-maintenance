@@ -93,7 +93,10 @@
                                 @endcan
                                 {{-- 最後更新時間，格式化成「年-月-日 時:分」。 --}}
                                 <td>{{ $entry->updated_at->format('Y-m-d H:i') }}</td>
-                                <td class="text-end tb-num">{{ number_format($entry->view_count) }}</td>
+                                <td class="text-end tb-num">
+                                    {{-- 查看次數：灰色、不能按的膠囊（眼睛圖示＋次數）。 --}}
+                                    <span class="tb-view-count" title="查看次數" data-onion-keep><i class="bi bi-eye" aria-hidden="true"></i>{{ number_format($entry->view_count) }}</span>
+                                </td>
                                 @can('knowledge-base.manage')
                                 <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">

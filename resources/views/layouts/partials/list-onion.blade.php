@@ -135,7 +135,7 @@
             overlay.hidden = false;
             panel.removeAttribute('inert');
             panel.classList.add('is-open');
-            document.documentElement.style.overflow = 'hidden';
+            window.tbLockScroll(true);
             panel.querySelector('.onion-panel-body').scrollTop = 0;
             panel.querySelector('.onion-back').focus({ preventScroll: true });
         }
@@ -145,7 +145,7 @@
             panel.classList.remove('is-open');
             panel.setAttribute('inert', '');
             overlay.hidden = true;
-            document.documentElement.style.overflow = '';
+            window.tbLockScroll(false);
             if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
         }
 
@@ -166,6 +166,8 @@
 
             var list = document.createElement('div');
             list.className = 'list-group shadow-sm mb-3 onion-list';
+            // 表格外層標了 data-fit-per-page（例如 5）：清單檢視固定一頁顯示幾筆（交給 fit-screen 分頁）。
+            if (wrap.hasAttribute('data-fit-per-page')) list.setAttribute('data-fit-per-page', wrap.getAttribute('data-fit-per-page'));
 
             rows.forEach(function (tr) {
                 var cells = Array.prototype.slice.call(tr.children);
@@ -173,22 +175,32 @@
                 var actions = [];
                 var badge = null;
                 var badgeCell = -1;
+                var keeps = [];     // 欄位裡有 data-onion-keep 的小標示（例如知識庫的查看次數）：清單裡原樣放在狀態標籤左邊
+                var keepCells = [];
                 cells.forEach(function (td, i) {
                     if (isAction[i]) { actions.push(td); return; }
                     // 右邊的小徽章優先用「狀態」欄的，沒有狀態欄就用第一個找到的徽章。
                     var wantsThis = statusCol >= 0 ? i === statusCol : true;
                     if (!badge && wantsThis) { var b = td.querySelector('.badge'); if (b) { badge = b.cloneNode(true); badgeCell = i; } }
+                    Array.prototype.forEach.call(td.querySelectorAll('[data-onion-keep]'), function (k) { keeps.push(k.cloneNode(true)); keepCells.push(i); });
                 });
                 var texts = [];
                 cells.forEach(function (td, i) {
                     if (isAction[i]) return;
                     main.push({ label: heads[i] || '', nodes: Array.prototype.slice.call(td.childNodes) });
+                    if (keepCells.indexOf(i) !== -1) return;   // 已經原樣放在右邊的欄位，副標題不再重複
                     var parts = split(td);
                     // 只有數字的欄位（例如「使用中設備數」1）單獨看不懂，前面加上欄位名稱：「使用中設備數：1」。
                     if (parts.main && /^[0-9][0-9,.]*$/.test(parts.main) && heads[i] && texts.length) parts.main = heads[i] + '：' + parts.main;
                     if (parts.main && parts.main !== '—' && parts.main !== '-') texts.push(parts.main);
                     if (parts.note) texts.push(parts.note);
                 });
+                // 表頭有 data-onion-title 的欄位：清單的標題用這一欄（例如設備履歷的保養紀錄用排定日期當標題），原本的第一欄改當副標題。
+                var titleCol = heads.length ? Array.prototype.findIndex.call(table.querySelectorAll('thead th'), function (th) { return th.hasAttribute('data-onion-title'); }) : -1;
+                if (titleCol >= 0 && !isAction[titleCol]) {
+                    var t = split(cells[titleCol]).main;
+                    if (t) { var at = texts.indexOf(t); if (at > 0) texts.splice(at, 1); if (at !== 0) texts.unshift(t); }
+                }
                 var title = texts[0] || text(cells[0]) || '（無標題）';
                 var sub = texts.slice(1, 3).join(' · ');
 
@@ -204,6 +216,7 @@
                 body.appendChild(t1);
                 if (sub) { var t2 = document.createElement('span'); t2.className = 'onion-sub'; t2.textContent = sub; body.appendChild(t2); }
                 item.appendChild(body);
+                keeps.forEach(function (k) { k.classList.add('flex-shrink-0'); item.appendChild(k); });
                 if (badge) { badge.classList.add('flex-shrink-0'); item.appendChild(badge); }
                 var chev = document.createElement('i');
                 chev.className = 'bi bi-chevron-right text-muted flex-shrink-0';

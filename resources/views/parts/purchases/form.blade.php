@@ -5,14 +5,16 @@
 @section('title', ($editing ? '修改採購紀錄' : '新增採購紀錄') . '：' . $part->part_code)
 
 @section('content')
-    <h1 class="h3 mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
+    <h1 data-modal-hide class="tb-title mb-1">{{ $editing ? '修改採購紀錄' : '新增採購紀錄' }}</h1>
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
-    <div style="max-width: 560px;">
+    <div>
         <form method="POST" enctype="multipart/form-data"
             action="{{ $editing ? route('parts.purchases.update', [$part, $purchase]) : route('parts.purchases.store', $part) }}">
             @csrf
-            <div class="tb-form-card">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white form-section-title"><i class="bi bi-cart me-2"></i>採購資料</div>
+                <div class="card-body">
             @if ($editing)
                 @method('PUT')
             @endif
@@ -101,11 +103,12 @@
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             </div>
+            </div>
 
             {{-- 取消／送出按鈕放在外框外面、靠右。 --}}
             <div class="d-flex justify-content-end gap-2 mt-3">
-                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary">取消</a>
-                <button type="submit" class="btn btn-primary">{{ $editing ? '儲存' : '新增採購並加入庫存' }}</button>
+                <a href="{{ route('parts.show', $part) }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>取消</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{{ $editing ? '儲存' : '新增採購並加入庫存' }}</button>
             </div>
         </form>
     </div>

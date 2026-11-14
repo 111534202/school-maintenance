@@ -19,7 +19,7 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="attachmentModalNext" aria-label="下一個附件"><i class="bi bi-chevron-right"></i></button>
                 </div>
                 <div class="d-flex gap-2 ms-auto">
-                    <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟／下載</a>
+                    <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟</a>
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
                 </div>
             </div>
@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function () {
         body.innerHTML = '';
 
         const mime = item.mime || '';
+        // 圖片、PDF 可以直接預覽，按鈕寫「在新分頁開啟」；其他格式（Word、Excel…）不能預覽，按鈕寫「下載」。
+        const previewable = mime.startsWith('image/') || mime === 'application/pdf';
+        document.getElementById('attachmentModalOpen').textContent = previewable ? '在新分頁開啟' : '下載';
         if (mime.startsWith('image/')) {
             const img = document.createElement('img');
             img.src = item.url;
@@ -68,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
             frame.style.border = '0';
             body.appendChild(frame);
         } else {
-            body.innerHTML = '<p class="text-muted my-4">這個檔案格式無法在這裡預覽，請按下方「在新分頁開啟／下載」。</p>';
+            body.innerHTML = '<p class="text-muted my-4">這個檔案格式無法在這裡預覽，請按下方「下載」。</p>';
         }
     }
 

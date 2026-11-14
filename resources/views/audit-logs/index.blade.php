@@ -8,7 +8,7 @@
 
 @section('content')
     <div class="page-header mb-4">
-        <h1 class="h4 mb-0"><i class="bi bi-clock-history me-2"></i>{{ __('audit.index_title') }}</h1>
+        <h1 class="tb-title mb-0">{{ __('audit.index_title') }}</h1>
     </div>
 
     {{-- 篩選列：直接放在頁面上（data-no-onion：不收進右邊滑出的篩選面板），寬度不夠時自動換行。 --}}
@@ -74,10 +74,11 @@
     </div>
 
     <div class="card shadow-sm">
-        <div class="table-responsive">
+        {{-- data-no-fit：跟其他列表一樣整頁一起捲動，不把清單限制在固定高度裡捲動（手機也不再另外分頁，用下面的頁碼換頁）。 --}}
+        <div class="table-responsive" data-no-fit>
             {{-- 固定清單（data-onion-list-only，不提供表格檢視）：標題＝時間，副標題＝操作者 · 事件；點一筆看說明與詳細。 --}}
-            <table class="table table-bordered table-hover align-middle mb-0" data-onion-primary="1,2,3" data-onion-list-only data-onion-panel-title="操作紀錄">
-                <thead class="table-light">
+            <table class="tb-table tb-table-hover align-middle mb-0" data-onion-primary="1,2,3" data-onion-list-only data-onion-panel-title="操作紀錄">
+                <thead>
                     <tr>
                         <th>{{ __('audit.table.time') }}</th>
                         <th>{{ __('audit.table.user') }}</th>
@@ -129,8 +130,8 @@
         </div>
     </div>
 
-    {{-- 分頁按鈕（每頁 30 筆）。 --}}
-    <div class="mt-3">{{ $logs->links() }}</div>
+    {{-- 分頁（每頁 30 筆）：全站共用 layouts/pager。 --}}
+    <div class="mt-3">@include('layouts.pager', ['paginator' => $logs])</div>
 
     <style>
         /* 篩選列放在頁面上：欄位平均分配寬度，放不下就換行（不再左右捲動）。 */

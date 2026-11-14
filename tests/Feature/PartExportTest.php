@@ -104,7 +104,7 @@ class PartExportTest extends TestCase
 
         $this->get(route('parts.summary', ['part' => $hdmi, 'modal' => 1]))
             ->assertOk()
-            ->assertSeeInOrder([$hdmi->part_code, 'HDMI 線', '庫存狀態', '⚠ 低庫存', '品牌/型號', '平均單價', '目前庫存', '安全庫存', '查看履歷'])
+            ->assertSeeInOrder([$hdmi->part_code, 'HDMI 線', '品牌/型號', '平均單價', '目前庫存', '安全庫存', '庫存狀態', '⚠ 低庫存', '查看履歷'])   // 只顯示基本資料（左右兩欄清單）＋查看履歷
             ->assertSee('NT$ 10')
             ->assertSee('href="' . route('parts.show', $hdmi) . '"', false)
             ->assertDontSee('<h1', false)

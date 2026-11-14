@@ -7,7 +7,7 @@
 
 @section('content')
     <div class="page-narrow">
-        <h1 class="h4 mb-4"><i class="bi bi-plus-circle me-2"></i>{{ __('knowledge_base.create_title') }}</h1>
+        <h1 data-modal-hide class="tb-title mb-3">{{ __('knowledge_base.create_title') }}</h1>
 
         {{-- 表單送出到 POST /knowledge-base（KnowledgeBaseController::store）。 --}}
         <form method="POST" action="{{ route('knowledge-base.store') }}">

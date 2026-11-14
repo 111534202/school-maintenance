@@ -31,7 +31,7 @@
                         class="form-control @error('keep_days') is-invalid @enderror" value="{{ old('keep_days', $keepDays) }}">
                     <span class="input-group-text">天</span>
                 </div>
-                <button type="submit" class="btn btn-outline-primary">儲存</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-check-lg me-1"></i>儲存</button>
                 @error('keep_days')<div class="text-danger small w-100">{{ $message }}</div>@enderror
             </form>
             <p class="text-muted small mb-0 mt-2">超過天數的備份在下次備份時自動刪除（最新的一份一定保留）；填 0 代表永遠不刪。</p>
@@ -60,7 +60,7 @@
                             data-confirm="請問確定要把所有資料還原到 {{ $backup['created_at']->format('Y-m-d H:i') }} 的備份嗎？這個時間之後新增或修改的資料都會不見（還原前會先自動備份目前的資料）。"
                             data-confirm-ok="確認還原">
                             @csrf
-                            <button type="submit" class="btn btn-sm btn-outline-danger">還原</button>
+                            <button type="submit" class="btn btn-sm btn-danger">還原</button>
                         </form>
                     </li>
                 @endforeach

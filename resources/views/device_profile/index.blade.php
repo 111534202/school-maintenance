@@ -40,12 +40,12 @@
             </thead>
             <tbody>
                 @foreach ($devices as $device)
-                    <tr data-modal-frame-href="{{ route('device-profile.show', $device) }}" data-modal-title="設備履歷" data-modal-size="xl" tabindex="0" role="link">
+                    <tr data-modal-frame-href="{{ route('device-profile.show', $device) }}" data-modal-title="設備履歷：{{ $device->device_code }}" data-modal-size="lg" tabindex="0" role="link">
                         <td class="fw-semibold">{{ $device->device_code }}</td>
                         <td>{{ $device->category?->name ?? '—' }}</td>
                         <td>{{ $device->brand }} {{ $device->model }}</td>
                         <td>{{ $device->classroom?->name ?? '—' }}</td>
-                        <td><span class="badge tb-pill tb-pill-muted">{{ $device->status }}</span></td>
+                        <td><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
                         <td class="text-end tb-col-fit">
                             <a href="{{ route('device-profile.show', $device) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>
                         </td>

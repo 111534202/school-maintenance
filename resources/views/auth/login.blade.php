@@ -8,6 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登入 - 學校設備維保電子化系統</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     {{-- 跟登入後的頁面同一套風格 B（墨綠主色、暖白底、思源黑體／宋體），見 public/css/theme-b.css。 --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
@@ -23,6 +24,10 @@
         .login-card .login-schedule-btn { min-height: 46px; display: flex; align-items: center; justify-content: center; }
         .login-divider { display: flex; align-items: center; gap: 12px; color: #8a8a8a; font-size: .875rem; }
         .login-divider::before, .login-divider::after { content: ''; flex: 1; border-top: 1px solid #e3ded3; }
+        /* 密碼欄右邊的小眼睛按鈕：跟輸入框一樣高、一樣的底色與框線，看起來是同一個欄位。 */
+        .login-card .pw-group .form-control { border-right: 0; }
+        .login-card .pw-toggle { min-width: 46px; border: 1px solid var(--bs-border-color); border-left: 0; background: var(--bs-body-bg); color: #6c757d; }
+        .login-card .pw-toggle:hover, .login-card .pw-toggle:focus { background: var(--bs-body-bg); color: var(--tb-accent); }
     </style>
 </head>
 <body class="tb-body">
@@ -56,7 +61,11 @@
                     <div class="mb-3">
                         <label for="password" class="form-label">密碼</label>
                         {{-- 密碼欄位：type=password 會把輸入內容顯示成圓點。 --}}
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        {{-- 右邊的小眼睛：按一下顯示輸入的密碼，再按一下藏回去（只是切換顯示方式，不會送出任何東西）。 --}}
+                        <div class="input-group pw-group">
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required>
+                            <button type="button" class="btn pw-toggle" id="passwordToggle" aria-label="顯示密碼" title="顯示密碼"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                        </div>
                     </div>
                     <div class="mb-3 form-check">
                         {{-- 「記住我」：勾選後，瀏覽器關閉再開也維持登入狀態。 --}}
@@ -71,5 +80,19 @@
             </div>
         </div>
     </div>
+    <script>
+        (function () {
+            var input = document.getElementById('password');
+            var button = document.getElementById('passwordToggle');
+            button.addEventListener('click', function () {
+                var show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                var label = show ? '隱藏密碼' : '顯示密碼';
+                button.setAttribute('aria-label', label);
+                button.title = label;
+                button.innerHTML = '<i class="bi ' + (show ? 'bi-eye-slash' : 'bi-eye') + '" aria-hidden="true"></i>';
+            });
+        })();
+    </script>
 </body>
 </html>
