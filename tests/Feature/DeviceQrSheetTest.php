@@ -12,8 +12,8 @@ use Tests\TestCase;
 /** 設備 QR 貼紙批次列印：依篩選條件輸出貼紙、只有設備主檔管理者能用、超過上限會提示。 */
 class DeviceQrSheetTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use RefreshDatabase;
 
     private function device(string $code, ?Classroom $room = null, array $attrs = []): Device
     {

@@ -106,6 +106,7 @@ php artisan serve --host=127.0.0.1 --port=8000
 ```bash
 php artisan test                      # 執行全部自動化測試（使用記憶體中的 SQLite，不會動到本機資料庫）
 composer analyse                      # 靜態分析（Larastan）：讀程式碼找潛在錯誤；既有問題記錄在 phpstan-baseline.neon，新程式不能再增加
+composer format:check                 # 程式碼風格檢查（Pint，設定在 pint.json）；composer format 會自動整理。CI 只強制「新增的檔案」要符合，舊檔案不強制
 composer audit                        # 檢查用到的套件有沒有已公開的安全弱點
 python tests/e2e/run.py               # 瀏覽器端到端測試（用真的 Chrome 走主要流程，說明見 tests/e2e/README.md）
 php artisan deploy:check              # 部署前檢查（除錯模式、https、寄信、排程…），說明見 docs/部署檢查清單.md
@@ -117,7 +118,7 @@ php artisan view:clear                # 清除畫面快取（改了畫面卻沒�
 
 - 畫面樣式（Bootstrap、圖示）、圖表（Chart.js）、相機掃描函式庫都放在 `public/vendor`（版本與授權見該資料夾的 README），不連外部網站，沒有網路也能用。
 - 寄信（忘記密碼的臨時密碼信、派工通知信）：預設寫入 `storage/logs/laravel.log`（`.env` 的 `MAIL_MAILER=log`）。要真的寄出，用系統管理員登入，到「系統管理 → 寄信設定」填信箱帳號（Gmail 要用「應用程式密碼」）、寄測試信、打開啟用，不用改 `.env`。
-- 批次匯入：設備主檔與用戶主檔的「批次匯入」可以上傳 Excel／CSV（先下載範本，預覽會標出錯誤列，確認後才寫入）；設備主檔另有「列印 QR 貼紙」。
+- 批次匯入：設備主檔與用戶主檔的「批次匯入」可以上傳 Excel／CSV（先下載範本，預覽會標出錯誤列，確認後才寫入）；匯錯可在匯入頁「整批復原」（設備停用、用戶軟刪除；已有使用紀錄的會保留）。設備主檔另有「列印 QR 貼紙」。設備清單、用戶名單、操作紀錄都能依目前的篩選條件「匯出 Excel」。
 - 每次 push，GitHub 會自動跑檢查（`.github/workflows/tests.yml`）：自動測試、MySQL 資料庫、套件安全與靜態分析、瀏覽器測試。
 - 語言切換選單預設隱藏；中英文翻譯都在 `lang/`，要開放把 `.env` 的 `APP_LOCALE_SWITCHER` 設成 `true`。
 - 系統時區預設是台北（`APP_TIMEZONE=Asia/Taipei`）。

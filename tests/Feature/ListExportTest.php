@@ -16,8 +16,8 @@ use Tests\TestCase;
  */
 class ListExportTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use RefreshDatabase;
 
     private function device(string $code, string $status = 'normal'): Device
     {

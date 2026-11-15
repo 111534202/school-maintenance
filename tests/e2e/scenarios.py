@@ -351,6 +351,18 @@ def bulk_import_devices_and_qr_sheet(browser, base, root):
         sheet = body(page)
         check(f'E2E-{uid}-001' in sheet and f'E2E-{uid}-002' in sheet, 'QR 貼紙頁應有兩台設備的編號')
         check(page.locator('.label svg').count() == 2, '每張貼紙都應有 QR Code')
+
+        # 匯錯了可以整批復原：回到匯入頁，按最新一批的「整批復原」。
+        goto(page, '/import/devices')
+        check('最近的匯入紀錄' in body(page) and '成功 2、略過 1' in body(page), '匯入頁應列出剛剛那一批')
+        page.click('button:has-text("整批復原")')
+        page.wait_for_selector('#confirmActionDialog[open]')
+        page.click('#confirmActionOk')
+        settle(page)
+        page.wait_for_timeout(2000)
+        check('已復原這一批匯入' in body(page), '應顯示復原成功訊息：' + body(page)[:300])
+        goto(page, f'/devices?keyword=E2E-{uid}')
+        check(f'E2E-{uid}-001' not in body(page), '復原後設備列表不該再有這批設備')
         no_js_errors(errors)
 
 

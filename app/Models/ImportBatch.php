@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * 批次匯入紀錄（import_batches 資料表）：每確認匯入一次就一筆，記下誰、何時、哪個檔、成功與略過幾筆。
@@ -15,10 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $imported_count
  * @property int $skipped_count
  * @property int|null $created_by
- * @property \Illuminate\Support\Carbon|null $undone_at
+ * @property Carbon|null $undone_at
  * @property int|null $undone_by
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class ImportBatch extends Model
 {

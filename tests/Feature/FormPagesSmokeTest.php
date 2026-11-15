@@ -15,8 +15,8 @@ use Tests\TestCase;
  */
 class FormPagesSmokeTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use RefreshDatabase;
 
     public function test_master_data_form_pages_render_for_an_admin(): void
     {

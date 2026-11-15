@@ -11,6 +11,7 @@ use App\Services\Import\UserImporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -140,7 +141,7 @@ class BulkImportController extends Controller
             return redirect()->route('imports.index', $type)->with('error', '這一批已經復原過了。');
         }
 
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($importer, $batch) {
+        $result = DB::transaction(function () use ($importer, $batch) {
             $result = $importer->undo($batch);
             $batch->update(['undone_at' => now(), 'undone_by' => auth()->id()]);
 

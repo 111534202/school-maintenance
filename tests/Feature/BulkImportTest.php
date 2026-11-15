@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Exports\TableExport;
+use App\Models\AuditLog;
 use App\Models\Classroom;
 use App\Models\Department;
 use App\Models\Device;
 use App\Models\DeviceCategory;
+use App\Models\ImportBatch;
+use App\Models\RepairRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -22,8 +25,8 @@ use Tests\TestCase;
  */
 class BulkImportTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -174,7 +177,7 @@ class BulkImportTest extends TestCase
         $this->assertSame($teacher->id, $li->role_id);
         $this->assertTrue($li->is_active);
         $this->assertNotNull($wang->department_id);
-        $this->assertStringNotContainsString('Init-Pass-123', \App\Models\AuditLog::query()->get()->toJson(JSON_UNESCAPED_UNICODE));
+        $this->assertStringNotContainsString('Init-Pass-123', AuditLog::query()->get()->toJson(JSON_UNESCAPED_UNICODE));
 
         // 用初始密碼登入後，一定要先設定新密碼。
         auth()->logout();
@@ -250,12 +253,12 @@ class BulkImportTest extends TestCase
             ['DEV-002', '', '投影機', '', '', '', '', 'A101', '正常', ''],
         ])));
         $this->post(route('imports.confirm', 'devices'), ['token' => $token]);
-        $batch = \App\Models\ImportBatch::first();
+        $batch = ImportBatch::first();
         $this->assertSame(2, $batch->imported_count);
         $this->assertSame($batch->id, Device::firstWhere('device_code', 'DEV-001')->import_batch_id);
 
         // DEV-002 已經有報修紀錄：復原時要保留。
-        \App\Models\RepairRequest::factory()->create(['device_id' => Device::firstWhere('device_code', 'DEV-002')->id]);
+        RepairRequest::factory()->create(['device_id' => Device::firstWhere('device_code', 'DEV-002')->id]);
 
         $this->post(route('imports.undo', ['devices', $batch]))->assertRedirect(route('imports.index', 'devices'))->assertSessionHas('success');
 
@@ -279,7 +282,7 @@ class BulkImportTest extends TestCase
             ['李小華', 'li.xh', 'li@example.edu', '', '教師二', '', 'Init-Pass-123', ''],
         ])));
         $this->post(route('imports.confirm', 'users'), ['token' => $token]);
-        $batch = \App\Models\ImportBatch::first();
+        $batch = ImportBatch::first();
         User::firstWhere('account', 'li.xh')->forceFill(['last_login_at' => now()])->save();   // 李小華已經登入過
 
         $this->post(route('imports.undo', ['users', $batch]))->assertSessionHas('success');
@@ -292,7 +295,7 @@ class BulkImportTest extends TestCase
     public function test_undo_checks_permission_and_batch_type(): void
     {
         $this->loginAsAnyUser();
-        $batch = \App\Models\ImportBatch::create(['import_type' => 'users', 'name' => 'x.csv', 'imported_count' => 0, 'skipped_count' => 0]);
+        $batch = ImportBatch::create(['import_type' => 'users', 'name' => 'x.csv', 'imported_count' => 0, 'skipped_count' => 0]);
 
         $this->post(route('imports.undo', ['devices', $batch]))->assertNotFound();   // 種類對不上
 
@@ -305,7 +308,7 @@ class BulkImportTest extends TestCase
     public function test_import_page_lists_recent_batches_with_an_undo_button(): void
     {
         $this->loginAsAnyUser();
-        \App\Models\ImportBatch::create(['import_type' => 'devices', 'name' => 'phase1.csv', 'imported_count' => 3, 'skipped_count' => 1]);
+        ImportBatch::create(['import_type' => 'devices', 'name' => 'phase1.csv', 'imported_count' => 3, 'skipped_count' => 1]);
 
         $this->get(route('imports.index', 'devices'))->assertSee('phase1.csv')->assertSee('成功 3、略過 1')->assertSee('整批復原');
     }

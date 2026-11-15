@@ -114,6 +114,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 要看得到上一次 push 的內容，才能找出「這次新增了哪些檔案」
 
       - name: 安裝 PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -132,6 +134,20 @@ jobs:
 
       - name: 套件有沒有已公開的安全弱點
         run: composer audit
+
+      - name: 程式碼風格（Pint；只檢查「這次新增」的 PHP 檔，舊檔案不強制，想整理請在本機跑 composer format）
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="origin/${{ github.base_ref || github.event.repository.default_branch }}"
+          fi
+          FILES=$(git diff --name-only --diff-filter=A "$BASE" HEAD -- 'app/*.php' 'routes/*.php' 'tests/*.php' 'database/seeders/*.php' 'database/factories/*.php' || true)
+          if [ -z "$FILES" ]; then
+            echo "這次沒有新增的 PHP 檔，略過。"
+          else
+            echo "$FILES"
+            vendor/bin/pint --test $FILES
+          fi
 
       - name: 靜態分析（設定在 phpstan.neon；既有問題記錄在 phpstan-baseline.neon，新程式不能再增加問題）
         run: composer analyse

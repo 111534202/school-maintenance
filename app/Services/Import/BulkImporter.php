@@ -5,6 +5,8 @@ namespace App\Services\Import;
 use App\Models\ImportBatch;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
@@ -62,9 +64,7 @@ abstract class BulkImporter
     protected int $batchId = 0;
 
     /** 寫入完成後的收尾（例如重新計算教室的異常標記），預設不做事。 */
-    protected function afterCommit(array $rows): void
-    {
-    }
+    protected function afterCommit(array $rows): void {}
 
     /**
      * 給使用者參考的對照表（例如「有哪些類別、教室代碼可以填」），放在範本的第二張工作表。
@@ -105,10 +105,9 @@ abstract class BulkImporter
     public function parse(UploadedFile|string $file, ?string $disk = null): array
     {
         try {
-            $sheets = Excel::toArray(new class implements \Maatwebsite\Excel\Concerns\ToArray {
-                public function array(array $rows): void
-                {
-                }
+            $sheets = Excel::toArray(new class implements ToArray
+            {
+                public function array(array $rows): void {}
             }, $file, $disk);
         } catch (\Throwable $e) {
             return [[], '檔案讀不出來，請確認是 .xlsx 或 .csv（CSV 請存成 UTF-8）。'];
@@ -192,7 +191,7 @@ abstract class BulkImporter
     {
         $good = array_values(array_filter($results, fn ($r) => ! $r['errors']));
 
-        $batch = \Illuminate\Support\Facades\DB::transaction(function () use ($good, $results, $fileName, $userId) {
+        $batch = DB::transaction(function () use ($good, $results, $fileName, $userId) {
             $batch = ImportBatch::create([
                 'import_type' => $this->type(),
                 'name' => mb_substr($fileName, 0, 190),
