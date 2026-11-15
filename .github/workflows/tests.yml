@@ -23,7 +23,7 @@ concurrency:
 jobs:
   tests:
     name: 自動測試（PHPUnit）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # 測試不需要 MySQL：用記憶體內的 SQLite，快取與工作階段也用記憶體。
     env:
@@ -32,7 +32,7 @@ jobs:
       CACHE_STORE: array
       SESSION_DRIVER: array
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: 安裝 PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -42,7 +42,7 @@ jobs:
           coverage: none
 
       - name: 快取 Composer 套件
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
@@ -60,7 +60,7 @@ jobs:
 
   mysql-migrate:
     name: MySQL 資料庫檢查（migration 與資料字典）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       mysql:
@@ -76,7 +76,7 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: 安裝 PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -110,10 +110,10 @@ jobs:
 
   static-analysis:
     name: 靜態分析（Larastan）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: 安裝 PHP 8.4
         uses: shivammathur/setup-php@v2
@@ -138,7 +138,7 @@ jobs:
 
   e2e:
     name: 瀏覽器端到端測試（真的 Chrome 操作）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # 這組檢查比較慢，所以等前兩組通過才跑。
     needs: [tests, mysql-migrate, static-analysis]
@@ -155,7 +155,7 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: 安裝 PHP 8.4
         uses: shivammathur/setup-php@v2
