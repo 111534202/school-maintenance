@@ -1,0 +1,182 @@
+# 自動檢查：每次 push 或開 Pull Request，GitHub 會自動跑下面四組檢查，結果顯示在該次 commit／PR 上（綠勾＝通過、紅叉＝有問題）。
+#
+# 1. tests：跑完整的自動測試（PHPUnit，用記憶體內的 SQLite，不需要資料庫）。
+# 2. mysql-migrate：用真正的 MySQL 8.4 從零跑完所有 migration 與示範資料，並確認資料字典文件是最新的。
+#    （測試用的是 SQLite，正式環境是 MySQL，所以另外用 MySQL 驗一次，才抓得到「只在 MySQL 會壞」的 migration。）
+#
+# 3. static-analysis：套件安全弱點檢查（composer audit）與靜態分析（Larastan，不執行程式、讀程式碼找潛在錯誤）。
+#
+# 4. e2e：用真的 Chrome 照使用者的操作把主要流程走一遍（tests/e2e，比較慢，前面幾組通過才跑）。
+#
+# 本機也可以先跑：php artisan test（第 1 組）、composer analyse（第 3 組）、python tests/e2e/run.py（第 4 組）
+name: tests
+
+on:
+  push:
+  pull_request:
+
+# 同一個分支連續 push 時，舊的檢查會自動取消，只跑最新的。
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: 自動測試（PHPUnit）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # 測試不需要 MySQL：用記憶體內的 SQLite，快取與工作階段也用記憶體。
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, gd, zip, fileinfo, intl, bcmath
+          coverage: none
+
+      - name: 快取 Composer 套件
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: 安裝套件
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: 建立 .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: 跑測試
+        run: php artisan test --compact
+
+  mysql-migrate:
+    name: MySQL 資料庫檢查（migration 與資料字典）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: school_maintenance
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, gd, zip, fileinfo, intl, bcmath
+          coverage: none
+
+      - name: 安裝套件
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: 建立 .env（連到上面的 MySQL）
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
+          sed -i 's/^# *DB_HOST=.*/DB_HOST=127.0.0.1/; s/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/^# *DB_PORT=.*/DB_PORT=3306/; s/^DB_PORT=.*/DB_PORT=3306/' .env
+          sed -i 's/^# *DB_DATABASE=.*/DB_DATABASE=school_maintenance/; s/^DB_DATABASE=.*/DB_DATABASE=school_maintenance/' .env
+          sed -i 's/^# *DB_USERNAME=.*/DB_USERNAME=root/; s/^DB_USERNAME=.*/DB_USERNAME=root/' .env
+          sed -i 's/^# *DB_PASSWORD=.*/DB_PASSWORD=root/; s/^DB_PASSWORD=.*/DB_PASSWORD=root/' .env
+
+      - name: 從零執行所有 migration 與示範資料
+        run: php artisan migrate:fresh --seed --force
+
+      - name: 資料字典文件是不是最新的
+        run: php artisan docs:schema --check
+
+      - name: 部署檢查指令能正常執行
+        run: php artisan deploy:check || true
+
+  static-analysis:
+    name: 靜態分析（Larastan）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, gd, zip, fileinfo, intl, bcmath
+          coverage: none
+
+      - name: 安裝套件
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: 建立 .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: 套件有沒有已公開的安全弱點
+        run: composer audit
+
+      - name: 靜態分析（設定在 phpstan.neon；既有問題記錄在 phpstan-baseline.neon，新程式不能再增加問題）
+        run: composer analyse
+
+  e2e:
+    name: 瀏覽器端到端測試（真的 Chrome 操作）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # 這組檢查比較慢，所以等前兩組通過才跑。
+    needs: [tests, mysql-migrate, static-analysis]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安裝 PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, gd, zip, fileinfo, intl, bcmath
+          coverage: none
+
+      - name: 安裝套件
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: 建立 .env（連到上面的 MySQL）
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          sed -i 's/^DB_USERNAME=.*/DB_USERNAME=root/; s/^DB_PASSWORD=.*/DB_PASSWORD=root/' .env
+
+      - name: 安裝 Playwright 與 Chromium
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: 跑瀏覽器測試（tests/e2e，說明見該資料夾的 README）
+        run: python -u tests/e2e/run.py
