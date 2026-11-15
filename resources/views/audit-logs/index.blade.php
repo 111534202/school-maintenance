@@ -7,8 +7,9 @@
 @section('title', __('audit.index_title'))
 
 @section('content')
-    <div class="page-header mb-4">
+    <div class="page-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h1 class="tb-title mb-0">{{ __('audit.index_title') }}</h1>
+        <a class="tb-btn tb-btn-outline" href="{{ route('audit-logs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
     </div>
 
     {{-- 篩選列：直接放在頁面上（data-no-onion：不收進右邊滑出的篩選面板），寬度不夠時自動換行。 --}}

@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;   // 軟刪除：刪除只是標�
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property int|null $import_batch_id
  */
 class Device extends Model
 {

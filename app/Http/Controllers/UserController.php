@@ -49,11 +49,34 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        // 篩選條件和「匯出 Excel」共用（見 filteredQuery）。
+        $users = $this->filteredQuery($request)
+            ->paginate(15)        // 每頁 15 筆；想改每頁筆數就改這個數字
+            ->withQueryString();  // 換頁時保留原本的篩選參數，不然翻到第 2 頁篩選就不見了
+
+        // 把資料交給 resources/views/users/index.blade.php 畫成網頁。
+        $chart = \App\Services\MasterCharts::roleDistribution();   // 頁首「統計圖表」按鈕的圖表資料
+        return view('users.index', [
+            'users' => $users,
+            // 篩選列的下拉選單選項：全部身分、全部部門（這裡篩選要看得到停用的部門，所以不過濾）。
+            'roles' => Role::orderBy('id')->get(),
+            'departments' => Department::orderBy('name')->get(),
+            'chart' => $chart,
+        ]);
+    }
+
+    /**
+     * 用戶列表與「匯出 Excel」共用的查詢：依狀態、關鍵字、身分、部門篩選，編號由小到大。
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    private function filteredQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
         // 取出網址上的 status 參數並轉成字串；沒帶的話是空字串。
         $status = $request->string('status')->toString();
 
         // 組一條查詢：query() 開始一條空查詢，後面一段一段加條件，最後 paginate 才真的去資料庫撈。
-        $users = User::query()
+        return User::query()
             // with：順便把「身分」與「部門」一起查好，列表顯示名稱時就不會每一列都再多查一次資料庫（避免 N+1 慢查詢）。
             ->with(['role', 'department'])
             // when(條件, 動作)：條件成立才套用這段篩選，沒選的篩選就直接略過。
@@ -76,19 +99,27 @@ class UserController extends Controller
             // 依身分、部門篩選（下拉選單送來的是編號，所以用 integer 轉成整數）。
             ->when($request->filled('role_id'), fn ($query) => $query->where('role_id', $request->integer('role_id')))
             ->when($request->filled('department_id'), fn ($query) => $query->where('department_id', $request->integer('department_id')))
-            ->orderBy('id')       // 依編號由小到大排序
-            ->paginate(15)        // 每頁 15 筆；想改每頁筆數就改這個數字
-            ->withQueryString();  // 換頁時保留原本的篩選參數，不然翻到第 2 頁篩選就不見了
+            ->orderBy('id');      // 依編號由小到大排序
+    }
 
-        // 把資料交給 resources/views/users/index.blade.php 畫成網頁。
-        $chart = \App\Services\MasterCharts::roleDistribution();   // 頁首「統計圖表」按鈕的圖表資料
-        return view('users.index', [
-            'users' => $users,
-            // 篩選列的下拉選單選項：全部身分、全部部門（這裡篩選要看得到停用的部門，所以不過濾）。
-            'roles' => Role::orderBy('id')->get(),
-            'departments' => Department::orderBy('name')->get(),
-            'chart' => $chart,
-        ]);
+    /**
+     * 匯出用戶名單（GET /users/export）：依目前的篩選條件輸出 Excel。
+     * 不含密碼；單次最多 5000 筆，並寫入操作紀錄。
+     */
+    public function export(Request $request)
+    {
+        $rows = $this->filteredQuery($request)->limit(5000)->get()->map(fn (User $user) => [
+            $user->account, $user->name, $user->email, $user->phone,
+            $user->role?->name, $user->department?->name,
+            $user->deleted_at ? '已刪除' : ($user->is_active ? '啟用' : '停用'),
+            $user->last_login_at?->format('Y-m-d H:i'),
+            $user->created_at?->format('Y-m-d H:i'),
+        ])->all();
+
+        $file = '用戶名單-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出用戶名單 {$file}（" . count($rows) . ' 筆）');
+
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('用戶', ['帳號', '姓名', 'Email', '電話', '身分', '部門', '狀態', '最後登入', '建立時間'], $rows), $file);
     }
 
     /** 顯示「新增用戶」表單（GET /users/create）。下拉選單的資料由 formData() 提供。 */

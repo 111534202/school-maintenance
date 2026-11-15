@@ -5,6 +5,8 @@ namespace App\Services\Import;
 use App\Models\Classroom;
 use App\Models\Device;
 use App\Models\DeviceCategory;
+use App\Models\ImportBatch;
+use App\Models\MaintenanceOrder;
 use App\Services\AuditLogger;
 use App\Services\DeviceStatusService;
 
@@ -121,8 +123,36 @@ class DeviceImporter extends BulkImporter
 
     protected function persist(array $data): void
     {
-        $device = Device::create($data);
+        $device = new Device($data);
+        $device->import_batch_id = $this->batchId;   // 記下是哪一次匯入來的，匯錯時才能整批復原
+        $device->save();
         AuditLogger::log('created', $device, $data, "批次匯入設備「{$device->device_code}」");
+    }
+
+    public function undo(ImportBatch $batch): array
+    {
+        $done = 0;
+        $kept = 0;
+        $classrooms = [];
+        foreach (Device::where('import_batch_id', $batch->id)->get() as $device) {
+            // 已經有報修或保養紀錄的設備不收回（履歷要保留）。
+            if ($device->repairRequests()->exists() || MaintenanceOrder::where('device_id', $device->id)->exists()) {
+                $kept++;
+
+                continue;
+            }
+            // 做法和手動「停用設備」相同：狀態改停用、軟刪除（資料保留）。
+            DeviceStatusService::updateStatus($device, 'disabled', '批次匯入復原');
+            $classrooms[$device->classroom_id] = $device->classroom;
+            $device->delete();
+            AuditLogger::log('deleted', $device, [], "批次匯入復原：停用設備「{$device->device_code}」");
+            $done++;
+        }
+        foreach ($classrooms as $classroom) {
+            DeviceStatusService::syncClassroom($classroom);
+        }
+
+        return ['done' => $done, 'kept' => $kept];
     }
 
     protected function afterCommit(array $rows): void

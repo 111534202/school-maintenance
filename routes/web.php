@@ -299,6 +299,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
     Route::middleware('can:devices.manage')->group(function () {
         // QR 貼紙批次列印：要放在 resource 前面，否則 /devices/qr-sheet 會被當成某台設備的編號。
+        Route::get('devices/export', [DeviceController::class, 'export'])->name('devices.export');   // 匯出 Excel（要在 resource 前面）
         Route::get('devices/qr-sheet', [DeviceController::class, 'qrSheet'])->name('devices.qr-sheet');
         Route::resource('devices', DeviceController::class)->except(['destroy']);
         Route::patch('devices/{device}/disable', [DeviceController::class, 'disable'])->name('devices.disable');   // 停用設備
@@ -311,6 +312,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         Route::get('/template', [\App\Http\Controllers\BulkImportController::class, 'template'])->name('template');
         Route::post('/preview', [\App\Http\Controllers\BulkImportController::class, 'preview'])->name('preview')->middleware('throttle:20,1');
         Route::post('/confirm', [\App\Http\Controllers\BulkImportController::class, 'confirm'])->name('confirm')->middleware('throttle:10,1');
+        Route::post('/batches/{batch}/undo', [\App\Http\Controllers\BulkImportController::class, 'undo'])->name('undo')->middleware('throttle:10,1');   // 整批復原
     });
 
     // 寄信設定：需要 mail-settings.manage（預設只有系統管理員）。填寄信用的信箱帳號、寄測試信；密碼加密存放。
@@ -332,9 +334,12 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     // 操作紀錄：只能查看，需要 audit-logs.view 權限。
     Route::get('audit-logs', [AuditLogController::class, 'index'])
         ->middleware('can:audit-logs.view')->name('audit-logs.index');
+    Route::get('audit-logs/export', [AuditLogController::class, 'export'])
+        ->middleware('can:audit-logs.view')->name('audit-logs.export');
 
     // 用戶主檔（帳號管理）：可以改任何人的身分與密碼，所以是獨立的權限。
     Route::middleware('can:users.manage')->group(function () {
+        Route::get('users/export', [UserController::class, 'export'])->name('users.export');   // 匯出 Excel（要在 resource 前面）
         Route::resource('users', UserController::class)->except(['show']);
         Route::patch('users/{user}/toggle', [UserController::class, 'toggle'])->name('users.toggle');                          // 啟用／停用
         Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');   // 重設密碼

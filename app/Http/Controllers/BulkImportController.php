@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\SectionsExport;
+use App\Models\ImportBatch;
 use App\Services\AuditLogger;
 use App\Services\Import\BulkImporter;
 use App\Services\Import\DeviceImporter;
@@ -35,7 +36,10 @@ class BulkImportController extends Controller
     {
         $importer = $this->importer($type);
 
-        return view('imports.index', ['importer' => $importer, 'maxRows' => $importer::MAX_ROWS]);
+        // 最近 10 次匯入，可以在畫面上整批復原。
+        $batches = ImportBatch::with('creator')->where('import_type', $type)->latest('id')->limit(10)->get();
+
+        return view('imports.index', ['importer' => $importer, 'maxRows' => $importer::MAX_ROWS, 'batches' => $batches]);
     }
 
     /** 下載範本（GET /import/{type}/template）：標題列＋範例＋填寫說明＋可填值一覽。 */
@@ -112,7 +116,8 @@ class BulkImportController extends Controller
             return redirect()->route('imports.index', $type)->with('error', '沒有可以匯入的資料（每一列都有錯誤）。請修正檔案後重新上傳。');
         }
 
-        $count = $importer->commit($results);
+        $batch = $importer->commit($results, $stored['name'], $request->user()->id);
+        $count = $batch->imported_count;
 
         Storage::disk('local')->delete($stored['path']);
         Cache::forget($this->cacheKey($request, $token));
@@ -122,6 +127,31 @@ class BulkImportController extends Controller
         $message = "已匯入 {$count} 筆{$importer->label()}" . ($skipped ? "，另有 {$skipped} 列有錯誤沒有匯入" : '') . '。';
 
         return redirect()->route($type === 'users' ? 'users.index' : 'devices.index')->with('success', $message);
+    }
+
+    /** 整批復原（POST /import/{type}/batches/{batch}/undo）：把這一批匯入的資料收回（軟刪除）；已有使用紀錄的會保留。 */
+    public function undo(string $type, ImportBatch $batch): RedirectResponse
+    {
+        $importer = $this->importer($type);
+        if ($batch->import_type !== $type) {
+            abort(404);
+        }
+        if ($batch->isUndone()) {
+            return redirect()->route('imports.index', $type)->with('error', '這一批已經復原過了。');
+        }
+
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($importer, $batch) {
+            $result = $importer->undo($batch);
+            $batch->update(['undone_at' => now(), 'undone_by' => auth()->id()]);
+
+            return $result;
+        });
+        AuditLogger::log('deleted', null, ['import' => $type, 'batch' => $batch->id, 'undone' => $result['done'], 'kept' => $result['kept']],
+            "復原批次匯入{$importer->label()}（檔案：{$batch->name}）：收回 {$result['done']} 筆" . ($result['kept'] ? "、{$result['kept']} 筆已有使用紀錄而保留" : ''));
+
+        $message = "已復原這一批匯入：收回 {$result['done']} 筆{$importer->label()}" . ($result['kept'] ? "，另有 {$result['kept']} 筆已有使用紀錄所以保留" : '') . '。';
+
+        return redirect()->route('imports.index', $type)->with('success', $message);
     }
 
     /** 依網址上的種類找匯入器，並確認登入者有對應權限；種類不存在就 404。 */

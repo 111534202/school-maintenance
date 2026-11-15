@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;       // 操作紀錄資料表的模型
 use App\Models\User;           // 用戶資料表的模型（篩選列的「使用者」下拉選單要用）
+use App\Services\AuditLogger;           // 寫操作紀錄、取事件的顯示名稱
 use Illuminate\Http\Request;   // 這一次瀏覽器送來的請求
 
 /**
@@ -24,17 +25,7 @@ class AuditLogController extends Controller
             'date_to' => ['nullable', 'date'],
         ]);
 
-        // 每個 when() 都是「有填這個篩選條件才套用」，沒填就略過。
-        $logs = AuditLog::with('user')   // with('user')：順便查好操作者，避免每一列都多查一次資料庫
-            ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->integer('user_id')))
-            ->when($request->filled('action'), fn ($query) => $query->where('action', $request->string('action')))
-            ->when($request->filled('loggable_type'), fn ($query) => $query->where('loggable_type', $request->string('loggable_type')))
-            // 說明關鍵字：like %字% 代表「說明裡包含這段字」。
-            ->when($request->filled('keyword'), fn ($query) => $query->where('description', 'like', '%' . $request->string('keyword') . '%'))
-            // 日期範圍：起日從當天 00:00:00 起算，迄日算到當天 23:59:59，這樣選同一天也查得到整天的紀錄。
-            ->when($request->filled('date_from'), fn ($query) => $query->where('created_at', '>=', $request->date('date_from')->startOfDay()))
-            ->when($request->filled('date_to'), fn ($query) => $query->where('created_at', '<=', $request->date('date_to')->endOfDay()))
-            ->orderByDesc('id')   // 編號越大越新，所以由大到小 = 最新在最上面
+        $logs = $this->filteredQuery($request)
             ->paginate(30)
             ->withQueryString();  // 換頁時保留篩選條件
 
@@ -46,5 +37,45 @@ class AuditLogController extends Controller
         $loggableTypes = AuditLog::query()->select('loggable_type')->whereNotNull('loggable_type')->distinct()->pluck('loggable_type');
 
         return view('audit-logs.index', compact('logs', 'users', 'actions', 'loggableTypes'));
+    }
+
+    /**
+     * 列表與匯出共用的查詢：依使用者、事件、對象類型、說明關鍵字與日期範圍篩選，最新的在最前面。
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<AuditLog>
+     */
+    private function filteredQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
+        // 每個 when() 都是「有填這個篩選條件才套用」，沒填就略過。
+        return AuditLog::with('user')   // with('user')：順便查好操作者，避免每一列都多查一次資料庫
+            ->when($request->filled('user_id'), fn ($query) => $query->where('user_id', $request->integer('user_id')))
+            ->when($request->filled('action'), fn ($query) => $query->where('action', $request->string('action')))
+            ->when($request->filled('loggable_type'), fn ($query) => $query->where('loggable_type', $request->string('loggable_type')))
+            // 說明關鍵字：like %字% 代表「說明裡包含這段字」。
+            ->when($request->filled('keyword'), fn ($query) => $query->where('description', 'like', '%' . $request->string('keyword') . '%'))
+            // 日期範圍：起日從當天 00:00:00 起算，迄日算到當天 23:59:59，這樣選同一天也查得到整天的紀錄。
+            ->when($request->filled('date_from'), fn ($query) => $query->where('created_at', '>=', $request->date('date_from')->startOfDay()))
+            ->when($request->filled('date_to'), fn ($query) => $query->where('created_at', '<=', $request->date('date_to')->endOfDay()))
+            ->orderByDesc('id');  // 編號越大越新，所以由大到小 = 最新在最上面
+    }
+
+    /** 匯出操作紀錄（GET /audit-logs/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆；不含變更內容（可能有敏感資料）。 */
+    public function export(Request $request)
+    {
+        $request->validate(['date_from' => ['nullable', 'date'], 'date_to' => ['nullable', 'date']]);
+
+        $rows = $this->filteredQuery($request)->limit(5000)->get()->map(fn (AuditLog $log) => [
+            $log->created_at?->format('Y-m-d H:i:s'),
+            $log->user?->name,
+            AuditLogger::label('audit.actions.' . $log->action, $log->action),
+            $log->loggable_type ? AuditLogger::label('audit.types.' . class_basename($log->loggable_type), class_basename($log->loggable_type)) : null,
+            $log->loggable_id,
+            $log->description,
+        ])->all();
+
+        $file = '操作紀錄-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出操作紀錄 {$file}（" . count($rows) . ' 筆）');
+
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('操作紀錄', ['時間', '操作者', '事件', '對象類型', '對象編號', '說明'], $rows), $file);
     }
 }

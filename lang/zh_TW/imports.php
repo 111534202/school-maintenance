@@ -35,4 +35,12 @@ return [
     'confirm_ok' => '確認匯入',
     'confirm_with_errors' => '有問題的 :error 列不會匯入，只匯入 :ok 筆正確的資料。要繼續嗎？',
     'errors_skipped_hint' => '有問題的列不會被匯入，原因寫在該列下方。可以先匯入正確的部分，再把有問題的列修好重新上傳。',
+    'history_title' => '最近的匯入紀錄',
+    'history_empty' => '還沒有匯入紀錄。',
+    'history_col' => ['time' => '時間', 'file' => '檔案', 'count' => '筆數', 'by' => '執行人', 'state' => '狀態'],
+    'history_count' => '成功 :ok、略過 :skipped',
+    'undone' => '已復原',
+    'undo_button' => '整批復原',
+    'undo_confirm' => '要復原這一批匯入嗎？這批匯入的資料會被收回（設備改為停用、用戶改為刪除，資料仍保留可還原）；已經有報修、保養、預約紀錄或登入過的會保留不動。',
+    'undo_confirm_ok' => '確認復原',
 ];

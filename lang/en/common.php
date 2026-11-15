@@ -7,6 +7,7 @@
 // 【想新增一段文字】1. 在 lang/zh_TW 的對應檔案加一個鍵；2. 在 lang/en 的同名檔案加同樣的鍵（英文）；3. 畫面或程式裡用 __() 取用。
 // 【想新增一種語言】複製 lang/zh_TW 整個資料夾並翻譯，再到 app/Http/Middleware/SetLocale.php 的支援清單加上語言代碼。
 return [
+    'export_excel' => 'Export Excel',   // export button on list pages
     'site_title' => 'School Equipment Maintenance System',
 
     // 側邊選單的連結文字。

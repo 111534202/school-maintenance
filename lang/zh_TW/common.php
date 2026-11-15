@@ -8,6 +8,7 @@
 // 【想新增一種語言】複製 lang/zh_TW 整個資料夾並翻譯，再到 app/Http/Middleware/SetLocale.php 的支援清單加上語言代碼。
 return [
     'site_title' => '學校設備維保電子化系統',
+    'export_excel' => '匯出 Excel',   // 列表頁的匯出按鈕
 
     // 側邊選單的連結文字。
     'nav' => [

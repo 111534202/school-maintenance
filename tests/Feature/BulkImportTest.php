@@ -238,6 +238,78 @@ class BulkImportTest extends TestCase
         $this->get(route('users.index'))->assertSee(route('imports.index', 'users'), false);
     }
 
+    // ---------- 整批復原 ----------
+
+    public function test_undoing_a_device_import_disables_unused_devices_but_keeps_ones_with_history(): void
+    {
+        $this->loginAsAnyUser();
+        $this->seedMasters();
+        $token = $this->tokenFrom($this->preview('devices', $this->csv([
+            self::DEVICE_HEAD,
+            ['DEV-001', '', '投影機', '', '', '', '', 'A101', '正常', ''],
+            ['DEV-002', '', '投影機', '', '', '', '', 'A101', '正常', ''],
+        ])));
+        $this->post(route('imports.confirm', 'devices'), ['token' => $token]);
+        $batch = \App\Models\ImportBatch::first();
+        $this->assertSame(2, $batch->imported_count);
+        $this->assertSame($batch->id, Device::firstWhere('device_code', 'DEV-001')->import_batch_id);
+
+        // DEV-002 已經有報修紀錄：復原時要保留。
+        \App\Models\RepairRequest::factory()->create(['device_id' => Device::firstWhere('device_code', 'DEV-002')->id]);
+
+        $this->post(route('imports.undo', ['devices', $batch]))->assertRedirect(route('imports.index', 'devices'))->assertSessionHas('success');
+
+        $this->assertNull(Device::firstWhere('device_code', 'DEV-001'));                     // 已停用（軟刪除）
+        $this->assertNotNull(Device::withTrashed()->firstWhere('device_code', 'DEV-001'));   // 資料還在
+        $this->assertNotNull(Device::firstWhere('device_code', 'DEV-002'));                  // 有紀錄，保留
+        $this->assertTrue($batch->fresh()->isUndone());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'deleted', 'loggable_type' => Device::class]);
+
+        // 同一批不能復原第二次。
+        $this->post(route('imports.undo', ['devices', $batch]))->assertSessionHas('error');
+    }
+
+    public function test_undoing_a_user_import_deletes_unused_accounts_but_keeps_ones_who_logged_in(): void
+    {
+        $this->loginAsAnyUser();
+        $this->makeRole('teacher2', '教師二');
+        $token = $this->tokenFrom($this->preview('users', $this->csv([
+            self::USER_HEAD,
+            ['王小明', 'wang.xm', 'wang@example.edu', '', '教師二', '', 'Init-Pass-123', ''],
+            ['李小華', 'li.xh', 'li@example.edu', '', '教師二', '', 'Init-Pass-123', ''],
+        ])));
+        $this->post(route('imports.confirm', 'users'), ['token' => $token]);
+        $batch = \App\Models\ImportBatch::first();
+        User::firstWhere('account', 'li.xh')->forceFill(['last_login_at' => now()])->save();   // 李小華已經登入過
+
+        $this->post(route('imports.undo', ['users', $batch]))->assertSessionHas('success');
+
+        $this->assertNull(User::firstWhere('account', 'wang.xm'));
+        $this->assertNotNull(User::withTrashed()->firstWhere('account', 'wang.xm'));   // 軟刪除，可還原
+        $this->assertNotNull(User::firstWhere('account', 'li.xh'));
+    }
+
+    public function test_undo_checks_permission_and_batch_type(): void
+    {
+        $this->loginAsAnyUser();
+        $batch = \App\Models\ImportBatch::create(['import_type' => 'users', 'name' => 'x.csv', 'imported_count' => 0, 'skipped_count' => 0]);
+
+        $this->post(route('imports.undo', ['devices', $batch]))->assertNotFound();   // 種類對不上
+
+        auth()->logout();
+        $teacher = $this->makeUserWithRole('teacher', '教師');
+        $this->actingAs($teacher)->post(route('imports.undo', ['users', $batch]))->assertForbidden();
+        $this->assertFalse($batch->fresh()->isUndone());
+    }
+
+    public function test_import_page_lists_recent_batches_with_an_undo_button(): void
+    {
+        $this->loginAsAnyUser();
+        \App\Models\ImportBatch::create(['import_type' => 'devices', 'name' => 'phase1.csv', 'imported_count' => 3, 'skipped_count' => 1]);
+
+        $this->get(route('imports.index', 'devices'))->assertSee('phase1.csv')->assertSee('成功 3、略過 1')->assertSee('整批復原');
+    }
+
     private function tokenFrom($response): string
     {
         preg_match('/name="token" value="([a-f0-9-]{36})"/', $response->getContent(), $m);

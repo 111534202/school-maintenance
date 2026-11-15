@@ -2,7 +2,10 @@
 
 namespace App\Services\Import;
 
+use App\Models\ClassroomReservation;
 use App\Models\Department;
+use App\Models\ImportBatch;
+use App\Models\RepairRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -142,10 +145,33 @@ class UserImporter extends BulkImporter
         // 沒填初始密碼：給一組沒有人知道的隨機密碼（本人用「忘記密碼」領臨時密碼再設定）。
         $user->password = $data['password'] !== '' ? $data['password'] : Str::random(40);
         $user->is_password_change_required = true;   // 第一次登入一定要先設定新密碼
+        $user->import_batch_id = $this->batchId;     // 記下是哪一次匯入來的，匯錯時才能整批復原
         $user->save();
 
         // 操作紀錄不放密碼。
         AuditLogger::log('created', $user, Arr::except($data, ['password']), "批次匯入用戶「{$user->name}」");
+    }
+
+    public function undo(ImportBatch $batch): array
+    {
+        $done = 0;
+        $kept = 0;
+        foreach (User::where('import_batch_id', $batch->id)->get() as $user) {
+            // 已經登入過、或已有報修／預約紀錄的帳號不收回，避免弄丟歷史資料。
+            $used = $user->last_login_at !== null
+                || RepairRequest::where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->exists()
+                || ClassroomReservation::where('user_id', $user->id)->exists();
+            if ($used) {
+                $kept++;
+
+                continue;
+            }
+            $user->delete();   // 軟刪除，管理員之後仍可在用戶主檔還原
+            AuditLogger::log('deleted', $user, [], "批次匯入復原：刪除用戶「{$user->name}」");
+            $done++;
+        }
+
+        return ['done' => $done, 'kept' => $kept];
     }
 
     /** @return array<string, int> 身分名稱與代碼（小寫）=> 編號 */

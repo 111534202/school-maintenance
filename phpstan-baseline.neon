@@ -55,12 +55,6 @@ parameters:
 			path: app/Exports/RepairCostScrapsSheet.php
 
 		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Auth/LoginController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -71,18 +65,6 @@ parameters:
 			identifier: argument.unresolvableType
 			count: 1
 			path: app/Http/Controllers/DeviceController.php
-
-		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/MaintenanceOrderController.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/MaintenanceOrderController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -139,21 +121,9 @@ parameters:
 			path: app/Models/ClassroomReservationSlot.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\MaintenanceOrder\:\:\$device_category_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/MaintenanceOrder.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Models/MaintenanceOrder.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
 			path: app/Models/MaintenanceOrder.php
 
 		-
@@ -161,18 +131,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/MaintenanceOrder.php
-
-		-
-			message: '#^Cannot call method copy\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/MaintenancePlan.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/MaintenancePlan.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -185,12 +143,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 2
 			path: app/Models/Part.php
-
-		-
-			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/AI/MaintenanceFeatureExtractor.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:attachments\(\)\.$#'

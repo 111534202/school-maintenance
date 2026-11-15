@@ -10,15 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable([
-    'maintenance_plan_id',
-    'device_id',
-    'device_category_id',
-    'source',
-    'status',
-    'assigned_to',
-    'scheduled_date',
-])]
 /**
  *
  * @property int $id
@@ -33,6 +24,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $device_category_id
  * @property \Illuminate\Support\Carbon|null $deleted_at
  */
+#[Fillable([
+    'maintenance_plan_id',
+    'device_id',
+    'device_category_id',
+    'source',
+    'status',
+    'assigned_to',
+    'scheduled_date',
+])]
 class MaintenanceOrder extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceOrderFactory> */

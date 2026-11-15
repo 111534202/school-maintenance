@@ -4,13 +4,15 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;                // 報修單狀態列舉（算「進行中的報修單」時要排除已結案）
+use App\Exports\TableExport;
 use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
-use Illuminate\Validation\Rule;                   // 自訂 exists 規則（排除軟刪除資料）用
+use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;                   // 自訂 exists 規則（排除軟刪除資料）用
 use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套件
 
 /**
@@ -168,6 +170,27 @@ class DeviceController extends Controller
         DeviceStatusService::syncClassroom($classroom);
 
         return redirect()->route('devices.index')->with('success', __('devices.flash.disabled'));
+    }
+
+    /**
+     * 匯出設備清單（GET /devices/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆，並寫入操作紀錄。
+     */
+    public function export(Request $request)
+    {
+        $query = Device::with(['category', 'classroom'])->orderBy('device_code');
+        $this->applyFilters($query, $request);
+
+        $rows = $query->limit(5000)->get()->map(fn (Device $device) => [
+            $device->device_code, $device->asset_code, $device->category?->name, $device->brand, $device->model, $device->serial_number,
+            $device->classroom?->classroom_code, $device->classroom?->name,
+            Device::statusLabel($device->status), $device->is_core ? '是' : '否',
+            $device->warranty_end_date?->format('Y-m-d'), $device->created_at?->format('Y-m-d H:i'),
+        ])->all();
+
+        $file = '設備清單-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出設備清單 {$file}（" . count($rows) . ' 筆）');
+
+        return Excel::download(new TableExport('設備', ['設備編號', '資產編號', '類別', '品牌', '型號', '序號', '教室代碼', '教室', '狀態', '核心設備', '保固到期日', '建立時間'], $rows), $file);
     }
 
     /**

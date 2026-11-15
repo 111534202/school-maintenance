@@ -41,6 +41,44 @@
         </form>
     </div>
 
+    <div class="tb-card tb-card-pad mb-3">
+        <h2 class="h6 mb-3">{{ __('imports.history_title') }}</h2>
+        @if ($batches->isEmpty())
+            <div class="text-muted small">{{ __('imports.history_empty') }}</div>
+        @else
+            <div class="table-responsive">
+                <table class="tb-table">
+                    <thead><tr>
+                        <th>{{ __('imports.history_col.time') }}</th><th>{{ __('imports.history_col.file') }}</th><th>{{ __('imports.history_col.count') }}</th>
+                        <th>{{ __('imports.history_col.by') }}</th><th>{{ __('imports.history_col.state') }}</th>
+                    </tr></thead>
+                    <tbody>
+                        @foreach ($batches as $batch)
+                            <tr>
+                                <td class="text-nowrap">{{ $batch->created_at->format('Y-m-d H:i') }}</td>
+                                <td>{{ $batch->name }}</td>
+                                <td class="text-nowrap">{{ __('imports.history_count', ['ok' => $batch->imported_count, 'skipped' => $batch->skipped_count]) }}</td>
+                                <td>{{ $batch->creator?->name }}</td>
+                                <td class="text-nowrap">
+                                    @if ($batch->isUndone())
+                                        <span class="badge tb-pill tb-pill-muted">{{ __('imports.undone') }}</span>
+                                    @else
+                                        {{-- 整批復原：送出前先跳出全站共用的確認視窗（data-confirm）。 --}}
+                                        <form method="POST" action="{{ route('imports.undo', [$importer->type(), $batch]) }}" class="d-inline"
+                                            data-confirm="{{ __('imports.undo_confirm') }}" data-confirm-ok="{{ __('imports.undo_confirm_ok') }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>{{ __('imports.undo_button') }}</button>
+                                        </form>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
     <div class="tb-card tb-card-pad">
         <h2 class="h6 mb-3">{{ __('imports.columns_title') }}</h2>
         <div class="table-responsive">

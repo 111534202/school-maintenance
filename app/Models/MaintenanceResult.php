@@ -9,15 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable([
-    'maintenance_order_id',
-    'result',
-    'executed_by',
-    'executed_at',
-    'note',
-    'ng_conversion_status',
-    'repair_request_id',
-])]
 /**
  *
  * @property int $id
@@ -31,6 +22,15 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
+#[Fillable([
+    'maintenance_order_id',
+    'result',
+    'executed_by',
+    'executed_at',
+    'note',
+    'ng_conversion_status',
+    'repair_request_id',
+])]
 class MaintenanceResult extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceResultFactory> */

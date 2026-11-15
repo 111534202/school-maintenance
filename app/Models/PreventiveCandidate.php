@@ -8,21 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * AI 預防保養候選（第 4 週任務 2、3）。
- */
-#[Fillable([
-    'device_id',
-    'risk_score',
-    'threshold',
-    'algorithm',
-    'explanation',
-    'features',
-    'status',
-    'maintenance_order_id',
-    'decided_by',
-    'decided_at',
-    'decision_note',
-])]
-/**
  *
  * @property int $id
  * @property int $device_id
@@ -39,6 +24,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
+#[Fillable([
+    'device_id',
+    'risk_score',
+    'threshold',
+    'algorithm',
+    'explanation',
+    'features',
+    'status',
+    'maintenance_order_id',
+    'decided_by',
+    'decided_at',
+    'decision_note',
+])]
 class PreventiveCandidate extends Model
 {
     public const STATUS_PENDING = 'pending';

@@ -2,6 +2,7 @@
 
 namespace App\Services\Import;
 
+use App\Models\ImportBatch;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
@@ -47,8 +48,18 @@ abstract class BulkImporter
      */
     abstract protected function checkRow(array $row, array &$seen): array;
 
-    /** 把整理好的一列寫進資料庫（已在交易裡）。 */
+    /** 把整理好的一列寫進資料庫（已在交易裡）；要用 $this->batchId 標記這筆資料是哪一次匯入來的。 */
     abstract protected function persist(array $data): void;
+
+    /**
+     * 整批復原：把這一批匯入的資料收回（軟刪除，資料不會真的消失）。已經有使用紀錄的資料會保留。
+     *
+     * @return array{done: int, kept: int} 復原幾筆、因為已有使用紀錄而保留幾筆
+     */
+    abstract public function undo(ImportBatch $batch): array;
+
+    /** 目前這次匯入的批次編號（commit 時設定，persist 用來標記資料）。 */
+    protected int $batchId = 0;
 
     /** 寫入完成後的收尾（例如重新計算教室的異常標記），預設不做事。 */
     protected function afterCommit(array $rows): void
@@ -173,22 +184,32 @@ abstract class BulkImporter
     }
 
     /**
-     * 把沒有錯誤的列寫進資料庫。回傳寫入筆數。
+     * 把沒有錯誤的列寫進資料庫，並留一筆批次紀錄（之後可整批復原）。回傳這一批的紀錄。
      *
      * @param  list<array{errors: list<string>, data: array<string, mixed>}>  $results
      */
-    public function commit(array $results): int
+    public function commit(array $results, string $fileName = '', ?int $userId = null): ImportBatch
     {
         $good = array_values(array_filter($results, fn ($r) => ! $r['errors']));
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($good) {
+        $batch = \Illuminate\Support\Facades\DB::transaction(function () use ($good, $results, $fileName, $userId) {
+            $batch = ImportBatch::create([
+                'import_type' => $this->type(),
+                'name' => mb_substr($fileName, 0, 190),
+                'imported_count' => count($good),
+                'skipped_count' => count($results) - count($good),
+                'created_by' => $userId,
+            ]);
+            $this->batchId = $batch->id;
             foreach ($good as $row) {
                 $this->persist($row['data']);
             }
+
+            return $batch;
         });
         $this->afterCommit(array_column($good, 'data'));
 
-        return count($good);
+        return $batch;
     }
 
     // ---- 子類別常用的小工具 ----

@@ -35,4 +35,12 @@ return [
     'confirm_ok' => 'Confirm import',
     'confirm_with_errors' => ':error rows with problems will not be imported; only the :ok correct ones. Continue?',
     'errors_skipped_hint' => 'Rows with problems are not imported; the reason is shown under each row. Import the correct part now and fix the rest for a second upload.',
+    'history_title' => 'Recent imports',
+    'history_empty' => 'No imports yet.',
+    'history_col' => ['time' => 'Time', 'file' => 'File', 'count' => 'Rows', 'by' => 'By', 'state' => 'Status'],
+    'history_count' => ':ok imported, :skipped skipped',
+    'undone' => 'Undone',
+    'undo_button' => 'Undo this import',
+    'undo_confirm' => 'Undo this import? The imported records will be taken back (devices are disabled, users are deleted; data is kept and can be restored). Records that already have repair, maintenance or reservation history, or that have logged in, are left untouched.',
+    'undo_confirm_ok' => 'Undo import',
 ];
