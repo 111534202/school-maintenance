@@ -49,7 +49,7 @@ class DeviceStatusService
             AuditLogger::log('status_changed', $device, ['from' => $from, 'to' => $status], $reason);
 
             // 設備狀態變了，所在教室的異常標記可能要跟著變。
-            static::syncClassroomReservationStatus($device);
+            self::syncClassroomReservationStatus($device);
         }
 
         // refresh：重新從資料庫讀一次，確保回傳的是最新資料。
@@ -64,7 +64,7 @@ class DeviceStatusService
 
             AuditLogger::log('core_flag_changed', $device, ['is_core' => $isCore]);
 
-            static::syncClassroomReservationStatus($device);
+            self::syncClassroomReservationStatus($device);
         }
 
         return $device->refresh();

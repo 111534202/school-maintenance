@@ -22,6 +22,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'decided_at',
     'decision_note',
 ])]
+/**
+ *
+ * @property int $id
+ * @property int $device_id
+ * @property float $risk_score
+ * @property float $threshold
+ * @property string $algorithm
+ * @property array|null $explanation
+ * @property array|null $features
+ * @property string $status
+ * @property int|null $maintenance_order_id
+ * @property int|null $decided_by
+ * @property \Illuminate\Support\Carbon|null $decided_at
+ * @property string|null $decision_note
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class PreventiveCandidate extends Model
 {
     public const STATUS_PENDING = 'pending';
@@ -48,16 +65,19 @@ class PreventiveCandidate extends Model
         ];
     }
 
+    /** @return BelongsTo<Device, $this> */
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class)->withTrashed();
     }
 
+    /** @return BelongsTo<MaintenanceOrder, $this> */
     public function maintenanceOrder(): BelongsTo
     {
         return $this->belongsTo(MaintenanceOrder::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function decider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');

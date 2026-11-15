@@ -18,6 +18,19 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'ng_conversion_status',
     'repair_request_id',
 ])]
+/**
+ *
+ * @property int $id
+ * @property int $maintenance_order_id
+ * @property string $result
+ * @property int|null $executed_by
+ * @property \Illuminate\Support\Carbon $executed_at
+ * @property string|null $note
+ * @property string|null $ng_conversion_status
+ * @property int|null $repair_request_id
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class MaintenanceResult extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceResultFactory> */
@@ -45,24 +58,34 @@ class MaintenanceResult extends Model
         ];
     }
 
+    /** @return BelongsTo<MaintenanceOrder, $this> */
     public function maintenanceOrder(): BelongsTo
     {
         return $this->belongsTo(MaintenanceOrder::class);
     }
 
-    /** 執行（填寫）這次保養結果的人：executed_by 指向 users.id。 */
+    /**
+     * 執行（填寫）這次保養結果的人：executed_by 指向 users.id。
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function executor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'executed_by');
     }
 
     /** 這次保養用掉的零件（保養用料明細）。 */
-    /** 這筆保養結果的附件（保養前後照片等），跟報修共用同一張 attachments 資料表與上傳服務。 */
+    /**
+     * 這筆保養結果的附件（保養前後照片等），跟報修共用同一張 attachments 資料表與上傳服務。
+     *
+     * @return MorphMany<Attachment, $this>
+     */
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
     }
 
+    /** @return HasMany<MaintenancePartUsage, $this> */
     public function partUsages(): HasMany
     {
         return $this->hasMany(MaintenancePartUsage::class);

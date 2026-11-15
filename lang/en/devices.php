@@ -22,6 +22,18 @@ return [
     // Device::REPEAT_REPAIR_DAYS days reaches the threshold.
     'repeat_repair_badge' => ':count repairs in 30 days',
     'repeat_repair_hint' => 'This device has been repaired repeatedly recently — consider inspecting it or planning a replacement',
+    // QR sticker batch print page (DeviceController::qrSheet).
+    'qr_sheet' => [
+        'button' => 'Print QR stickers',
+        'title' => 'Device QR sticker print',
+        'print' => 'Print',
+        'back' => 'Back to devices',
+        'summary' => ':count stickers, about :pages A4 pages',
+        'too_many' => ':total devices match, but at most :limit are printed at a time. Add filters (classroom, category…) on the device list and print in batches.',
+        'tip' => 'When printing choose A4, default margins, 100% scale, and turn off headers and footers. 63.5 × 33.9 mm label paper (3×8 = 24 per page) can be used directly; on plain paper cut along the dashed lines.',
+        'empty' => 'No devices match, nothing to print.',
+    ],
+
     'no_department' => 'No department',
 
     'filter' => [

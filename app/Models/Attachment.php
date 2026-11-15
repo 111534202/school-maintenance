@@ -18,6 +18,17 @@ use Illuminate\Support\Facades\Storage;                       // Laravel 的檔�
  * attachable_id（存那個 Model 的 id）這兩個欄位。
  *
  * 檔案本身存在私有磁碟，只能透過 AttachmentController 下載（會檢查報修單的檢視權限）。
+ *
+ *
+ * @property int $id
+ * @property string $attachable_type
+ * @property int $attachable_id
+ * @property string $file_path
+ * @property string $file_name
+ * @property string $mime_type
+ * @property int $size_bytes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class Attachment extends Model
 {

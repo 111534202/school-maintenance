@@ -25,6 +25,9 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套
  */
 class DeviceController extends Controller
 {
+    /** QR 貼紙一次最多印幾張（A4 每頁 24 張，10 頁）。 */
+    private const QR_SHEET_LIMIT = 240;
+
     /** 設備列表（GET /devices）：可依關鍵字、教室、類別、狀態、是否異常篩選，每頁 15 筆。主控台的圖表點擊與教室主檔的連結也會帶參數過來。 */
     public function index(Request $request)
     {
@@ -41,6 +44,26 @@ class DeviceController extends Controller
             // 不是在看「這個用戶能不能看」）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
             ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
                 ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))])
+            ->tap(fn ($query) => $this->applyFilters($query, $request))
+            ->orderBy('device_code')   // 依設備編號排序
+            ->paginate(15)
+            ->withQueryString();       // 換頁時保留篩選條件
+
+        // 篩選列的下拉選單：所有教室、所有設備類別。
+        $classrooms = Classroom::orderBy('classroom_code')->get();
+        $categories = DeviceCategory::orderBy('name')->get();
+
+        $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
+        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart'));
+    }
+
+    /**
+     * 設備列表與「QR 貼紙列印」共用的篩選條件（關鍵字、教室、類別、狀態、只看異常），
+     * 這樣「列印」按下去印的就是畫面上篩出來的那些設備。
+     */
+    private function applyFilters($query, Request $request): void
+    {
+        $query
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');
                 // 設備編號、資產編號、品牌、型號任一個包含關鍵字就算符合；括號包起來避免「或」影響其他篩選。
@@ -55,17 +78,7 @@ class DeviceController extends Controller
             ->when($request->filled('device_category_id'), fn ($query) => $query->where('device_category_id', $request->integer('device_category_id')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             // ?abnormal=1 只列出異常設備（維修中、已淘汰、停用）；教室主檔的「異常設備」數字會連到這裡。
-            ->when($request->boolean('abnormal'), fn ($query) => $query->abnormal())
-            ->orderBy('device_code')   // 依設備編號排序
-            ->paginate(15)
-            ->withQueryString();       // 換頁時保留篩選條件
-
-        // 篩選列的下拉選單：所有教室、所有設備類別。
-        $classrooms = Classroom::orderBy('classroom_code')->get();
-        $categories = DeviceCategory::orderBy('name')->get();
-
-        $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
-        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart'));
+            ->when($request->boolean('abnormal'), fn ($query) => $query->abnormal());
     }
 
     /** 顯示新增設備表單（GET /devices/create）。 */
@@ -155,6 +168,28 @@ class DeviceController extends Controller
         DeviceStatusService::syncClassroom($classroom);
 
         return redirect()->route('devices.index')->with('success', __('devices.flash.disabled'));
+    }
+
+    /**
+     * QR 貼紙批次列印（GET /devices/qr-sheet）：依目前的篩選條件，一次輸出可直接列印的 A4 貼紙頁。
+     * 每張貼紙有 QR Code（指向設備固定入口網址）、設備編號、類別與品牌型號、所在教室。
+     * 一次最多印 QR_SHEET_LIMIT 張，超過會提示「請加上篩選條件分批印」。
+     */
+    public function qrSheet(Request $request)
+    {
+        $query = Device::with(['category', 'classroom'])->orderBy('device_code');
+        $this->applyFilters($query, $request);
+
+        $total = (clone $query)->count();
+        $labels = $query->limit(self::QR_SHEET_LIMIT)->get()->map(fn (Device $device) => [
+            'device' => $device,
+            // 內嵌 SVG：不用另外載入圖片，列印時一次到位。
+            'svg' => (string) QrCode::format('svg')->size(220)->margin(0)->generate(route('devices.entry', $device)),
+        ]);
+
+        AuditLogger::log('downloaded', null, ['type' => 'device_qr_sheet', 'count' => $labels->count()], '列印設備 QR 貼紙 ' . $labels->count() . ' 張');
+
+        return view('devices.qr-sheet', ['labels' => $labels, 'total' => $total, 'limit' => self::QR_SHEET_LIMIT]);
     }
 
     /**

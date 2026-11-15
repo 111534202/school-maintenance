@@ -801,3 +801,11 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-navbar .navbar-brand { display: inline-flex; align-items: center; min-height: 40px; }
     .tb-body .pagination .page-link { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
 }
+
+/* 頁首右邊的按鈕比較多的頁面（設備主檔、用戶主檔：圖表、批次匯入、列印 QR、新增）：手機寬度時整排移到標題下面並自動換行，
+   不再把頁面撐寬。只有加了 tb-actions-wrap 的頁首會變，其他頁面的標題列維持原樣（洋蔥版面不動）。 */
+@media (max-width: 575.98px) {
+    .tb-header:has(> .tb-actions-wrap) { flex-wrap: wrap; }
+    .tb-header:has(> .tb-actions-wrap) > :first-child { flex: 1 1 100%; }
+    .tb-header > div.tb-actions-wrap:not(:first-child) { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; }
+}

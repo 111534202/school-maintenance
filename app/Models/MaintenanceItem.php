@@ -12,12 +12,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * 保養項目。
  *
+ *
+ *
  * @property int $id
  * @property string $name
- * @property int|null $device_category_id
  * @property string|null $description
  * @property int|null $default_cycle_days
  * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $device_category_id
  */
 #[Fillable(['name', 'device_category_id', 'description', 'default_cycle_days', 'is_active'])]
 class MaintenanceItem extends Model
@@ -34,7 +38,11 @@ class MaintenanceItem extends Model
         ];
     }
 
-    /** 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。 */
+    /**
+     * 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。
+     *
+     * @return BelongsTo<DeviceCategory, $this>
+     */
     public function deviceCategory(): BelongsTo
     {
         return $this->belongsTo(DeviceCategory::class);

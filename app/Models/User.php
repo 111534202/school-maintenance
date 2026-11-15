@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;   // 「註冊後要驗證 Email」功能，本系統帳號由管理員建立，所以沒有啟用
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;   // 用「屬性標註」宣告允許批次寫入的欄位
 use Illuminate\Database\Eloquent\Attributes\Hidden;     // 用「屬性標註」宣告轉成 JSON 時要隱藏的欄位
@@ -18,6 +19,26 @@ use Illuminate\Notifications\Notifiable;                // 讓用戶可以收通
 /**
  * 用戶（帳號，users 資料表）。每個用戶屬於一個身分（Role）與一個部門（Department），
  * 能使用哪些功能由身分的權限決定（hasPermission）。管理介面見 UserController。
+ *
+ *
+ * @property int $id
+ * @property int|null $role_id
+ * @property int|null $department_id
+ * @property string $name
+ * @property string|null $account
+ * @property string $email
+ * @property string|null $phone
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string $password
+ * @property string|null $temporary_password
+ * @property \Illuminate\Support\Carbon|null $temporary_password_expires_at
+ * @property bool $is_password_change_required
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $last_login_at
+ * @property string|null $remember_token
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class User extends Authenticatable
 {
@@ -45,14 +66,22 @@ class User extends Authenticatable
         ];
     }
 
-    /** 這個用戶的身分。 */
-    public function role()
+    /**
+     * 這個用戶的身分。
+     *
+     * @return BelongsTo<Role, $this>
+     */
+    public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
     }
 
-    /** 所屬部門（用戶主檔欄位）。 */
-    public function department()
+    /**
+     * 所屬部門（用戶主檔欄位）。
+     *
+     * @return BelongsTo<Department, $this>
+     */
+    public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }

@@ -13,6 +13,20 @@ use Throwable;
  * 就改用這組 SMTP 設定，取代 .env 的 MAIL_* 設定。沒有啟用或資料表還沒建立時，維持 .env 的設定。
  *
  * 密碼用 encrypted 轉換：存進資料庫時自動加密、讀出來自動解密；$hidden 讓它不會被轉成 JSON／陣列時帶出去。
+ *
+ *
+ * @property int $id
+ * @property string $host
+ * @property int $port
+ * @property string $encryption
+ * @property string|null $smtp_account
+ * @property string|null $password
+ * @property string $from_address
+ * @property string|null $from_label
+ * @property bool $is_enabled
+ * @property int|null $updated_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class MailSetting extends Model
 {

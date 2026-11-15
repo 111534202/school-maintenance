@@ -19,6 +19,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'assigned_to',
     'scheduled_date',
 ])]
+/**
+ *
+ * @property int $id
+ * @property int|null $maintenance_plan_id
+ * @property int|null $device_id
+ * @property string $source
+ * @property string $status
+ * @property int|null $assigned_to
+ * @property \Illuminate\Support\Carbon|null $scheduled_date
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $device_category_id
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ */
 class MaintenanceOrder extends Model
 {
     /** @use HasFactory<\Database\Factories\MaintenanceOrderFactory> */
@@ -57,6 +71,7 @@ class MaintenanceOrder extends Model
         ];
     }
 
+    /** @return BelongsTo<MaintenancePlan, $this> */
     public function maintenancePlan(): BelongsTo
     {
         return $this->belongsTo(MaintenancePlan::class);
@@ -64,13 +79,19 @@ class MaintenanceOrder extends Model
 
     /**
      * 對應設備（唯讀引用林政寬的 Device Model，含已軟刪除的設備，避免歷史工單查不到設備）。
+     *
+     * @return BelongsTo<Device, $this>
      */
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class)->withTrashed();
     }
 
-    /** 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。 */
+    /**
+     * 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。
+     *
+     * @return BelongsTo<DeviceCategory, $this>
+     */
     public function deviceCategory(): BelongsTo
     {
         return $this->belongsTo(DeviceCategory::class);
@@ -84,12 +105,17 @@ class MaintenanceOrder extends Model
         return $this->device?->category?->name ?? $this->deviceCategory?->name;
     }
 
+    /** @return HasOne<MaintenanceResult, $this> */
     public function result(): HasOne
     {
         return $this->hasOne(MaintenanceResult::class);
     }
 
-    /** 負責人（由保養管理者指派，沒指派是空白）。 */
+    /**
+     * 負責人（由保養管理者指派，沒指派是空白）。
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');

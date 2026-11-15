@@ -7,7 +7,7 @@ namespace App\Support;
  *
  * 身分主檔（roles）新增身分後，在畫面上從這份清單勾選要開放哪些權限，勾選結果存在
  * role_permissions 資料表（一列一個權限；程式裡用 $role->permissions 讀寫權限代碼的陣列）。程式裡判斷權限一律用 Laravel 的 Gate：
- *   @can('users.manage')、Route::...->middleware('can:users.manage')、$user->can('...')
+ *   寫法例如：@can('users.manage')、Route::...->middleware('can:users.manage')、$user->can('...')
  * （Gate 的註冊在 AppServiceProvider，會逐一對應這份清單裡的每個權限）。
  *
  * 要新增一個權限：1. 在下面 GROUPS 加上代碼　2. 在 lang 資料夾底下各語言的 permissions.php 補上名稱

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Services\DeviceStatusService;   // 提供「哪些狀態算異常」的唯一定義
 use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +13,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;   // 軟刪除：刪除只是標�
  * 設備（devices 資料表）：每台設備有類別、所在教室與狀態。
  * 設備的「狀態」與「核心設備」旗標請透過 App\Services\DeviceStatusService 修改，
  * 才會自動寫操作紀錄並同步教室的異常標記。
+ *
+ *
+ * @property int $id
+ * @property string $device_code
+ * @property string|null $asset_code
+ * @property int $device_category_id
+ * @property string|null $brand
+ * @property string|null $model
+ * @property string|null $serial_number
+ * @property \Illuminate\Support\Carbon|null $warranty_end_date
+ * @property int $classroom_id
+ * @property string $status
+ * @property bool $is_core
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class Device extends Model
 {
@@ -71,20 +89,32 @@ class Device extends Model
         return $query->whereIn('status', DeviceStatusService::PROBLEM_STATUSES);
     }
 
-    /** 這台設備的所有報修單（報修時有掃描或選擇設備的才會有 device_id）。 */
-    public function repairRequests()
+    /**
+     * 這台設備的所有報修單（報修時有掃描或選擇設備的才會有 device_id）。
+     *
+     * @return HasMany<RepairRequest, $this>
+     */
+    public function repairRequests(): HasMany
     {
         return $this->hasMany(RepairRequest::class);
     }
 
-    /** 這台設備的類別；外鍵欄位不是預設的 category_id，所以要特別指定 device_category_id。 */
-    public function category()
+    /**
+     * 這台設備的類別；外鍵欄位不是預設的 category_id，所以要特別指定 device_category_id。
+     *
+     * @return BelongsTo<DeviceCategory, $this>
+     */
+    public function category(): BelongsTo
     {
         return $this->belongsTo(DeviceCategory::class, 'device_category_id');
     }
 
-    /** 這台設備所在的教室。 */
-    public function classroom()
+    /**
+     * 這台設備所在的教室。
+     *
+     * @return BelongsTo<Classroom, $this>
+     */
+    public function classroom(): BelongsTo
     {
         return $this->belongsTo(Classroom::class);
     }

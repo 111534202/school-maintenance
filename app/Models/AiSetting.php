@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Model;
  *
  * 資料庫沒有該筆設定時一律退回 DEFAULTS，所以不跑 seeder 也能正常運作。
  * 以下預設值皆為「工程實作決定，待全組確認」，管理員可在「AI 預防保養設定」頁調整。
+ *
+ *
+ * @property int $id
+ * @property string $key
+ * @property string|null $value
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 #[Fillable(['key', 'value'])]
 class AiSetting extends Model

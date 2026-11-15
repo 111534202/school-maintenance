@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,17 @@ use Illuminate\Database\Eloquent\Model;
  *
  * 每個科系各自設定年級數（grade_count）與每個年級的班數（class_count，最多 4 班，依序叫忠、孝、仁、愛）。
  * 班級名稱 ＝ 簡稱 ＋ 年級（中文數字）＋ 班名，例如簡稱「資」、3 年級、第 1 班 → 「資三忠」。
+ *
+ *
+ * @property int $id
+ * @property string $name
+ * @property string|null $major_code
+ * @property string $abbreviation
+ * @property int $grade_count
+ * @property int $class_count
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class Major extends Model
 {
@@ -28,8 +40,12 @@ class Major extends Model
         return ['is_active' => 'boolean', 'grade_count' => 'integer', 'class_count' => 'integer'];
     }
 
-    /** 用這個科系的空間申請。 */
-    public function reservations()
+    /**
+     * 用這個科系的空間申請。
+     *
+     * @return HasMany<ClassroomReservation, $this>
+     */
+    public function reservations(): HasMany
     {
         return $this->hasMany(ClassroomReservation::class);
     }

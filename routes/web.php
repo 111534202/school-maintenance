@@ -298,9 +298,19 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。
     Route::middleware('can:devices.manage')->group(function () {
+        // QR 貼紙批次列印：要放在 resource 前面，否則 /devices/qr-sheet 會被當成某台設備的編號。
+        Route::get('devices/qr-sheet', [DeviceController::class, 'qrSheet'])->name('devices.qr-sheet');
         Route::resource('devices', DeviceController::class)->except(['destroy']);
         Route::patch('devices/{device}/disable', [DeviceController::class, 'disable'])->name('devices.disable');   // 停用設備
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
+    });
+
+    // 批次匯入（設備、用戶）：下載範本 → 上傳預覽 → 確認寫入。權限依種類在控制器內檢查（devices.manage／users.manage）。
+    Route::prefix('import/{type}')->whereIn('type', ['devices', 'users'])->name('imports.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BulkImportController::class, 'index'])->name('index');
+        Route::get('/template', [\App\Http\Controllers\BulkImportController::class, 'template'])->name('template');
+        Route::post('/preview', [\App\Http\Controllers\BulkImportController::class, 'preview'])->name('preview')->middleware('throttle:20,1');
+        Route::post('/confirm', [\App\Http\Controllers\BulkImportController::class, 'confirm'])->name('confirm')->middleware('throttle:10,1');
     });
 
     // 寄信設定：需要 mail-settings.manage（預設只有系統管理員）。填寄信用的信箱帳號、寄測試信；密碼加密存放。

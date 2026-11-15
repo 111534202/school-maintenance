@@ -15,6 +15,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * - current_stock：目前庫存。它等於所有採購批次的剩餘數量加總，只能透過 PartStockService
  *   進貨（新增採購）或用料（維修、保養）來改變，畫面上不能直接修改。
  * - 單價不存在零件上，而是存在每一筆採購批次（part_purchases），成本採先進先出計算。
+ *
+ *
+ * @property int $id
+ * @property string|null $part_code
+ * @property string $name
+ * @property string|null $specification
+ * @property string|null $brand
+ * @property string|null $model
+ * @property string $unit
+ * @property int $current_stock
+ * @property int $safety_stock
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class Part extends Model
 {
@@ -193,25 +206,41 @@ class Part extends Model
                 ->whereColumn('part_purchases.part_id', 'parts.id')]);
     }
 
-    /** 採購紀錄（進貨批次）。 */
+    /**
+     * 採購紀錄（進貨批次）。
+     *
+     * @return HasMany<PartPurchase, $this>
+     */
     public function purchases(): HasMany
     {
         return $this->hasMany(PartPurchase::class);
     }
 
-    /** 維修用料明細。 */
+    /**
+     * 維修用料明細。
+     *
+     * @return HasMany<RepairPartUsage, $this>
+     */
     public function repairPartUsages(): HasMany
     {
         return $this->hasMany(RepairPartUsage::class, 'part_id');
     }
 
-    /** 保養用料明細。 */
+    /**
+     * 保養用料明細。
+     *
+     * @return HasMany<MaintenancePartUsage, $this>
+     */
     public function maintenancePartUsages(): HasMany
     {
         return $this->hasMany(MaintenancePartUsage::class, 'part_id');
     }
 
-    /** 報廢紀錄（沒用就壞掉、過期、遺失而從庫存扣掉的）。 */
+    /**
+     * 報廢紀錄（沒用就壞掉、過期、遺失而從庫存扣掉的）。
+     *
+     * @return HasMany<PartScrap, $this>
+     */
     public function scraps(): HasMany
     {
         return $this->hasMany(PartScrap::class);

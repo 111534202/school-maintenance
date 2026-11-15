@@ -48,7 +48,7 @@ class BackupController extends Controller
     /** 還原到這份備份（還原前會先自動備份目前的資料）。 */
     public function restore(string $name)
     {
-        abort_unless($this->backup->path($name), 404);
+        abort_unless($this->backup->path($name) !== null, 404);
 
         try {
             $safety = $this->backup->restore($name);

@@ -1,0 +1,38 @@
+<?php
+
+// i18n: bulk import (devices, users). Keep this file in sync with lang/zh_TW/imports.php — both must have exactly the same keys.
+return [
+    'button' => 'Bulk import',
+    'title' => 'Bulk import :label',
+    'back' => 'Back to list',
+    'steps_title' => 'How to import',
+    'step1' => 'Press "Download template", open it in Excel and fill in the "匯入資料" sheet following the header row (the other sheets explain the columns, list valid values and show an example row).',
+    'step2' => 'Save, choose the file below and press "Upload and preview". Nothing is written yet; each row is only checked. At most :max rows at a time.',
+    'step3' => 'The preview marks the rows that have problems and why. When it looks right press "Confirm import". Rows with problems are skipped; fix them and import again.',
+    'download_template' => 'Download template',
+    'template_hint' => 'The template is an Excel file; a star (*) after a header means required.',
+    'choose_file' => 'Choose file',
+    'file_hint' => '.xlsx or .csv (save CSV as UTF-8), up to 5 MB.',
+    'preview_button' => 'Upload and preview',
+    'columns_title' => 'Columns',
+    'col' => [
+        'name' => 'Column',
+        'required' => 'Required',
+        'example' => 'Example',
+        'note' => 'Notes',
+        'line' => 'Row',
+        'result' => 'Result',
+    ],
+    'required' => 'Required',
+
+    'preview_title' => 'Preview import :label',
+    'reupload' => 'Choose another file',
+    'ok_count' => ':count rows can be imported',
+    'error_count' => ':count rows have problems',
+    'row_ok' => 'OK',
+    'row_error' => 'Problem',
+    'confirm_button' => 'Confirm import of :count',
+    'confirm_ok' => 'Confirm import',
+    'confirm_with_errors' => ':error rows with problems will not be imported; only the :ok correct ones. Continue?',
+    'errors_skipped_hint' => 'Rows with problems are not imported; the reason is shown under each row. Import the correct part now and fix the rest for a second upload.',
+];

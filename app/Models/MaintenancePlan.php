@@ -12,14 +12,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 /**
  * 保養計畫。
  *
+ *
+ *
  * @property int $id
  * @property string $name
  * @property int|null $device_id
- * @property int|null $device_category_id
  * @property int $cycle_days
  * @property \Illuminate\Support\Carbon $start_date
  * @property \Illuminate\Support\Carbon|null $next_due_date
  * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $device_category_id
  */
 #[Fillable(['name', 'device_id', 'device_category_id', 'cycle_days', 'start_date', 'next_due_date', 'is_active'])]
 class MaintenancePlan extends Model
@@ -51,6 +55,8 @@ class MaintenancePlan extends Model
 
     /**
      * 對應設備（唯讀引用林政寬的 Device Model，含已軟刪除的設備，避免歷史資料查不到設備）。
+     *
+     * @return BelongsTo<Device, $this>
      */
     public function device(): BelongsTo
     {
@@ -65,7 +71,11 @@ class MaintenancePlan extends Model
         return $this->device?->category?->name ?? $this->deviceCategory?->name;
     }
 
-    /** 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。 */
+    /**
+     * 設備類別：device_category_id 指向 device_categories（保養項目／計畫／工單要針對哪一類設備）。
+     *
+     * @return BelongsTo<DeviceCategory, $this>
+     */
     public function deviceCategory(): BelongsTo
     {
         return $this->belongsTo(DeviceCategory::class);
@@ -99,6 +109,7 @@ class MaintenancePlan extends Model
         $this->update(['next_due_date' => $next->toDateString()]);
     }
 
+    /** @return BelongsToMany<MaintenanceItem, $this> */
     public function maintenanceItems(): BelongsToMany
     {
         return $this->belongsToMany(

@@ -12,8 +12,15 @@
         <div>
             <h1 class="tb-title">{{ __('devices.index_title') }}</h1>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 tb-actions-wrap">
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            @can('devices.manage')
+                <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'devices') }}"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
+            @endcan
+            {{-- 依目前的篩選條件批次列印 QR 貼紙（新分頁開啟，可直接列印）。 --}}
+            <a class="tb-btn tb-btn-outline" href="{{ route('devices.qr-sheet', request()->query()) }}" target="_blank" rel="noopener">
+                <i class="bi bi-qr-code"></i>{{ __('devices.qr_sheet.button') }}
+            </a>
             <a class="tb-btn tb-btn-primary" href="{{ route('devices.create') }}" data-modal-frame data-modal-title="{{ __('devices.add_device') }}" data-modal-size="xl">
                 <i class="bi bi-plus-lg"></i>{{ __('devices.add_device') }}
             </a>

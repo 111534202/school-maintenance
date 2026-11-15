@@ -5,6 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ *
+ * @property int $id
+ * @property int $repair_log_id
+ * @property int $part_id
+ * @property int|null $part_purchase_id
+ * @property int $quantity
+ * @property int|null $unit_price
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class RepairPartUsage extends Model
 {
     // 資料表名稱統一用複數（舊名 repair_part_usage 由 2026_10_15_100000 migration 改名）。
@@ -25,6 +36,8 @@ class RepairPartUsage extends Model
 
     /**
      * 取得這筆零件使用明細所屬的維修紀錄。
+     *
+     * @return BelongsTo<RepairLog, $this>
      */
     public function repairLog(): BelongsTo
     {
@@ -33,13 +46,19 @@ class RepairPartUsage extends Model
 
     /**
      * 取得這筆明細使用的零件。
+     *
+     * @return BelongsTo<Part, $this>
      */
     public function part(): BelongsTo
     {
         return $this->belongsTo(Part::class, 'part_id');
     }
 
-    /** 這筆用料扣的是哪一批採購。 */
+    /**
+     * 這筆用料扣的是哪一批採購。
+     *
+     * @return BelongsTo<PartPurchase, $this>
+     */
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(PartPurchase::class, 'part_purchase_id');

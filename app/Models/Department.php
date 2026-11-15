@@ -2,12 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * 部門主檔（departments 資料表）。用戶與教室都會歸屬某個部門，
  * 它們表單裡的「部門」下拉選單就是從這裡讀（見下方 scopeForSelect）。
+ *
+ *
+ * @property int $id
+ * @property string $name
+ * @property string|null $department_code
+ * @property string|null $description
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class Department extends Model
 {
@@ -20,14 +30,22 @@ class Department extends Model
         return ['is_active' => 'boolean'];
     }
 
-    /** 這個部門底下的所有教室。 */
-    public function classrooms()
+    /**
+     * 這個部門底下的所有教室。
+     *
+     * @return HasMany<Classroom, $this>
+     */
+    public function classrooms(): HasMany
     {
         return $this->hasMany(Classroom::class);
     }
 
-    /** 屬於這個部門的所有用戶。 */
-    public function users()
+    /**
+     * 屬於這個部門的所有用戶。
+     *
+     * @return HasMany<User, $this>
+     */
+    public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }

@@ -72,3 +72,15 @@ Schedule::command(\App\Console\Commands\RunDatabaseBackup::class, ['--reason=sch
 Schedule::call(fn () => \Illuminate\Support\Facades\Cache::put('schedule:heartbeat', now(), now()->addDay()))
     ->everyMinute()
     ->name('schedule:heartbeat');
+
+/**
+ * 批次匯入的預覽暫存檔：預覽後 1 小時內可以確認，超過 2 小時沒確認的檔案每小時清掉一次（檔案裡可能有初始密碼，不要留著）。
+ */
+Schedule::call(function () {
+    $disk = \Illuminate\Support\Facades\Storage::disk('local');
+    foreach ($disk->files('imports') as $file) {
+        if ($disk->lastModified($file) < now()->subHours(2)->getTimestamp()) {
+            $disk->delete($file);
+        }
+    }
+})->hourly()->name('imports:prune');

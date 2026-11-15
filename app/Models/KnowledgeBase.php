@@ -10,6 +10,18 @@ use Illuminate\Database\Eloquent\Model;
  * 排除步驟；照著做還是解決不了，才會跳到報修流程（見
  * KnowledgeBaseController::resolved() / RepairRequestController::create()
  * 裡的 from_kb 參數）。
+ *
+ *
+ * @property int $id
+ * @property string $title
+ * @property string|null $category
+ * @property string $symptom
+ * @property string $solution
+ * @property bool $is_published
+ * @property int $view_count
+ * @property int|null $created_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class KnowledgeBase extends Model
 {

@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;   // 「軟刪除」功能：刪除只是標記時間，資料還在，可以還原
@@ -10,6 +13,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;   // 「軟刪除」功能：刪�
  * 教室（classrooms 資料表）。教室底下有設備；每間教室有所屬部門與管理人。
  * 教室的 reservation_status 欄位是「設備異常旗標」：有核心設備異常時會被標成 abnormal，
  * 由 App\Services\DeviceStatusService 自動維護，不要手動改。
+ *
+ *
+ * @property int $id
+ * @property int|null $department_id
+ * @property string $campus
+ * @property string $building
+ * @property string $floor
+ * @property string $classroom_code
+ * @property string $name
+ * @property string|null $type
+ * @property int|null $manager_id
+ * @property bool $is_active
+ * @property string $reservation_status
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class Classroom extends Model
 {
@@ -26,14 +45,22 @@ class Classroom extends Model
         'is_active' => 'boolean',
     ];
 
-    /** 教室所屬的部門（一間教室屬於一個部門）。 */
-    public function department()
+    /**
+     * 教室所屬的部門（一間教室屬於一個部門）。
+     *
+     * @return BelongsTo<Department, $this>
+     */
+    public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
     }
 
-    /** 教室的管理人（用戶）；外鍵欄位不是預設的 user_id，所以要特別指定 manager_id。 */
-    public function manager()
+    /**
+     * 教室的管理人（用戶）；外鍵欄位不是預設的 user_id，所以要特別指定 manager_id。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
     }
@@ -47,14 +74,20 @@ class Classroom extends Model
     /**
      * 這間教室裡所有設備的報修單（教室 → 設備 → 報修單，靠 repair_requests.device_id 串起來）。
      * 注意：只有「報修時有綁定設備」的報修單算在內；手動輸入文字描述、沒有設備的報修單不會出現在這裡。
+     *
+     * @return HasManyThrough<RepairRequest, Device, $this>
      */
-    public function repairRequests()
+    public function repairRequests(): HasManyThrough
     {
         return $this->hasManyThrough(RepairRequest::class, Device::class);
     }
 
-    /** 這間教室裡的所有設備（一間教室有很多設備）。 */
-    public function devices()
+    /**
+     * 這間教室裡的所有設備（一間教室有很多設備）。
+     *
+     * @return HasMany<Device, $this>
+     */
+    public function devices(): HasMany
     {
         return $this->hasMany(Device::class);
     }

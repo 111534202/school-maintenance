@@ -1,0 +1,21 @@
+# 靜態分析（Larastan／PHPStan）：不用執行程式，直接讀程式碼找出潛在錯誤
+# （例如呼叫不存在的方法、拼錯的欄位名稱、可能是空值卻直接使用、型別不符）。
+#
+# 執行：composer analyse   （等同 vendor/bin/phpstan analyse --memory-limit=1G）
+# 目前檢查等級 5（共 0～10，數字越大越嚴格）。舊程式裡既有的問題記錄在 phpstan-baseline.neon，
+# 之後新寫的程式不能再增加新問題；修掉舊問題後，重新產生基準檔：
+#   vendor/bin/phpstan analyse --memory-limit=1G --generate-baseline
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - routes
+        - database/seeders
+        - database/factories
+        - bootstrap
+    level: 5
+    # 資料表欄位的型別：Larastan 會讀 database/migrations 推斷（不需要連資料庫）。
+    checkOctaneCompatibility: false

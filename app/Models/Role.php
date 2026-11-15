@@ -16,6 +16,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * description 說明；is_system 是否系統內建（內建的不能刪除）。
  * 勾選的權限存在 role_permissions 資料表（一列一個權限，第一正規化）；程式裡仍然用 $role->permissions
  * 讀寫「權限代碼的陣列」，Role 會自動同步那張表，所以呼叫端不用改。
+ *
+ *
+ * @property list<string> $permissions 勾選的權限代碼（自訂存取方式，實際存在 role_permissions 資料表）
+ * @property int $id
+ * @property string $name
+ * @property string $role_code
+ * @property string|null $description
+ * @property bool $is_system
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class Role extends Model
 {
@@ -53,7 +63,11 @@ class Role extends Model
         ];
     }
 
-    /** 這個身分勾選的權限資料列（role_permissions）。 */
+    /**
+     * 這個身分勾選的權限資料列（role_permissions）。
+     *
+     * @return HasMany<RolePermission, $this>
+     */
     public function rolePermissions(): HasMany
     {
         return $this->hasMany(RolePermission::class);
@@ -81,8 +95,12 @@ class Role extends Model
         );
     }
 
-    /** 屬於這個身分的所有用戶。 */
-    public function users()
+    /**
+     * 屬於這個身分的所有用戶。
+     *
+     * @return HasMany<User, $this>
+     */
+    public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }

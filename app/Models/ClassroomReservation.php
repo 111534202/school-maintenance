@@ -12,6 +12,23 @@ use Illuminate\Database\Eloquent\Model;
  * 使用時間（日期、開始、結束）只記在時段明細（classroom_reservation_slots），申請本身不另存一份
  * （2026-11-05 依 docs/待確認/預約時間重複儲存_劉家芸.md 方案 A 移除）；要「最早的時段」用 firstSlot()。
  * status 是整筆申請的彙總：pending 未審核；approved 全部同意；rejected 全部拒絕；partially_approved 部分同意（只會出現在以前可以分時段審核時的舊資料）。
+ *
+ *
+ * @property int $id
+ * @property int $classroom_id
+ * @property int $requester_id
+ * @property string $class_name
+ * @property int|null $major_id
+ * @property int|null $class_grade
+ * @property int|null $class_section
+ * @property string $status
+ * @property int|null $reviewed_by
+ * @property \Illuminate\Support\Carbon|null $reviewed_at
+ * @property string|null $rejection_reason
+ * @property string|null $purpose
+ * @property bool $is_all_or_nothing
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class ClassroomReservation extends Model
 {
@@ -46,26 +63,31 @@ class ClassroomReservation extends Model
         ];
     }
 
+    /** @return BelongsTo<Major, $this> */
     public function major(): BelongsTo
     {
         return $this->belongsTo(Major::class);
     }
 
+    /** @return BelongsTo<Classroom, $this> */
     public function classroom(): BelongsTo
     {
         return $this->belongsTo(Classroom::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    /** @return HasMany<ClassroomReservationSlot, $this> */
     public function slots(): HasMany
     {
         return $this->hasMany(
@@ -74,7 +96,11 @@ class ClassroomReservation extends Model
         )->orderBy('reservation_date')->orderBy('start_time');
     }
 
-    /** 最早的一個時段（依日期、開始時間）；列表或通知要顯示「哪一天」時用這個。 */
+    /**
+     * 最早的一個時段（依日期、開始時間）；列表或通知要顯示「哪一天」時用這個。
+     *
+     * @return HasOne<ClassroomReservationSlot, $this>
+     */
     public function firstSlot(): HasOne
     {
         return $this->hasOne(ClassroomReservationSlot::class, 'classroom_reservation_id')

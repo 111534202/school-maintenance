@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -9,6 +10,17 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * 操作紀錄（audit_logs 資料表）：誰、在什麼時候、對哪筆資料做了什麼。
  * 一律透過 App\Services\AuditLogger::log() 寫入，不要在別處直接 AuditLog::create。
  * 紀錄只新增、不修改、不刪除；畫面上由 AuditLogController 列出來給有權限的人查詢。
+ *
+ *
+ * @property int $id
+ * @property int|null $user_id
+ * @property string $action
+ * @property string|null $loggable_type
+ * @property int|null $loggable_id
+ * @property array|null $changes
+ * @property string|null $description
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class AuditLog extends Model
 {
@@ -22,8 +34,12 @@ class AuditLog extends Model
         'changes' => 'array',
     ];
 
-    /** 這筆紀錄是誰操作的（登入失敗等沒有登入者的紀錄，這裡會是空值）。 */
-    public function user()
+    /**
+     * 這筆紀錄是誰操作的（登入失敗等沒有登入者的紀錄，這裡會是空值）。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

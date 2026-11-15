@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\RepairRequestStatus;   // 報修單狀態列舉
 use App\Policies\RepairRequestPolicy;   // 報修單的歸屬權限（誰看得到、誰能處理）
 use Illuminate\Database\Eloquent\Builder;   // 查詢建構器的型別（scope 方法會用到）
@@ -24,6 +25,24 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型
  *   service 來修改，不要在 Controller 或其他地方直接寫 `$repairRequest->status = ...`。
  *   因為狀態怎麼轉換是有規則的（例如「新報修」不能直接跳到「處理中」），這些
  *   規則全部寫在那支 service 裡，統一管理比較不會出錯。
+ *
+ *
+ * @property int $id
+ * @property string $title
+ * @property string $description
+ * @property string $impact_level
+ * @property bool $is_class_affected
+ * @property \App\Enums\RepairRequestStatus $status
+ * @property string|null $rejection_reason
+ * @property int|null $requester_id
+ * @property int|null $device_id
+ * @property string|null $device_note
+ * @property int|null $classroom_id
+ * @property int|null $assigned_to
+ * @property \Illuminate\Support\Carbon|null $scheduled_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
  */
 class RepairRequest extends Model
 {
@@ -80,8 +99,10 @@ class RepairRequest extends Model
     /**
      * 這張報修單底下的所有維修紀錄（一張報修單可以有多筆維修紀錄，
      * 例如驗收不通過退回重修，就會多一筆新的維修紀錄）。
+     *
+     * @return HasMany<RepairLog, $this>
      */
-    public function repairLogs()
+    public function repairLogs(): HasMany
     {
         return $this->hasMany(RepairLog::class);
     }
@@ -89,6 +110,8 @@ class RepairRequest extends Model
     /**
      * 這張報修單附的檔案（例如故障照片）。attachments 表是共用表，
      * 同一張表也被 RepairLog（維修前後照片）使用，用「多型關聯」區分是誰的附件。
+     *
+     * @return MorphMany<Attachment, $this>
      */
     public function attachments(): MorphMany
     {
@@ -133,13 +156,21 @@ class RepairRequest extends Model
             && $this->scheduled_at->isPast();
     }
 
-    /** 這張報修單是報修哪一台真實設備（掃描設備條碼建立的報修單才會有值）。 */
+    /**
+     * 這張報修單是報修哪一台真實設備（掃描設備條碼建立的報修單才會有值）。
+     *
+     * @return BelongsTo<Device, $this>
+     */
     public function device(): BelongsTo
     {
         return $this->belongsTo(Device::class);
     }
 
-    /** 設備地點（教室）。含已停用（軟刪除）的教室，舊報修單才查得到當時的地點。 */
+    /**
+     * 設備地點（教室）。含已停用（軟刪除）的教室，舊報修單才查得到當時的地點。
+     *
+     * @return BelongsTo<Classroom, $this>
+     */
     public function classroom(): BelongsTo
     {
         return $this->belongsTo(Classroom::class)->withTrashed();
@@ -151,13 +182,21 @@ class RepairRequest extends Model
         return $this->classroom ? "{$this->classroom->name}（{$this->classroom->classroom_code}）" : null;
     }
 
-    /** 送出這張報修單的使用者。 */
+    /**
+     * 送出這張報修單的使用者。
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
     }
 
-    /** 目前被指派處理這張報修單的維修人員。 */
+    /**
+     * 目前被指派處理這張報修單的維修人員。
+     *
+     * @return BelongsTo<User, $this>
+     */
     public function assignedTechnician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');

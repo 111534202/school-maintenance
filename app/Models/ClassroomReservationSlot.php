@@ -8,6 +8,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * 預約申請裡的一個時段。status 是這個時段的審核結果（approved／rejected），可以逐節審核；
  * 空白代表還沒審核（或更早、沒有逐節結果的舊資料，跟著整筆申請的狀態）。
+ *
+ *
+ * @property int $id
+ * @property int $classroom_reservation_id
+ * @property \Illuminate\Support\Carbon $reservation_date
+ * @property string $start_time
+ * @property string $end_time
+ * @property int|null $period_number
+ * @property string|null $status
+ * @property string|null $rejection_reason
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class ClassroomReservationSlot extends Model
 {
@@ -29,6 +41,7 @@ class ClassroomReservationSlot extends Model
         ];
     }
 
+    /** @return BelongsTo<ClassroomReservation, $this> */
     public function reservation(): BelongsTo
     {
         return $this->belongsTo(ClassroomReservation::class, 'classroom_reservation_id');

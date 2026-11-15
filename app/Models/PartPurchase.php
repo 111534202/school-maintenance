@@ -13,6 +13,18 @@ use Illuminate\Support\Facades\Storage;
  * 總價＝數量×單價，用 totalPrice() 計算，不另外存。
  * remaining_quantity 是這一批還沒被用掉的數量（先進先出扣料時會減少）。
  * 數量、單價、剩餘數量只能透過 PartStockService 修改，才能同步更新零件的目前庫存。
+ *
+ *
+ * @property int $id
+ * @property int $part_id
+ * @property \Illuminate\Support\Carbon $purchase_date
+ * @property string|null $vendor_name
+ * @property int $quantity
+ * @property int $unit_price
+ * @property int $remaining_quantity
+ * @property string|null $note
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class PartPurchase extends Model
 {
@@ -58,12 +70,17 @@ class PartPurchase extends Model
         return $this->usedQuantity() > 0;
     }
 
+    /** @return BelongsTo<Part, $this> */
     public function part(): BelongsTo
     {
         return $this->belongsTo(Part::class);
     }
 
-    /** 發票、收據等附件（沿用報修共用的 attachments 資料表）。 */
+    /**
+     * 發票、收據等附件（沿用報修共用的 attachments 資料表）。
+     *
+     * @return MorphMany<Attachment, $this>
+     */
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
@@ -87,11 +104,13 @@ class PartPurchase extends Model
         }
     }
 
+    /** @return HasMany<RepairPartUsage, $this> */
     public function repairPartUsages(): HasMany
     {
         return $this->hasMany(RepairPartUsage::class);
     }
 
+    /** @return HasMany<MaintenancePartUsage, $this> */
     public function maintenancePartUsages(): HasMany
     {
         return $this->hasMany(MaintenancePartUsage::class);

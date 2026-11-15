@@ -115,7 +115,7 @@ class DatabaseBackup
             $first = false;
             $firstRow = true;
             $order = Schema::hasColumn($table, 'id') ? 'id' : Schema::getColumnListing($table)[0];
-            foreach (DB::table($table)->orderBy($order)->lazy(500, $order) as $row) {
+            foreach (DB::table($table)->orderBy($order)->lazy(500) as $row) {
                 $write(($firstRow ? '' : ',') . json_encode($row, JSON_UNESCAPED_UNICODE));
                 $firstRow = false;
             }

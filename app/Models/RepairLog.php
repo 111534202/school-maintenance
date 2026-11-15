@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型關聯」的型別
@@ -11,6 +12,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * 維修紀錄。一張報修單（RepairRequest）可以有很多筆維修紀錄——最常見的情況
  * 是驗收不通過退回重修，維修人員就會再填一筆新的紀錄，舊的紀錄不會被刪除，
  * 這樣才能完整看到整個處理過程。
+ *
+ *
+ * @property int $id
+ * @property int $repair_request_id
+ * @property string $cause
+ * @property string $resolution
+ * @property string|null $parts_used_note
+ * @property \Illuminate\Support\Carbon|null $started_at
+ * @property \Illuminate\Support\Carbon|null $ended_at
+ * @property string|null $total_hours
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
  */
 class RepairLog extends Model
 {
@@ -34,13 +47,21 @@ class RepairLog extends Model
         'total_hours' => 'decimal:2',
     ];
 
-    /** 這筆維修紀錄屬於哪一張報修單。 */
-    public function repairRequest()
+    /**
+     * 這筆維修紀錄屬於哪一張報修單。
+     *
+     * @return BelongsTo<RepairRequest, $this>
+     */
+    public function repairRequest(): BelongsTo
     {
         return $this->belongsTo(RepairRequest::class);
     }
 
-    /** 這筆維修紀錄的附件（維修前後照片），跟 RepairRequest 共用同一張 attachments 表。 */
+    /**
+     * 這筆維修紀錄的附件（維修前後照片），跟 RepairRequest 共用同一張 attachments 表。
+     *
+     * @return MorphMany<Attachment, $this>
+     */
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
@@ -48,6 +69,8 @@ class RepairLog extends Model
 
     /**
     * 取得這筆維修紀錄使用的所有零件明細。
+     *
+     * @return HasMany<RepairPartUsage, $this>
      */
     public function partUsages(): HasMany
     {
