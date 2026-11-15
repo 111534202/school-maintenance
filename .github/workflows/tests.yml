@@ -106,7 +106,7 @@ jobs:
         run: php artisan docs:schema --check
 
       - name: 部署檢查指令能正常執行
-        run: php artisan deploy:check || true
+        run: php artisan deploy:check
 
   static-analysis:
     name: 靜態分析（Larastan）

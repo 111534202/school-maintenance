@@ -1,6 +1,48 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Method App\\Console\\Commands\\GenerateSchemaDocs\:\:category\(\) has parameter \$fk with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/GenerateSchemaDocs.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\GenerateSchemaDocs\:\:document\(\) has parameter \$schema with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/GenerateSchemaDocs.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\GenerateSchemaDocs\:\:logicalType\(\) has parameter \$col with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/GenerateSchemaDocs.php
+
+		-
+			message: '#^Method App\\Console\\Commands\\GenerateSchemaDocs\:\:typeLabel\(\) has parameter \$column with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Console/Commands/GenerateSchemaDocs.php
+
+		-
+			message: '#^Method App\\Exceptions\\PartStockTimelineException\:\:pendingMessage\(\) has parameter \$errors with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Exceptions/PartStockTimelineException.php
+
+		-
+			message: '#^Method App\\Exports\\RepairCostAnalysisExport\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/RepairCostAnalysisExport.php
+
+		-
+			message: '#^Method App\\Exports\\RepairCostDetailsSheet\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/RepairCostDetailsSheet.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>classroom" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -31,10 +73,22 @@ parameters:
 			path: app/Exports/RepairCostDetailsSheet.php
 
 		-
+			message: '#^Method App\\Exports\\RepairCostPartsSheet\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/RepairCostPartsSheet.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Exports/RepairCostPartsSheet.php
+
+		-
+			message: '#^Method App\\Exports\\RepairCostScrapsSheet\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/RepairCostScrapsSheet.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -55,10 +109,418 @@ parameters:
 			path: app/Exports/RepairCostScrapsSheet.php
 
 		-
+			message: '#^Method App\\Exports\\RepairCostSummarySheet\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/RepairCostSummarySheet.php
+
+		-
+			message: '#^Method App\\Exports\\SectionsSheet\:\:__construct\(\) has parameter \$headings with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/SectionsSheet.php
+
+		-
+			message: '#^Method App\\Exports\\SectionsSheet\:\:__construct\(\) has parameter \$rows with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Exports/SectionsSheet.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:output\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/AttachmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\AttachmentController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/AttachmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\AuditLogController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/AuditLogController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\AuditLogController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/AuditLogController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\LoginController\:\:login\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/LoginController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\LoginController\:\:logout\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/LoginController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\LoginController\:\:showLoginForm\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/LoginController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\PasswordRecoveryController\:\:change\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/PasswordRecoveryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\PasswordRecoveryController\:\:sendTemporaryPassword\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/PasswordRecoveryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\PasswordRecoveryController\:\:showChangeForm\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/PasswordRecoveryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Auth\\PasswordRecoveryController\:\:showRequestForm\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Auth/PasswordRecoveryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BackupController\:\:download\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BackupController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BackupController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BackupController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BackupController\:\:restore\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BackupController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BackupController\:\:settings\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BackupController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BackupController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BackupController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BulkImportController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BulkImportController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BulkImportController\:\:preview\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BulkImportController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\BulkImportController\:\:template\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/BulkImportController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:toggle\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomController\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/ClassroomController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:afterReview\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:afterReview\(\) has parameter \$result with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:applyKeyword\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:approve\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:browse\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:mine\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:myReservations\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:reject\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:review\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\ClassroomReservationController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/ClassroomReservationController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DashboardController\:\:__invoke\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DepartmentController\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/DepartmentController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceCategoryController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceCategoryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:applyFilters\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:disable\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:qrSheet\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:qrcode\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceController\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
 
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Device\>\:\:map\(\) contains unresolvable type\.$#'
@@ -67,10 +529,238 @@ parameters:
 			path: app/Http/Controllers/DeviceController.php
 
 		-
+			message: '#^Return type of call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Device\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: method.unresolvableReturnType
+			count: 1
+			path: app/Http/Controllers/DeviceController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\DeviceEntryController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/DeviceEntryController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:resolved\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\KnowledgeBaseController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/KnowledgeBaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MailSettingController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MailSettingController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MaintenanceOrderController\:\:assignableUsers\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MaintenanceOrderController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MaintenanceOrderController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MaintenanceOrderController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MaintenanceOrderController\:\:indexQuery\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MaintenanceOrderController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 2
 			path: app/Http/Controllers/MaintenanceOrderController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\MajorController\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/MajorController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:basicRules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:checkCode\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:codeMessages\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:codeRules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:exportHistory\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:exportLowStock\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:history\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:lowStockParts\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:searchQuery\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:summary\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartController.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>executed_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -91,10 +781,316 @@ parameters:
 			path: app/Http/Controllers/PartController.php
 
 		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:purchaseData\(\) has parameter \$validated with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:purchaseData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:uploadedFiles\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:validated\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/PartPurchaseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartScrapController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartScrapController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartScrapController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartScrapController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\PartScrapController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/PartScrapController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:exportExcel\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:exportPdf\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:selectedSections\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:selectedSections\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairCostAnalysisController\:\:validatedFilters\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/RepairCostAnalysisController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairLogController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairLogController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairLogController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairLogController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:assign\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:complete\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:destroy\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:deviceLookup\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:indexQuery\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:reassign\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:redirectWithWorkflowError\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:reject\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:show\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:start\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RepairRequestController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RepairRequestController.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/RepairRequestController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\RoleController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/RoleController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\TimetableController\:\:reservationsForDate\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/TimetableController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:create\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:export\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:formData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:index\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:store\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\UserController\:\:update\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/UserController.php
 
 		-
 			message: '#^Negated boolean expression is always false\.$#'
@@ -109,10 +1105,58 @@ parameters:
 			path: app/Http/Controllers/UserController.php
 
 		-
+			message: '#^Method App\\Http\\Requests\\StoreRepairRequestRequest\:\:after\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/StoreRepairRequestRequest.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateRepairRequestRequest\:\:after\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/UpdateRepairRequestRequest.php
+
+		-
+			message: '#^Method App\\Models\\Attachment\:\:attachable\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Attachment.php
+
+		-
+			message: '#^Class App\\Models\\AuditLog has PHPDoc tag @property for property \$changes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
+			message: '#^Method App\\Models\\AuditLog\:\:loggable\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\MorphTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/AuditLog.php
+
+		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:abnormal\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: app/Models/Classroom.php
+
+		-
+			message: '#^Method App\\Models\\Classroom\:\:scopeWithAbnormalDevices\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Classroom.php
+
+		-
+			message: '#^Method App\\Models\\Classroom\:\:scopeWithAbnormalDevices\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Classroom.php
+
+		-
+			message: '#^Method App\\Models\\ClassroomReservation\:\:statusLabel\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/ClassroomReservation.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
@@ -121,9 +1165,117 @@ parameters:
 			path: app/Models/ClassroomReservationSlot.php
 
 		-
+			message: '#^Method App\\Models\\Department\:\:scopeForSelect\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Department.php
+
+		-
+			message: '#^Method App\\Models\\Department\:\:scopeForSelect\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Department.php
+
+		-
+			message: '#^Method App\\Models\\Device\:\:scopeAbnormal\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Device.php
+
+		-
+			message: '#^Method App\\Models\\Device\:\:scopeAbnormal\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Device.php
+
+		-
+			message: '#^Class App\\Models\\KnowledgeBase uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/KnowledgeBase.php
+
+		-
+			message: '#^Method App\\Models\\KnowledgeBase\:\:scopeVisibleTo\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/KnowledgeBase.php
+
+		-
+			message: '#^Method App\\Models\\KnowledgeBase\:\:scopeVisibleTo\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/KnowledgeBase.php
+
+		-
+			message: '#^Method App\\Models\\KnowledgeBase\:\:scopeVisibleTo\(\) has parameter \$user with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/KnowledgeBase.php
+
+		-
+			message: '#^Method App\\Models\\MailSetting\:\:applyArrayToConfig\(\) has parameter \$setting with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/MailSetting.php
+
+		-
+			message: '#^Method App\\Models\\MailSetting\:\:toConfigArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/MailSetting.php
+
+		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
 			identifier: method.notFound
 			count: 2
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeCompleted\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeCompleted\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeDueWithin\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeDueWithin\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeOverdue\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeOverdue\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeUnfinished\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/MaintenanceOrder.php
+
+		-
+			message: '#^Method App\\Models\\MaintenanceOrder\:\:scopeUnfinished\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
 			path: app/Models/MaintenanceOrder.php
 
 		-
@@ -139,10 +1291,118 @@ parameters:
 			path: app/Models/MaintenancePlan.php
 
 		-
+			message: '#^Method App\\Models\\Major\:\:scopeForSelect\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Major.php
+
+		-
+			message: '#^Method App\\Models\\Major\:\:scopeForSelect\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Major.php
+
+		-
+			message: '#^Method App\\Models\\Part\:\:scopeWithStockValue\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Part.php
+
+		-
+			message: '#^Method App\\Models\\Part\:\:scopeWithStockValue\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Part.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 2
 			path: app/Models/Part.php
+
+		-
+			message: '#^Method App\\Models\\PartPurchase\:\:deleteAttachments\(\) has parameter \$ids with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PartPurchase.php
+
+		-
+			message: '#^Class App\\Models\\PreventiveCandidate has PHPDoc tag @property for property \$explanation with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PreventiveCandidate.php
+
+		-
+			message: '#^Class App\\Models\\PreventiveCandidate has PHPDoc tag @property for property \$features with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/PreventiveCandidate.php
+
+		-
+			message: '#^Class App\\Models\\RepairLog uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairLog.php
+
+		-
+			message: '#^Class App\\Models\\RepairRequest uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairRequest.php
+
+		-
+			message: '#^Method App\\Models\\RepairRequest\:\:scopeOverdue\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairRequest.php
+
+		-
+			message: '#^Method App\\Models\\RepairRequest\:\:scopeOverdue\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairRequest.php
+
+		-
+			message: '#^Method App\\Models\\RepairRequest\:\:scopeVisibleTo\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairRequest.php
+
+		-
+			message: '#^Method App\\Models\\RepairRequest\:\:scopeVisibleTo\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/RepairRequest.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:effectivePermissions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:permissions\(\) return type with generic class Illuminate\\Database\\Eloquent\\Casts\\Attribute does not specify its types\: TGet, TSet$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:scopeWithPermission\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Method App\\Models\\Role\:\:scopeWithPermission\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Property App\\Models\\Role\:\:\$pendingPermissions type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/Role.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:attachments\(\)\.$#'
@@ -151,10 +1411,70 @@ parameters:
 			path: app/Services/AttachmentUploader.php
 
 		-
+			message: '#^Method App\\Services\\AuditLogger\:\:log\(\) has parameter \$changes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/AuditLogger.php
+
+		-
+			message: '#^Method App\\Services\\ClassroomRepairNotices\:\:add\(\) has parameter \$notices with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ClassroomRepairNotices.php
+
+		-
 			message: '#^Method App\\Services\\DatabaseBackup\:\:all\(\) should return Illuminate\\Support\\Collection\<int, array\{name\: string, size\: int, created_at\: Illuminate\\Support\\Carbon, reason\: string, reason_label\: string\}\> but returns Illuminate\\Support\\Collection\<int, array\{name\: string, with_attachments\: bool, size\: bool\|int, created_at\: Illuminate\\Support\\Carbon\|null, reason\: string, reason_label\: string\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Services/DatabaseBackup.php
+
+		-
+			message: '#^Method App\\Services\\Import\\BulkImporter\:\:afterCommit\(\) has parameter \$rows with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/BulkImporter.php
+
+		-
+			message: '#^Method App\\Services\\Import\\BulkImporter\:\:persist\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/BulkImporter.php
+
+		-
+			message: '#^Method App\\Services\\Import\\BulkImporter\:\:templateSheets\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/BulkImporter.php
+
+		-
+			message: '#^Method App\\Services\\Import\\DeviceImporter\:\:afterCommit\(\) has parameter \$rows with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/DeviceImporter.php
+
+		-
+			message: '#^Method App\\Services\\Import\\DeviceImporter\:\:persist\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/DeviceImporter.php
+
+		-
+			message: '#^Property App\\Services\\Import\\DeviceImporter\:\:\$cache type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/DeviceImporter.php
+
+		-
+			message: '#^Method App\\Services\\Import\\UserImporter\:\:persist\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/UserImporter.php
+
+		-
+			message: '#^Property App\\Services\\Import\\UserImporter\:\:\$cache type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Import/UserImporter.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\RepairRequest\:\:\$classroom_code\.$#'
@@ -172,6 +1492,54 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\RepairRequest\:\:\$total\.$#'
 			identifier: property.notFound
 			count: 2
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:classroomRepairRanking\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:deviceCategoryRepairRanking\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:deviceStatus\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) has parameter \$counts with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) has parameter \$labels with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Method App\\Services\\MasterCharts\:\:roleDistribution\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/MasterCharts.php
+
+		-
+			message: '#^Unable to resolve the template type TMapValue in call to method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\RepairRequest\>\:\:map\(\)$#'
+			identifier: argument.templateType
+			count: 1
 			path: app/Services/MasterCharts.php
 
 		-
@@ -195,6 +1563,30 @@ parameters:
 		-
 			message: '#^Match expression does not handle remaining value\: mixed$#'
 			identifier: match.unhandled
+			count: 1
+			path: app/Services/PartStockService.php
+
+		-
+			message: '#^Method App\\Services\\PartStockService\:\:timelineEvents\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/PartStockService.php
+
+		-
+			message: '#^Method App\\Services\\PartStockService\:\:update\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/PartStockService.php
+
+		-
+			message: '#^Method App\\Services\\PartStockService\:\:writeAllocations\(\) has parameter \$allocations with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/PartStockService.php
+
+		-
+			message: '#^Method App\\Services\\PartStockService\:\:writeAllocations\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/PartStockService.php
 
@@ -235,6 +1627,24 @@ parameters:
 			path: app/Services/RepairCostAnalysisService.php
 
 		-
+			message: '#^Method App\\Services\\RepairCostAnalysisService\:\:generate\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/RepairCostAnalysisService.php
+
+		-
+			message: '#^Method App\\Services\\RepairCostAnalysisService\:\:generate\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/RepairCostAnalysisService.php
+
+		-
+			message: '#^Method App\\Services\\RepairCostAnalysisService\:\:usageQuery\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/RepairCostAnalysisService.php
+
+		-
 			message: '#^Offset ''assigned''\|''completed''\|''in_progress''\|''pending''\|''pending_review'' on array\{pending\: array\{''assigned''\}, assigned\: array\{''in_progress''\}, in_progress\: array\{''pending_review''\}, pending_review\: array\{''completed'', ''in_progress''\}, completed\: array\{\}\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
@@ -247,7 +1657,169 @@ parameters:
 			path: app/Services/RepairRequestWorkflow.php
 
 		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:approveAll\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:conflictLabels\(\) has parameter \$slots with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:conflictSlots\(\) has parameter \$slots with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:overlappingPending\(\) has parameter \$slots with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:overlappingUndecidedSlots\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:rejectAll\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:rejectOverlapping\(\) has parameter \$approvedSlots with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:review\(\) has parameter \$decisions with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\ReservationReviewService\:\:review\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/ReservationReviewService.php
+
+		-
+			message: '#^Method App\\Services\\Timetable\\LocalTimetableProvider\:\:getDaySchedule\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Timetable/LocalTimetableProvider.php
+
+		-
+			message: '#^Method App\\Services\\Timetable\\TimetableProvider\:\:getDaySchedule\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/Timetable/TimetableProvider.php
+
+		-
+			message: '#^Method App\\Support\\CostReportSections\:\:build\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/CostReportSections.php
+
+		-
+			message: '#^Method App\\Support\\CostReportSections\:\:pick\(\) has parameter \$columns with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/CostReportSections.php
+
+		-
+			message: '#^Method App\\Support\\CostReportSections\:\:pick\(\) has parameter \$keys with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/CostReportSections.php
+
+		-
+			message: '#^Method App\\Support\\CostReportSections\:\:pick\(\) has parameter \$sections with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/CostReportSections.php
+
+		-
+			message: '#^Method App\\Support\\CostReportSections\:\:pick\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/CostReportSections.php
+
+		-
+			message: '#^Method App\\Support\\ExportSections\:\:pick\(\) has parameter \$sections with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ExportSections.php
+
+		-
+			message: '#^Method App\\Support\\ExportSections\:\:pick\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/ExportSections.php
+
+		-
+			message: '#^Method App\\Support\\PartHistorySections\:\:build\(\) has parameter \$purchases with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/PartHistorySections.php
+
+		-
+			message: '#^Method App\\Support\\PartHistorySections\:\:build\(\) has parameter \$scraps with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/PartHistorySections.php
+
+		-
+			message: '#^Method App\\Support\\PartHistorySections\:\:build\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/PartHistorySections.php
+
+		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Support/PartHistorySections.php
+
+		-
+			message: '#^Method App\\Support\\PermissionCatalog\:\:sanitize\(\) has parameter \$permissions with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/PermissionCatalog.php
+
+		-
+			message: '#^Method App\\Support\\PermissionCatalog\:\:sanitize\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/PermissionCatalog.php
+
+		-
+			message: '#^Method App\\Support\\UserRelatedRecords\:\:describe\(\) has parameter \$found with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/UserRelatedRecords.php
+
+		-
+			message: '#^Method Database\\Seeders\\UserDemoSeeder\:\:upsert\(\) has parameter \$demo with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: database/seeders/UserDemoSeeder.php
+
+		-
+			message: '#^Method Database\\Seeders\\UserDemoSeeder\:\:upsert\(\) has parameter \$departments with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: database/seeders/UserDemoSeeder.php
+
+		-
+			message: '#^Method Database\\Seeders\\UserDemoSeeder\:\:upsert\(\) has parameter \$roles with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: database/seeders/UserDemoSeeder.php

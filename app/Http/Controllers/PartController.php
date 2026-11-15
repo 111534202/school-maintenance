@@ -108,6 +108,7 @@ class PartController extends Controller
     private function lowStockParts()
     {
         return Part::query()
+            ->withStockValue()   // 一併算好平均單價需要的數字，視窗與匯出才不會每個零件各查兩次資料庫
             ->whereColumn('current_stock', '<', 'safety_stock')
             ->orderBy('id')
             ->get();

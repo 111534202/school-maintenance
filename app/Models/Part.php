@@ -28,6 +28,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $safety_stock
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property float|int|string|null $stock_remaining 只有用 withStockValue() 查詢時才有：各進貨批次剩餘數量合計
+ * @property float|int|string|null $stock_value 只有用 withStockValue() 查詢時才有：目前庫存的價值合計
  */
 class Part extends Model
 {
@@ -190,8 +192,11 @@ class Part extends Model
      */
     public function averageUnitPrice(): ?float
     {
-        $remaining = $this->stock_remaining ?? $this->purchases()->sum('remaining_quantity');
-        $value = $this->stock_value ?? $this->purchases()->selectRaw('SUM(remaining_quantity * unit_price) AS v')->value('v');
+        // 「沒有任何進貨批次」時 withStockValue 算出來是 null；用 array_key_exists 判斷有沒有預先算好，
+        // 不能用 ??，否則沒進貨的零件會被當成「沒算過」而每一筆都多查兩次資料庫。
+        $preloaded = array_key_exists('stock_remaining', $this->attributes);
+        $remaining = $preloaded ? $this->stock_remaining : $this->purchases()->sum('remaining_quantity');
+        $value = array_key_exists('stock_value', $this->attributes) ? $this->stock_value : $this->purchases()->selectRaw('SUM(remaining_quantity * unit_price) AS v')->value('v');
 
         return $remaining > 0 ? round($value / $remaining, 1) : null;
     }
