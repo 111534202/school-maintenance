@@ -66,7 +66,9 @@ class DeployCheck extends Command
 
         $this->add(config('app.timezone') === 'Asia/Taipei' ? 'ok' : 'warn', '時區（APP_TIMEZONE）', (string) config('app.timezone'), '台灣請設成 Asia/Taipei，否則預約時間、保養排定日會差 8 小時。');
 
+        // 心跳存的是時間戳記（整數）；不是整數（例如舊版存的時間物件）就當作還沒有心跳，下一分鐘排程跑起來會自動換成新格式。
         $beat = Cache::get('schedule:heartbeat');
+        $beat = is_int($beat) ? \Illuminate\Support\Carbon::createFromTimestamp($beat) : null;
         $age = $beat ? (int) floor(abs(now()->diffInMinutes($beat))) : null;   // 幾分鐘前（取整數）
         $this->add($age !== null && $age <= self::SCHEDULE_STALE_MINUTES ? 'ok' : 'warn', '排程有在跑（保養工單、備份、AI 掃描、申請清除）',
             $beat ? "最近一次 {$age} 分鐘前" : '從來沒有執行過',

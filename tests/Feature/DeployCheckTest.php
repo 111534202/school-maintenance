@@ -45,7 +45,7 @@ class DeployCheckTest extends TestCase
 
     public function test_a_recent_scheduler_heartbeat_passes_the_schedule_check(): void
     {
-        Cache::put('schedule:heartbeat', now()->subMinutes(2), now()->addDay());
+        Cache::put('schedule:heartbeat', now()->subMinutes(2)->timestamp, now()->addDay());
 
         [$code, $out] = $this->run_check('production', ['app.debug' => false, 'app.url' => 'https://school.example.com', 'session.secure' => true, 'mail.default' => 'smtp']);
 
@@ -55,7 +55,7 @@ class DeployCheckTest extends TestCase
 
     public function test_a_stale_scheduler_heartbeat_is_a_warning(): void
     {
-        Cache::put('schedule:heartbeat', now()->subMinutes(30), now()->addDay());
+        Cache::put('schedule:heartbeat', now()->subMinutes(30)->timestamp, now()->addDay());
 
         [, $out] = $this->run_check('local', []);
 
@@ -68,5 +68,18 @@ class DeployCheckTest extends TestCase
         Artisan::call('schedule:list');
 
         $this->assertStringContainsString('schedule:heartbeat', Artisan::output());
+    }
+
+    public function test_the_heartbeat_is_stored_as_a_plain_number_and_an_old_format_does_not_crash_the_check(): void
+    {
+        // 排程真的跑一次：心跳要是整數（物件在 serializable_classes=false 的快取裡會壞掉）。
+        Cache::forget('schedule:heartbeat');
+        Artisan::call('schedule:test', ['--name' => 'schedule:heartbeat']);
+        $this->assertIsInt(Cache::get('schedule:heartbeat'));
+
+        // 舊版存的是時間物件；讀到不認得的格式時當作「還沒有心跳」，檢查指令不能當掉。
+        Cache::put('schedule:heartbeat', now(), now()->addDay());
+        [, $out] = $this->run_check('local', []);
+        $this->assertStringContainsString('從來沒有執行過', $out);
     }
 }

@@ -69,7 +69,8 @@ Schedule::command(\App\Console\Commands\RunDatabaseBackup::class, ['--reason=sch
  * 排程心跳：每分鐘記下「排程正在跑」的時間，php artisan deploy:check 靠它判斷伺服器有沒有設定每分鐘執行 schedule:run
  * （沒設定的話，保養工單不會自動產生、備份不會自動做、空間申請不會定期清除）。
  */
-Schedule::call(fn () => \Illuminate\Support\Facades\Cache::put('schedule:heartbeat', now(), now()->addDay()))
+// 存「時間戳記（整數）」而不是時間物件：快取設定不允許還原物件（serializable_classes），存物件讀出來會壞掉。
+Schedule::call(fn () => \Illuminate\Support\Facades\Cache::put('schedule:heartbeat', now()->timestamp, now()->addDay()))
     ->everyMinute()
     ->name('schedule:heartbeat');
 
