@@ -156,6 +156,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         Route::middleware('can:maintenance.report')->group(function () {
             Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
             Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
+            Route::patch('/{maintenanceOrder}/start', [MaintenanceOrderController::class, 'start'])->name('start');   // 開始保養：待處理 → 進行中
         });
 
         // 修改排定日期與取消（刪除）保養工單：需要 maintenance.manage（取消與刪除是同一件事，軟刪除）。
@@ -401,6 +402,9 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     Route::resource('repairs', RepairRequestController::class)
         ->parameters(['repairs' => 'repair_request'])
         ->only(['index', 'show']);
+
+    // 保養排日期時看設備所在教室的一週課表（權限在控制器內檢查：保養管理或 AI 預防保養管理）。
+    Route::get('device-timetable/{device}', [\App\Http\Controllers\TimetableController::class, 'deviceWeek'])->name('devices.timetable');
 
     // 附件下載（報修與維修紀錄的照片、影片）：檔案存在私有磁碟，不能直接用網址開，
     // 這裡先檢查「能不能檢視所屬的報修單」才輸出檔案（見 AttachmentController）。

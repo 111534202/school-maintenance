@@ -44,7 +44,9 @@ class ListExportTest extends TestCase
         Excel::fake();
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $mine = RepairRequest::factory()->create(['title' => '我的投影機', 'status' => 'pending', 'requester_id' => $teacher->id]);
-        $others = RepairRequest::factory()->create(['title' => '別人的冷氣', 'status' => 'completed', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
+        $others = RepairRequest::factory()->create(['title' => '別人的冷氣', 'status' => 'in_progress', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
+        // 別人已結案的案件：能派工的人也匯出不到（驗收階段只有跟自己有關的人看得到）。
+        RepairRequest::factory()->create(['title' => '別人已結案的電腦', 'status' => 'completed', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
 
         // 老師只能匯出自己看得到的案件。
         $this->actingAs($teacher)->get(route('repairs.export'))->assertOk();
@@ -92,11 +94,11 @@ class ListExportTest extends TestCase
         $this->actingAs($this->makeUserWithRole('teacher', '教師'))->get(route('maintenance-orders.export'))->assertForbidden();
 
         $this->actingAs($this->makeUserWithPermissions(['maintenance.view']))->get(route('maintenance-orders.export'))->assertOk();
-        $this->assertSame([$late->id, $future->id], $this->exportedIds('保養工單-'));
+        $this->assertSame([$late->displayNumber(), $future->displayNumber()], $this->exportedIds('保養工單-'));
 
         Excel::fake();
         $this->get(route('maintenance-orders.export', ['due' => 'overdue']))->assertOk();
-        $this->assertSame([$late->id], $this->exportedIds('保養工單-'));
+        $this->assertSame([$late->displayNumber()], $this->exportedIds('保養工單-'));
     }
 
     public function test_reservation_export_gives_managers_everything_and_others_only_their_own(): void
@@ -131,6 +133,7 @@ class ListExportTest extends TestCase
 
         $this->get(route('repairs.index', ['keyword' => 'abc']))->assertSee(route('repairs.export', ['keyword' => 'abc']), false)->assertSee('匯出 Excel');
         $this->get(route('maintenance-orders.index'))->assertSee('匯出 Excel');
-        $this->get(route('reservations.index', ['status' => 'pending']))->assertSee(route('reservations.export', ['status' => 'pending']), false);
+        // 空間申請的匯出改成先預覽的視窗：目前的篩選條件放在視窗表單的隱藏欄位裡，一起帶去匯出。
+        $this->get(route('reservations.index', ['status' => 'pending']))->assertSee('id="reservationExportModal"', false)->assertSee('name="status" value="pending"', false);
     }
 }

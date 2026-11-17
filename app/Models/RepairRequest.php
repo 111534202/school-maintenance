@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型
  * @property string|null $device_note
  * @property int|null $classroom_id
  * @property int|null $assigned_to
+ * @property int|null $accepted_by
  * @property \Illuminate\Support\Carbon|null $scheduled_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -77,6 +78,7 @@ class RepairRequest extends Model
         'device_id',
         'device_note',
         'assigned_to',
+        'accepted_by',   // 指定的驗收人（沒指定就是報修人本人）
         'scheduled_at',
         'rejection_reason',
         'classroom_id',
@@ -131,7 +133,29 @@ class RepairRequest extends Model
 
         // 括號包起來：「自己報修」或「指派給自己」二選一，不會影響外面其他篩選條件。
         return $query->where(function (Builder $q) use ($user) {
-            $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id);
+            $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->orWhere('accepted_by', $user->id);
+        });
+    }
+
+    /**
+     * 看板、匯出、待驗收提醒用的範圍：在 visibleTo 的基礎上，「待驗收」與「已結案」這兩個驗收階段再收緊——
+     * 除了系統管理員，只看得到跟自己有關的（自己報修的、指派給自己維修的、指定由自己驗收的）。
+     * 其他狀態不受影響。統計與報表（成本分析、維修工時）仍用 visibleTo，數字才不會因為這條規則變少。
+     *
+     * @param  Builder<RepairRequest>  $query
+     * @return Builder<RepairRequest>
+     */
+    public function scopeVisibleOnBoard(Builder $query, User $user): Builder
+    {
+        $query = $query->visibleTo($user);
+
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($user) {
+            $q->whereNotIn('status', [RepairRequestStatus::PendingReview->value, RepairRequestStatus::Completed->value])
+                ->orWhere(fn (Builder $related) => $related->where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->orWhere('accepted_by', $user->id));
         });
     }
 
@@ -200,5 +224,15 @@ class RepairRequest extends Model
     public function assignedTechnician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * 指定的驗收人（沒指定就是 null，由報修人本人驗收）。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function acceptor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'accepted_by');
     }
 }

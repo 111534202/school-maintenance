@@ -113,9 +113,9 @@ class PreventiveCandidateService
      *
      * @return MaintenanceOrder|null 重複而未建單時回傳 null（候選會標記為 duplicate）
      */
-    public function approve(PreventiveCandidate $candidate, ?User $by = null, ?string $note = null): ?MaintenanceOrder
+    public function approve(PreventiveCandidate $candidate, ?User $by = null, ?string $note = null, ?Carbon $scheduledDate = null): ?MaintenanceOrder
     {
-        return DB::transaction(function () use ($candidate, $by, $note) {
+        return DB::transaction(function () use ($candidate, $by, $note, $scheduledDate) {
             $candidate = PreventiveCandidate::query()->lockForUpdate()->findOrFail($candidate->id);
 
             if ($candidate->status !== PreventiveCandidate::STATUS_PENDING) {
@@ -136,7 +136,7 @@ class PreventiveCandidateService
                 return null;
             }
 
-            $order = $this->createOrder($device);
+            $order = $this->createOrder($device, $scheduledDate);
 
             $candidate->update([
                 'status' => PreventiveCandidate::STATUS_APPROVED,
@@ -186,9 +186,11 @@ class PreventiveCandidateService
         ]);
     }
 
-    private function createOrder(Device $device): MaintenanceOrder
+    /** 建立 AI 保養工單；排定日期由主管核准時指定，沒指定（不需審核的自動建單）就用「預設排定在幾天後」的設定。 */
+    private function createOrder(Device $device, ?Carbon $scheduledDate = null): MaintenanceOrder
     {
         $device->loadMissing('category');
+        $scheduledDate ??= Carbon::today()->addDays((int) AiSetting::get(AiSetting::SCHEDULE_LEAD_DAYS));
 
         return MaintenanceOrder::create([
             'maintenance_plan_id' => null,
@@ -196,7 +198,7 @@ class PreventiveCandidateService
             'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_AI,
             'status' => MaintenanceOrder::STATUS_PENDING,
-            'scheduled_date' => Carbon::today(),
+            'scheduled_date' => $scheduledDate->copy()->startOfDay(),
         ]);
     }
 }

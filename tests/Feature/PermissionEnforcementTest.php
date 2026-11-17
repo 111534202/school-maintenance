@@ -104,6 +104,7 @@ class PermissionEnforcementTest extends TestCase
 
         $this->get(route('repairs.create'))->assertOk();
         $review = $this->repair('pending_review');
+        $review->update(['requester_id' => auth()->id()]);   // 自己報修的案件，才輪得到自己驗收
         $this->post(route('repairs.complete', $review))->assertRedirect(route('repairs.show', $review));
         $this->assertSame('completed', $review->fresh()->status->value);
 
@@ -169,7 +170,7 @@ class PermissionEnforcementTest extends TestCase
     {
         $active = $this->makeTechnician();
         $inactive = $this->makeUserWithRole('technician', '維修人員', ['name' => '已停用的維修員', 'is_active' => false]);
-        $notAssignable = $this->makeUserWithRole('teacher', '教師', ['name' => '不可被指派的老師']);
+        $notAssignable = $this->makeUserWithPermissions(['repairs.create'], ['name' => '不可被指派的老師']);   // 沒有「可被指派」也沒有驗收權限（有驗收權限的人會出現在驗收人下拉選單）
         $custom = $this->makeUserWithPermissions(['repairs.assignable'], ['name' => '自訂身分維修員']);
 
         $this->actingAs($this->makeUserWithRole('executive', '主管'));

@@ -48,6 +48,12 @@ class Attachment extends Model
         return $this->morphTo();
     }
 
+    /** 是不是圖片（畫面上直接顯示縮圖，不只是檔名連結）。 */
+    public function isImage(): bool
+    {
+        return str_starts_with((string) $this->mime_type, 'image/');
+    }
+
     /**
      * 開啟這個檔案的網址。檔案存在私有磁碟，不能直接用網址存取，
      * 這個網址會先經過 AttachmentController 檢查「你能不能看這張報修單」才輸出檔案。

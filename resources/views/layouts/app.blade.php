@@ -247,6 +247,49 @@
          每個檔案的上限：欄位的 data-max-mb（跟後端驗證一致，例如零件採購附件 10 MB），以及伺服器的 upload_max_filesize，取較小的；
          一次送出的全部檔案加起來不能超過伺服器的 post_max_size。伺服器的兩個值見 App\Support\UploadLimit（在 php.ini 設定）。 --}}
     <script>
+    // 手機拍的照片常常一張就 3～8 MB，單張就超過附件上限（加起來 5 MB），結果照片選不進去。
+    // 檔案欄位有 data-compress-images 時：選到的圖片先在瀏覽器裡縮小（最長邊 1600 像素、JPEG 品質 0.82，通常縮到 0.3～0.6 MB），
+    // 縮完再交給下面的數量、大小檢查；影片、PDF、已經很小的圖片維持原樣。
+    (function () {
+        var MAX_SIDE = 1600, SKIP_BELOW = 700 * 1024;
+        function shrink(file) {
+            return new Promise(function (resolve) {
+                if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < SKIP_BELOW) return resolve(file);
+                var url = URL.createObjectURL(file), img = new Image();
+                img.onload = function () {
+                    URL.revokeObjectURL(url);
+                    var scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+                    var w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    var ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);   // PNG 的透明背景轉成 JPEG 會變黑，先鋪白底
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.toBlob(function (blob) {
+                        if (!blob || blob.size >= file.size) return resolve(file);
+                        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: file.lastModified }));
+                    }, 'image/jpeg', 0.82);
+                };
+                img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+                img.src = url;
+            });
+        }
+        document.addEventListener('change', function (event) {
+            var input = event.target;
+            if (!input.matches || !input.matches('input[type=file][data-compress-images]') || input._shrunk) return;
+            if (!window.DataTransfer || !window.Promise || !input.files || !input.files.length) return;
+            event.stopImmediatePropagation();   // 先不要讓後面的檢查看到太大的原檔
+            Promise.all(Array.prototype.map.call(input.files, shrink)).then(function (files) {
+                var dt = new DataTransfer();
+                files.forEach(function (f) { dt.items.add(f); });
+                input._shrunk = true;
+                input.files = dt.files;
+                input.dispatchEvent(new Event('change', { bubbles: true }));   // 縮好之後再走原本的檢查
+                input._shrunk = false;
+            });
+        }, true);
+    })();
+
     (function () {
         var serverFile = {{ \App\Support\UploadLimit::fileBytes() }};
         var serverPost = {{ \App\Support\UploadLimit::postBytes() }};

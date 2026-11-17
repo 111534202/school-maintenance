@@ -60,7 +60,7 @@ class StoreRepairLogRequest extends FormRequest
             'attachments' => ['nullable', 'array', 'max:' . \App\Support\AttachmentLimit::MAX_FILES, \App\Support\AttachmentLimit::totalSizeRule()],
             'attachments.*' => [
                 'file',
-                'mimes:jpg,jpeg,png,pdf,mp4,mov,webm',
+                'mimes:' . \App\Support\AttachmentLimit::MIMES,
             ],
         ];
     }

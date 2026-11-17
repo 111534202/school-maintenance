@@ -7,7 +7,7 @@
 
     <div class="card mb-3">
         <div class="card-body">
-            <p class="mb-1"><strong>工單編號：</strong>#{{ $order->id }}</p>
+            <p class="mb-1"><strong>工單編號：</strong>{{ $order->displayNumber() }}</p>
             <p class="mb-1"><strong>來源計畫：</strong>@if ($order->maintenancePlan)@include('maintenance_orders._plan_name', ['plan' => $order->maintenancePlan])@else — @endif</p>
             {{-- 跟保養紀錄一樣：「設備編號（類別）」，設備編號可點到設備履歷；沒有設備時只顯示類別。 --}}
             <p class="mb-0"><strong>設備 / 類別：</strong>@include('maintenance_orders._device_category', ['order' => $order])</p>
@@ -77,7 +77,7 @@
         <div class="mb-2">
             <label for="attachments" class="form-label">附件（選填，{{ \App\Support\AttachmentLimit::hint() }}）</label>
             <input type="file" class="form-control @error('attachments') is-invalid @enderror @error('attachments.*') is-invalid @enderror" id="attachments" name="attachments[]" multiple
-                accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
+                accept="{{ \App\Support\AttachmentLimit::ACCEPT }}" data-compress-images data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
             @error('attachments')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             @error('attachments.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>

@@ -26,6 +26,7 @@ class AiSettingController extends Controller
             'recent_window' => ['required', 'integer', 'min:2', 'max:24'],
             'dedup_window_days' => ['required', 'integer', 'min:0', 'max:180'],
             'require_approval' => ['required', 'boolean'],
+            'schedule_lead_days' => ['nullable', 'integer', 'min:0', 'max:60'],   // 舊的呼叫端沒送這一欄時，維持原本的設定
         ]);
 
         $before = AiSetting::current();
@@ -35,6 +36,9 @@ class AiSettingController extends Controller
         AiSetting::put(AiSetting::RECENT_WINDOW, (int) $data['recent_window']);
         AiSetting::put(AiSetting::DEDUP_WINDOW_DAYS, (int) $data['dedup_window_days']);
         AiSetting::put(AiSetting::REQUIRE_APPROVAL, (bool) $data['require_approval']);
+        if (isset($data['schedule_lead_days'])) {
+            AiSetting::put(AiSetting::SCHEDULE_LEAD_DAYS, (int) $data['schedule_lead_days']);
+        }
 
         AuditLogger::log('ai_settings_updated', null, ['from' => $before, 'to' => AiSetting::current()], '調整 AI 預防保養參數');
 

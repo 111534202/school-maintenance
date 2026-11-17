@@ -14,6 +14,7 @@ return [
     'nav' => [
         'knowledge_base' => '自助知識庫',
         'repair_requests' => '報修',
+        'my_repairs' => '我的報修',
         'dashboard' => '主控台',
         'system_section' => '系統',
         'master_section' => '主檔',

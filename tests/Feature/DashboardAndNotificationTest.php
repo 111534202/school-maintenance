@@ -366,9 +366,11 @@ class DashboardAndNotificationTest extends TestCase
     // 通知鈴鐺統計「新報修待派工」與「待驗收」，並附上跳轉連結。
     public function test_bell_counts_new_repairs_and_pending_reviews_with_jump_links(): void
     {
-        $this->actingAs($this->makeUserWithRole('executive', '主管'));  // 有派工 + 驗收權限
+        $executive = $this->makeUserWithRole('executive', '主管');  // 有派工 + 驗收權限
+        $this->actingAs($executive);
         RepairRequest::factory()->count(2)->create(['status' => 'pending']);
-        RepairRequest::factory()->count(1)->create(['status' => 'pending_review']);
+        // 待驗收只算「指定由自己驗收」的案件（沒有關係的人看不到，也不會被提醒）。
+        RepairRequest::factory()->count(1)->create(['status' => 'pending_review', 'accepted_by' => $executive->id]);
 
         $response = $this->get(route('dashboard'));
 

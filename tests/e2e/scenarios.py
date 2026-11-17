@@ -220,6 +220,42 @@ def repair_lifecycle(browser, base, root):
 
 
 @scenario
+def repair_photo_upload(browser, base, root):
+    """手機拍的大照片（約 4000×3000）選進報修：自動縮小後附上，送出後報修單頁直接顯示縮圖"""
+    with session(browser, base) as (page, errors):
+        login(page, 'teacher')
+        goto(page, '/repairs/create')
+        page.fill('#device_note', 'E2E 照片測試的投影機')
+        page.fill('input[name="title"]', 'E2E 照片上傳測試')
+        page.fill('textarea[name="description"]', '機身有裂痕，附上照片')
+        # 在瀏覽器裡畫一張 4000×3000 的雜訊圖（模擬手機照片，約 8 MB 以上），再像使用者選檔一樣放進附件欄位。
+        page.evaluate("""async () => {
+            const c = document.createElement('canvas'); c.width = 4000; c.height = 3000;
+            const ctx = c.getContext('2d'); const data = ctx.createImageData(4000, 3000);
+            for (let i = 0; i < data.data.length; i += 4) { data.data[i] = Math.random() * 255; data.data[i + 1] = Math.random() * 255; data.data[i + 2] = Math.random() * 255; data.data[i + 3] = 255; }
+            ctx.putImageData(data, 0, 0);
+            const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.95));
+            window.__bigBytes = blob.size;
+            const dt = new DataTransfer(); dt.items.add(new File([blob], 'IMG_0001.jpg', { type: 'image/jpeg' }));
+            const input = document.getElementById('attachments'); input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }""")
+        page.wait_for_timeout(4000)
+        big = page.evaluate('window.__bigBytes')
+        check(big > 5 * 1024 * 1024, f'測試用的大照片應該超過 5 MB（實際 {big} 位元組）')
+        text = body(page)
+        check('IMG_0001.jpg' in text, '縮小後的照片應出現在已選檔案清單：' + text[-300:])
+        check('超過' not in text.split('已選')[-1][:200] and not page.locator('.file-error:visible').count(), '照片縮小後不應再跳出超過上限的錯誤')
+        click_and_wait(page, 'button:has-text("送出報修")', 2500)
+        match = re.search(r'/repairs/(\d+)', page.url)
+        check(match, '送出報修後應進到報修單頁：' + page.url)
+        page.wait_for_selector('img[alt="IMG_0001.jpg"]')
+        width = page.evaluate("document.querySelector('img[alt=\"IMG_0001.jpg\"]').naturalWidth")
+        check(width and width <= 1600, f'報修單頁應顯示縮圖，圖片寬度 {width}（縮小後最長邊不超過 1600）')
+        no_js_errors(errors)
+
+
+@scenario
 def repair_double_submit_is_blocked(browser, base, root):
     """連點兩下「送出報修」只會建立一張報修單"""
     with session(browser, base) as (page, errors):

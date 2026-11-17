@@ -22,7 +22,7 @@
                 @endif
                 @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && ! $maintenanceOrder->result)
                     <form method="POST" action="{{ route('maintenance-orders.destroy', $maintenanceOrder) }}"
-                        data-confirm="請問確定要取消保養工單 #{{ $maintenanceOrder->id }} 嗎？取消後會從列表與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
+                        data-confirm="請問確定要取消保養工單 {{ $maintenanceOrder->displayNumber() }} 嗎？取消後會從列表與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf
                         @method('DELETE')
                         <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-x-circle me-1"></i>取消工單</button>
@@ -36,7 +36,7 @@
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">工單編號</dt>
-                <dd class="col-sm-9">#{{ $maintenanceOrder->id }}</dd>
+                <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }} fs-6">{{ $maintenanceOrder->displayNumber() }}</span></dd>
 
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">
@@ -56,7 +56,19 @@
                 <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }}">{{ $maintenanceOrder->sourceLabel() }}</span></dd>
 
                 <dt class="col-sm-3">狀態</dt>
-                <dd class="col-sm-9"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></dd>
+                <dd class="col-sm-9">
+                    <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
+                    @if ($maintenanceOrder->started_at)
+                        <span class="text-muted small ms-2">{{ $maintenanceOrder->started_at->format('Y-m-d H:i') }} 開始保養</span>
+                    @endif
+                    @if ($maintenanceOrder->canBeStartedBy(auth()->user()))
+                        <form method="POST" action="{{ route('maintenance-orders.start', $maintenanceOrder) }}" class="d-inline ms-2">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-play-circle me-1"></i>開始保養</button>
+                        </form>
+                    @endif
+                </dd>
 
                 <dt class="col-sm-3">排定保養日期</dt>
                 <dd class="col-sm-9">
@@ -118,6 +130,9 @@
                         <dd class="col-sm-9">
                             @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
                                 <span class="badge text-bg-warning">待轉報修（尚未建立報修單）</span>
+                                @can('repairs.create')
+                                    <a class="btn btn-sm btn-primary ms-2" href="{{ route('repairs.create', ['from_result' => $maintenanceOrder->result->id]) }}"><i class="bi bi-tools me-1"></i>建立報修單</a>
+                                @endcan
                             @elseif ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
                                 <span class="badge text-bg-success">已轉報修</span>
                                 @if (\Illuminate\Support\Facades\Route::has('repairs.show'))

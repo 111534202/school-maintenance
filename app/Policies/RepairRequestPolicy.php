@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\RepairRequestStatus;
 use App\Models\RepairRequest;   // 報修單資料表模型
 use App\Models\User;            // 用戶資料表模型
 
@@ -36,9 +37,20 @@ class RepairRequestPolicy
     /** 檢視這張報修單：能看全部的人，或這張單是自己報修的／指派給自己的。 */
     public function view(User $user, RepairRequest $repairRequest): bool
     {
-        return self::canSeeAll($user)
-            || $repairRequest->requester_id === $user->id
-            || $repairRequest->assigned_to === $user->id;
+        // 驗收階段（待驗收、已結案）：除了管理員，只有跟自己有關的人看得到（連能派工的人也一樣）。
+        if (in_array($repairRequest->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
+            return $user->isAdmin() || self::isRelated($user, $repairRequest);
+        }
+
+        return self::canSeeAll($user) || self::isRelated($user, $repairRequest);
+    }
+
+    /** 跟這張單有關：自己報修的、指派給自己維修的、指定由自己驗收的。 */
+    public static function isRelated(User $user, RepairRequest $repairRequest): bool
+    {
+        return $repairRequest->requester_id === $user->id
+            || $repairRequest->assigned_to === $user->id
+            || $repairRequest->accepted_by === $user->id;
     }
 
     /** 開始處理：必須有處理維修權限，而且（管理員或）這張單指派給自己。 */
@@ -57,9 +69,11 @@ class RepairRequestPolicy
     /** 驗收（通過結案或退回重修）：必須有驗收權限，而且（管理員、或是報修人本人、或這張單沒有報修人）。 */
     public function accept(User $user, RepairRequest $repairRequest): bool
     {
+        // 有指定驗收人：只有他（和管理員）能驗收；沒指定：報修人本人驗收。報修人也不存在的舊資料只有管理員能驗收。
         return $user->can('repairs.accept')
             && ($user->isAdmin()
-                || $repairRequest->requester_id === null
-                || $repairRequest->requester_id === $user->id);
+                || ($repairRequest->accepted_by !== null
+                    ? $repairRequest->accepted_by === $user->id
+                    : $repairRequest->requester_id === $user->id));
     }
 }

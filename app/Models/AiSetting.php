@@ -31,6 +31,8 @@ class AiSetting extends Model
 
     public const REQUIRE_APPROVAL = 'require_approval';
 
+    public const SCHEDULE_LEAD_DAYS = 'schedule_lead_days';
+
     /**
      * @var array<string, float|int|bool>
      */
@@ -40,6 +42,7 @@ class AiSetting extends Model
         self::RECENT_WINDOW => 6,          // 只看最近幾筆保養結果來算 NG 比例
         self::DEDUP_WINDOW_DAYS => 14,     // 去重視窗：這幾天內已有（或即將有）保養就不重複提出
         self::REQUIRE_APPROVAL => true,    // true：先產生候選等主管審核；false：直接建立 AI 工單
+        self::SCHEDULE_LEAD_DAYS => 3,     // 排定保養日期預設往後幾天（核准時日期欄位的預設值；不需審核時直接用這個天數排定）
     ];
 
     public static function get(string $key): float|int|bool

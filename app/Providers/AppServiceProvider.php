@@ -134,7 +134,8 @@ class AppServiceProvider extends ServiceProvider
         // 只算「這位用戶真的能驗收」的案件（報修人本人，或沒有報修人的案件；管理員全部），規則見 RepairRequestPolicy::accept。
         if ($user->can('repairs.accept')) {
             $count = RepairRequest::where('status', RepairRequestStatus::PendingReview->value)
-                ->when(! $user->isAdmin(), fn ($q) => $q->where(fn ($w) => $w->where('requester_id', $user->id)->orWhereNull('requester_id')))
+                // 管理員全部；其他人：指定由我驗收的，或沒指定驗收人、而且是我報修的（規則見 RepairRequestPolicy::accept）。
+                ->when(! $user->isAdmin(), fn ($q) => $q->where(fn ($w) => $w->where('accepted_by', $user->id)->orWhere(fn ($own) => $own->whereNull('accepted_by')->where('requester_id', $user->id))))
                 ->count();
             if ($count > 0) {
                 $items[] = [

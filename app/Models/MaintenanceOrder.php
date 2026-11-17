@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property int|null $assigned_to
  * @property \Illuminate\Support\Carbon|null $scheduled_date
+ * @property \Illuminate\Support\Carbon|null $started_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int|null $device_category_id
@@ -32,6 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'status',
     'assigned_to',
     'scheduled_date',
+    'started_at',
 ])]
 class MaintenanceOrder extends Model
 {
@@ -68,6 +70,7 @@ class MaintenanceOrder extends Model
     {
         return [
             'scheduled_date' => 'date',
+            'started_at' => 'datetime',
         ];
     }
 
@@ -147,6 +150,12 @@ class MaintenanceOrder extends Model
             && $this->scheduled_date->toDateString() < now()->toDateString();
     }
 
+    /** 這張工單現在能不能按「開始保養」：還在待處理、還沒有回報結果，而且這位用戶是能回報的人。 */
+    public function canBeStartedBy(User $user): bool
+    {
+        return $this->status === self::STATUS_PENDING && $this->result === null && $this->canBeReportedBy($user);
+    }
+
     /** 這位用戶能不能回報這張工單的結果：沒指派負責人時有回報權限就行；指派了只有負責人與保養管理者。 */
     public function canBeReportedBy(User $user): bool
     {
@@ -164,6 +173,15 @@ class MaintenanceOrder extends Model
     public function scopeCompleted(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_COMPLETED);
+    }
+
+    /**
+     * 工單編號（畫面上看得到、講得出口的編號）：定期保養是 MO-00012，AI 預防保養是 AI-00012。
+     * 前綴由來源決定，所以一眼就能分辨這張工單是人建立的還是 AI 提出的；數字就是資料表的編號。
+     */
+    public function displayNumber(): string
+    {
+        return ($this->source === self::SOURCE_AI ? 'AI-' : 'MO-') . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     /**

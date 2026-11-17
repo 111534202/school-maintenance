@@ -9,6 +9,7 @@ use DomainException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * AI 預防保養候選審核（第 4 週任務 2、3）。路由已限定 admin / it_manager。
@@ -50,10 +51,15 @@ class PreventiveCandidateController extends Controller
 
     public function approve(Request $request, PreventiveCandidate $preventiveCandidate, PreventiveCandidateService $service): RedirectResponse
     {
-        $data = $request->validate(['decision_note' => ['nullable', 'string', 'max:255']]);
+        // 排定保養日期由主管決定（不能是過去的日期）；沒填就用「今天 + 預設天數」。
+        $data = $request->validate([
+            'decision_note' => ['nullable', 'string', 'max:255'],
+            'scheduled_date' => ['nullable', 'date', 'after_or_equal:today'],
+        ], ['scheduled_date.after_or_equal' => '排定保養日期不能早於今天。']);
+        $scheduledDate = isset($data['scheduled_date']) ? Carbon::parse($data['scheduled_date']) : null;
 
         try {
-            $order = $service->approve($preventiveCandidate, $request->user(), $data['decision_note'] ?? null);
+            $order = $service->approve($preventiveCandidate, $request->user(), $data['decision_note'] ?? null, $scheduledDate);
         } catch (DomainException $e) {
             return redirect()->route('preventive-candidates.index')->with('error', $e->getMessage());
         }
@@ -64,7 +70,7 @@ class PreventiveCandidateController extends Controller
         }
 
         return redirect()->route('preventive-candidates.index')
-            ->with('success', "已核准，並建立 AI 保養工單 #{$order->id}。");
+            ->with('success', "已核准，並建立 AI 保養工單 {$order->displayNumber()}，排定 {$order->scheduled_date->format('Y-m-d')} 保養。");
     }
 
     public function reject(Request $request, PreventiveCandidate $preventiveCandidate, PreventiveCandidateService $service): RedirectResponse

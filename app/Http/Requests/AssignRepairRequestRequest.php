@@ -34,6 +34,8 @@ class AssignRepairRequestRequest extends FormRequest
         // Builder），不能用 whereHas()，所以先查出「有勾選可被指派為維修人員」的身分 id，
         // 直接用 role_id 這個外鍵欄位比對；停用中的帳號也不能被指派。
         $assignableRoleIds = Role::withPermission('repairs.assignable')->pluck('id')->all();
+        // 能當驗收人的身分：身分主檔有勾「驗收」，或是系統管理員身分（永遠全開）。
+        $acceptorRoleIds = Role::withPermission('repairs.accept')->pluck('id')->merge(Role::where('role_code', 'admin')->pluck('id'))->unique()->all();
 
         return [
             // assigned_to（維修人員）：必填、必須是整數，而且要是 users 表裡「身分可被指派 + 帳號啟用中」的人。
@@ -42,6 +44,12 @@ class AssignRepairRequestRequest extends FormRequest
                 'required',
                 'integer',
                 Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role_id', $assignableRoleIds)->where('is_active', true)),
+            ],
+            // 驗收人：可以不填（不填＝由報修人本人驗收）；有填必須是「有驗收權限（或系統管理員）、帳號啟用中」的人。
+            'accepted_by' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')->whereIn('role_id', $acceptorRoleIds)),
             ],
             // 預計處理時間：可以不填；有填就必須是正確的日期時間格式。
             'scheduled_at' => ['nullable', 'date'],

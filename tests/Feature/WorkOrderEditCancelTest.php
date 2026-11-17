@@ -114,9 +114,11 @@ class WorkOrderEditCancelTest extends TestCase
 
     public function test_show_page_offers_edit_and_cancel_only_when_allowed(): void
     {
+        $dispatcher = $this->dispatcher();
         $pending = RepairRequest::factory()->create(['status' => 'pending']);
-        $review = RepairRequest::factory()->create(['status' => 'pending_review']);
-        $this->actingAs($this->dispatcher());
+        // 待驗收的案件，能派工的人也只有「跟自己有關」才看得到：這裡指定由他驗收。
+        $review = RepairRequest::factory()->create(['status' => 'pending_review', 'accepted_by' => $dispatcher->id]);
+        $this->actingAs($dispatcher);
 
         $this->get(route('repairs.show', $pending))->assertSee('取消工單')->assertSee(route('repairs.edit', $pending), false);
         $this->get(route('repairs.show', $review))->assertDontSee('取消工單')->assertSee(route('repairs.edit', $review), false);

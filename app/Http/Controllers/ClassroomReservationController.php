@@ -7,6 +7,7 @@ use App\Models\Classroom;
 use App\Models\ClassroomReservation;
 use App\Models\Major;
 use App\Services\AuditLogger;
+use App\Support\ReservationExportColumns;
 use App\Services\ClassroomRepairNotices;
 use App\Services\ReservationReviewService;
 use Illuminate\Http\Request;
@@ -56,20 +57,54 @@ class ClassroomReservationController extends Controller
 
         $reservations = $query->paginate(15)->withQueryString();
 
-        return view('reservations.index', compact('reservations', 'counts'));
+        $exportReservations = $this->exportPreview($request);
+
+        return view('reservations.index', compact('reservations', 'counts', 'exportReservations'));
     }
 
     /**
-     * 匯出 Excel（GET /reservations/export）：匯出「目前搜尋與狀態篩選」下的全部空間申請（不分頁）。
+     * 匯出 Excel（GET /reservations/export）：匯出「目前搜尋與狀態篩選」下的空間申請（不分頁）。
      * 有審核權限的人匯出全部申請；其他人只匯出自己提出的申請；寫一筆操作紀錄。
+     * 匯出前的預覽視窗（見 reservations/_export-modal）可以勾選要匯出的欄位（columns[]）與申請（ids[]）；
+     * 沒帶這兩個參數就是匯出全部欄位、全部申請。
      */
     public function export(Request $request)
     {
-        $request->validate(['keyword' => ['nullable', 'string', 'max:100']]);
-        $canManage = $request->user()->hasPermission('reservations.manage');
+        $request->validate([
+            'keyword' => ['nullable', 'string', 'max:100'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string'],
+            'ids' => ['nullable', 'array'],
+            'ids.*' => ['integer'],
+        ]);
 
+        $query = $this->exportQuery($request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->input('ids'));   // 勾選的申請；範圍不會超出上面的搜尋與權限條件
+        }
+        $columns = ReservationExportColumns::pick($request->input('columns'));
+
+        $rows = $query->get()->map(function (ClassroomReservation $r) use ($columns) {
+            $values = ReservationExportColumns::values($r);
+
+            return array_map(fn (string $key) => $values[$key], array_keys($columns));
+        })->all();
+
+        $file = '空間申請-' . now()->format('Ymd-His') . '.xlsx';
+        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows), 'columns' => array_keys($columns)], "匯出空間申請 {$file}（" . count($rows) . ' 筆）');
+
+        return Excel::download(new TableExport('空間申請', array_values($columns), $rows), $file);
+    }
+
+    /**
+     * 匯出（與預覽）的查詢：有審核權限的人看全部，其他人只有自己提出的；再套用網址上的關鍵字與「未審核／已審核」篩選。
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<ClassroomReservation>
+     */
+    private function exportQuery(Request $request)
+    {
         $query = ClassroomReservation::with(['requester', 'classroom', 'slots', 'reviewer'])->orderByDesc('created_at');
-        if (! $canManage) {
+        if (! $request->user()->hasPermission('reservations.manage')) {
             $query->where('requester_id', $request->user()->id);
         }
         $this->applyKeyword($query, trim((string) $request->input('keyword')));
@@ -79,30 +114,17 @@ class ClassroomReservationController extends Controller
             $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
         }
 
-        $rows = $query->get()->map(function (ClassroomReservation $r) {
-            [$slotText, $slotCount] = $r->slotSummary();
+        return $query;
+    }
 
-            return [
-                $r->id,
-                $r->class_name,
-                $r->requester?->name,
-                $r->classroom?->name,
-                $slotText,
-                $slotCount,
-                $r->purpose,
-                $r->statusLabel()[0],
-                $r->is_all_or_nothing ? '是' : '否',
-                $r->reviewer?->name ?? ($r->isReviewed() ? '系統自動' : null),
-                $r->reviewed_at?->format('Y-m-d H:i'),
-                $r->rejection_reason,
-                $r->created_at?->format('Y-m-d H:i'),
-            ];
-        })->all();
-
-        $file = '空間申請-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出空間申請 {$file}（" . count($rows) . ' 筆）');
-
-        return Excel::download(new TableExport('空間申請', ['申請編號', '申請班級', '申請人', '教室', '申請時段', '節數', '用途', '申請狀態', '其中一節不能借就整筆不要', '審核人', '審核時間', '拒絕原因', '送出時間'], $rows), $file);
+    /**
+     * 匯出預覽視窗要列的申請（最多 500 筆，超過請先用搜尋縮小範圍）。
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, ClassroomReservation>
+     */
+    private function exportPreview(Request $request)
+    {
+        return $this->exportQuery($request)->limit(500)->get();
     }
 
     /**
@@ -195,7 +217,9 @@ class ClassroomReservationController extends Controller
 
         $majors = $this->majorOptions();
 
-        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine', 'majors'));
+        $exportReservations = $showMine ? $this->exportPreview($request) : collect();
+
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine', 'majors', 'exportReservations'));
     }
 
     /** 我的申請（有審核權限的人從空間申請右上角打開的對話框；?modal=1）。 */

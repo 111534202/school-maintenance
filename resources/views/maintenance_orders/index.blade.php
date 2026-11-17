@@ -96,11 +96,20 @@
                             @else
                                 —
                             @endif
+                            {{-- 工單編號：AI 預防保養是 AI-開頭、定期保養是 MO-開頭，列表上一眼就分得出來。 --}}
+                            <div><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->displayNumber() }}</span></div>
                         </td>
                         <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
                         <td>{{ $order->categoryName() ?? '—' }}</td>
                         <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
-                        <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
+                        <td>
+                            @if ($statusText === '待轉報修' && $order->result && auth()->user()->can('repairs.create'))
+                                {{-- 點「待轉報修」直接跳到新增報修畫面，設備、標題、故障描述都先填好。 --}}
+                                <a href="{{ route('repairs.create', ['from_result' => $order->result->id]) }}" title="建立報修單" class="text-decoration-none"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}<i class="bi bi-box-arrow-up-right ms-1"></i></span></a>
+                            @else
+                                <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
+                            @endif
+                        </td>
                         <td>{{ $order->assignee?->name ?? '—' }}</td>
                         <td>
                             {{ $order->scheduled_date?->format('Y-m-d') ?? '—' }}
@@ -114,6 +123,13 @@
                             @if ($order->result)
                                 <span class="btn btn-sm btn-success mo-action disabled" aria-disabled="true">已回報</span>
                             @else
+                                @if ($order->canBeStartedBy(auth()->user()))
+                                    <form method="POST" action="{{ route('maintenance-orders.start', $order) }}" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-sm btn-outline-primary mo-action">開始保養</button>
+                                    </form>
+                                @endif
                                 @if (auth()->user()->can('maintenance.report') && $order->canBeReportedBy(auth()->user()))
                                     <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success mo-action" data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報結果</a>
                                 @endif

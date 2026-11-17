@@ -103,7 +103,8 @@ class DashboardController extends Controller
             'inProgressCount' => (int) (
                 $statusCounts[RepairRequestStatus::InProgress->value] ?? 0
             ),
-            'pendingReviewCount' => (int) ($statusCounts[RepairRequestStatus::PendingReview->value] ?? 0),
+            // 待驗收：只算跟自己有關的（和看板、鈴鐺一致；管理員全部）。
+            'pendingReviewCount' => RepairRequest::visibleOnBoard($user)->where('status', RepairRequestStatus::PendingReview->value)->count(),
             'monthlyRepairCount' => $monthlyRepairCount,
             'averageRepairHours' => $repairDurationStats['average_hours'],
             'repairDurationMissingCount' => $repairDurationStats['missing_hours_request_count'],

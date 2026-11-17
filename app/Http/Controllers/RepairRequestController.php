@@ -87,7 +87,7 @@ class RepairRequestController extends Controller
     {
         return RepairRequest::query()
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
-            ->visibleTo($request->user())
+            ->visibleOnBoard($request->user())
             // with：順便查好設備與被指派的維修人員，看板上顯示名稱時不用每張單再多查一次。
             // 設備另外帶上「近 30 天這台設備被報修幾次」，看板才能直接標示重複報修的設備（不用再連去設備主檔才看得到）。
             ->with([
@@ -121,6 +121,8 @@ class RepairRequestController extends Controller
                     }
                 });
             })
+            // 我的報修：?mine=1 只看「我提出的」報修單（選單的「我的報修」連過來）；所有身分都能用，管理員與主管也能只看自己提的。
+            ->when($request->boolean('mine'), fn ($query) => $query->where('requester_id', $request->user()->id))
             // 狀態篩選：有帶 ?status= 才套用。
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
@@ -187,10 +189,29 @@ class RepairRequestController extends Controller
             $device = Device::with(['category', 'classroom'])->find(request()->integer('device'));
         }
 
+        // 網址有帶 ?from_result=保養結果編號 → 從保養的「待轉報修」直接跳過來：設備、標題、故障描述都先填好。
+        $ngResult = $this->pendingNgResult(request()->integer('from_result'));
+        $ngPrefill = null;
+        if ($ngResult) {
+            $order = $ngResult->maintenanceOrder;
+            $device ??= $order?->device?->loadMissing(['category', 'classroom']);
+            $ngPrefill = [
+                'title' => '保養檢查 NG：' . ($device->device_code ?? $order?->categoryName() ?? '未指定設備'),
+                'description' => implode(PHP_EOL, [
+                    "【保養 NG 自動轉入，來源：maintenance_result:{$ngResult->id}】",
+                    '',
+                    '定期保養檢查結果為 NG（異常）。',
+                    '工單：#' . ($order->id ?? '—'),
+                    '執行人：' . ($ngResult->executor->name ?? '—'),
+                    '說明：' . ($ngResult->note ?: '（未填寫）'),
+                ]),
+            ];
+        }
+
         // 設備地點只能從現有、啟用中的教室選（和空間預約的選法相同）。
         $classrooms = Classroom::query()->where('is_active', true)->orderBy('classroom_code')->get();
 
-        return view('repairs.create', compact('fromKnowledgeBase', 'device', 'classrooms'));
+        return view('repairs.create', compact('fromKnowledgeBase', 'device', 'classrooms', 'ngResult', 'ngPrefill'));
     }
 
     /**
@@ -268,6 +289,15 @@ class RepairRequestController extends Controller
             'requester_id' => Auth::id(),
         ]);
 
+        // 從保養的「待轉報修」帶過來的：把這張報修單記回保養結果，狀態改成「已轉報修」（同一筆結果不會重複建單）。
+        $ngResult = $this->pendingNgResult((int) $request->input('maintenance_result_id'));
+        if ($ngResult) {
+            $ngResult->update([
+                'ng_conversion_status' => \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED,
+                'repair_request_id' => $repairRequest->id,
+            ]);
+        }
+
         // 有上傳附件才處理；storeMany 會把每個檔案存起來並在 attachments 資料表留一筆。
         if ($request->hasFile('attachments')) {
             $attachmentUploader->storeMany($repairRequest, $request->file('attachments'));
@@ -287,6 +317,20 @@ class RepairRequestController extends Controller
     }
 
     /**
+     * 找出「還沒轉成報修單的 NG 保養結果」：結果是 NG、還沒有報修單，而且目前登入者有保養檢視權限。
+     * 找不到或不符合條件就回 null（網址帶亂數編號也不會洩漏任何資料）。
+     */
+    private function pendingNgResult(int $id): ?\App\Models\MaintenanceResult
+    {
+        if ($id <= 0 || ! Auth::user()?->can('maintenance.view')) {
+            return null;
+        }
+        $result = \App\Models\MaintenanceResult::with(['maintenanceOrder.device', 'executor'])->find($id);
+
+        return $result && $result->isNg() && $result->repair_request_id === null ? $result : null;
+    }
+
+    /**
      * 報修單詳細頁：顯示這張報修單的所有資訊、附件，以及底下的維修紀錄。
      */
     public function show(RepairRequest $repairRequest)
@@ -303,10 +347,17 @@ class RepairRequestController extends Controller
             'device.classroom',
             'classroom',
             'assignedTechnician',
+            'acceptor',
         ]);
 
         // 派工／重新指派表單要挑選真正的維修人員，不再讓主管自己打字輸入姓名。
         // 誰能被指派由身分主檔決定：身分有勾選「可被指派為維修人員」權限、且帳號啟用中的用戶。
+        // 驗收人下拉選單：身分有驗收權限（或是系統管理員）、帳號啟用中的用戶。
+        $acceptors = User::where('is_active', true)
+            ->whereHas('role', fn ($q) => $q->withPermission('repairs.accept')->orWhere('role_code', 'admin'))
+            ->orderBy('name')
+            ->get();
+
         $technicians = User::whereHas('role', fn ($q) => $q->withPermission('repairs.assignable'))
             ->where('is_active', true)
             ->orderBy('name')
@@ -329,6 +380,7 @@ class RepairRequestController extends Controller
         return view('repairs.show', compact(
             'repairRequest',
             'technicians',
+            'acceptors',
             'partUsages',
             'materialCost',
             'hasIncompletePrice'
@@ -357,6 +409,9 @@ class RepairRequestController extends Controller
             // 不合法就導回詳細頁並顯示錯誤，不往下執行（也就不會寄信、不會寫成功紀錄）。
             return $this->redirectWithWorkflowError($repairRequest, $exception);
         }
+
+        // 指定驗收人（可不填，不填＝報修人本人驗收）。
+        $repairRequest->update(['accepted_by' => $request->validated('accepted_by')]);
 
         // 派工成功才寫操作紀錄。?-> 是「如果預計時間沒填（null）就不要報錯」。
         AuditLogger::log('assigned', $repairRequest, [
@@ -393,6 +448,11 @@ class RepairRequestController extends Controller
             );
         } catch (DomainException $exception) {
             return $this->redirectWithWorkflowError($repairRequest, $exception);
+        }
+
+        // 重新指派時一併更新驗收人（表單送來才改；沒有這個欄位就維持原本的）。
+        if ($request->has('accepted_by')) {
+            $repairRequest->update(['accepted_by' => $request->validated('accepted_by')]);
         }
 
         AuditLogger::log('reassigned', $repairRequest, [

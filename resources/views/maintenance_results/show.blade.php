@@ -14,7 +14,7 @@
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">工單編號</dt>
-                <dd class="col-sm-9">#{{ $order->id }}</dd>
+                <dd class="col-sm-9"><span class="badge text-bg-{{ $order->sourceColor() }} fs-6">{{ $order->displayNumber() }}</span></dd>
 
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">@if ($order->maintenancePlan)@include('maintenance_orders._plan_name', ['plan' => $order->maintenancePlan])@else — @endif</dd>
@@ -49,6 +49,9 @@
                     <dd class="col-sm-9">
                         @if ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
                             <span class="badge text-bg-warning">待轉報修（尚未建立報修單）</span>
+                            @can('repairs.create')
+                                <a class="btn btn-sm btn-primary ms-2" href="{{ route('repairs.create', ['from_result' => $result->id]) }}"><i class="bi bi-tools me-1"></i>建立報修單</a>
+                            @endcan
                         @elseif ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
                             <span class="badge text-bg-success">已轉報修</span>
                             @if (\Illuminate\Support\Facades\Route::has('repairs.show'))
@@ -70,6 +73,7 @@
 
     {{-- 保養用料：一次用料跨兩個採購批次時會分成兩列，各自顯示那一批的單價（先進先出）。 --}}
     <div class="card mb-3">
+        @php $canSeePrice = auth()->user()->can('parts.manage'); @endphp   {{-- 單價與小計屬於零件庫存的資料，只有有「零件庫存」權限的人看得到 --}}
         <div class="card-header bg-white form-section-title"><i class="bi bi-box-seam me-2"></i>使用零件</div>
         @if ($result->partUsages->isEmpty())
             <div class="card-body text-muted small">這次保養沒有使用零件。</div>
@@ -77,7 +81,7 @@
             <div class="table-responsive">
                 <table class="tb-table align-middle mb-0">
                     <thead>
-                        <tr><th>零件編號</th><th>零件</th><th class="text-end">數量</th><th class="text-end">單價</th><th class="text-end">小計</th></tr>
+                        <tr><th>零件編號</th><th>零件</th><th class="text-end">數量</th>@if ($canSeePrice)<th class="text-end">單價</th><th class="text-end">小計</th>@endif</tr>
                     </thead>
                     <tbody>
                         @foreach ($result->partUsages as $usage)
@@ -85,8 +89,10 @@
                                 <td>{{ $usage->part?->part_code ?? '—' }}</td>
                                 <td>{{ $usage->part?->name ?? '零件資料不存在' }}@if ($usage->part?->specification)（{{ $usage->part->specification }}）@endif</td>
                                 <td class="text-end text-nowrap">{{ $usage->quantity }} {{ $usage->part?->unit }}</td>
-                                <td class="text-end">{{ $usage->unit_price === null ? '缺少單價' : 'NT$ ' . number_format($usage->unit_price) }}</td>
-                                <td class="text-end">{{ $usage->unit_price === null ? '—' : 'NT$ ' . number_format($usage->quantity * $usage->unit_price) }}</td>
+                                @if ($canSeePrice)
+                                    <td class="text-end">{{ $usage->unit_price === null ? '缺少單價' : 'NT$ ' . number_format($usage->unit_price) }}</td>
+                                    <td class="text-end">{{ $usage->unit_price === null ? '—' : 'NT$ ' . number_format($usage->quantity * $usage->unit_price) }}</td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>

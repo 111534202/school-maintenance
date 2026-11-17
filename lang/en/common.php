@@ -14,6 +14,7 @@ return [
     'nav' => [
         'knowledge_base' => 'Self-Help Knowledge Base',
         'repair_requests' => 'Repairs',
+        'my_repairs' => 'My repairs',
         'dashboard' => 'Dashboard',
         'system_section' => 'System',
         'master_section' => 'Master Data',

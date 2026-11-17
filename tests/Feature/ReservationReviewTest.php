@@ -71,7 +71,7 @@ class ReservationReviewTest extends TestCase
             ->assertSee('未審核')
             ->assertSee('已審核')
             ->assertSee('data-modal-frame-href="' . route('reservations.show', $pending) . '" data-modal-title="預約詳細"', false)
-            ->assertDontSee('審核時間');
+            ->assertDontSee('<th>審核時間</th>', false);   // 列表表格沒有這一欄（匯出預覽視窗裡有，所以只比對列表的表頭）
     }
 
     public function test_detail_page_is_visible_to_the_requester_and_managers_only(): void

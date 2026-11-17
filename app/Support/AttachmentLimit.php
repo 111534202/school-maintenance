@@ -16,6 +16,15 @@ class AttachmentLimit
 
     public const MAX_TOTAL_KB = 5120;   // 5 MB
 
+    /** 後端接受的附件副檔名（報修、維修紀錄、保養結果共用）。 */
+    public const MIMES = 'jpg,jpeg,png,webp,pdf,mp4,mov,webm';
+
+    /**
+     * 檔案欄位的 accept：用「檔案類型」而不是副檔名。手機瀏覽器看到 image/jpeg 這類類型，才會直接給「拍照／相簿」；
+     * 只寫副檔名時，Android 會跳到一般的檔案管理員、找不到相簿裡的照片；iPhone 看到只收 jpeg／png，會自動把 HEIC 照片轉成 JPEG。
+     */
+    public const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf,video/mp4,video/quicktime,video/webm';
+
     public static function maxTotalBytes(): int
     {
         return self::MAX_TOTAL_KB * 1024;

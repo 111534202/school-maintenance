@@ -39,6 +39,8 @@
                         <option value="">{{ __('repair_requests.filter.status_all') }}</option>
                         {{-- 狀態下拉選單：列出所有案件狀態（新報修、已派工、處理中、待驗收、已結案）。 --}}
                         @foreach ($statuses as $statusOption)
+                            {{-- 沒有驗收權限的人，看板的「待驗收」「已結案」選項整個隱藏。 --}}
+                            @continue(in_array($statusOption->value, ['pending_review', 'completed'], true) && ! auth()->user()->can('repairs.accept'))
                             <option value="{{ $statusOption->value }}" @selected(request('status') === $statusOption->value)>
                                 {{ $statusOption->label() }}
                             </option>
@@ -60,6 +62,13 @@
                     <input type="text" id="assignee" name="assignee" class="form-control form-control-sm" style="width: 11rem;"
                         value="{{ request('assignee') }}" placeholder="{{ __('repair_requests.filter.assignee_placeholder') }}">
                 </div>
+                <div>
+                    <label for="mine" class="form-label small mb-1">範圍</label>
+                    <select id="mine" name="mine" class="form-select form-select-sm" style="width: 9rem;">
+                        <option value="">全部看得到的</option>
+                        <option value="1" @selected(request()->boolean('mine'))>我的報修</option>
+                    </select>
+                </div>
                 {{-- 從設備主檔連過來時網址帶有 device_id；按「篩選」時要一併帶著，才不會篩一次就跑掉。 --}}
                 @if (request('device_id'))
                     <input type="hidden" name="device_id" value="{{ request('device_id') }}">
@@ -68,7 +77,7 @@
                 @if (request('overdue'))
                     <input type="hidden" name="overdue" value="1">
                 @endif
-                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue']])
+                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue', 'mine']])
             </form>
         </div>
     </div>

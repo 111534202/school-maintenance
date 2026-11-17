@@ -142,7 +142,8 @@
                             id="attachments"
                             name="attachments[]"
                             multiple
-                            accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm"
+                            accept="{{ \App\Support\AttachmentLimit::ACCEPT }}"
+                            data-compress-images
                             data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
 
                         <div class="form-text">

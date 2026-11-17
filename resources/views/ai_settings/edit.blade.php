@@ -43,6 +43,13 @@
             </div>
 
             <div class="mb-3">
+                <label for="schedule_lead_days" class="form-label">預設排定在幾天後（0 ~ 60）</label>
+                <input type="number" min="0" max="60" name="schedule_lead_days" id="schedule_lead_days"
+                       class="form-control" value="{{ old('schedule_lead_days', $settings['schedule_lead_days']) }}" required>
+                <div class="form-text">核准候選時，「排定保養日期」會先帶入今天加上這個天數，主管可以自己改；選「不需要審核」時，系統就用這個天數自動排定。設 0 代表排定當天。</div>
+            </div>
+
+            <div class="mb-3">
                 <label for="require_approval" class="form-label">建立工單前是否需要主管審核</label>
                 <select name="require_approval" id="require_approval" class="form-select">
                     <option value="1" @selected((string) old('require_approval', $settings['require_approval'] ? '1' : '0') === '1')>需要（先產生候選，核准後才建單）</option>

@@ -809,3 +809,23 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-header:has(> .tb-actions-wrap) > :first-child { flex: 1 1 100%; }
     .tb-header > div.tb-actions-wrap:not(:first-child) { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; }
 }
+
+/* 手機版文字與按鈕置中（彭仕衡 2026-11-17：「手機文字太小、沒有置中在文字框裡」）。
+   1. 按鈕：上面「至少 40px 高」是用 min-height 撐高的，Bootstrap 的 .btn 是 inline-block，文字會貼在上緣、下面空一截；
+      改成 inline-flex 並垂直水平置中，文字就一定落在框的正中間（有圖示時圖示與文字之間空 .35rem）。
+   2. 太小的字：徽章、膠囊標籤、鈴鐺的紅色數字、通知清單標題、表格裡的小按鈕在手機上放大到好讀的大小。
+   只在手機寬度與觸控裝置生效，桌面版與洋蔥版面不動。 */
+@media (max-width: 767.98px), (pointer: coarse) {
+    .tb-body .btn:not(.icon-btn):not(.btn-close):not(.dropdown-toggle):not(.d-block), .tb-body .tb-btn:not(.d-block) {
+        display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: .35rem; line-height: 1.3;
+    }
+    .tb-body .badge, .tb-body .tb-pill { text-align: center; }
+    .tb-navbar #notificationBadge { font-size: .6875rem; min-width: 1.15rem; height: 1.15rem; }
+    .tb-body .dropdown-header { font-size: .875rem; }
+}
+@media (max-width: 575.98px) {
+    .tb-body .badge, .tb-body .tb-pill { font-size: .875rem; }
+    .tb-body .tb-table td .btn-sm:not(.icon-btn), .tb-body .tb-table td .tb-btn-sm { font-size: .875rem; }
+    .tb-list-label { font-size: .8125rem; }
+    .tb-stat-note, .tb-body .form-text { font-size: .875rem; }
+}

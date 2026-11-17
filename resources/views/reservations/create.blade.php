@@ -329,7 +329,7 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h2 class="h5 mb-0" id="my-requests-title">我的申請</h2>
             {{-- 匯出 Excel：匯出自己提出的全部申請。 --}}
-            <a href="{{ route('reservations.export') }}" class="tb-btn tb-btn-outline"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#reservationExportModal"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</button>
         </div>
         @if ($myReservations->isEmpty())
             <div class="tb-card tb-empty">目前還沒有申請紀錄。</div>
@@ -340,6 +340,9 @@
             @include('layouts.pager', ['paginator' => $myReservations])
         @endif
     </section>
+    @endif
+    @if (! $guest && ($showMine ?? true))
+        @include('reservations._export-modal', ['exportReservations' => $exportReservations])
     @endif
 </div>
 

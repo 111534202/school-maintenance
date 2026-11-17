@@ -299,13 +299,26 @@ protected function setUp(): void
         $this->assertSame('in_progress', $case->fresh()->status->value);
     }
 
-    // 沒有報修人的案件（例如保養 NG 自動轉入）：由有驗收權限的人處理，不然就沒有人能驗收。
-    public function test_a_case_without_a_reporter_can_be_accepted_by_anyone_with_the_accept_permission(): void
+    // 沒有報修人的案件（例如保養 NG 自動轉入）：沒有指定驗收人時只有系統管理員能驗收；派工時指定了驗收人，就由他驗收。
+    public function test_a_case_without_a_reporter_and_without_an_acceptor_can_only_be_accepted_by_the_admin(): void
     {
         [, , $teacher1] = $this->twoTechniciansAndTwoTeachers();
         $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => null, 'assigned_to' => $teacher1->id]);
 
-        $this->actingAs($teacher1)->post(route('repairs.complete', $case))->assertRedirect(route('repairs.show', $case));
+        // 一般有驗收權限的人不行（派工時沒有指定他）。
+        $this->actingAs($teacher1)->post(route('repairs.complete', $case))->assertForbidden();
+
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'))->post(route('repairs.complete', $case))->assertRedirect(route('repairs.show', $case));
+        $this->assertSame('completed', $case->fresh()->status->value);
+    }
+
+    public function test_a_case_without_a_reporter_can_be_accepted_by_the_person_it_names(): void
+    {
+        [, , $teacher1, $teacher2] = $this->twoTechniciansAndTwoTeachers();
+        $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => null, 'accepted_by' => $teacher2->id]);
+
+        $this->actingAs($teacher1)->post(route('repairs.complete', $case))->assertForbidden();
+        $this->actingAs($teacher2)->post(route('repairs.complete', $case))->assertRedirect(route('repairs.show', $case));
         $this->assertSame('completed', $case->fresh()->status->value);
     }
 
@@ -390,8 +403,8 @@ protected function setUp(): void
         RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher2->id]);
         RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => null]);
 
-        // 教師 1 能驗收：自己報修的 1 張 + 沒有報修人的 1 張 = 2 張（教師 2 的那張不算）。
-        $this->actingAs($teacher1)->get(route('dashboard'))->assertSee('2 張工單待驗收');
+        // 教師 1 能驗收：自己報修（而且沒有另外指定驗收人）的 1 張；教師 2 的不算，沒有報修人的案件只有管理員能驗收，也不算。
+        $this->actingAs($teacher1)->get(route('dashboard'))->assertSee('1 張工單待驗收')->assertDontSee('2 張工單待驗收');
     }
 
     // 詳細頁上的按鈕只在「真的能操作」時才顯示：別的維修人員看不到「開始處理」。

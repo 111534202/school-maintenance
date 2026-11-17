@@ -3,6 +3,7 @@
 @section('title', 'AI 預防保養候選')
 
 @section('content')
+@php $leadDays = (int) \App\Models\AiSetting::get(\App\Models\AiSetting::SCHEDULE_LEAD_DAYS); @endphp
 {{-- 風格 B：篩選放在卡片裡；表格／清單自動切換，整頁捲動、表頭固定；點一列在對話框打開該設備的履歷。 --}}
 <div class="tb">
     <div class="tb-header">
@@ -126,7 +127,10 @@
                         </td>
                         <td>
                             @if ($candidate->maintenanceOrder)
-                                <a href="{{ route('maintenance-orders.show', $candidate->maintenanceOrder) }}">工單 #{{ $candidate->maintenance_order_id }}</a>
+                                <a href="{{ route('maintenance-orders.show', $candidate->maintenanceOrder) }}">工單 {{ $candidate->maintenanceOrder->displayNumber() }}</a>
+                                @if ($candidate->maintenanceOrder->scheduled_date)
+                                    <div class="text-muted small">排定 {{ $candidate->maintenanceOrder->scheduled_date->format('Y-m-d') }}</div>
+                                @endif
                             @endif
                             @if ($candidate->decided_at)
                                 <div class="text-muted small">
@@ -142,8 +146,20 @@
                         </td>
                         <td class="text-end tb-col-fit">
                             @if ($candidate->status === 'pending')
-                                <form method="POST" action="{{ route('preventive-candidates.approve', $candidate) }}" class="d-inline">
+                                <form method="POST" action="{{ route('preventive-candidates.approve', $candidate) }}" class="d-inline-flex flex-wrap gap-1 align-items-center justify-content-end">
                                     @csrf
+                                    {{-- 排定保養日期：由主管選（預設是今天加上 AI 設定的預設天數，不能選過去的日子）。 --}}
+                                    <label class="visually-hidden" for="scheduled_date_{{ $candidate->id }}">排定保養日期</label>
+                                    <input type="date" id="scheduled_date_{{ $candidate->id }}" name="scheduled_date" class="form-control form-control-sm w-auto"
+                                           value="{{ now()->addDays($leadDays)->toDateString() }}" min="{{ now()->toDateString() }}" required>
+                                    {{-- 設備主檔記的設備位置（教室）的一週課表：按一下挑沒課的日子。 --}}
+                                    @if ($candidate->device?->classroom)
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#timetableModal"
+                                                data-target-input="scheduled_date_{{ $candidate->id }}" data-url="{{ route('devices.timetable', $candidate->device) }}"
+                                                data-classroom-name="{{ $candidate->device->classroom->name }}（{{ $candidate->device->classroom->classroom_code }}）" title="看 {{ $candidate->device->classroom->name }} 的課表挑日期">
+                                            <i class="bi bi-calendar-week"></i><span class="visually-hidden">看課表挑日期</span>
+                                        </button>
+                                    @endif
                                     <button type="submit" class="btn btn-sm btn-success">核准建單</button>
                                 </form>
                                 <form method="POST" action="{{ route('preventive-candidates.reject', $candidate) }}" class="d-inline">
@@ -160,6 +176,8 @@
     </section>
 
     <div>@include('layouts.pager', ['paginator' => $candidates])</div>
+    {{-- 教室課表視窗：每一列的課表按鈕各帶自己那間教室的網址（見 data-url）。 --}}
+    @include('layouts.partials.classroom-timetable-modal', ['classroom' => (object) ['name' => '教室', 'classroom_code' => ''], 'url' => '', 'mode' => 'date', 'busyLabel' => '同教室已排保養', 'busyHint' => '日期標題下方會列出同一間教室其他設備已排的保養工單'])
     @endif
 </div>
 @endsection

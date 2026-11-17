@@ -52,6 +52,10 @@
                         <i class="bi bi-check-circle me-1"></i>{{ __('repair_requests.create.device_display_label') }}<strong id="device_display_text">{{ $device?->device_code }} {{ $device?->category?->name }} {{ $device?->brand }} {{ $device?->model }}（{{ $device?->classroom?->name ?? $device?->classroom?->classroom_code }}）</strong>
                     </div>
                     {{-- 隱藏欄位：真正送給後端的設備編號（JavaScript 查到設備後會填入）。 --}}
+                    @if ($ngResult)
+                        {{-- 從保養「待轉報修」帶過來：送出後這張報修單會記回那筆保養結果。 --}}
+                        <input type="hidden" name="maintenance_result_id" value="{{ $ngResult->id }}">
+                    @endif
                     <input type="hidden" id="device_id" name="device_id" value="{{ $device->id ?? '' }}">
 
                     <hr class="my-4">
@@ -101,11 +105,11 @@
                             <label for="title" class="form-label">{{ __('repair_requests.create.title_label') }}</label>
                             {{-- 報修標題：預設值依序是 ① 驗證失敗帶回的內容 ② 知識庫文章標題 ③ 依設備自動建議的標題（教室 + 類別 + 故障）。 --}}
                             <input type="text" class="form-control" id="title" name="title"
-                                value="{{ old('title', $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
+                                value="{{ old('title', $ngPrefill['title'] ?? $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
                         </div>
                         <div class="col-12">
                             <label for="description" class="form-label">{{ __('repair_requests.create.description_label') }}</label>
-                            <textarea class="form-control" id="description" name="description" rows="5" required>{{ old('description', $fromKnowledgeBase ? __('repair_requests.create.description_prefill', ['title' => $fromKnowledgeBase->title]) : '') }}</textarea>
+                            <textarea class="form-control" id="description" name="description" rows="5" required>{{ old('description', $ngPrefill['description'] ?? ($fromKnowledgeBase ? __('repair_requests.create.description_prefill', ['title' => $fromKnowledgeBase->title]) : '')) }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label for="impact_level" class="form-label">{{ __('repair_requests.create.impact_level_label') }}</label>
@@ -135,7 +139,7 @@
                 <div class="card-body">
                     <label for="attachments" class="form-label">{{ __('repair_requests.create.attachments_label') }}</label>
                     {{-- 附件：可一次選多個檔案（欄位名稱以 [] 結尾 = 陣列）；accept 只是提示瀏覽器的檔案類型，真正的限制（最多 5 個、加起來 5 MB）在後端 StoreRepairRequestRequest（App\Support\AttachmentLimit）。 --}}
-                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.pdf,.mp4,.mov,.webm" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
+                    <input type="file" class="form-control" id="attachments" name="attachments[]" multiple data-compress-images accept="{{ \App\Support\AttachmentLimit::ACCEPT }}" data-max-files="{{ \App\Support\AttachmentLimit::MAX_FILES }}" data-max-total-mb="{{ \App\Support\AttachmentLimit::MAX_TOTAL_KB / 1024 }}">
                 </div>
             </div>
 

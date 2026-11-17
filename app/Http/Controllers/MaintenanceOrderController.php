@@ -83,7 +83,7 @@ class MaintenanceOrderController extends Controller
             $result = $o->result;
 
             return [
-                $o->id,
+                $o->displayNumber(),
                 $o->device?->device_code,
                 $o->device ? trim(($o->device->category?->name ?? '') . ' ' . $o->device->brand . ' ' . $o->device->model) : null,
                 $o->categoryName(),
@@ -200,6 +200,25 @@ class MaintenanceOrderController extends Controller
         AuditLogger::log('deleted', $maintenanceOrder, ['status' => $maintenanceOrder->status], '取消（刪除）保養工單 #' . $id);
 
         return redirect()->route('maintenance-orders.index')->with('success', '保養工單 #' . $id . ' 已取消。');
+    }
+
+    /**
+     * 開始保養（PATCH /maintenance-orders/{id}/start）：待處理 → 進行中，並記下開始時間。
+     * 只有能回報這張工單的人（負責人與保養管理者）可以按；已經開始或已回報的工單不能再按。
+     */
+    public function start(MaintenanceOrder $maintenanceOrder): RedirectResponse
+    {
+        abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以開始保養。');
+
+        if (! $maintenanceOrder->canBeStartedBy(request()->user())) {
+            return back()->with('error', '這張工單已經開始或已回報結果，不能再按「開始保養」。');
+        }
+
+        $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'started_at' => now()]);
+        AuditLogger::log('status_changed', $maintenanceOrder, ['status' => ['old' => MaintenanceOrder::STATUS_PENDING, 'new' => MaintenanceOrder::STATUS_IN_PROGRESS]],
+            '開始保養工單 #' . $maintenanceOrder->id);
+
+        return back()->with('success', '已開始保養，狀態改為進行中。做完請按「回報結果」。');
     }
 
     /**

@@ -26,13 +26,15 @@ class NavMenu
         // 有沒有某個權限（沒登入或沒有身分一律 false）。
         $can = fn (string $permission) => $user && $user->can($permission);
         // 路由存在才產生網址，其他組員的模組還沒合併時不會出現壞連結。
-        $link = fn (string $label, string $icon, string $route, array $active, bool $show = true) => [
+        $link = fn (string $label, string $icon, string $route, array $active, bool $show = true, array $query = [], ?bool $isActive = null) => [
             'label' => $label,
             'icon' => $icon,
-            'href' => Route::has($route) ? route($route) : '#',
-            'active' => request()->routeIs(...$active),
+            'href' => Route::has($route) ? route($route, $query) : '#',
+            'active' => $isActive ?? request()->routeIs(...$active),
             'show' => $show && Route::has($route),
         ];
+        // 「我的報修」：和「報修」同一頁，只是帶 ?mine=1；兩個選單項目靠這個參數分出誰是目前所在的頁面。
+        $onMyRepairs = request()->routeIs('repairs.index') && request()->boolean('mine');
 
         $menu = [
             ['type' => 'link'] + $link(__('common.nav.dashboard'), 'bi-speedometer2', 'dashboard', ['dashboard']),
@@ -46,7 +48,9 @@ class NavMenu
                 $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
             ]],
             ['type' => 'group', 'id' => 'work', 'label' => __('common.nav.repair_section'), 'icon' => 'bi-tools', 'children' => [
-                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*']),
+                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*'], true, [], request()->routeIs('repairs.*', 'repair-logs.*') && ! $onMyRepairs),
+                // 我的報修：所有身分都看得到（只列自己提出的報修單）。
+                $link(__('common.nav.my_repairs'), 'bi-person-lines-fill', 'repairs.index', [], true, ['mine' => 1], $onMyRepairs),
                 $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ]],
             ['type' => 'group', 'id' => 'maintenance', 'label' => __('common.nav.maintenance_section'), 'icon' => 'bi-wrench-adjustable', 'children' => [

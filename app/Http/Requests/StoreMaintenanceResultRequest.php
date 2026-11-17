@@ -30,7 +30,7 @@ class StoreMaintenanceResultRequest extends FormRequest
 
             // 附件（保養前後照片等，可以不填）：和報修共用規則，最多 5 個、加起來 5 MB 以內（App\Support\AttachmentLimit）。
             'attachments' => ['nullable', 'array', 'max:' . \App\Support\AttachmentLimit::MAX_FILES, \App\Support\AttachmentLimit::totalSizeRule()],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm'],
+            'attachments.*' => ['file', 'mimes:' . \App\Support\AttachmentLimit::MIMES],
         ];
     }
 }

@@ -51,13 +51,14 @@ class StoreRepairRequestRequest extends FormRequest
             // devices 表已合併：掃描設備條碼建立的報修單會帶 device_id（真正外鍵）；
             // 沒有掃描、手動輸入的案件則沒有 device_id，device_note 當文字後備描述。
             'device_id' => ['nullable', 'integer', 'exists:devices,id'],
+            'maintenance_result_id' => ['nullable', 'integer', 'exists:maintenance_results,id'],   // 從保養「待轉報修」帶過來時才有
             'device_note' => ['nullable', 'string', 'max:255'],
             // 設備地點：可不填；有填就必須是現有、啟用中的教室（只能從清單選，不能自由輸入）。
             'classroom_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('classrooms', 'id')->whereNull('deleted_at')->where('is_active', true)],
             // 附件：圖片/PDF/影片都允許（依《第四週個人工作計畫》第 2 項「故障照片/影片」新增影片格式）。
             // 一筆最多 5 個檔案、加起來 5 MB 以內，單檔不另外限制（上限在 App\Support\AttachmentLimit）。
             'attachments' => ['nullable', 'array', 'max:' . \App\Support\AttachmentLimit::MAX_FILES, \App\Support\AttachmentLimit::totalSizeRule()],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,pdf,mp4,mov,webm'],
+            'attachments.*' => ['file', 'mimes:' . \App\Support\AttachmentLimit::MIMES],
         ];
     }
 }
