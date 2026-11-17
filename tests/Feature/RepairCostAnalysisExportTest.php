@@ -59,7 +59,7 @@ class RepairCostAnalysisExportTest extends TestCase
 
     public function test_export_contains_the_summary_parts_details_and_scrap_sheets_and_preserves_cost_rules(): void
     {
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
 
         $this->makeUsage(
             $user,
@@ -184,7 +184,7 @@ class RepairCostAnalysisExportTest extends TestCase
     {
         Excel::fake();
 
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
 
         $this->makeUsage(
             $user,
@@ -240,7 +240,7 @@ class RepairCostAnalysisExportTest extends TestCase
 
     public function test_pdf_export_downloads_with_embedded_traditional_chinese_font(): void
     {
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
 
         $this->makeUsage(
             $user,

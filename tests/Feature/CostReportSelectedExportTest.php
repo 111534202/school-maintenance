@@ -33,7 +33,7 @@ class CostReportSelectedExportTest extends TestCase
 
     public function test_page_shows_the_filter_inline_and_offers_an_export_preview(): void
     {
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
         $this->makeUsage($user, 'HDMI 線', 12, 10);
 
         $this->actingAs($user)->get(route('repair-cost-analysis.index'))
@@ -49,7 +49,7 @@ class CostReportSelectedExportTest extends TestCase
 
     public function test_selected_sections_and_columns_are_the_only_ones_exported(): void
     {
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
         $this->makeUsage($user, 'HDMI 線', 12, 10);
         $this->makeUsage($user, '網路線', 2, null);
 
@@ -73,7 +73,7 @@ class CostReportSelectedExportTest extends TestCase
 
     public function test_export_routes_use_the_selection_and_require_at_least_one_column(): void
     {
-        $user = $this->makeUserWithPermissions(['maintenance.view']);
+        $user = $this->makeUserWithPermissions(['parts.manage']);
         $this->makeUsage($user, 'HDMI 線', 12, 10);
         $this->actingAs($user);
 

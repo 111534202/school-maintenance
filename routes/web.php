@@ -187,23 +187,23 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     Route::get('maintenance-completion-rate', [MaintenanceCompletionRateController::class, 'index'])
         ->middleware('can:maintenance.view')->name('maintenance-completion-rate.index');
 
-    // 成本分析報表：唯讀頁面，沿用 maintenance.view 權限。
+    // 成本分析報表：唯讀頁面，裡面有零件單價與材料費，只限有「零件庫存」權限（parts.manage）的人。
     Route::get('repair-cost-analysis', [RepairCostAnalysisController::class, 'index'])
-        ->middleware('can:maintenance.view')
+        ->middleware('can:parts.manage')
         ->name('repair-cost-analysis.index');
 
     Route::get('repair-cost-analysis/export/excel', [
         RepairCostAnalysisController::class,
         'exportExcel',
     ])
-        ->middleware('can:maintenance.view')
+        ->middleware('can:parts.manage')
         ->name('repair-cost-analysis.export.excel');
 
     Route::get('repair-cost-analysis/export/pdf', [
         RepairCostAnalysisController::class,
         'exportPdf',
     ])
-        ->middleware('can:maintenance.view')
+        ->middleware('can:parts.manage')
         ->name('repair-cost-analysis.export.pdf');
 
     // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，需要 ai-maintenance.manage（預設只有設備管理員，admin 永遠有）。

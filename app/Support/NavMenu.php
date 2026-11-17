@@ -65,8 +65,8 @@ class NavMenu
                 $link(__('common.nav.reservation_requests'), 'bi-calendar-check', 'reservations.index', ['reservations.index', 'reservations.show', 'reservations.create', 'reservations.mine']),
                 // 零件庫存需要 parts.manage（身分主檔勾選；設備管理員預設有）。
                 $link(__('common.nav.parts'), 'bi-box-seam', 'parts.index', ['parts.*'], $can('parts.manage')),
-                // 成本分析報表：統計維修用掉的零件與材料費，沿用 maintenance.view 權限。
-                $link(__('common.nav.cost_analysis'), 'bi-cash-stack', 'repair-cost-analysis.index', ['repair-cost-analysis.*'], $can('maintenance.view')),
+                // 成本分析報表：統計維修用掉的零件與材料費（有單價金額），只限有零件庫存權限（parts.manage）的人。
+                $link(__('common.nav.cost_analysis'), 'bi-cash-stack', 'repair-cost-analysis.index', ['repair-cost-analysis.*'], $can('parts.manage')),
             ]],
             ['type' => 'group', 'id' => 'system', 'label' => __('common.nav.system_section'), 'icon' => 'bi-gear', 'children' => [
                 $link(__('common.nav.audit_logs'), 'bi-clock-history', 'audit-logs.index', ['audit-logs.*'], $can('audit-logs.view')),

@@ -24,7 +24,7 @@ class RepairCostAnalysisTest extends TestCase
      */
     private function makeCostViewer(): User
     {
-        return $this->makeUserWithPermissions(['maintenance.view']);
+        return $this->makeUserWithPermissions(['parts.manage']);
     }
 
     /**
@@ -251,15 +251,22 @@ class RepairCostAnalysisTest extends TestCase
     }
 
     /**
-     * 沒有 maintenance.view 權限的使用者不得進入成本分析頁面。
+     * 成本分析有零件單價與金額，只限有「零件庫存」權限（parts.manage）的人；
+     * 沒有任何權限、或只有保養檢視權限（維修人員、主管）的人都不得進入（頁面與兩種匯出）。
      */
-    public function test_user_without_maintenance_view_permission_is_forbidden(): void
+    public function test_only_people_with_the_parts_permission_may_open_the_cost_analysis(): void
     {
-        $user = $this->makeUserWithPermissions([]);
+        foreach ([[], ['maintenance.view'], ['maintenance.view', 'repairs.dispatch']] as $permissions) {
+            $this->actingAs($this->makeUserWithPermissions($permissions));
 
-        $this->actingAs($user)
-            ->get(route('repair-cost-analysis.index'))
-            ->assertForbidden();
+            $this->get(route('repair-cost-analysis.index'))->assertForbidden();
+            $this->get(route('repair-cost-analysis.export.excel'))->assertForbidden();
+            $this->get(route('repair-cost-analysis.export.pdf'))->assertForbidden();
+        }
+
+        $this->actingAs($this->makeUserWithRole('technician', '維修人員'))->get(route('repair-cost-analysis.index'))->assertForbidden();
+        $this->actingAs($this->makeUserWithRole('executive', '主管'))->get(route('repair-cost-analysis.index'))->assertForbidden();
+        $this->actingAs($this->makeItManager())->get(route('repair-cost-analysis.index'))->assertOk();
     }
 
     /**
