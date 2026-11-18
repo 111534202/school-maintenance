@@ -20,7 +20,7 @@ use Illuminate\Http\Request;                         // 這一次瀏覽器送來
 class KnowledgeBaseController extends Controller
 {
     /**
-     * 知識庫文章列表頁，最新的排前面，每頁 10 筆。
+     * 知識庫文章列表頁，最新的排前面，每頁 15 筆。
      * 可用關鍵字搜尋（標題、分類、故障現象、排除步驟都會比對），也可以只看某一個分類。
      */
     public function index(Request $request)
@@ -35,7 +35,7 @@ class KnowledgeBaseController extends Controller
         $categories = (clone $visible)->whereNotNull('category')->where('category', '<>', '')
             ->distinct()->orderBy('category')->pluck('category');
 
-        // latest()：依建立時間由新到舊；paginate(10)：分頁，每頁 10 筆；withQueryString：換頁時保留搜尋條件。
+        // latest()：依建立時間由新到舊；paginate(15)：分頁，每頁 15 筆（全站列表一致）；withQueryString：換頁時保留搜尋條件。
         $knowledgeBaseEntries = $visible
             ->when($keyword !== '', function ($query) use ($keyword) {
                 $like = '%' . $keyword . '%';
@@ -47,7 +47,7 @@ class KnowledgeBaseController extends Controller
             ->when($category !== '', fn ($query) => $query->where('category', $category))
             ->orderByDesc('view_count')   // 查看次數多的在前面（大家最常遇到的問題）
             ->latest()
-            ->paginate(10)
+            ->paginate(15)
             ->withQueryString();
 
         return view('knowledge-base.index', compact('knowledgeBaseEntries', 'categories', 'keyword', 'category'));

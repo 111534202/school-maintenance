@@ -207,6 +207,8 @@
                 var item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2 onion-item';
+                // 表格裡用紅底標出的列（table-danger，例如有異常設備的教室）：清單也一樣用紅底標出。
+                if (tr.classList.contains('table-danger')) item.classList.add('onion-item-danger');
                 var body = document.createElement('span');
                 body.className = 'flex-grow-1';
                 body.style.minWidth = '0';

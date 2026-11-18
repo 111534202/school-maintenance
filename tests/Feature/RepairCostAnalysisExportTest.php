@@ -238,49 +238,10 @@ class RepairCostAnalysisExportTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_pdf_export_downloads_with_embedded_traditional_chinese_font(): void
+    public function test_pdf_export_is_no_longer_offered(): void
     {
-        $user = $this->makeUserWithPermissions(['parts.manage']);
-
-        $this->makeUsage(
-            $user,
-            '2026-10-10 09:00:00',
-            'PDF 匯出測試備品',
-            2,
-            150
-        );
-
-        $response = $this->actingAs($user)->get(
-            route('repair-cost-analysis.export.pdf', [
-                'start_date' => '2026-10-10',
-                'end_date' => '2026-10-10',
-                'status' => 'pending',
-            ])
-        );
-
-        $response->assertOk();
-        $response->assertHeader('content-type', 'application/pdf');
-        $contentDisposition = $response->headers->get('content-disposition');
-
-        $this->assertIsString($contentDisposition);
-        $this->assertStringContainsString('repair-cost-analysis-', $contentDisposition);
-        $this->assertStringContainsString('.pdf', $contentDisposition);
-
-        $content = $response->getContent();
-
-        $this->assertIsString($content);
-        $this->assertStringStartsWith('%PDF-', $content);
-        $this->assertStringContainsString('/FontFile2', $content);
-        $this->assertStringContainsString('/ToUnicode', $content);
-        $this->assertStringContainsString('NotoSansTC', $content);
-    }
-
-    public function test_pdf_export_is_forbidden_without_permission(): void
-    {
-        $user = $this->makeUserWithPermissions([]);
-
-        $this->actingAs($user)
-            ->get(route('repair-cost-analysis.export.pdf'))
-            ->assertForbidden();
+        $this->actingAs($this->makeUserWithPermissions(['parts.manage']))
+            ->get('/repair-cost-analysis/export/pdf')
+            ->assertNotFound();
     }
 }

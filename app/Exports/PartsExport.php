@@ -13,7 +13,7 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * 零件清單 Excel（零件庫存列表最下面的「匯出 Excel／PDF」）：只含預覽視窗裡勾選的零件與欄位。
+ * 零件清單 Excel（零件庫存列表最下面的「匯出 Excel」）：只含預覽視窗裡勾選的零件與欄位。
  */
 class PartsExport implements FromArray, WithHeadings, WithTitle, ShouldAutoSize, WithStyles
 {

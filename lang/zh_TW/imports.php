@@ -1,16 +1,15 @@
 <?php
 
-// i18n：批次匯入（設備、用戶）。修改這個檔案時，記得同步修改 lang/en/imports.php，兩邊的 key 必須完全一致。
+// i18n：批量匯入（設備、用戶）。修改這個檔案時，記得同步修改 lang/en/imports.php，兩邊的 key 必須完全一致。
 return [
-    'button' => '批次匯入',
-    'title' => '批次匯入:label',
-    'back' => '回列表',
+    'button' => '批量匯入',
+    'title' => '批量匯入:label',
     'steps_title' => '怎麼匯入',
     'step1' => '先按「下載範本」，用 Excel 打開，在「匯入資料」工作表照標題列填寫（「填寫說明」「可填值一覽」工作表可以參考，「範例」工作表有一列示範）。',
     'step2' => '存檔後在下面選擇檔案，按「上傳並預覽」。這一步還不會寫進資料庫，只是逐列檢查。一次最多 :max 列。',
     'step3' => '預覽畫面會標出哪幾列有問題與原因；確認沒問題再按「確認匯入」。有問題的列會自動略過，修好之後再匯入一次即可。',
     'download_template' => '下載範本',
-    'template_hint' => '範本是 Excel 檔，標題列後面的星號（*）代表必填。',
+    'template_hint' => '範本為 Excel 檔（* 代表必填）',
     'choose_file' => '選擇檔案',
     'file_hint' => '可用 .xlsx 或 .csv（CSV 請存成 UTF-8），大小上限 5 MB。',
     'preview_button' => '上傳並預覽',

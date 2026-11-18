@@ -17,7 +17,7 @@
     <div id="part_code_feedback" class="small mt-1" aria-live="polite"></div>
     @error('part_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     <div class="form-text">
-        英文字母、數字、「-」、「_」、「.」，最多 20 個字，不能和其他零件重複（大小寫視為相同）。
+        {{ \App\Support\EquipmentCode::RULE_TEXT }}。
         同一種零件的不同規格（例如 HDMI 線 2 公尺、5 公尺）請分開新增，各用一個編號。
     </div>
 </div>

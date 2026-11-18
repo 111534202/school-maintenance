@@ -54,7 +54,7 @@ return [
         'class_count' => '每個年級的班數',
         'class_count_hint' => '每個年級分幾班（1～4），班名依序是忠、孝、仁、愛。',
         'example' => '班級名稱範例：',
-        'is_active' => '啟用（關閉後不會出現在下拉選單）',
+        'is_active' => '啟用',
     ],
 
     'flash' => [

@@ -131,8 +131,9 @@ class ListExportTest extends TestCase
     {
         $this->actingAs($this->makeUserWithPermissions(['repairs.dispatch', 'maintenance.view', 'reservations.manage']));
 
-        $this->get(route('repairs.index', ['keyword' => 'abc']))->assertSee(route('repairs.export', ['keyword' => 'abc']), false)->assertSee('匯出 Excel');
-        $this->get(route('maintenance-orders.index'))->assertSee('匯出 Excel');
+        $this->get(route('repairs.index', ['keyword' => 'abc']))->assertSee('id="repairExportModal"', false)
+            ->assertSee('action="' . route('repairs.export') . '"', false)->assertSee('name="keyword" value="abc"', false)->assertSee('匯出 Excel');
+        $this->get(route('maintenance-orders.index'))->assertSee('id="maintenanceOrderExportModal"', false)->assertSee('匯出 Excel');
         // 空間申請的匯出改成先預覽的視窗：目前的篩選條件放在視窗表單的隱藏欄位裡，一起帶去匯出。
         $this->get(route('reservations.index', ['status' => 'pending']))->assertSee('id="reservationExportModal"', false)->assertSee('name="status" value="pending"', false);
     }

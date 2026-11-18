@@ -34,7 +34,7 @@ class GenerateSchemaDocs extends Command
         'roles' => ['角色主檔（身分）', '第 7 章 roles', '符合 3NF。勾選的權限原本是 JSON 陣列（違反 1NF），已拆成 role_permissions。'],
         'role_permissions' => ['身分權限', '規格書未列（roles 權限描述的正規化結果）', '關聯表：一列一個權限；(role_id, permission) 唯一，身分刪除時一起刪除。'],
         'departments' => ['單位主檔', '第 7 章 departments', '符合 3NF。'],
-        'import_batches' => ['批次匯入紀錄', '規格書未列（新增功能：批次匯入與整批復原）', '符合 3NF。設備與用戶以 import_batch_id 指向這裡，不另存清單；復原只標記 undone_at，不刪紀錄。'],
+        'import_batches' => ['批量匯入紀錄', '規格書未列（新增功能：批量匯入與整批復原）', '符合 3NF。設備與用戶以 import_batch_id 指向這裡，不另存清單；復原只標記 undone_at，不刪紀錄。'],
         'mail_settings' => ['寄信設定', '規格書未列（管理員在網頁設定寄信用的信箱帳號）', '符合 3NF。整張表只會有一筆資料；登入密碼加密後存放，畫面與操作紀錄都不顯示。'],
         'majors' => ['科系主檔', '規格書未列（空間申請的科系／年級／班級下拉選單）', '符合 3NF。每個科系各自設定年級數與每年級班數（五專、大學部共用）；班級名稱（簡稱＋年級＋班名，例如資一忠）由這三個值推得，不另存。'],
         'users' => ['使用者主檔', '第 7 章 users', '符合 3NF。一人一個身分（role_id），所屬單位以 department_id 關聯。'],
@@ -104,7 +104,7 @@ class GenerateSchemaDocs extends Command
 
     /** 領域詞清單：資料表名稱的前半段只能用這些（每個詞的意思見文件 1.5 節）；新增領域詞要先加在這裡。 */
     public const DOMAIN_WORDS = [
-        'ai' => 'AI 預測性維護', 'audit' => '稽核與操作日誌', 'classroom' => '教室與空間預約', 'device' => '設備', 'import' => '批次匯入', 'mail' => '寄信設定',
+        'ai' => 'AI 預測性維護', 'audit' => '稽核與操作日誌', 'classroom' => '教室與空間預約', 'device' => '設備', 'import' => '批量匯入', 'mail' => '寄信設定',
         'maintenance' => '定期保養', 'part' => '零件庫存', 'preventive' => '預防保養（AI 候選）', 'repair' => '報修與維修', 'role' => '身分與權限',
     ];
 

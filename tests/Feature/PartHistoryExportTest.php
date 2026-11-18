@@ -9,7 +9,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 零件履歷：使用紀錄、採購紀錄、報廢紀錄沒有表格檢視（固定清單）；最下面「匯出 Excel／PDF」先預覽，
+ * 零件履歷：使用紀錄、採購紀錄、報廢紀錄沒有表格檢視（固定清單）；最下面「匯出 Excel」先預覽，
  * 可以勾選要匯出的區塊（基本資料、使用紀錄、採購紀錄、報廢紀錄）與欄位。
  * 零件庫存列表的低庫存提示只顯示筆數，不列出零件（按按鈕查看）。
  */
@@ -48,7 +48,7 @@ class PartHistoryExportTest extends TestCase
         $this->get(route('parts.history.export', [$part, 'excel', 'sections' => ['basic', 'purchases'], 'cols' => ['basic' => [0, 5], 'purchases' => [0, 1, 3]]]))
             ->assertOk()->assertDownload();
         $this->get(route('parts.history.export', [$part, 'pdf', 'sections' => ['purchases'], 'cols' => ['purchases' => [0, 1]]]))
-            ->assertOk()->assertHeader('content-type', 'application/pdf');
+            ->assertNotFound();   // 不再提供 PDF 匯出
 
         $this->get(route('parts.history.export', [$part, 'excel', 'sections' => ['purchases'], 'cols' => []]))->assertSessionHasErrors('cols');
         $this->get(route('parts.history.export', [$part, 'excel']))->assertSessionHasErrors('sections');

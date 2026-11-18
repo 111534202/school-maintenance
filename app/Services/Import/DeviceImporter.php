@@ -4,6 +4,7 @@ namespace App\Services\Import;
 
 use App\Models\Classroom;
 use App\Models\Device;
+use App\Support\EquipmentCode;
 use App\Models\DeviceCategory;
 use App\Models\ImportBatch;
 use App\Models\MaintenanceOrder;
@@ -11,7 +12,7 @@ use App\Services\AuditLogger;
 use App\Services\DeviceStatusService;
 
 /**
- * 設備批次匯入。欄位：設備編號*、資產編號、類別*（類別名稱）、品牌、型號、序號、保固到期日、教室*（教室代碼）、狀態、核心設備。
+ * 設備批量匯入。欄位：設備編號*、資產編號、類別*（類別名稱）、品牌、型號、序號、保固到期日、教室*（教室代碼）、狀態、核心設備。
  * 規則和「新增設備」表單完全一樣（編號不可重複、類別與教室必須已存在、停用的教室不能放新設備），
  * 寫入時一樣會寫操作紀錄、並重新計算教室的設備異常標記。
  */
@@ -35,7 +36,7 @@ class DeviceImporter extends BulkImporter
     public function columns(): array
     {
         return [
-            ['key' => 'device_code', 'label' => '設備編號', 'required' => true, 'example' => 'DEV-0101', 'note' => '不可重複（含已停用的設備）；QR Code 會用它，建議英數與減號。'],
+            ['key' => 'device_code', 'label' => '設備編號', 'required' => true, 'example' => 'DEV-0101', 'note' => '限英文字母、數字、「-」、「_」、「.」，最多 20 個字；不能和其他設備編號、零件編號重複（含已停用的設備）。'],
             ['key' => 'asset_code', 'label' => '資產編號', 'required' => false, 'example' => '3140101-0001', 'note' => '學校的財產編號，可不填。'],
             ['key' => 'category', 'label' => '類別', 'required' => true, 'example' => '投影機', 'note' => '填「設備類別」主檔裡已有的名稱（見「類別一覽」工作表）。'],
             ['key' => 'brand', 'label' => '品牌', 'required' => false, 'example' => 'Epson', 'note' => '可不填。'],
@@ -65,12 +66,12 @@ class DeviceImporter extends BulkImporter
         $code = $row['device_code'] ?? '';
         if ($code === '') {
             $errors[] = '設備編號必填';
-        } elseif (mb_strlen($code) > 255) {
-            $errors[] = '設備編號太長（最多 255 字）';
+        } elseif (! EquipmentCode::validFormat($code) || in_array($code, EquipmentCode::RESERVED, true)) {
+            $errors[] = rtrim(EquipmentCode::formatMessage('設備編號'), '。');
         } elseif (isset($seen['codes'][mb_strtolower($code)])) {
             $errors[] = "設備編號「{$code}」在檔案裡重複（第 {$seen['codes'][mb_strtolower($code)]} 列也用了）";
-        } elseif (Device::withTrashed()->where('device_code', $code)->exists()) {
-            $errors[] = "設備編號「{$code}」已經存在（可能是已停用的設備）";
+        } elseif ($conflict = EquipmentCode::conflict($code)) {
+            $errors[] = rtrim($conflict, '。');   // 和設備或零件編號重複（含已停用的設備）
         }
         $seen['codes'][mb_strtolower($code)] ??= $seen['__line'] ?? '?';
         $data['device_code'] = $code;
@@ -126,7 +127,7 @@ class DeviceImporter extends BulkImporter
         $device = new Device($data);
         $device->import_batch_id = $this->batchId;   // 記下是哪一次匯入來的，匯錯時才能整批復原
         $device->save();
-        AuditLogger::log('created', $device, $data, "批次匯入設備「{$device->device_code}」");
+        AuditLogger::log('created', $device, $data, "批量匯入設備「{$device->device_code}」");
     }
 
     public function undo(ImportBatch $batch): array
@@ -142,10 +143,10 @@ class DeviceImporter extends BulkImporter
                 continue;
             }
             // 做法和手動「停用設備」相同：狀態改停用、軟刪除（資料保留）。
-            DeviceStatusService::updateStatus($device, 'disabled', '批次匯入復原');
+            DeviceStatusService::updateStatus($device, 'disabled', '批量匯入復原');
             $classrooms[$device->classroom_id] = $device->classroom;
             $device->delete();
-            AuditLogger::log('deleted', $device, [], "批次匯入復原：停用設備「{$device->device_code}」");
+            AuditLogger::log('deleted', $device, [], "批量匯入復原：停用設備「{$device->device_code}」");
             $done++;
         }
         foreach ($classrooms as $classroom) {

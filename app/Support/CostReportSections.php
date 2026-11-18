@@ -9,8 +9,8 @@ use App\Exports\RepairCostScrapsSheet;
 use App\Exports\RepairCostSummarySheet;
 
 /**
- * 成本分析報表「匯出 Excel／PDF」的各區塊與欄位。
- * 資料直接沿用原本完整匯出的四張工作表（RepairCost*Sheet），所以預覽視窗、只匯出勾選欄位的 Excel、PDF 三邊數字一致。
+ * 成本分析報表「匯出 Excel」的各區塊與欄位。
+ * 資料直接沿用原本完整匯出的四張工作表（RepairCost*Sheet），所以預覽視窗與只匯出勾選欄位的 Excel 數字一致。
  */
 class CostReportSections
 {

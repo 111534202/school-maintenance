@@ -33,8 +33,6 @@ class NavMenu
             'active' => $isActive ?? request()->routeIs(...$active),
             'show' => $show && Route::has($route),
         ];
-        // 「我的報修」：和「報修」同一頁，只是帶 ?mine=1；兩個選單項目靠這個參數分出誰是目前所在的頁面。
-        $onMyRepairs = request()->routeIs('repairs.index') && request()->boolean('mine');
 
         $menu = [
             ['type' => 'link'] + $link(__('common.nav.dashboard'), 'bi-speedometer2', 'dashboard', ['dashboard']),
@@ -48,9 +46,8 @@ class NavMenu
                 $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
             ]],
             ['type' => 'group', 'id' => 'work', 'label' => __('common.nav.repair_section'), 'icon' => 'bi-tools', 'children' => [
-                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*'], true, [], request()->routeIs('repairs.*', 'repair-logs.*') && ! $onMyRepairs),
-                // 我的報修：所有身分都看得到（只列自己提出的報修單）。
-                $link(__('common.nav.my_repairs'), 'bi-person-lines-fill', 'repairs.index', [], true, ['mine' => 1], $onMyRepairs),
+                // 「我的報修」不放選單：在報修頁右上角按「我的報修」，用對話框打開（像空間申請的「我的申請」）。
+                $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*']),
                 $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ]],
             ['type' => 'group', 'id' => 'maintenance', 'label' => __('common.nav.maintenance_section'), 'icon' => 'bi-wrench-adjustable', 'children' => [

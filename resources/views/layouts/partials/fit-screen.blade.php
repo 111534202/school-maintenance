@@ -1,6 +1,6 @@
 {{-- 讓列表頁「剛好一個畫面」：不用整頁一直往下滑。 --}}
 {{-- 電腦版：頁面外框（標題、篩選列、分頁）固定在畫面內，只有清單／表格本身在框內捲動（表頭固定在最上面）。 --}}
-{{-- 手機版：清單一次只顯示一個畫面放得下的幾筆，底下用「上一頁／下一頁」切換（跟伺服器的分頁合併成同一組按鈕，不會有兩排分頁）。 --}}
+{{-- 手機版：清單一頁顯示 15 筆（跟伺服器分頁一樣），超過 15 筆才用「上一頁／下一頁」切換（跟伺服器的分頁合併成同一組按鈕，不會有兩排分頁）。 --}}
 {{-- 做法：載入後量畫面高度再調整；改變視窗大小或切換「清單／表格」檢視時重新量。沒有 JavaScript 時就是原本的長頁面，什麼都不會少。 --}}
 {{-- 不想套用的清單：在清單外層或表格加 data-no-fit。 --}}
 {{-- 想固定一頁顯示幾筆（不管畫面大小、電腦或手機）：在表格外層加 data-fit-per-page="5"，清單檢視就固定 5 筆一頁。 --}}
@@ -89,12 +89,9 @@
             var srv = serverInfo();
             if (items.length === 0) return;
 
-            var first = items[0];
-            var itemH = first.offsetHeight || 56;
-            var top = list.getBoundingClientRect().top + window.pageYOffset;
-            var reserve = 64 + 24;       // 分頁列（約 64px）＋頁面下方的空白
             var per = parseInt(list.getAttribute('data-fit-per-page'), 10);
-            var n = per > 0 ? per : Math.max(3, Math.floor((window.innerHeight - top - reserve) / itemH));
+            // 一頁固定 15 筆（跟伺服器的分頁一樣，全站一致）；有設定 data-fit-per-page 的清單照設定。
+            var n = per > 0 ? per : 15;
             var pages = Math.ceil(items.length / n);
             if (pages <= 1 && !srv.next && !srv.prev) return;        // 一個畫面放得下、也沒有下一批資料：不用分頁
 

@@ -4,15 +4,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;                // 報修單狀態列舉（算「進行中的報修單」時要排除已結案）
-use App\Exports\TableExport;
+use App\Http\Controllers\Concerns\ExportsList;      // 列表「匯出 Excel」共用流程
+use App\Support\DeviceExportColumns;             // 設備清單匯出的欄位
 use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
+use App\Support\EquipmentCode;                    // 設備編號、零件編號共用的格式與不重複規則
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Facades\Excel;                   // 自訂 exists 規則（排除軟刪除資料）用
 use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套件
 
 /**
@@ -27,6 +28,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套
  */
 class DeviceController extends Controller
 {
+    use ExportsList;
+
     /** QR 貼紙一次最多印幾張（A4 每頁 24 張，10 頁）。 */
     private const QR_SHEET_LIMIT = 240;
 
@@ -56,7 +59,10 @@ class DeviceController extends Controller
         $categories = DeviceCategory::orderBy('name')->get();
 
         $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
-        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart'));
+        // 「匯出 Excel」預覽視窗要列的設備（目前篩選條件下最多 500 台）。
+        $exportDevices = $this->exportQuery($request)->limit(500)->get();
+
+        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart', 'exportDevices'));
     }
 
     /**
@@ -174,23 +180,20 @@ class DeviceController extends Controller
 
     /**
      * 匯出設備清單（GET /devices/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆，並寫入操作紀錄。
+     * 預覽視窗會帶 columns[]（勾選的欄位）與 ids[]（勾選的設備）；流程見 ExportsList。
      */
     public function export(Request $request)
+    {
+        return $this->exportList($request, $this->exportQuery($request), DeviceExportColumns::class, '設備清單', '設備清單-', '設備', 5000);
+    }
+
+    /** 匯出與預覽共用的查詢：目前的篩選條件，依設備編號排序。 */
+    private function exportQuery(Request $request)
     {
         $query = Device::with(['category', 'classroom'])->orderBy('device_code');
         $this->applyFilters($query, $request);
 
-        $rows = $query->limit(5000)->get()->map(fn (Device $device) => [
-            $device->device_code, $device->asset_code, $device->category?->name, $device->brand, $device->model, $device->serial_number,
-            $device->classroom?->classroom_code, $device->classroom?->name,
-            Device::statusLabel($device->status), $device->is_core ? '是' : '否',
-            $device->warranty_end_date?->format('Y-m-d'), $device->created_at?->format('Y-m-d H:i'),
-        ])->all();
-
-        $file = '設備清單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出設備清單 {$file}（" . count($rows) . ' 筆）');
-
-        return Excel::download(new TableExport('設備', ['設備編號', '資產編號', '類別', '品牌', '型號', '序號', '教室代碼', '教室', '狀態', '核心設備', '保固到期日', '建立時間'], $rows), $file);
+        return $query;
     }
 
     /**
@@ -198,6 +201,30 @@ class DeviceController extends Controller
      * 每張貼紙有 QR Code（指向設備固定入口網址）、設備編號、類別與品牌型號、所在教室。
      * 一次最多印 QR_SHEET_LIMIT 張，超過會提示「請加上篩選條件分批印」。
      */
+    /**
+     * 即時檢查設備編號有沒有被用過（新增／修改設備時，輸入編號就檢查，跟零件編號的檢查一樣）。
+     * 回傳 JSON：available（能不能用）與 message（顯示在輸入框下面的文字）。修改時帶 ignore=自己的 id，排除自己。
+     * 規則跟零件編號共用（App\\Support\\EquipmentCode）：格式不對、和設備或零件編號重複都不能用；已停用的設備編號也算用過。
+     */
+    public function checkCode(Request $request)
+    {
+        $code = trim((string) $request->query('code', ''));
+        $ignoreId = $request->integer('ignore') ?: null;
+
+        if ($code === '') {
+            return response()->json(['available' => false, 'message' => '請填寫設備編號。']);
+        }
+        if (! EquipmentCode::validFormat($code) || in_array($code, EquipmentCode::RESERVED, true)) {
+            return response()->json(['available' => false, 'message' => EquipmentCode::formatMessage('設備編號')]);
+        }
+
+        $conflict = EquipmentCode::conflict($code, ignoreDeviceId: $ignoreId);
+
+        return $conflict
+            ? response()->json(['available' => false, 'message' => $conflict])
+            : response()->json(['available' => true, 'message' => "設備編號「{$code}」可以使用。"]);
+    }
+
     public function qrSheet(Request $request)
     {
         $query = Device::with(['category', 'classroom'])->orderBy('device_code');
@@ -236,8 +263,19 @@ class DeviceController extends Controller
     private function validated(Request $request, ?int $ignoreId = null): array
     {
         return $request->validate([
-            // 設備編號：必填、不可重複（QR Code 網址用它，所以一定要唯一）。
-            'device_code' => ['required', 'string', 'max:255', 'unique:devices,device_code' . ($ignoreId ? ",{$ignoreId}" : '')],
+            // 設備編號：必填；跟零件編號同一套規則（App\Support\EquipmentCode）：限英文字母、數字、- _ .，最多 20 個字，
+            // 和其他設備編號、零件編號都不能重複（大小寫視為相同、已停用的設備也算）。QR Code 網址用它，所以一定要唯一。
+            'device_code' => [
+                'required', 'string', 'max:' . EquipmentCode::MAX, 'regex:' . EquipmentCode::PATTERN,
+                'unique:devices,device_code' . ($ignoreId ? ",{$ignoreId}" : ''),
+                function (string $attribute, mixed $value, \Closure $fail) use ($ignoreId) {
+                    if (in_array((string) $value, EquipmentCode::RESERVED, true)) {
+                        $fail('這個設備編號是系統保留的名稱，請換一個。');
+                    } elseif ($conflict = EquipmentCode::conflict((string) $value, ignoreDeviceId: $ignoreId)) {
+                        $fail($conflict);
+                    }
+                },
+            ],
             'asset_code' => ['nullable', 'string', 'max:255'],                        // 資產編號（學校財產編號），可不填
             'device_category_id' => ['required', 'exists:device_categories,id'],      // 設備類別：必須是真的存在的類別
             'brand' => ['nullable', 'string', 'max:255'],                             // 品牌
@@ -249,6 +287,9 @@ class DeviceController extends Controller
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
             'is_core' => ['sometimes', 'boolean'],                                    // 是否為核心設備；sometimes = 有送才檢查
+        ], [
+            'device_code.max' => EquipmentCode::formatMessage('設備編號'),
+            'device_code.regex' => EquipmentCode::formatMessage('設備編號'),
         ]);
     }
 }

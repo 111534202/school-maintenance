@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 
 // 以下 use 是「把要用到的類別先宣告進來」，後面程式就可以直接寫短名字（例如 User），
 // 不用每次都寫完整路徑（App\Models\User）。
+use App\Http\Controllers\Concerns\ExportsList;
+use App\Support\UserExportColumns;
 use App\Models\Department;                         // 部門主檔的資料表模型
 use App\Models\Role;                               // 身分主檔的資料表模型
 use App\Models\User;                               // 用戶（帳號）資料表模型
@@ -42,6 +44,8 @@ use Illuminate\Validation\Rules\Password;          // 密碼強度規則
  */
 class UserController extends Controller
 {
+    use ExportsList;
+
     /**
      * 用戶列表（網址：GET /users），支援篩選與分頁。
      * 可用的網址參數：status（active 啟用／inactive 停用／deleted 已刪除）、keyword、role_id、department_id。
@@ -62,6 +66,8 @@ class UserController extends Controller
             'roles' => Role::orderBy('id')->get(),
             'departments' => Department::orderBy('name')->get(),
             'chart' => $chart,
+            // 「匯出 Excel」預覽視窗要列的用戶（目前篩選條件下最多 500 位）。
+            'exportUsers' => $this->filteredQuery($request)->with(['role', 'department'])->limit(500)->get(),
         ]);
     }
 
@@ -104,22 +110,11 @@ class UserController extends Controller
 
     /**
      * 匯出用戶名單（GET /users/export）：依目前的篩選條件輸出 Excel。
-     * 不含密碼；單次最多 5000 筆，並寫入操作紀錄。
+     * 不含密碼；單次最多 5000 筆，並寫入操作紀錄。預覽視窗會帶 columns[] 與 ids[]，流程見 ExportsList。
      */
     public function export(Request $request)
     {
-        $rows = $this->filteredQuery($request)->limit(5000)->get()->map(fn (User $user) => [
-            $user->account, $user->name, $user->email, $user->phone,
-            $user->role?->name, $user->department?->name,
-            $user->deleted_at ? '已刪除' : ($user->is_active ? '啟用' : '停用'),
-            $user->last_login_at?->format('Y-m-d H:i'),
-            $user->created_at?->format('Y-m-d H:i'),
-        ])->all();
-
-        $file = '用戶名單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出用戶名單 {$file}（" . count($rows) . ' 筆）');
-
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('用戶', ['帳號', '姓名', 'Email', '電話', '身分', '部門', '狀態', '最後登入', '建立時間'], $rows), $file);
+        return $this->exportList($request, $this->filteredQuery($request)->with(['role', 'department']), UserExportColumns::class, '用戶名單', '用戶名單-', '用戶', 5000);
     }
 
     /** 顯示「新增用戶」表單（GET /users/create）。下拉選單的資料由 formData() 提供。 */

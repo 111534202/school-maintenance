@@ -8,13 +8,15 @@
 
 @section('content')
 <div class="tb">
-    <div class="tb-header">
+    {{-- 在對話框裡打開「我的報修」（?mine=1&modal=1）時：標題已經在對話框上方，頁首、篩選列與右下角匯出都不顯示，只列自己的報修單。 --}}
+    @php $inModal = request()->boolean('modal'); @endphp
+    <div class="tb-header" @if ($inModal) data-modal-hide @endif>
         <div>
             <h1 class="tb-title">{{ __('repair_requests.board_title') }}</h1>
         </div>
         <div class="d-flex flex-wrap gap-2 justify-content-end">
-            {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部報修單（不分頁；只含你看得到的案件）。 --}}
-            <a class="tb-btn tb-btn-outline" href="{{ route('repairs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
+            {{-- 我的報修：像空間申請的「我的申請」，在畫面中的對話框打開自己提出的報修單（表格／清單自動切換）。 --}}
+            <a href="{{ route('repairs.index', ['mine' => 1]) }}" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="{{ __('common.nav.my_repairs') }}"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>{{ __('common.nav.my_repairs') }}</a>
         {{-- 有「提出報修」權限才顯示「新增報修」按鈕。 --}}
         @can('repairs.create')
             <a class="tb-btn tb-btn-primary" href="{{ route('repairs.create') }}" data-modal-frame data-modal-title="{{ __('repair_requests.add_request') }}" data-modal-size="xl">
@@ -25,6 +27,7 @@
     </div>
 
     {{-- 篩選列：直接顯示在頁面上（data-no-onion），放得下就排成一列，不夠寬時換行（tb-filter，不用左右捲動），按鈕一律用圖示。 --}}
+    @unless ($inModal)
     <div class="tb-card tb-card-pad">
         <div>
             <form method="GET" action="{{ route('repairs.index') }}" class="filter-bar tb-form-row tb-filter" data-no-onion>
@@ -81,6 +84,7 @@
             </form>
         </div>
     </div>
+    @endunless
 
     {{-- 從主控台「逾時工單」卡片連過來（?overdue=1）時，提醒目前篩選範圍。 --}}
     @if (request('overdue'))
@@ -181,10 +185,24 @@
             </div>
         </section>
 
-        <div>
-            {{-- 分頁按鈕。 --}}
+        {{-- 分頁按鈕；data-modal-stay：在「我的報修」對話框裡按分頁，就在對話框裡換頁。 --}}
+        <div @if ($inModal) data-modal-stay @endif>
             @include('layouts.pager', ['paginator' => $repairRequests])
         </div>
     @endif
+
+    @unless ($inModal)
+        {{-- 右下角：匯出 Excel（先開預覽視窗，勾選目前搜尋與篩選條件下要匯出的欄位與報修單；只含你看得到的案件）。 --}}
+        <div class="tb-bottom-actions">
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#repairExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
+        </div>
+    @endunless
 </div>
+
+@unless ($inModal)
+    @include('layouts.partials.export-preview', [
+        'modalId' => 'repairExportModal', 'title' => '匯出報修單', 'action' => route('repairs.export'),
+        'columnsClass' => \App\Support\RepairExportColumns::class, 'items' => $exportRepairs, 'total' => $repairRequests->total(), 'unit' => '張報修單',
+    ])
+@endunless
 @endsection

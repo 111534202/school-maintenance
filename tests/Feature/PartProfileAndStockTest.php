@@ -150,13 +150,13 @@ class PartProfileAndStockTest extends TestCase
 
         $this->getJson(route('parts.check-code', ['code' => 'dev-0100']))
             ->assertJson(['available' => false])
-            ->assertJsonFragment(['message' => '「dev-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
+            ->assertJsonFragment(['message' => '「dev-0100」已經是設備「測試教室 測試電腦」的設備編號，請換一個。']);
         $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))
             ->assertJson(['available' => false]);
         $this->assertStringContainsString('零件', $this->getJson(route('parts.check-code', ['code' => 'HDMI-2M']))->json('message'));
 
         $this->post(route('parts.store'), ['part_code' => 'DEV-0100', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1, 'current_stock' => 0])
-            ->assertSessionHasErrors(['part_code' => '「DEV-0100」已經是設備主檔裡「測試教室 測試電腦」的設備編號，請換一個。']);
+            ->assertSessionHasErrors(['part_code' => '「DEV-0100」已經是設備「測試教室 測試電腦」的設備編號，請換一個。']);
     }
 
     public function test_unit_is_required_and_shown_with_stock_quantities(): void
@@ -237,7 +237,7 @@ class PartProfileAndStockTest extends TestCase
         $enough = $this->makePart(['part_code' => 'OK-1', 'safety_stock' => 1]);
         $this->buy($enough, '2026-10-10', 9, 20);
 
-        // 低庫存視窗的「匯出 Excel／PDF」打開只含低庫存品項的預覽視窗（可勾選欄位與零件）。
+        // 低庫存視窗的「匯出 Excel」打開只含低庫存品項的預覽視窗（可勾選欄位與零件）。
         $html = $this->get(route('parts.index'))->assertSee('data-bs-target="#lowStockExportModal"', false)->getContent();
         $preview = substr($html, strpos($html, 'id="lowStockExportModal"'));
         $this->assertStringContainsString('name="ids[]" value="' . $low->id . '"', $preview);

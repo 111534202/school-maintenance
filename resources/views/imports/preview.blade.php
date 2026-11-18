@@ -1,4 +1,4 @@
-{{-- 批次匯入的第二步（對應 BulkImportController::preview）：逐列顯示檢查結果，確認後才真的寫入。 --}}
+{{-- 批量匯入的第二步（對應 BulkImportController::preview）：逐列顯示檢查結果，確認後才真的寫入。 --}}
 @extends('layouts.app')
 
 @section('title', __('imports.preview_title', ['label' => $importer->label()]))
@@ -10,7 +10,8 @@
             <h1 class="tb-title">{{ __('imports.preview_title', ['label' => $importer->label()]) }}</h1>
             <div class="text-muted small">{{ $fileName }}</div>
         </div>
-        <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', $importer->type()) }}"><i class="bi bi-arrow-left"></i>{{ __('imports.reupload') }}</a>
+        {{-- 重新選擇檔案：在對話框裡就留在對話框裡（data-modal-stay，網址帶著 modal=1）。 --}}
+        <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', ['type' => $importer->type()] + (request()->boolean('modal') ? ['modal' => 1] : [])) }}" data-modal-stay><i class="bi bi-arrow-left"></i>{{ __('imports.reupload') }}</a>
     </div>
 
     <div class="tb-card tb-card-pad mb-3">

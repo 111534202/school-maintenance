@@ -9,8 +9,6 @@
         <div>
             <h1 class="tb-title">保養工單</h1>
         </div>
-        {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部保養工單（不分頁，含保養結果）。 --}}
-        <a class="tb-btn tb-btn-outline" href="{{ route('maintenance-orders.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
     </div>
 
     <div class="tb-card tb-card-pad">
@@ -26,6 +24,9 @@
                 <option value="pending" @selected(request('status') === 'pending')>待處理</option>
                 <option value="in_progress" @selected(request('status') === 'in_progress')>進行中</option>
                 <option value="completed" @selected(request('status') === 'completed')>已完成</option>
+                {{-- 保養結果 NG 的工單：還沒轉成報修單＝待轉報修，已經轉成報修單＝已轉報修（跟列表的狀態標籤一樣）。 --}}
+                <option value="pending_conversion" @selected(request('status') === 'pending_conversion')>待轉報修</option>
+                <option value="converted" @selected(request('status') === 'converted')>已轉報修</option>
             </select>
         </div>
         <div>
@@ -144,7 +145,17 @@
 
     <div>@include('layouts.pager', ['paginator' => $orders])</div>
     @endif
+
+    {{-- 右下角：匯出 Excel（先開預覽視窗，勾選目前搜尋與篩選條件下要匯出的欄位與工單；含保養結果）。跟設備、報修等列表一樣。 --}}
+    <div class="tb-bottom-actions">
+        <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#maintenanceOrderExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
+    </div>
 </div>
+
+@include('layouts.partials.export-preview', [
+    'modalId' => 'maintenanceOrderExportModal', 'title' => '匯出保養工單', 'action' => route('maintenance-orders.export'),
+    'columnsClass' => \App\Support\MaintenanceOrderExportColumns::class, 'items' => $exportOrders, 'total' => $orders->total(), 'unit' => '張工單',
+])
 <style>
     /* 「回報結果」與「已回報」一樣寬（四個字），上下對齊；已回報是綠底實心、不能按。 */
     .mo-action { min-width: calc(4em + 1.5rem); text-align: center; }

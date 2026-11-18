@@ -9,7 +9,6 @@
 @section('content')
     <div class="page-header mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h1 class="tb-title mb-0">{{ __('audit.index_title') }}</h1>
-        <a class="tb-btn tb-btn-outline" href="{{ route('audit-logs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
     </div>
 
     {{-- 篩選列：直接放在頁面上（data-no-onion：不收進右邊滑出的篩選面板），寬度不夠時自動換行。 --}}
@@ -131,8 +130,20 @@
         </div>
     </div>
 
-    {{-- 分頁（每頁 30 筆）：全站共用 layouts/pager。 --}}
+    {{-- 分頁（每頁 15 筆）：全站共用 layouts/pager。 --}}
     <div class="mt-3">@include('layouts.pager', ['paginator' => $logs])</div>
+
+    {{-- 右下角：匯出 Excel（先開預覽視窗，勾選目前篩選條件下要匯出的欄位與紀錄）。跟其他列表一樣。 --}}
+    {{-- 這一頁沒有包在 .tb 裡，按鈕樣式（tb-btn）要在 .tb 裡才會套用，所以操作列外面包一層。 --}}
+    <div class="tb mt-3 pb-0">
+        <div class="tb-bottom-actions">
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#auditLogExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">{{ __('common.export_excel') }}</span><span class="tb-label-short">匯出</span></button>
+        </div>
+    </div>
+    @include('layouts.partials.export-preview', [
+        'modalId' => 'auditLogExportModal', 'title' => '匯出操作紀錄', 'action' => route('audit-logs.export'),
+        'columnsClass' => \App\Support\AuditLogExportColumns::class, 'items' => $exportLogs, 'total' => $logs->total(), 'unit' => '筆紀錄',
+    ])
 
     <style>
         /* 篩選列放在頁面上：欄位平均分配寬度，放不下就換行（不再左右捲動）。 */

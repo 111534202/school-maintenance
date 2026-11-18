@@ -107,12 +107,17 @@ body.tb-body {
 .tb-navbar .tb-nav-btn-square, .tb-navbar .icon-btn { width: 2.5rem; }
 .tb-navbar .tb-nav-btn-square .bi { font-size: 1.75rem !important; }
 .tb-navbar .icon-btn .bi { font-size: 1.4rem; }
-/* 鈴鐺的紅色數字：縮小並往鈴鐺右上角內移一點，不會被頂端列邊緣切到。 */
+/* 鈴鐺的紅色數字：小膠囊貼在鈴鐺右上角（從鈴鐺中間偏右開始，只蓋到鈴鐺一角），
+   外圈一圈跟頂端列同色的邊，把紅點和白色鈴鐺隔開，看起來是「掛在」鈴鐺上，不會糊成一團。 */
 .tb-navbar #notificationBadge {
     display: inline-flex; align-items: center; justify-content: center;
-    min-width: 1rem; height: 1rem; padding: 0 0.28rem; border-radius: 999px;
-    font-size: 0.625rem; line-height: 1;
-    top: 0.3rem !important; left: auto !important; right: 0; transform: none !important;
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    font-size: 11px !important; font-weight: 700; line-height: 1; letter-spacing: 0;
+    /* 數字用系統的無襯線字型：思源黑體的數字上下留白不平均，在小紅點裡會看起來偏上／偏下；
+       tabular-nums 讓每個數字一樣寬，兩位數也置中。 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-variant-numeric: tabular-nums;
+    border: 2px solid var(--tb-accent); box-sizing: border-box;
+    top: 3px !important; left: 52% !important; right: auto; transform: none !important;
 }
 .tb-navbar .tb-nav-btn[data-page-back] { font-size: 1.1rem; }
 .tb-navbar .tb-nav-btn[data-page-back] .bi { font-size: 1.25rem; }
@@ -371,6 +376,12 @@ body.tb-body {
 /* 「篩選／清除」按鈕（layouts/partials/filter-actions）：只跟按鈕一樣寬，對齊欄位底部。 */
 .tb .tb-filter.filter-bar > .tb-filter-actions,
 .tb .tb-filter.filter-bar > .d-inline-flex { flex: 0 0 auto !important; align-self: flex-end; }
+/* 手機與觸控裝置：「篩選／清除」跟旁邊的欄位一樣高（40px）、底邊切齊，兩顆都是一樣的膠囊（左右留白 14px），
+   不會變成大小不一的圓形；兩顆之間的間距和欄位之間一樣（8px）。 */
+@media (max-width: 767.98px), (pointer: coarse) {
+    .tb .tb-filter.filter-bar > .tb-filter-actions { gap: 8px !important; align-items: stretch; }
+    .tb .tb-filter.filter-bar > .tb-filter-actions .btn { height: 40px; min-height: 40px; padding: 0 14px; line-height: 1; border-radius: 999px; }
+}
 /* 表格裡被停用、已刪除的列：淡一點。 */
 .tb-body .tb-table > tbody > tr.tb-row-muted > td { color: var(--tb-muted); background: #F1EFEA; }
 .tb-body .tb-table > tbody > tr.table-danger > td { background: var(--tb-danger-bg); }
@@ -538,6 +549,9 @@ tr[data-modal-frame-href] { cursor: pointer; }
 .tb-body .onion-list { border-radius: 14px; }
 .tb-body .onion-item:hover, .tb-body .onion-item:focus-visible { background: var(--tb-accent-faint); }
 .tb-body .onion-item .onion-sub { color: var(--tb-muted); }
+/* 清單檢視：表格裡紅底的列（例如有異常設備的教室）在清單也是紅底，跟表格一致。 */
+.tb-body .onion-item.onion-item-danger { background: var(--tb-danger-bg); }
+.tb-body .onion-item.onion-item-danger:hover, .tb-body .onion-item.onion-item-danger:focus-visible { background: color-mix(in srgb, var(--tb-danger-bg) 80%, var(--tb-danger) 20%); }
 
 /* 篩選摘要列的小標籤與數字 */
 .tb-body .fo-bar .fo-chip { background: var(--tb-accent-soft); color: var(--tb-accent-dark); }
@@ -796,14 +810,19 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-body .btn:not(.icon-btn):not(.btn-close), .tb-body .tb-btn, .tb-body .tb .tb-header .tb-btn { min-height: 40px; }
     .tb-body .form-control, .tb-body .form-select { min-height: 40px; }
     .tb-body .form-switch .form-check-input { width: 2.75em; height: 1.5em; }
+    /* 開關放大後比 Bootstrap 預留的左邊空間（2.5em）還寬，名稱會被擠到開關下面一行（身分權限、科系啟用、帳號啟用…）。
+       左邊預留加大到 3.5em，開關固定在左邊、名稱與說明一律在開關右邊；開關和第一行文字垂直置中。 */
+    .tb-body .form-switch { padding-left: 3.5em; min-height: 1.5em; }
+    .tb-body .form-switch .form-check-input { margin-left: -3.5em; margin-top: 0; }
+    .tb-body .form-switch .form-check-label { line-height: 1.5em; }
     .tb-body .form-check-input[type="checkbox"], .tb-body .form-check-input[type="radio"] { min-width: 1.25em; min-height: 1.25em; }
     .tb-navbar .tb-nav-btn { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
     .tb-navbar .navbar-brand { display: inline-flex; align-items: center; min-height: 40px; }
     .tb-body .pagination .page-link { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
 }
 
-/* 頁首右邊的按鈕比較多的頁面（設備主檔、用戶主檔：圖表、批次匯入、列印 QR、新增）：手機寬度時整排移到標題下面並自動換行，
-   不再把頁面撐寬。只有加了 tb-actions-wrap 的頁首會變，其他頁面的標題列維持原樣（洋蔥版面不動）。 */
+/* 頁首右邊按鈕很多的頁面才加 tb-actions-wrap：手機寬度時整排移到標題下面並自動換行，不再把頁面撐寬。
+   （設備主檔、用戶主檔的匯入／匯出／列印已移到右下角，頁首只剩兩顆按鈕，已經不用這個；保留給之後按鈕多的頁面。） */
 @media (max-width: 575.98px) {
     .tb-header:has(> .tb-actions-wrap) { flex-wrap: wrap; }
     .tb-header:has(> .tb-actions-wrap) > :first-child { flex: 1 1 100%; }
@@ -819,8 +838,11 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-body .btn:not(.icon-btn):not(.btn-close):not(.dropdown-toggle):not(.d-block), .tb-body .tb-btn:not(.d-block) {
         display: inline-flex; align-items: center; justify-content: center; text-align: center; gap: .35rem; line-height: 1.3;
     }
+    /* 上面的按鈕已用 gap 隔開圖示與文字；圖示原本的 me-1／me-2 右邊距再加上去會變成兩倍寬，圖示看起來離文字太遠、跟別顆按鈕對不齊。 */
+    .tb-body .btn:not(.icon-btn):not(.btn-close):not(.dropdown-toggle):not(.d-block) > .bi.me-1,
+    .tb-body .btn:not(.icon-btn):not(.btn-close):not(.dropdown-toggle):not(.d-block) > .bi.me-2,
+    .tb-body .tb-btn:not(.d-block) > .bi.me-1, .tb-body .tb-btn:not(.d-block) > .bi.me-2 { margin-right: 0 !important; }
     .tb-body .badge, .tb-body .tb-pill { text-align: center; }
-    .tb-navbar #notificationBadge { font-size: .6875rem; min-width: 1.15rem; height: 1.15rem; }
     .tb-body .dropdown-header { font-size: .875rem; }
 }
 @media (max-width: 575.98px) {
@@ -828,4 +850,45 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-body .tb-table td .btn-sm:not(.icon-btn), .tb-body .tb-table td .tb-btn-sm { font-size: .875rem; }
     .tb-list-label { font-size: .8125rem; }
     .tb-stat-note, .tb-body .form-text { font-size: .875rem; }
+}
+
+/* 身分權限清單：每一項的名稱（例如「用戶主檔」）放大到跟左邊開關一樣高（18px 字、24px 行高＝開關高度），
+   說明文字維持小字。 */
+.tb-body [data-permission-group] .form-check-label > .fw-semibold { font-size: 1.125rem; line-height: 24px; }
+
+/* 標題列上的白色小按鈕（身分的「全選」「全部取消」）：手機與觸控裝置上按鈕固定 40px 高，
+   字放大到 15px、左右留白加大，按鈕不會顯得空；標題列上下各留 8px，按鈕不會貼著框線。 */
+@media (max-width: 767.98px), (pointer: coarse) {
+    .tb-body .tb-chip-btn { font-size: .9375rem; padding: 0 16px; }
+    .tb-body .card > .card-header:has(.tb-chip-btn) { padding-top: 8px; padding-bottom: 8px; }
+}
+
+/* 身分權限的分組標題（例如「主檔管理」「保養與預測性維護」）：跟下面每一項的名稱一樣大（18px），標題列看起來不會比內容小。 */
+.tb-body [data-permission-group] > .card-header > span:first-child { font-size: 1.125rem; }
+/* 分組標題列：「全選／全部取消」一律跟標題同一行，靠右。標題比較長（例如「保養與預測性維護」）時，
+   是標題自己在左邊換成兩行，按鈕不會被擠到下一行。 */
+.tb-body .app-content .card[data-permission-group] > .card-header { flex-wrap: nowrap; }
+.tb-body [data-permission-group] > .card-header > span:first-child { flex: 1 1 auto; min-width: 0; line-height: 1.3; }
+.tb-body [data-permission-group] > .card-header > span:last-child { flex: 0 0 auto; }
+@media (max-width: 767.98px), (pointer: coarse) {
+    .tb-body [data-permission-group] .tb-chip-btn { padding: 0 12px; }
+}
+
+/* ---------- 列表右下角的操作列（匯入、匯出 Excel／PDF、列印 QR 貼紙）：放在分頁下面、靠右 ----------
+   手機上按鈕並排、平均分配寬度，剛好跟畫面同寬；長的按鈕文字換成短的（tb-label-long／tb-label-short）。 */
+.tb-bottom-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.tb-bottom-actions .tb-label-short { display: none; }
+@media (max-width: 767.98px) {
+    .tb-bottom-actions { flex-wrap: nowrap; }
+    .tb-bottom-actions > .tb-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
+    .tb-bottom-actions .tb-label-long { display: none; }
+    .tb-bottom-actions .tb-label-short { display: inline; }
+}
+
+/* 「統計圖表」按鈕（charts/_button，設備、用戶、教室、設備類別主檔）：手機版只留圖示，變成 40px 的圓形按鈕
+   （跟列表的修改／停用圓形按鈕同樣做法），桌面版維持「圖示＋統計圖表」文字。 */
+@media (max-width: 767.98px) {
+    .tb-body .tb .tb-header .tb-btn.tb-chart-btn, .tb-body .tb-chart-btn { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: 50%; justify-content: center; gap: 0; }
+    .tb-body .tb-chart-btn .tb-chart-label { display: none; }
+    .tb-body .tb-chart-btn > .bi { margin: 0 !important; font-size: 1.25rem; line-height: 1; }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * 批次匯入紀錄（import_batches 資料表）：每確認匯入一次就一筆，記下誰、何時、哪個檔、成功與略過幾筆。
+ * 批量匯入紀錄（import_batches 資料表）：每確認匯入一次就一筆，記下誰、何時、哪個檔、成功與略過幾筆。
  * 設備與用戶的 import_batch_id 指向這裡，所以匯錯時可以依批次整批復原。
  *
  * @property int $id

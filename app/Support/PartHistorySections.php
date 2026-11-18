@@ -6,7 +6,7 @@ use App\Models\Part;
 use Illuminate\Support\Collection;
 
 /**
- * 零件履歷「匯出 Excel／PDF」的區塊：基本資料、使用紀錄、採購紀錄、報廢紀錄（內容與零件履歷頁面上看到的相同）。
+ * 零件履歷「匯出 Excel」的區塊：基本資料、使用紀錄、採購紀錄、報廢紀錄（內容與零件履歷頁面上看到的相同）。
  * 格式見 ExportSections；數量帶單位（例如「15 條」），金額保留成數字。
  */
 class PartHistorySections

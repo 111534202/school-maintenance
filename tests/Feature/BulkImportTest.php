@@ -21,7 +21,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 批次匯入（設備、用戶）：範本下載、預覽逐列檢查、確認寫入、略過錯誤列、權限、密碼不外洩。
+ * 批量匯入（設備、用戶）：範本下載、預覽逐列檢查、確認寫入、略過錯誤列、權限、密碼不外洩。
  */
 class BulkImportTest extends TestCase
 {
@@ -75,7 +75,7 @@ class BulkImportTest extends TestCase
         ]))->assertOk();
 
         $response->assertSee('可匯入 1 列')->assertSee('有問題 6 列')
-            ->assertSee('找不到類別「電視」')->assertSee('已停用，不能放新設備')->assertSee('已經存在')->assertSee('在檔案裡重複')->assertSee('看不懂')->assertSee('格式不對');
+            ->assertSee('找不到類別「電視」')->assertSee('已停用，不能放新設備')->assertSee('的設備編號，請換一個')->assertSee('在檔案裡重複')->assertSee('看不懂')->assertSee('格式不對');
         $this->assertSame(1, Device::count());   // 預覽不寫入（只有原本那一台）
     }
 

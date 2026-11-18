@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 /**
- * 批次匯入（設備、用戶）：下載範本 → 上傳 Excel／CSV → 預覽（標出每一列對不對）→ 確認寫入。
+ * 批量匯入（設備、用戶）：下載範本 → 上傳 Excel／CSV → 預覽（標出每一列對不對）→ 確認寫入。
  *
  * - 權限跟著對應的主檔：匯入設備要 devices.manage、匯入用戶要 users.manage。
  * - 上傳的檔案只暫存在私有資料夾（storage/app/private/imports），預覽後 1 小時內可確認，確認或過期後就刪掉。
@@ -100,21 +100,21 @@ class BulkImportController extends Controller
         $stored = Cache::get($this->cacheKey($request, $token));
 
         if (! $stored || $stored['type'] !== $type || ! Storage::disk('local')->exists($stored['path'])) {
-            return redirect()->route('imports.index', $type)->with('error', '預覽已經過期（超過 ' . self::TTL_MINUTES . ' 分鐘），請重新上傳檔案。');
+            return $this->backToIndex($type)->with('error', '預覽已經過期（超過 ' . self::TTL_MINUTES . ' 分鐘），請重新上傳檔案。');
         }
 
         set_time_limit(300);   // 用戶匯入每個密碼都要雜湊，人數多時比較久
 
         [$rows, $fatal] = $importer->parse($stored['path'], 'local');
         if ($fatal) {
-            return redirect()->route('imports.index', $type)->with('error', $fatal);
+            return $this->backToIndex($type)->with('error', $fatal);
         }
         $results = $importer->check($rows);   // 重新檢查：預覽之後資料庫可能又變了
         $okCount = count(array_filter($results, fn ($r) => ! $r['errors']));
         $skipped = count($results) - $okCount;
 
         if ($okCount === 0) {
-            return redirect()->route('imports.index', $type)->with('error', '沒有可以匯入的資料（每一列都有錯誤）。請修正檔案後重新上傳。');
+            return $this->backToIndex($type)->with('error', '沒有可以匯入的資料（每一列都有錯誤）。請修正檔案後重新上傳。');
         }
 
         $batch = $importer->commit($results, $stored['name'], $request->user()->id);
@@ -123,7 +123,7 @@ class BulkImportController extends Controller
         Storage::disk('local')->delete($stored['path']);
         Cache::forget($this->cacheKey($request, $token));
         AuditLogger::log('created', null, ['import' => $type, 'imported' => $count, 'skipped' => $skipped, 'file' => $stored['name']],
-            "批次匯入{$importer->label()}：成功 {$count} 筆" . ($skipped ? "、略過 {$skipped} 列" : '') . "（檔案：{$stored['name']}）");
+            "批量匯入{$importer->label()}：成功 {$count} 筆" . ($skipped ? "、略過 {$skipped} 列" : '') . "（檔案：{$stored['name']}）");
 
         $message = "已匯入 {$count} 筆{$importer->label()}" . ($skipped ? "，另有 {$skipped} 列有錯誤沒有匯入" : '') . '。';
 
@@ -138,7 +138,7 @@ class BulkImportController extends Controller
             abort(404);
         }
         if ($batch->isUndone()) {
-            return redirect()->route('imports.index', $type)->with('error', '這一批已經復原過了。');
+            return $this->backToIndex($type)->with('error', '這一批已經復原過了。');
         }
 
         $result = DB::transaction(function () use ($importer, $batch) {
@@ -148,11 +148,20 @@ class BulkImportController extends Controller
             return $result;
         });
         AuditLogger::log('deleted', null, ['import' => $type, 'batch' => $batch->id, 'undone' => $result['done'], 'kept' => $result['kept']],
-            "復原批次匯入{$importer->label()}（檔案：{$batch->name}）：收回 {$result['done']} 筆" . ($result['kept'] ? "、{$result['kept']} 筆已有使用紀錄而保留" : ''));
+            "復原批量匯入{$importer->label()}（檔案：{$batch->name}）：收回 {$result['done']} 筆" . ($result['kept'] ? "、{$result['kept']} 筆已有使用紀錄而保留" : ''));
 
         $message = "已復原這一批匯入：收回 {$result['done']} 筆{$importer->label()}" . ($result['kept'] ? "，另有 {$result['kept']} 筆已有使用紀錄所以保留" : '') . '。';
 
-        return redirect()->route('imports.index', $type)->with('success', $message);
+        return $this->backToIndex($type)->with('success', $message);
+    }
+
+    /**
+     * 回到批量匯入第一步（錯誤或復原之後）。在設備／用戶主檔的對話框裡操作時（modal=1）就留在對話框裡，
+     * 不會整頁跳到匯入頁（見 EmbeddedModal）。
+     */
+    private function backToIndex(string $type): RedirectResponse
+    {
+        return redirect()->route('imports.index', ['type' => $type] + (request()->boolean('modal') ? ['modal' => 1] : []));
     }
 
     /** 依網址上的種類找匯入器，並確認登入者有對應權限；種類不存在就 404。 */

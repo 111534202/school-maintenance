@@ -1,5 +1,5 @@
 {{-- 「先預覽、勾選區塊與欄位再匯出」的共用視窗（成本分析報表、零件履歷）。
-     參數：$modalId、$modalTitle、$excelUrl、$pdfUrl、$hidden（要一起送出的篩選條件）、$note（說明文字）、
+     參數：$modalId、$modalTitle、$excelUrl、$hidden（要一起送出的篩選條件）、$note（說明文字）、
      $sections（見 App\Support\ExportSections）。每個區塊預覽前 10 筆；匯出時包含全部筆數。 --}}
 @php($previewLimit = 10)
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}Title" aria-hidden="true">
@@ -67,12 +67,8 @@
             </div>
             <div class="modal-footer">
                 <span class="small text-muted me-auto" data-export-summary aria-live="polite"></span>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="submit" class="btn btn-success" formaction="{{ $excelUrl }}" data-export-submit>
                     <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> 匯出 Excel
-                </button>
-                <button type="submit" class="btn btn-danger" formaction="{{ $pdfUrl }}" data-export-submit>
-                    <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> 匯出 PDF
                 </button>
             </div>
         </form>

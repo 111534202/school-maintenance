@@ -261,7 +261,6 @@ class RepairCostAnalysisTest extends TestCase
 
             $this->get(route('repair-cost-analysis.index'))->assertForbidden();
             $this->get(route('repair-cost-analysis.export.excel'))->assertForbidden();
-            $this->get(route('repair-cost-analysis.export.pdf'))->assertForbidden();
         }
 
         $this->actingAs($this->makeUserWithRole('technician', '維修人員'))->get(route('repair-cost-analysis.index'))->assertForbidden();

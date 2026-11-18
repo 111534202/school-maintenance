@@ -11,7 +11,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
- * 批次匯入（Excel／CSV）的共用流程，設備匯入與用戶匯入各自繼承它，只需要說明「有哪些欄位、每列怎麼檢查、怎麼寫入」：
+ * 批量匯入（Excel／CSV）的共用流程，設備匯入與用戶匯入各自繼承它，只需要說明「有哪些欄位、每列怎麼檢查、怎麼寫入」：
  *
  * 1. parse()：讀檔，把每一列依標題轉成「欄位代碼 => 值」。標題可以寫中文名稱（可帶 *）或欄位代碼，順序不拘。
  * 2. preview()：逐列檢查（必填、格式、對照主檔、資料庫重複、檔案內重複），回傳每一列的結果；錯誤的列不會寫入。

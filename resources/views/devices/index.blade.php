@@ -12,16 +12,8 @@
         <div>
             <h1 class="tb-title">{{ __('devices.index_title') }}</h1>
         </div>
-        <div class="d-flex gap-2 tb-actions-wrap">
+        <div class="d-flex gap-2">
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
-            @can('devices.manage')
-                <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'devices') }}"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
-                <a class="tb-btn tb-btn-outline" href="{{ route('devices.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
-            @endcan
-            {{-- 依目前的篩選條件批次列印 QR 貼紙（新分頁開啟，可直接列印）。 --}}
-            <a class="tb-btn tb-btn-outline" href="{{ route('devices.qr-sheet', request()->query()) }}" target="_blank" rel="noopener">
-                <i class="bi bi-qr-code"></i>{{ __('devices.qr_sheet.button') }}
-            </a>
             <a class="tb-btn tb-btn-primary" href="{{ route('devices.create') }}" data-modal-frame data-modal-title="{{ __('devices.add_device') }}" data-modal-size="xl">
                 <i class="bi bi-plus-lg"></i>{{ __('devices.add_device') }}
             </a>
@@ -163,7 +155,26 @@
 
     {{-- 分頁按鈕。 --}}
     <div>@include('layouts.pager', ['paginator' => $devices])</div>
+
+    {{-- 右下角：批量匯入（對話框打開）、匯出 Excel（先開預覽視窗勾選欄位與設備）、列印 QR 貼紙（依目前的篩選條件，新分頁開啟）。
+         手機上三個按鈕並排、剛好跟畫面同寬（tb-bottom-actions，樣式在 theme-b.css）。 --}}
+    <div class="tb-bottom-actions">
+        @can('devices.manage')
+            <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'devices') }}" data-modal-frame data-modal-title="{{ __('imports.title', ['label' => '設備']) }}" data-modal-size="xl"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
+            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#deviceExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
+        @endcan
+        <a class="tb-btn tb-btn-outline" href="{{ route('devices.qr-sheet', request()->query()) }}" target="_blank" rel="noopener">
+            <i class="bi bi-qr-code"></i><span class="tb-label-long">{{ __('devices.qr_sheet.button') }}</span><span class="tb-label-short">列印 QR</span>
+        </a>
+    </div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
 </div>
+
+@can('devices.manage')
+    @include('layouts.partials.export-preview', [
+        'modalId' => 'deviceExportModal', 'title' => '匯出設備清單', 'action' => route('devices.export'),
+        'columnsClass' => \App\Support\DeviceExportColumns::class, 'items' => $exportDevices, 'total' => $devices->total(), 'unit' => '台設備',
+    ])
+@endcan
 @endsection

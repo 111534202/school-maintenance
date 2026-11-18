@@ -51,7 +51,7 @@ class KnowledgeBase extends Model
      * 查詢範圍：只留下這位用戶「看得到」的文章。
      * 已上架的文章所有登入者都看得到；未上架（草稿）的只有擁有 knowledge-base.manage 權限的人
      * （含系統管理員）看得到，一般用戶不會在列表出現，直接開網址也是 404。
-     * 用法：KnowledgeBase::visibleTo(auth()->user())->latest()->paginate(10)
+     * 用法：KnowledgeBase::visibleTo(auth()->user())->latest()->paginate(15)
      */
     public function scopeVisibleTo($query, $user)
     {

@@ -6,9 +6,7 @@ use App\Exports\SectionsExport;
 use App\Exports\RepairCostAnalysisExport;
 use App\Support\CostReportSections;
 use App\Services\RepairCostAnalysisService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -34,7 +32,7 @@ class RepairCostAnalysisController extends Controller
             $filters
         );
 
-        // 「匯出 Excel／PDF」預覽視窗：各區塊的欄位與資料（跟匯出的內容相同）。
+        // 「匯出 Excel」預覽視窗：各區塊的欄位與資料（跟匯出的內容相同）。
         $data['exportSections'] = CostReportSections::build($data);
 
         return view('repair-cost-analysis.index', $data);
@@ -63,36 +61,6 @@ class RepairCostAnalysisController extends Controller
             new RepairCostAnalysisExport($data),
             $fileName
         );
-    }
-
-    /**
-     * 匯出繁體中文材料成本分析 PDF。
-     */
-    public function exportPdf(Request $request)
-    {
-        $filters = $this->validatedFilters($request);
-
-        $data = $this->costAnalysisService->generate(
-            $request->user(),
-            $filters
-        );
-
-        // 中文字型 Noto Sans TC 收錄六萬多個字，dompdf 讀取字型對照表（cmap）時會用掉超過
-        // PHP 預設的 128MB，所以只在產生 PDF 這一次把記憶體上限提高到 512MB。
-        ini_set('memory_limit', '512M');
-
-        // dompdf 會把字型對照表快取在 storage/fonts；這個資料夾不在版本控制裡（.gitignore），
-        // 全新複製下來的專案裡沒有，沒建好會直接 500，所以匯出前先確保它存在。
-        File::ensureDirectoryExists(storage_path('fonts'));
-
-        $pdf = $request->has('sections')
-            ? Pdf::loadView('repair-cost-analysis.pdf-selected', $data + ['sections' => $this->selectedSections($request, $data)])
-            : Pdf::loadView('repair-cost-analysis.pdf', $data);
-        $pdf->setPaper('a4', 'landscape');
-
-        $fileName = 'repair-cost-analysis-' . now()->format('Y-m-d-His') . '.pdf';
-
-        return $pdf->download($fileName);
     }
 
     /**

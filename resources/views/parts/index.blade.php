@@ -8,7 +8,7 @@
         <div>
             <h1 class="tb-title">零件庫存列表</h1>
         </div>
-        {{-- 右上角：「目前低庫存零件 N」（有低庫存零件時才出現，開啟低庫存視窗，可預覽匯出 Excel／PDF）＋「新增零件」。
+        {{-- 右上角：「目前低庫存零件 N」（有低庫存零件時才出現，開啟低庫存視窗，可預覽匯出 Excel）＋「新增零件」。
              不論螢幕寬窄都一樣，不再顯示紅色提示卡片。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end parts-actions">
             @if ($lowStockParts->isNotEmpty())
@@ -47,10 +47,10 @@
         {{-- 分頁：全站共用 layouts/pager（左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數）。 --}}
         @include('layouts.pager', ['paginator' => $parts])
 
-        {{-- 匯出：先打開預覽視窗，勾選要匯出的欄位與零件，再選 Excel 或 PDF。 --}}
-        <div class="d-flex justify-content-end">
+        {{-- 匯出：先打開預覽視窗，勾選要匯出的欄位與零件，再匯出 Excel。 --}}
+        <div class="tb-bottom-actions">
             <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#partsExportModal">
-                <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+                <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel
             </button>
         </div>
     @endif
@@ -81,10 +81,10 @@
                     @endif
                 </div>
                 <div class="modal-footer">
-                    {{-- 匯出 Excel／PDF：換到預覽視窗（只含低庫存品項），可勾選要匯出的欄位與零件。 --}}
+                    {{-- 匯出 Excel：換到預覽視窗（只含低庫存品項），可勾選要匯出的欄位與零件。 --}}
                     @if ($lowStockParts->isNotEmpty())
                         <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#lowStockExportModal">
-                            <i class="bi bi-download me-1" aria-hidden="true"></i>匯出 Excel／PDF
+                            <i class="bi bi-download me-1" aria-hidden="true"></i>匯出 Excel
                         </button>
                     @endif
                 </div>

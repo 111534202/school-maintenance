@@ -3,6 +3,8 @@
 // 命名空間：這個類別所在的位置，要跟資料夾路徑對得上。
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsList;
+use App\Support\AuditLogExportColumns;
 use App\Models\AuditLog;       // 操作紀錄資料表的模型
 use App\Models\User;           // 用戶資料表的模型（篩選列的「使用者」下拉選單要用）
 use App\Services\AuditLogger;           // 寫操作紀錄、取事件的顯示名稱
@@ -16,7 +18,9 @@ use Illuminate\Http\Request;   // 這一次瀏覽器送來的請求
  */
 class AuditLogController extends Controller
 {
-    /** 操作紀錄列表（GET /audit-logs），每頁 30 筆，最新的排最前面。 */
+    use ExportsList;
+
+    /** 操作紀錄列表（GET /audit-logs），每頁 15 筆，最新的排最前面。 */
     public function index(Request $request)
     {
         // 日期欄位如果有填，必須是正確的日期格式；亂填會導回並顯示錯誤。
@@ -26,7 +30,7 @@ class AuditLogController extends Controller
         ]);
 
         $logs = $this->filteredQuery($request)
-            ->paginate(30)
+            ->paginate(15)   // 每頁 15 筆（全站列表一致）
             ->withQueryString();  // 換頁時保留篩選條件
 
         // 篩選列「使用者」下拉選單：withTrashed 連已被刪除的帳號也列出，才查得到他們過去的操作。
@@ -36,7 +40,10 @@ class AuditLogController extends Controller
         // 「對象類型」下拉選單：同理，只列出出現過的類型；沒有對象的紀錄（例如登入）不列入。
         $loggableTypes = AuditLog::query()->select('loggable_type')->whereNotNull('loggable_type')->distinct()->pluck('loggable_type');
 
-        return view('audit-logs.index', compact('logs', 'users', 'actions', 'loggableTypes'));
+        // 「匯出 Excel」預覽視窗要列的紀錄（目前篩選條件下最多 500 筆）。
+        $exportLogs = $this->filteredQuery($request)->limit(500)->get();
+
+        return view('audit-logs.index', compact('logs', 'users', 'actions', 'loggableTypes', 'exportLogs'));
     }
 
     /**
@@ -59,23 +66,14 @@ class AuditLogController extends Controller
             ->orderByDesc('id');  // 編號越大越新，所以由大到小 = 最新在最上面
     }
 
-    /** 匯出操作紀錄（GET /audit-logs/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆；不含變更內容（可能有敏感資料）。 */
+    /**
+     * 匯出操作紀錄（GET /audit-logs/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆；不含變更內容（可能有敏感資料）。
+     * 預覽視窗會帶 columns[] 與 ids[]，流程見 ExportsList。
+     */
     public function export(Request $request)
     {
         $request->validate(['date_from' => ['nullable', 'date'], 'date_to' => ['nullable', 'date']]);
 
-        $rows = $this->filteredQuery($request)->limit(5000)->get()->map(fn (AuditLog $log) => [
-            $log->created_at?->format('Y-m-d H:i:s'),
-            $log->user?->name,
-            AuditLogger::label('audit.actions.' . $log->action, $log->action),
-            $log->loggable_type ? AuditLogger::label('audit.types.' . class_basename($log->loggable_type), class_basename($log->loggable_type)) : null,
-            $log->loggable_id,
-            $log->description,
-        ])->all();
-
-        $file = '操作紀錄-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出操作紀錄 {$file}（" . count($rows) . ' 筆）');
-
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('操作紀錄', ['時間', '操作者', '事件', '對象類型', '對象編號', '說明'], $rows), $file);
+        return $this->exportList($request, $this->filteredQuery($request), AuditLogExportColumns::class, '操作紀錄', '操作紀錄-', '操作紀錄', 5000);
     }
 }

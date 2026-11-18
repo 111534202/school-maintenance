@@ -15,10 +15,8 @@
         <div>
             <h1 class="tb-title">{{ __('users.index_title') }}</h1>
         </div>
-        <div class="d-flex gap-2 tb-actions-wrap">
+        <div class="d-flex gap-2">
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
-            <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'users') }}"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
-            <a class="tb-btn tb-btn-outline" href="{{ route('users.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
             <a class="tb-btn tb-btn-primary" href="{{ route('users.create') }}" data-modal-frame data-modal-title="{{ __('users.add_user') }}" data-modal-size="lg">
                 <i class="bi bi-plus-lg"></i>{{ __('users.add_user') }}
             </a>
@@ -186,7 +184,18 @@
             @include('layouts.pager', ['paginator' => $users])
         </div>
     @endif
+
+    {{-- 右下角：批量匯入（對話框打開）、匯出 Excel（先開預覽視窗勾選欄位與用戶）；手機上兩個按鈕並排、剛好跟畫面同寬。 --}}
+    <div class="tb-bottom-actions">
+        <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'users') }}" data-modal-frame data-modal-title="{{ __('imports.title', ['label' => '用戶']) }}" data-modal-size="xl"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
+        <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#userExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
+    </div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
 </div>
+
+@include('layouts.partials.export-preview', [
+    'modalId' => 'userExportModal', 'title' => '匯出用戶名單', 'action' => route('users.export'),
+    'columnsClass' => \App\Support\UserExportColumns::class, 'items' => $exportUsers, 'total' => $users->total(), 'unit' => '位用戶',
+])
 @endsection

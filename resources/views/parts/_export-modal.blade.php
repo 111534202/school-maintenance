@@ -1,4 +1,4 @@
-{{-- 零件清單匯出視窗：先預覽，勾選要留下的欄位（上方）與零件（每一列左邊），再按「匯出 Excel」或「匯出 PDF」。
+{{-- 零件清單匯出視窗：先預覽，勾選要留下的欄位（上方）與零件（每一列左邊），再按「匯出 Excel」。
      零件範圍＝$exportParts（零件庫存列表：目前搜尋條件下的全部零件，不分頁；低庫存視窗：全部低庫存品項）；
      欄位與零件履歷「基本資料」相同。$modalId 讓同一頁可以放兩個（零件清單、低庫存品項）。 --}}
 @php($exportColumns = \App\Support\PartExportColumns::COLUMNS)
@@ -61,12 +61,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="submit" class="btn btn-success" formaction="{{ route('parts.export', 'excel') }}" data-export-submit>
                     <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> 匯出 Excel
-                </button>
-                <button type="submit" class="btn btn-danger" formaction="{{ route('parts.export', 'pdf') }}" data-export-submit>
-                    <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> 匯出 PDF
                 </button>
             </div>
         </form>

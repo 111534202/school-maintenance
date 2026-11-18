@@ -5,8 +5,8 @@ namespace App\Support;
 use App\Models\Part;
 
 /**
- * 零件庫存列表「匯出 Excel／PDF」可以選的欄位（跟零件履歷「基本資料」看到的一樣）。
- * 匯出前的預覽視窗、Excel、PDF 都用這裡的欄位名稱與顯示文字，三邊內容一致。
+ * 零件庫存列表「匯出 Excel」可以選的欄位（跟零件履歷「基本資料」看到的一樣）。
+ * 匯出前的預覽視窗與 Excel 都用這裡的欄位名稱與顯示文字，內容一致。
  */
 class PartExportColumns
 {

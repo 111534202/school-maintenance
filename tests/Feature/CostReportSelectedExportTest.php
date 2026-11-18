@@ -16,7 +16,7 @@ use Tests\TestCase;
 
 /**
  * 成本分析報表：篩選直接顯示在頁面上；備品使用彙總、材料費明細、報廢明細沒有表格檢視；
- * 最下面「匯出 Excel／PDF」先預覽，可以勾選要匯出的區塊與欄位。
+ * 最下面「匯出 Excel」先預覽，可以勾選要匯出的區塊與欄位。
  */
 class CostReportSelectedExportTest extends TestCase
 {
@@ -79,8 +79,6 @@ class CostReportSelectedExportTest extends TestCase
 
         $this->get(route('repair-cost-analysis.export.excel', ['sections' => ['parts'], 'cols' => ['parts' => [0, 1]]]))
             ->assertOk()->assertDownload();
-        $this->get(route('repair-cost-analysis.export.pdf', ['sections' => ['summary', 'details'], 'cols' => ['summary' => [0, 1], 'details' => [0, 7, 8]]]))
-            ->assertOk()->assertHeader('content-type', 'application/pdf');
 
         $this->get(route('repair-cost-analysis.export.excel', ['sections' => ['parts'], 'cols' => []]))->assertSessionHasErrors('cols');
         $this->get(route('repair-cost-analysis.export.excel', ['sections' => ['nope']]))->assertSessionHasErrors('sections.0');

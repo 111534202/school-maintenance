@@ -15,8 +15,6 @@
         </div>
         {{-- 右上角：「我的申請」在畫面中的對話框打開自己的申請（表格／清單自動切換）；「空間預約」換到有課表的申請頁。 --}}
         <div class="d-flex flex-wrap gap-2 justify-content-end">
-            {{-- 匯出 Excel：匯出目前搜尋與「未審核／已審核」篩選下的全部申請（不分頁）。 --}}
-            <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#reservationExportModal"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</button>
             <a href="{{ route('reservations.mine') }}" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="我的申請"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>我的申請</a>
             <a href="{{ route('reservations.create') }}" class="tb-btn tb-btn-primary"><i class="bi bi-calendar-plus" aria-hidden="true"></i>空間預約</a>
         </div>
@@ -94,6 +92,11 @@
         {{-- 分頁：全站共用 layouts/pager（左邊「顯示第 1 到 15 筆，共 N 筆」，右邊切換頁數）。 --}}
         @include('layouts.pager', ['paginator' => $reservations])
     @endif
+
+    {{-- 右下角：匯出 Excel（先開預覽視窗，勾選目前搜尋與「未審核／已審核」篩選下要匯出的欄位與申請）。 --}}
+    <div class="tb-bottom-actions">
+        <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#reservationExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
+    </div>
 </div>
 
     @include('reservations._export-modal', ['exportReservations' => $exportReservations])

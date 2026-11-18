@@ -351,11 +351,11 @@ def maintenance_order_flow(browser, base, root):
         no_js_errors(errors)
 
 
-# ---------------------------------------------------------------- 批次匯入與 QR 貼紙
+# ---------------------------------------------------------------- 批量匯入與 QR 貼紙
 
 @scenario
 def bulk_import_devices_and_qr_sheet(browser, base, root):
-    """批次匯入設備：預覽標出錯誤列、確認後寫入，再列印這批設備的 QR 貼紙"""
+    """批量匯入設備：預覽標出錯誤列、確認後寫入，再列印這批設備的 QR 貼紙"""
     uid = uuid.uuid4().hex[:6].upper()          # 每次執行用不同編號，重跑時才不會因為「編號已存在」失敗
     csv = ('設備編號*,資產編號,類別*,品牌,型號,序號,保固到期日,教室*,狀態,核心設備\n'
            f'E2E-{uid}-001,,投影機,Epson,EB-X,SN1,2027-12-31,IT-301,正常,否\n'
@@ -365,7 +365,7 @@ def bulk_import_devices_and_qr_sheet(browser, base, root):
     with session(browser, base) as (page, errors):
         login(page, 'admin')
         goto(page, '/devices')
-        click_and_wait(page, 'a:has-text("批次匯入")')
+        click_and_wait(page, 'a:has-text("批量匯入")')
         check('/import/devices' in page.url, '應進到匯入頁')
         page.set_input_files('input[type=file]', path)
         click_and_wait(page, 'button:has-text("上傳並預覽")')
@@ -404,7 +404,7 @@ def bulk_import_devices_and_qr_sheet(browser, base, root):
 
 @scenario
 def bulk_import_users_forces_password_change(browser, base, root):
-    """批次匯入用戶：用初始密碼登入後一定要先設定新密碼"""
+    """批量匯入用戶：用初始密碼登入後一定要先設定新密碼"""
     uid = uuid.uuid4().hex[:6]
     account = f'e2e.{uid}'
     csv = ('姓名*,帳號*,Email*,電話,身分*,部門,初始密碼,啟用\n'
@@ -413,7 +413,7 @@ def bulk_import_users_forces_password_change(browser, base, root):
     with session(browser, base) as (page, errors):
         login(page, 'admin')
         goto(page, '/users')
-        click_and_wait(page, 'a:has-text("批次匯入")')
+        click_and_wait(page, 'a:has-text("批量匯入")')
         page.set_input_files('input[type=file]', path)
         click_and_wait(page, 'button:has-text("上傳並預覽")')
         text = body(page)

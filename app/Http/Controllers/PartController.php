@@ -9,8 +9,6 @@ use App\Support\ExportSections;
 use App\Support\PartHistorySections;
 use App\Models\Part;
 use App\Support\PartExportColumns;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -34,19 +32,19 @@ class PartController extends Controller
         // 「查看目前低庫存品項」視窗用：全部低庫存的零件（不受搜尋與分頁影響）。
         $lowStockParts = $this->lowStockParts();
 
-        // 「匯出 Excel／PDF」預覽視窗用：符合目前搜尋的全部零件（不分頁）。
+        // 「匯出 Excel」預覽視窗用：符合目前搜尋的全部零件（不分頁）。
         $exportParts = $this->searchQuery($request)->get();
 
         return view('parts.index', compact('parts', 'lowStockParts', 'exportParts'));
     }
 
     /**
-     * 匯出零件清單（Excel 或 PDF）：只匯出預覽視窗裡勾選的零件（ids[]）與欄位（columns[]），
+     * 匯出零件清單 Excel：只匯出預覽視窗裡勾選的零件（ids[]）與欄位（columns[]），
      * 零件範圍不超出目前的搜尋條件（keyword）。
      */
     public function export(Request $request, string $format)
     {
-        abort_unless(in_array($format, ['excel', 'pdf'], true), 404);
+        abort_unless($format === 'excel', 404);
 
         $request->validate([
             'ids' => ['required', 'array', 'min:1'],
@@ -62,19 +60,7 @@ class PartController extends Controller
         $columns = PartExportColumns::pick($request->input('columns'));
         $fileName = 'parts-' . now()->format('Y-m-d-His');
 
-        if ($format === 'excel') {
-            return Excel::download(new PartsExport($parts, $columns), $fileName . '.xlsx');
-        }
-
-        // 中文字型 Noto Sans TC 讀取時需要較多記憶體（同成本分析報表 PDF）。
-        ini_set('memory_limit', '512M');
-        File::ensureDirectoryExists(storage_path('fonts'));
-
-        return Pdf::loadView('parts.export-pdf', [
-            'rows' => $parts->map(fn (Part $part) => PartExportColumns::values($part)),
-            'columns' => $columns,
-            'keyword' => $request->input('keyword'),
-        ])->setPaper('a4', 'landscape')->download($fileName . '.pdf');
+        return Excel::download(new PartsExport($parts, $columns), $fileName . '.xlsx');
     }
 
     /** 列表與匯出共用的查詢：關鍵字搜尋零件編號、名稱、規格、品牌、型號，依新增順序排列。 */
@@ -154,18 +140,18 @@ class PartController extends Controller
     {
         [$purchases, $usages, $scraps] = $this->history($part);
 
-        // 「匯出 Excel／PDF」預覽視窗：基本資料、使用紀錄、採購紀錄、報廢紀錄（跟匯出的內容相同）。
+        // 「匯出 Excel」預覽視窗：基本資料、使用紀錄、採購紀錄、報廢紀錄（跟匯出的內容相同）。
         $exportSections = PartHistorySections::build($part, $usages, $purchases, $scraps);
 
         return view('parts.show', compact('part', 'purchases', 'usages', 'scraps', 'exportSections'));
     }
 
     /**
-     * 匯出零件履歷（Excel 或 PDF）：只匯出預覽視窗勾選的區塊（sections[]）與欄位（cols[區塊][]）。
+     * 匯出零件履歷 Excel：只匯出預覽視窗勾選的區塊（sections[]）與欄位（cols[區塊][]）。
      */
     public function exportHistory(Request $request, Part $part, string $format)
     {
-        abort_unless(in_array($format, ['excel', 'pdf'], true), 404);
+        abort_unless($format === 'excel', 404);
 
         $request->validate([
             'sections' => ['required', 'array', 'min:1'],
@@ -186,18 +172,8 @@ class PartController extends Controller
         }
 
         $fileName = 'part-history-' . $part->part_code . '-' . now()->format('Y-m-d-His');
-        if ($format === 'excel') {
-            return Excel::download(new SectionsExport($sections), $fileName . '.xlsx');
-        }
 
-        ini_set('memory_limit', '512M');   // 中文字型需要較多記憶體（同成本分析報表 PDF）
-        File::ensureDirectoryExists(storage_path('fonts'));
-
-        return Pdf::loadView('exports.sections-pdf', [
-            'title' => '零件履歷：' . $part->displayName(),
-            'meta' => ['匯出時間：' . now()->format('Y-m-d H:i'), '目前庫存：' . $part->withUnit($part->current_stock) . '　安全庫存：' . $part->withUnit($part->safety_stock)],
-            'sections' => $sections,
-        ])->setPaper('a4', 'landscape')->download($fileName . '.pdf');
+        return Excel::download(new SectionsExport($sections), $fileName . '.xlsx');
     }
 
     /**
@@ -312,14 +288,14 @@ class PartController extends Controller
             return response()->json(['available' => true, 'message' => '未填寫，儲存時會自動產生 ' . Part::nextCode() . '。']);
         }
 
-        if (! preg_match(self::CODE_PATTERN, $code) || mb_strlen($code) > 20) {
-            return response()->json(['available' => false, 'message' => '零件編號只能用英文字母、數字、「-」、「_」、「.」，最多 20 個字。']);
+        if (! \App\Support\EquipmentCode::validFormat($code)) {
+            return response()->json(['available' => false, 'message' => \App\Support\EquipmentCode::formatMessage('零件編號')]);
         }
 
         $conflict = Part::codeConflict($code, $ignoreId);
 
         return $conflict
-            ? response()->json(['available' => false, 'message' => "{$conflict}，請換一個。"])
+            ? response()->json(['available' => false, 'message' => $conflict])
             : response()->json(['available' => true, 'message' => "零件編號「{$code}」可以使用。"]);
     }
 
@@ -342,7 +318,7 @@ class PartController extends Controller
                 if (filled($value) && in_array(strtolower($value), self::RESERVED_CODES, true)) {
                     $fail('這個零件編號是系統保留的名稱，請換一個。');
                 } elseif (filled($value) && ($conflict = Part::codeConflict($value, $ignoreId))) {
-                    $fail("{$conflict}，請換一個。");
+                    $fail($conflict);
                 }
             },
         ];

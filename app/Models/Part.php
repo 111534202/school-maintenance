@@ -101,31 +101,12 @@ class Part extends Model
     }
 
     /**
-     * 零件編號跟誰重複：其他零件，或設備主檔的設備編號（大小寫視為相同）。
-     * 沒有重複回傳 null；有重複回傳給使用者看的說明，例如「已經是設備主檔裡「A101 教室 投影機」的設備編號」。
+     * 零件編號跟誰重複：其他零件，或設備的設備編號（規則共用 App\Support\EquipmentCode）。
+     * 沒有重複回傳 null；有重複回傳完整說明，例如「「HDMI-2」已經是零件「HDMI 線」的零件編號，請換一個。」
      */
     public static function codeConflict(string $code, ?int $ignoreId = null): ?string
     {
-        $normalized = mb_strtolower(trim($code));
-
-        $part = self::query()
-            ->whereRaw('LOWER(part_code) = ?', [$normalized])
-            ->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))
-            ->first(['id', 'part_code', 'name']);
-        if ($part) {
-            return "「{$code}」已經是零件「{$part->name}」（{$part->part_code}）的零件編號";
-        }
-
-        $device = Device::query()
-            ->with(['category:id,name', 'classroom:id,name'])
-            ->whereRaw('LOWER(device_code) = ?', [$normalized])
-            ->first();
-        if ($device) {
-            $label = trim(($device->classroom?->name ?? '') . ' ' . ($device->category?->name ?? '設備'));
-            return "「{$code}」已經是設備主檔裡「{$label}」的設備編號";
-        }
-
-        return null;
+        return \App\Support\EquipmentCode::conflict($code, ignorePartId: $ignoreId);
     }
 
     /** 這個零件編號是否已經被其他零件使用（大小寫視為相同；修改時傳自己的 id 排除自己）。 */

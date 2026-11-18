@@ -18,11 +18,16 @@
         {{-- 設備編號：整個系統不可重複，QR Code 網址就是用它。old(欄位, 預設值) 會在驗證失敗導回時帶回剛輸入的內容。 --}}
         {{-- 輸入框右邊的相機按鈕：掃 QR 或條碼，內容直接填進這個欄位（見 scanner/_camera）。 --}}
         <div class="input-group">
-            <input type="text" id="device_code" name="device_code" class="form-control @error('device_code') is-invalid @enderror" value="{{ old('device_code', $device->device_code ?? '') }}" required>
+            <input type="text" id="device_code" name="device_code" class="form-control @error('device_code') is-invalid @enderror" value="{{ old('device_code', $device->device_code ?? '') }}" required
+                autocomplete="off" data-check-url="{{ route('devices.check-code') }}" data-ignore="{{ $device->id ?? '' }}">
             <button type="button" class="btn btn-outline-primary" data-scan-target="#device_code" data-scan-extract="device-code"
                 data-scan-title="{{ __('scanner.button') }}：{{ __('devices.form.code') }}"
                 title="{{ __('scanner.button') }}" aria-label="{{ __('scanner.button') }}"><i class="bi bi-upc-scan"></i></button>
         </div>
+        {{-- 規則說明一直顯示；輸入時即時檢查格式與重複（跟零件編號一樣）：結果顯示在說明下面；有問題時不能送出，送出時伺服器還會再檢查一次。 --}}
+        <div class="form-text">{{ \App\Support\EquipmentCode::RULE_TEXT }}</div>
+        <div id="device_code_feedback" class="small mt-1" aria-live="polite"></div>
+        @error('device_code')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-6">
         <label for="asset_code" class="form-label">{{ __('devices.form.asset_code') }}</label>
@@ -114,3 +119,64 @@
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>
 
+
+{{-- 設備編號即時檢查（跟零件編號 parts/_code-field 同一套做法）：停止輸入 0.4 秒後問伺服器有沒有重複；
+     掃描器填入編號時也會觸發 input 事件，一樣會檢查。送出前一定要確認過目前的編號沒有重複。 --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('device_code');
+    const feedback = document.getElementById('device_code_feedback');
+    if (!input || !feedback) { return; }
+    const form = input.closest('form');
+    let timer = null;
+    let lastChecked = null;   // { code, available }
+
+    function show(available, message) {
+        feedback.textContent = message;
+        feedback.className = 'small mt-1 ' + (available ? 'text-success' : 'text-danger');
+        input.classList.toggle('is-invalid', !available);
+        input.setCustomValidity(available ? '' : message);
+    }
+
+    async function check() {
+        const code = input.value.trim();
+        if (code === '') { feedback.textContent = ''; input.classList.remove('is-invalid'); input.setCustomValidity(''); lastChecked = null; return null; }
+        const url = new URL(input.dataset.checkUrl, window.location.origin);
+        url.searchParams.set('code', code);
+        if (input.dataset.ignore) { url.searchParams.set('ignore', input.dataset.ignore); }
+        try {
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const result = await response.json();
+            if (input.value.trim() !== code) { return null; }   // 等待期間又改了字，以最新的為準
+            lastChecked = { code: code, available: result.available };
+            show(result.available, result.message);
+            return result.available;
+        } catch (error) {
+            feedback.textContent = '';   // 連線失敗就交給送出時的伺服器檢查
+            input.setCustomValidity('');
+            return true;
+        }
+    }
+
+    input.addEventListener('input', function () {
+        input.setCustomValidity('');
+        feedback.textContent = '';
+        input.classList.remove('is-invalid');
+        clearTimeout(timer);
+        timer = setTimeout(check, 400);
+    });
+
+    form.addEventListener('submit', async function (event) {
+        const code = input.value.trim();
+        if (code === '') { return; }   // 空白交給 required 處理
+        if (lastChecked && lastChecked.code === code) {
+            if (!lastChecked.available) { event.preventDefault(); input.reportValidity(); }
+            return;
+        }
+        event.preventDefault();
+        const available = await check();
+        if (available === false) { input.reportValidity(); return; }
+        form.requestSubmit();
+    });
+});
+</script>

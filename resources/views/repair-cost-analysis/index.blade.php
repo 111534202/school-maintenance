@@ -245,10 +245,10 @@
         </section>
     @endif
 
-    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊與欄位，再選 Excel 或 PDF（跟零件庫存列表一樣）。 --}}
+    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊與欄位，再匯出 Excel（跟零件庫存列表一樣）。 --}}
     <div class="d-flex justify-content-end">
         <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#costExportModal">
-            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel
         </button>
     </div>
 </div>
@@ -257,7 +257,6 @@
     'modalId' => 'costExportModal',
     'modalTitle' => '匯出成本分析報表',
     'excelUrl' => route('repair-cost-analysis.export.excel'),
-    'pdfUrl' => route('repair-cost-analysis.export.pdf'),
     'hidden' => request()->only(['start_date', 'end_date', 'status', 'scraps']),
     'note' => '範圍跟著目前的篩選：' . ($startDate ?: '不限') . ' 至 ' . ($endDate ?: '不限') . '；勾選要匯出的區塊與欄位，取消勾選的欄位在預覽裡會隱藏。',
     'sections' => $exportSections,

@@ -4,7 +4,6 @@
 return [
     'button' => 'Bulk import',
     'title' => 'Bulk import :label',
-    'back' => 'Back to list',
     'steps_title' => 'How to import',
     'step1' => 'Press "Download template", open it in Excel and fill in the "匯入資料" sheet following the header row (the other sheets explain the columns, list valid values and show an example row).',
     'step2' => 'Save, choose the file below and press "Upload and preview". Nothing is written yet; each row is only checked. At most :max rows at a time.',

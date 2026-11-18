@@ -73,8 +73,8 @@
                     <img src="{{ route('devices.qrcode', $device) }}" alt="{{ __('devices.show.qr_alt') }}" class="img-fluid mb-3" style="max-width: 220px; margin: 0 auto;">
                     <p class="text-muted small mb-3">{{ __('devices.show.qr_hint') }}</p>
                     <div class="d-flex flex-wrap justify-content-center gap-2">
-                        {{-- 下載按鈕：download 屬性讓瀏覽器把圖片存成檔案（檔名用設備編號）。 --}}
-                        <a href="{{ route('devices.qrcode', $device) }}" class="btn btn-outline-secondary btn-sm" download="{{ $device->device_code }}-qrcode.svg"><i class="bi bi-download me-1"></i>{{ __('devices.show.qr_download') }}</a>
+                        {{-- 下載按鈕：download 屬性讓瀏覽器把圖片存成檔案（檔名用設備編號）。跟旁邊的「預覽入口頁」同樣是綠框，兩顆並排一致。 --}}
+                        <a href="{{ route('devices.qrcode', $device) }}" class="btn btn-outline-primary btn-sm" download="{{ $device->device_code }}-qrcode.svg"><i class="bi bi-download me-1"></i>{{ __('devices.show.qr_download') }}</a>
                         {{-- 預覽入口頁：在新分頁開啟掃描後會看到的畫面。 --}}
                         <a href="{{ route('devices.entry', $device) }}" class="btn btn-outline-primary btn-sm" target="_blank"><i class="bi bi-box-arrow-up-right me-1"></i>{{ __('devices.show.qr_preview') }}</a>
                     </div>

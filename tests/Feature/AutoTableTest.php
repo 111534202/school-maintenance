@@ -40,10 +40,11 @@ class AutoTableTest extends TestCase
         $this->loginAsAnyUser();
 
         // 主檔的表格窄螢幕要能變成清單，所以不能標 data-no-onion。
-        // （只有匯出預覽用的表格刻意標了 data-no-onion：預覽必須維持表格，見 parts/_export-modal、exports/_sections-modal；
-        //   洋蔥元件的說明文字裡也有這個字，所以只檢查 <table> 標籤本身。）
+        // （只有匯出預覽用的表格刻意標了 data-no-onion：預覽必須維持表格，見 parts/_export-modal、exports/_sections-modal、
+        //   layouts/partials/export-preview，所以先拿掉匯出預覽的表格；洋蔥元件的說明文字裡也有這個字，所以只檢查 <table> 標籤本身。）
         foreach (['users.index', 'roles.index', 'departments.index', 'classrooms.index', 'device-categories.index', 'devices.index'] as $route) {
             $html = $this->get(route($route))->assertOk()->getContent();
+            $html = preg_replace('/<table[^>]*data-no-onion[^>]*>(?:(?!<\/table>).)*?data-export-all.*?<\/table>/s', '', $html);
             $this->assertDoesNotMatchRegularExpression('/<table[^>]*data-no-onion/', $html, "$route 的表格不該被標成不轉清單（窄螢幕要用清單）");
         }
     }

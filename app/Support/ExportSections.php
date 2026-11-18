@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * 「先預覽、勾選區塊與欄位再匯出 Excel／PDF」的共用工具（成本分析報表、零件履歷）。
+ * 「先預覽、勾選區塊與欄位再匯出 Excel」的共用工具（成本分析報表、零件履歷）。
  *
  * 區塊資料格式：區塊代號 => [
  *     'title' => 區塊標題,
@@ -49,7 +49,7 @@ class ExportSections
         return $picked;
     }
 
-    /** 畫面與 PDF 的顯示文字：數字加千分位（最多兩位小數），其他照原樣。 */
+    /** 預覽畫面的顯示文字：數字加千分位（最多兩位小數），其他照原樣。 */
     public static function display(mixed $value): string
     {
         if (is_int($value) || is_float($value)) {

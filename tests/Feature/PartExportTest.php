@@ -11,7 +11,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 零件庫存列表：跟空間申請一樣的一大張卡片清單（沒有「表格檢視」切換），每頁 15 筆；最下面「匯出 Excel／PDF」先預覽，
+ * 零件庫存列表：跟空間申請一樣的一大張卡片清單（沒有「表格檢視」切換），每頁 15 筆；最下面「匯出 Excel」先預覽，
  * 勾選要匯出的欄位與零件，匯出的內容跟零件履歷「基本資料」一樣。
  */
 class PartExportTest extends TestCase
@@ -37,7 +37,7 @@ class PartExportTest extends TestCase
             ->assertOk()
             ->assertSee('tb-table-wrap', false)
             ->assertSee('顯示第 1 到 2 筆，共 2 筆')
-            ->assertSee('匯出 Excel／PDF')
+            ->assertSee('匯出 Excel')->assertDontSee('匯出 PDF')
             ->assertSee('匯出零件清單')
             ->assertSeeInOrder(['零件編號', '名稱', '規格', '品牌/型號', '平均單價', '目前庫存', '安全庫存'])
             ->assertSee('name="ids[]" value="' . $hdmi->id . '"', false)
@@ -71,14 +71,12 @@ class PartExportTest extends TestCase
         $this->assertSame([[$hdmi->part_code, 'NT$ 10', '9 條']], $export->array());
     }
 
-    public function test_pdf_export_downloads_and_requires_a_selection(): void
+    public function test_export_requires_a_selection_and_has_no_pdf(): void
     {
         $this->loginAsAnyUser();
         $hdmi = $this->makePart('HDMI 線', 9, 10);
 
-        $this->get(route('parts.export', ['pdf', 'ids' => [$hdmi->id], 'columns' => ['part_code', 'name']]))
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+        $this->get('/parts/export/pdf?ids[]=' . $hdmi->id . '&columns[]=name')->assertNotFound();   // 不再提供 PDF 匯出
 
         $this->get(route('parts.export', ['excel', 'columns' => ['name']]))->assertSessionHasErrors('ids');
         $this->get(route('parts.export', ['excel', 'ids' => [$hdmi->id]]))->assertSessionHasErrors('columns');

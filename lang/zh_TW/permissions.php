@@ -10,7 +10,7 @@ return [
     'groups' => [
         'master' => '主檔管理',
         'repair' => '報修與維修',
-        'maintenance' => '保養與 AI 預測性維護',
+        'maintenance' => '保養與預測性維護',
         'knowledge' => '自助知識庫',
         'reservation' => '空間預約',
         'inventory' => '零件庫存',
@@ -28,7 +28,7 @@ return [
             'manage' => ['name' => '部門主檔', 'description' => '新增、編輯、停用、刪除部門'],
         ],
         'majors' => [
-            'manage' => ['name' => '科系主檔', 'description' => '新增、編輯、停用、刪除科系，設定每個科系的年級數與班數（空間申請的科系／年級／班級下拉選單）'],
+            'manage' => ['name' => '科系主檔', 'description' => '新增、編輯、停用、刪除科系，設定每個科系的年級數與班數'],
         ],
         'classrooms' => [
             'manage' => ['name' => '教室主檔', 'description' => '新增、編輯、啟用或停用教室'],
@@ -43,7 +43,7 @@ return [
             'view' => ['name' => '操作紀錄查詢', 'description' => '查看全系統的操作紀錄'],
         ],
         'backups' => [
-            'manage' => ['name' => '資料備份與還原', 'description' => '立即備份、下載備份、把資料還原到某一份備份、設定保留天數'],
+            'manage' => ['name' => '資料備份與還原', 'description' => '立即備份、下載備份、還原資料、設定保留天數'],
         ],
         'mail-settings' => [
             'manage' => ['name' => '寄信設定', 'description' => '設定系統寄信用的信箱帳號（忘記密碼信、派工通知信）、寄測試信'],
@@ -53,28 +53,28 @@ return [
             'dispatch' => ['name' => '派工與重新指派', 'description' => '把報修單指派給維修人員、更換維修人員'],
             'process' => ['name' => '處理維修', 'description' => '開始處理報修單、填寫維修紀錄'],
             'accept' => ['name' => '驗收報修', 'description' => '驗收通過結案，或驗收不通過退回重修'],
-            'assignable' => ['name' => '可被指派為維修人員', 'description' => '會出現在派工的維修人員下拉選單裡'],
+            'assignable' => ['name' => '可被指派為維修人員', 'description' => '會出現在派工的維修人員選單裡'],
             'notice_cc' => ['name' => '接收派工通知副本', 'description' => '每次派工時，通知信會副本一份給擁有這個身分的用戶'],
         ],
         'parts' => [
-            'manage' => ['name' => '零件庫存管理', 'description' => '新增、修改、刪除零件並查看庫存；維修人員填維修紀錄時可選用的零件來自這份清單'],
+            'manage' => ['name' => '零件庫存管理', 'description' => '新增、修改、刪除與查看零件庫存'],
         ],
         'reservations' => [
             'manage' => [
                 'name' => '空間預約管理',
-                'description' => '查看與管理空間預約資料',
+                'description' => '查看與審核空間預約資料',
             ],
         ],
         'maintenance' => [
             'view' => ['name' => '查看保養資料', 'description' => '查看保養項目、保養計畫、保養工單與結果、設備履歷、保養完成率'],
             'manage' => ['name' => '管理保養計畫', 'description' => '新增、修改、停用保養項目與保養計畫，由計畫建立保養工單'],
-            'report' => ['name' => '回報保養結果', 'description' => '填寫保養結果（OK／NG）；NG 會自動轉成報修單'],
+            'report' => ['name' => '回報保養結果', 'description' => '填寫保養結果；NG 會自動轉成報修單'],
         ],
         'ai-maintenance' => [
             'manage' => ['name' => 'AI 預防保養', 'description' => '掃描設備風險、核准或駁回 AI 預防保養候選、調整 AI 參數'],
         ],
         'knowledge-base' => [
-            'manage' => ['name' => '管理知識庫', 'description' => '新增、編輯、刪除知識庫文章（所有人都能查看）'],
+            'manage' => ['name' => '管理知識庫', 'description' => '新增、編輯、刪除知識庫文章'],
         ],
     ],
 ];

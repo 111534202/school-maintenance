@@ -199,13 +199,6 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         ->middleware('can:parts.manage')
         ->name('repair-cost-analysis.export.excel');
 
-    Route::get('repair-cost-analysis/export/pdf', [
-        RepairCostAnalysisController::class,
-        'exportPdf',
-    ])
-        ->middleware('can:parts.manage')
-        ->name('repair-cost-analysis.export.pdf');
-
     // AI 預防保養（第 4 週任務 2、3）：候選審核與參數設定，需要 ai-maintenance.manage（預設只有設備管理員，admin 永遠有）。
     Route::middleware('can:ai-maintenance.manage')->prefix('ai-maintenance')->group(function () {
         Route::get('candidates', [PreventiveCandidateController::class, 'index'])->name('preventive-candidates.index');
@@ -285,12 +278,12 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         // 即時檢查零件編號是否重複（要放在 resource 前面，否則 check-code 會被當成零件編號）。
         Route::get('parts/check-code', [PartController::class, 'checkCode'])->name('parts.check-code');
         Route::get('parts/low-stock/export', [PartController::class, 'exportLowStock'])->name('parts.low-stock.export');
-        // 零件清單匯出（excel／pdf）：預覽視窗勾選的零件與欄位
-        Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel', 'pdf'])->name('parts.export');
+        // 零件清單匯出 Excel：預覽視窗勾選的零件與欄位（網址保留 {format}，目前只有 excel；PDF 匯出已拿掉）
+        Route::get('parts/export/{format}', [PartController::class, 'export'])->whereIn('format', ['excel'])->name('parts.export');
         // 零件庫存列表點一筆：在畫面中的對話框顯示零件基本資料（再按「查看詳細」進零件履歷）
         Route::get('parts/{part}/summary', [PartController::class, 'summary'])->name('parts.summary');
-        // 零件履歷匯出（excel／pdf）：預覽視窗勾選的區塊與欄位
-        Route::get('parts/{part}/history-export/{format}', [PartController::class, 'exportHistory'])->whereIn('format', ['excel', 'pdf'])->name('parts.history.export');
+        // 零件履歷匯出 Excel：預覽視窗勾選的區塊與欄位（網址保留 {format}，目前只有 excel）
+        Route::get('parts/{part}/history-export/{format}', [PartController::class, 'exportHistory'])->whereIn('format', ['excel'])->name('parts.history.export');
         Route::resource('parts', PartController::class);
         Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
         // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。
@@ -302,6 +295,8 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         // QR 貼紙批次列印：要放在 resource 前面，否則 /devices/qr-sheet 會被當成某台設備的編號。
         Route::get('devices/export', [DeviceController::class, 'export'])->name('devices.export');   // 匯出 Excel（要在 resource 前面）
         Route::get('devices/qr-sheet', [DeviceController::class, 'qrSheet'])->name('devices.qr-sheet');
+        // 即時檢查設備編號是否重複（跟零件編號一樣，輸入時就提示；要放在 resource 前面，否則 check-code 會被當成設備編號）。
+        Route::get('devices/check-code', [DeviceController::class, 'checkCode'])->name('devices.check-code');
         Route::resource('devices', DeviceController::class)->except(['destroy']);
         Route::patch('devices/{device}/disable', [DeviceController::class, 'disable'])->name('devices.disable');   // 停用設備
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片

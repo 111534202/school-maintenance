@@ -3,13 +3,14 @@
 // 命名空間：這個類別所在的位置，要跟資料夾路徑對得上。
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ExportsList;
+use App\Support\RepairExportColumns;
 use App\Enums\RepairRequestStatus;                      // 報修單狀態列舉（新報修／已派工／處理中／待驗收／已結案）
 use App\Models\Classroom;                               // 教室資料表的模型（看板篩選列的教室下拉選單）
 use App\Models\Device;                                  // 設備資料表的模型（重複報修判斷門檻 Device::REPEAT_REPAIR_DAYS/THRESHOLD）
 use App\Models\KnowledgeBase;                           // 知識庫文章的模型
 use App\Models\RepairRequest;                           // 報修單資料表的模型
 use App\Models\User;                                    // 用戶資料表的模型
-use App\Exports\TableExport;                          // 列表匯出 Excel 用的共用匯出類別
 use App\Http\Requests\AssignRepairRequestRequest;       // 「派工」表單的驗證規則
 use App\Http\Requests\RejectRepairRequestRequest;       // 「驗收退回」表單的驗證規則
 use App\Http\Requests\StoreRepairRequestRequest;        // 「新增報修」表單的驗證規則
@@ -21,7 +22,6 @@ use App\Services\RepairRequestWorkflow;                 // 報修單狀態轉換
 use DomainException;                                    // 「違反業務規則」的例外，狀態轉換不合法時由 Workflow 丟出
 use Illuminate\Http\Request;                            // 這一次瀏覽器送來的請求
 use Illuminate\Support\Facades\Auth;                    // 取得目前登入的人
-use Maatwebsite\Excel\Facades\Excel;                 // Excel 匯出
 use Illuminate\Support\Facades\Gate;                    // 權限判斷：Gate::authorize 不通過就直接回 403
 
 /**
@@ -42,6 +42,8 @@ use Illuminate\Support\Facades\Gate;                    // 權限判斷：Gate::
  */
 class RepairRequestController extends Controller
 {
+    use ExportsList;
+
     /**
      * 維修案件看板（依《第 2 週個人工作計畫》第 2 項，第三週補強看板資訊）。
      *
@@ -57,7 +59,7 @@ class RepairRequestController extends Controller
     public function index(Request $request)
     {
         $repairRequests = $this->indexQuery($request)
-            ->paginate(10)        // 每頁 10 張
+            ->paginate(15)        // 每頁 15 張（全站列表一致）
             ->withQueryString();  // 換頁時保留篩選條件
 
         // 篩選列的狀態下拉選單：列出列舉裡所有的狀態。
@@ -77,7 +79,10 @@ class RepairRequestController extends Controller
         $classrooms = Classroom::orderBy('classroom_code')->get();
         $filteredDevice = $request->filled('device_id') ? Device::find($request->integer('device_id')) : null;
 
-        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice'));
+        // 「匯出 Excel」預覽視窗要列的報修單（目前搜尋與篩選條件下最多 500 張）；在對話框裡看「我的報修」時不用。
+        $exportRepairs = $request->boolean('modal') ? collect() : $this->exportQuery($request)->limit(500)->get();
+
+        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice', 'exportRepairs'));
     }
 
     /**
@@ -136,33 +141,18 @@ class RepairRequestController extends Controller
     }
 
     /**
-     * 匯出 Excel（GET /repairs/export）：匯出「目前搜尋與篩選條件」下的全部報修單（不分頁），
-     * 和看板一樣只含這位用戶看得到的案件；寫一筆操作紀錄。
+     * 匯出 Excel（GET /repairs/export）：匯出「目前搜尋與篩選條件」下的報修單（不分頁），
+     * 和看板一樣只含這位用戶看得到的案件；預覽視窗會帶 columns[] 與 ids[]，流程見 ExportsList（會寫一筆操作紀錄）。
      */
     public function export(Request $request)
     {
-        $impact = ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'];
-        $rows = $this->indexQuery($request)->with(['requester', 'device.category'])->get()->map(fn (RepairRequest $r) => [
-            $r->id,
-            $r->title,
-            $r->status->label(),
-            $impact[$r->impact_level] ?? $r->impact_level,
-            $r->is_class_affected ? '是' : '否',
-            $r->device?->device_code,
-            $r->device ? trim(($r->device->category?->name ?? '') . ' ' . $r->device->brand . ' ' . $r->device->model) : null,
-            $r->device_note,
-            $r->locationLabel(),
-            $r->requester?->name,
-            $r->assignedTechnician?->name,
-            $r->scheduled_at?->format('Y-m-d H:i'),
-            $r->created_at?->format('Y-m-d H:i'),
-            $r->description,
-        ])->all();
+        return $this->exportList($request, $this->exportQuery($request), RepairExportColumns::class, '報修單', '報修單-', '報修單');
+    }
 
-        $file = '報修單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出報修單 {$file}（" . count($rows) . ' 筆）');
-
-        return Excel::download(new TableExport('報修單', ['編號', '報修標題', '狀態', '影響程度', '影響上課', '設備編號', '設備（類別 品牌 型號）', '設備位置／描述', '設備地點', '報修人', '維修人員', '預計處理時間', '送出時間', '故障描述'], $rows), $file);
+    /** 匯出與預覽共用的查詢：看板的查詢，再一併載入匯出欄位要用的關聯。 */
+    private function exportQuery(Request $request)
+    {
+        return $this->indexQuery($request)->with(['requester', 'device.category']);
     }
 
     /**

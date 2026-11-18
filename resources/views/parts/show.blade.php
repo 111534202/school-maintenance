@@ -252,10 +252,10 @@
         @endif
     </div>
 
-    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊（基本資料、使用紀錄、採購紀錄、報廢紀錄）與欄位，再選 Excel 或 PDF。 --}}
+    {{-- 匯出：先打開預覽視窗，勾選要匯出的區塊（基本資料、使用紀錄、採購紀錄、報廢紀錄）與欄位，再匯出 Excel。 --}}
     <div class="d-flex justify-content-end">
         <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#partHistoryExportModal">
-            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel／PDF
+            <i class="bi bi-download" aria-hidden="true"></i> 匯出 Excel
         </button>
     </div>
 
@@ -263,7 +263,6 @@
         'modalId' => 'partHistoryExportModal',
         'modalTitle' => '匯出零件履歷',
         'excelUrl' => route('parts.history.export', [$part, 'excel']),
-        'pdfUrl' => route('parts.history.export', [$part, 'pdf']),
         'hidden' => [],
         'note' => $part->displayName() . '：勾選要匯出的區塊與欄位，取消勾選的欄位在預覽裡會隱藏。',
         'sections' => $exportSections,

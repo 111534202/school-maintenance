@@ -13,7 +13,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
 /**
- * 用戶批次匯入。欄位：姓名*、帳號*、Email*、電話、身分*（身分名稱或代碼）、部門（部門名稱）、初始密碼、啟用。
+ * 用戶批量匯入。欄位：姓名*、帳號*、Email*、電話、身分*（身分名稱或代碼）、部門（部門名稱）、初始密碼、啟用。
  * 規則和「新增用戶」表單一樣（帳號 3～30 字英數與 . _ -、帳號與 Email 不可重複、身分與部門要已存在）。
  *
  * 密碼處理：匯入的帳號一律標記「第一次登入一定要先設定新密碼」。
@@ -149,7 +149,7 @@ class UserImporter extends BulkImporter
         $user->save();
 
         // 操作紀錄不放密碼。
-        AuditLogger::log('created', $user, Arr::except($data, ['password']), "批次匯入用戶「{$user->name}」");
+        AuditLogger::log('created', $user, Arr::except($data, ['password']), "批量匯入用戶「{$user->name}」");
     }
 
     public function undo(ImportBatch $batch): array
@@ -167,7 +167,7 @@ class UserImporter extends BulkImporter
                 continue;
             }
             $user->delete();   // 軟刪除，管理員之後仍可在用戶主檔還原
-            AuditLogger::log('deleted', $user, [], "批次匯入復原：刪除用戶「{$user->name}」");
+            AuditLogger::log('deleted', $user, [], "批量匯入復原：刪除用戶「{$user->name}」");
             $done++;
         }
 

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\TableExport;
+use App\Http\Controllers\Concerns\ExportsList;
+use App\Support\MaintenanceOrderExportColumns;
+use App\Models\MaintenanceResult;
 use App\Models\MaintenanceOrder;
 use App\Models\MaintenancePlan;
 use App\Models\User;
@@ -11,10 +13,11 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Facades\Excel;
 
 class MaintenanceOrderController extends Controller
 {
+    use ExportsList;
+
     /**
      * 保養工單列表（第 1 週任務 6；第 2 週任務 6 加上狀態/來源/日期篩選，
      * 供設備履歷、Dashboard 等其他模組之後也能穩定查詢）。
@@ -28,7 +31,10 @@ class MaintenanceOrderController extends Controller
         // 篩選列「負責人」下拉選單：有回報權限的人（可被指派的人）。
         $assignees = $this->assignableUsers();
 
-        return view('maintenance_orders.index', compact('orders', 'assignees'));
+        // 「匯出 Excel」預覽視窗要列的工單（目前搜尋與篩選條件下最多 500 張）。
+        $exportOrders = $this->exportQuery($request)->limit(500)->get();
+
+        return view('maintenance_orders.index', compact('orders', 'assignees', 'exportOrders'));
     }
 
     /** 工單列表的查詢（列表與匯出共用）：套用網址上的搜尋與篩選條件，並依狀態、排定日排好順序。 */
@@ -55,16 +61,34 @@ class MaintenanceOrderController extends Controller
                     }
                 });
             })
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 狀態：待處理、進行中照資料表的狀態；「已完成」只算保養結果正常（OK）的，
+            // 結果 NG 的已完成工單畫面上顯示「待轉報修」或「已轉報修」，篩選也分開（見 MaintenanceOrder::statusLabel）。
+            ->when($request->filled('status'), function ($query) use ($request) {
+                $ng = fn ($result) => $result->where('result', MaintenanceResult::RESULT_NG);
+                match ($request->string('status')->toString()) {
+                    'completed' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)->whereDoesntHave('result', $ng),
+                    'pending_conversion' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)
+                        ->whereHas('result', fn ($result) => $ng($result)->where(fn ($q) => $q->whereNull('ng_conversion_status')->orWhere('ng_conversion_status', '<>', MaintenanceResult::NG_CONVERSION_CONVERTED))),
+                    'converted' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)
+                        ->whereHas('result', fn ($result) => $ng($result)->where('ng_conversion_status', MaintenanceResult::NG_CONVERSION_CONVERTED)),
+                    default => $query->where('status', $request->string('status')),
+                };
+            })
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('scheduled_date', '<=', $request->date('to')))
             // 排序：
-            // 1. 待處理排最前面，進行中其次，已完成排最後。
-            // 2. 還沒完成的（待處理、進行中）：排定日期近的在上 → 同一天建立得早的在上 → 再依來源計畫名稱 A→Z。
-            // 3. 已完成的：排定日期遠的（最新的）在上 → 同一天建立得晚的在上（早的在下）→ 再依來源計畫名稱 A→Z。
+            // 1. 先分「還沒回報」與「已回報」：待處理排最前面，進行中其次，已回報（已完成）的排後面。
+            // 2. 已回報的再依畫面上的狀態分：待轉報修（NG、還沒轉報修）→ 已轉報修（NG、已轉報修）→ 已完成（OK）。
+            // 3. 還沒回報的（待處理、進行中）：排定日期近的在上 → 同一天建立得早的在上 → 再依來源計畫名稱 A→Z。
+            // 4. 已回報的同一種狀態裡：排定日期遠的（最新的）在上 → 同一天建立得晚的在上（早的在下）→ 再依來源計畫名稱 A→Z。
             // 最後用工單編號，讓完全相同的幾筆每次順序都一樣。
             ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
+            ->orderBy(MaintenanceResult::query()
+                ->selectRaw('CASE WHEN result = ? AND (ng_conversion_status IS NULL OR ng_conversion_status <> ?) THEN 0 WHEN result = ? THEN 1 ELSE 2 END',
+                    [MaintenanceResult::RESULT_NG, MaintenanceResult::NG_CONVERSION_CONVERTED, MaintenanceResult::RESULT_NG])
+                ->whereColumn('maintenance_results.maintenance_order_id', 'maintenance_orders.id')
+                ->limit(1))
             ->orderByRaw('CASE WHEN status <> ? THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_COMPLETED])
             ->orderByRaw('CASE WHEN status = ? THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_COMPLETED])
             ->orderByRaw('CASE WHEN status <> ? THEN created_at END ASC', [MaintenanceOrder::STATUS_COMPLETED])
@@ -74,38 +98,18 @@ class MaintenanceOrderController extends Controller
     }
 
     /**
-     * 匯出 Excel（GET /maintenance-orders/export）：匯出「目前搜尋與篩選條件」下的全部保養工單（不分頁），
-     * 含保養結果（OK／NG、執行人、轉報修單號）；寫一筆操作紀錄。
+     * 匯出 Excel（GET /maintenance-orders/export）：匯出「目前搜尋與篩選條件」下的保養工單（不分頁），
+     * 含保養結果（OK／NG、執行人、轉報修單號）；預覽視窗會帶 columns[] 與 ids[]，流程見 ExportsList（會寫一筆操作紀錄）。
      */
     public function export(Request $request)
     {
-        $rows = $this->indexQuery($request)->with(['result.executor', 'deviceCategory', 'device.category'])->get()->map(function (MaintenanceOrder $o) {
-            $result = $o->result;
+        return $this->exportList($request, $this->exportQuery($request), MaintenanceOrderExportColumns::class, '保養工單', '保養工單-', '保養工單');
+    }
 
-            return [
-                $o->displayNumber(),
-                $o->device?->device_code,
-                $o->device ? trim(($o->device->category?->name ?? '') . ' ' . $o->device->brand . ' ' . $o->device->model) : null,
-                $o->categoryName(),
-                $o->maintenancePlan?->name ?? ($o->source === MaintenanceOrder::SOURCE_AI ? 'AI 預防保養（無計畫）' : null),
-                $o->sourceLabel(),
-                $o->statusLabel()[0],
-                $o->assignee?->name,
-                $o->scheduled_date?->format('Y-m-d'),
-                $o->isOverdue() ? '是' : '否',
-                $result ? ($result->isNg() ? 'NG 異常' : 'OK 正常') : null,
-                $result?->executor?->name,
-                $result?->executed_at?->format('Y-m-d H:i'),
-                $result?->note,
-                $result?->repair_request_id,
-                $o->created_at?->format('Y-m-d H:i'),
-            ];
-        })->all();
-
-        $file = '保養工單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出保養工單 {$file}（" . count($rows) . ' 筆）');
-
-        return Excel::download(new TableExport('保養工單', ['工單編號', '設備編號', '設備（類別 品牌 型號）', '設備類別', '來源計畫', '來源', '狀態', '負責人', '排定保養日期', '逾期', '保養結果', '執行人', '執行時間', '備註', '轉報修單號', '建立時間'], $rows), $file);
+    /** 匯出與預覽共用的查詢：列表的查詢，再一併載入匯出欄位要用的關聯。 */
+    private function exportQuery(Request $request)
+    {
+        return $this->indexQuery($request)->with(['result.executor', 'deviceCategory', 'device.category']);
     }
 
     /**
