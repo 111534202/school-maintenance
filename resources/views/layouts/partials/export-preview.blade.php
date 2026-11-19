@@ -6,9 +6,16 @@
          'modalId' => 'deviceExportModal', 'title' => '匯出設備清單', 'action' => route('devices.export'),
          'columnsClass' => \App\Support\DeviceExportColumns::class, 'items' => $exportDevices, 'total' => $exportDevicesTotal, 'unit' => '台設備',
      ])
-     欄位定義（columnsClass）要有 COLUMNS、NUMERIC、values()；有 label() 的話當作每列勾選框的說明。 --}}
+     欄位定義（columnsClass）要有 COLUMNS、NUMERIC、values()；有 label() 的話當作每列勾選框的說明。
+     也可以當「先勾選再做事」的對話框（例如設備的列印 QR 貼紙）：'showColumns' => false 不顯示欄位勾選，
+     'submitLabel'／'submitIcon'／'submitClass' 換按鈕，'formTarget' => '_blank' 在新分頁送出，'verb' 換說明文字裡的動詞（預設「匯出」）。 --}}
 @php
     $limit = $limit ?? 500;
+    $showColumns = $showColumns ?? true;
+    $verb = $verb ?? '匯出';
+    $submitLabel = $submitLabel ?? '匯出 Excel';
+    $submitIcon = $submitIcon ?? 'bi-file-earmark-excel';
+    $submitClass = $submitClass ?? 'btn-success';
     $total = max($total ?? $items->count(), $items->count());   // 符合條件的總筆數（預覽可能只列其中一部分）
     $exportColumns = $columnsClass::COLUMNS;
     $numericColumns = $columnsClass::NUMERIC;
@@ -18,7 +25,7 @@
 @endphp
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}Title" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <form method="GET" action="{{ $action }}" class="modal-content export-preview-form" data-export-unit="{{ $unit }}" data-export-total="{{ $total }}">
+        <form method="GET" action="{{ $action }}" class="modal-content export-preview-form" data-export-unit="{{ $unit }}" data-export-total="{{ $total }}" @if (! empty($formTarget)) target="{{ $formTarget }}" @endif>
             <div class="modal-header">
                 <h2 class="modal-title h5" id="{{ $modalId }}Title">{{ $title }}</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
@@ -31,6 +38,7 @@
                     <p class="small text-muted">目前搜尋「{{ request('keyword') }}」，只列出符合的資料。</p>
                 @endif
 
+                @if ($showColumns)
                 <fieldset class="mb-3">
                     <legend class="form-label fw-semibold fs-6 mb-2">匯出欄位</legend>
                     <div class="d-flex flex-wrap gap-3">
@@ -42,13 +50,14 @@
                         @endforeach
                     </div>
                 </fieldset>
+                @endif
 
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                     <span class="fw-semibold">預覽</span>
                     <span class="small text-muted" data-export-summary aria-live="polite"></span>
                 </div>
                 @if ($items->isEmpty())
-                    <p class="text-muted text-center my-4">沒有符合條件的資料可以匯出。</p>
+                    <p class="text-muted text-center my-4">沒有符合條件的資料可以{{ $verb }}。</p>
                 @else
                     <div class="table-responsive">
                         {{-- data-no-onion：這張是預覽用的表格，不要變成清單。 --}}
@@ -69,7 +78,7 @@
                                     <tr>
                                         <td class="text-center">
                                             <input class="form-check-input" type="checkbox" name="ids[]" value="{{ $item->getKey() }}" data-export-row checked
-                                                aria-label="匯出 {{ method_exists($columnsClass, 'label') ? $columnsClass::label($item) : '#' . $item->getKey() }}">
+                                                aria-label="{{ $verb }} {{ method_exists($columnsClass, 'label') ? $columnsClass::label($item) : '#' . $item->getKey() }}">
                                         </td>
                                         @foreach ($exportColumns as $key => $label)
                                             <td class="{{ in_array($key, $numericColumns, true) ? 'text-end text-nowrap' : '' }}" data-export-cell="{{ $key }}">{{ $values[$key] ?? '—' }}</td>
@@ -80,13 +89,13 @@
                         </table>
                     </div>
                     @if ($total > $items->count())
-                        <p class="small text-muted mt-2 mb-0">共 {{ $total }} 筆符合，預覽只列前 {{ $items->count() }} 筆；全選時會匯出符合條件的全部 {{ $total }} 筆，取消勾選某幾筆則只匯出預覽裡勾選的。</p>
+                        <p class="small text-muted mt-2 mb-0">共 {{ $total }} 筆符合，預覽只列前 {{ $items->count() }} 筆；全選時會{{ $verb }}符合條件的全部 {{ $total }} 筆，取消勾選某幾筆則只{{ $verb }}預覽裡勾選的。</p>
                     @endif
                 @endif
             </div>
             <div class="modal-footer">
-                <button type="submit" class="btn btn-success" data-export-submit @disabled($items->isEmpty())>
-                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> 匯出 Excel
+                <button type="submit" class="btn {{ $submitClass }}" data-export-submit @disabled($items->isEmpty())>
+                    <i class="bi {{ $submitIcon }}" aria-hidden="true"></i> {{ $submitLabel }}
                 </button>
             </div>
         </form>
@@ -110,13 +119,14 @@
             });
             var rowCount = rows.filter(function (r) { return r.checked; }).length;
             var colCount = cols.filter(function (c) { return c.checked; }).length;
+            var colText = cols.length ? '、' + colCount + ' 個欄位' : '';   // 沒有欄位勾選（例如列印 QR）就不提欄位
             if (all) { all.checked = rows.length > 0 && rowCount === rows.length; all.indeterminate = rowCount > 0 && rowCount < rows.length; }
             // 資料比預覽多、而且全選：匯出符合條件的全部，摘要也顯示全部的筆數。
             var everything = total > rows.length && rowCount === rows.length;
             summary.textContent = everything
-                ? '已選全部 ' + total + ' ' + unit + '、' + colCount + ' 個欄位'
-                : '已選 ' + rowCount + ' / ' + (total > rows.length ? total : rows.length) + ' ' + unit + '、' + colCount + ' 個欄位';
-            form.querySelectorAll('[data-export-submit]').forEach(function (b) { b.disabled = rowCount === 0 || colCount === 0; });
+                ? '已選全部 ' + total + ' ' + unit + colText
+                : '已選 ' + rowCount + ' / ' + (total > rows.length ? total : rows.length) + ' ' + unit + colText;
+            form.querySelectorAll('[data-export-submit]').forEach(function (b) { b.disabled = rowCount === 0 || (cols.length > 0 && colCount === 0); });
         }
 
         if (all) { all.addEventListener('change', function () { rows.forEach(function (r) { r.checked = all.checked; }); refresh(); }); }

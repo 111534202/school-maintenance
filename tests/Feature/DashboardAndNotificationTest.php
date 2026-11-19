@@ -443,7 +443,7 @@ class DashboardAndNotificationTest extends TestCase
         return $m[0];
     }
 
-    // 用戶、身分、部門、教室、設備類別、設備都收在同一個「主檔」分類裡（往內點一層才看到；選單只有漢堡抽屜這一份）。
+    // 用戶、身分、部門、教室、設備都收在同一個「主檔」分類裡（設備類別改到設備主檔的對話框）（往內點一層才看到；選單只有漢堡抽屜這一份）。
     public function test_master_data_links_are_grouped_in_one_drilldown_group(): void
     {
         $this->loginAsAnyUser();
@@ -457,9 +457,11 @@ class DashboardAndNotificationTest extends TestCase
             $this->assertSame(1, preg_match('#data-drill-panel="master".*?(?=<div class="drill-panel|</script>)#s', $menu, $m), "[$which] 找不到主檔面板");
             $group = $m[0];
             // 群組裡有用戶、身分、部門、教室、設備類別、設備
-            foreach (['users.index', 'roles.index', 'departments.index', 'classrooms.index', 'device-categories.index', 'devices.index'] as $route) {
+            foreach (['users.index', 'roles.index', 'departments.index', 'classrooms.index', 'devices.index'] as $route) {
                 $this->assertStringContainsString('href="' . route($route) . '"', $group, "[$which] $route 應該在主檔面板裡");
             }
+            // 設備類別不在選單：改由設備主檔右上角的「新增類別」在對話框裡管理。
+            $this->assertStringNotContainsString('href="' . route('device-categories.index') . '"', $group);
             // 報修看板與操作紀錄是獨立項目，不屬於主檔
             $this->assertStringNotContainsString(route('repairs.index'), $group);
             $this->assertStringNotContainsString(route('audit-logs.index'), $group);

@@ -206,14 +206,15 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
                     </div>
                 @endif
-                {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡。 --}}
+                {{-- 表單驗證錯誤：把所有錯誤訊息列在一個紅色框裡；右邊的 ✕ 可以手動關閉（跟成功訊息一樣）。 --}}
                 @if ($errors->any())
-                    <div class="alert alert-danger">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <ul class="mb-0">
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
                     </div>
                 @endif
 

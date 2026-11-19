@@ -13,6 +13,8 @@ return [
 
     'index_title' => 'Devices',
     'add_device' => 'Add Device',
+    'short_category' => 'Category',   // 手機版右上角按鈕的短字（+Category）
+    'short_device' => 'Device',
     'empty_list' => 'No matching devices',
     'no_value' => '-',
     'yes' => 'Yes',

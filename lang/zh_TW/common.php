@@ -28,7 +28,7 @@ return [
         'preventive_ai' => 'AI 預防保養',
         'reservations' => '空間預約',
         'reservation_requests' => '空間申請',
-        'parts' => '零件庫存',
+        'parts' => '零件履歷',
         'cost_analysis' => '成本分析報表',
         'users' => '用戶主檔',
         'roles' => '身分主檔',

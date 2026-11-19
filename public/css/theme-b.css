@@ -892,3 +892,11 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
     .tb-body .tb-chart-btn .tb-chart-label { display: none; }
     .tb-body .tb-chart-btn > .bi { margin: 0 !important; font-size: 1.25rem; line-height: 1; }
 }
+
+/* 頁首右上角按鈕的長短字（例如設備主檔「新增類別／+類別」「新增設備／+設備」）：
+   桌面顯示長字（含 + 圖示），手機（< 768px）只顯示短字，三顆按鈕排得下不換行。 */
+.tb-header .tb-label-short { display: none; }
+@media (max-width: 767.98px) {
+    .tb-header .tb-label-long { display: none; }
+    .tb-header .tb-label-short { display: inline; }
+}

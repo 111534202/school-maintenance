@@ -12,10 +12,17 @@
         <div>
             <h1 class="tb-title">{{ __('devices.index_title') }}</h1>
         </div>
+        {{-- 右上角：統計圖表、新增類別、新增設備。手機上圖表只剩圖示，另外兩顆換成短字「+類別」「+設備」（tb-label-long／tb-label-short，見 theme-b.css）。 --}}
         <div class="d-flex gap-2">
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
+            {{-- 新增類別：在對話框打開設備類別（上面填新類別，下面是現有類別清單，可修改、刪除）；選單已經沒有「設備類別」這一項。 --}}
+            @can('device-categories.manage')
+                <a class="tb-btn tb-btn-outline" href="{{ route('device-categories.index') }}" data-modal-frame data-modal-title="{{ __('device_categories.index_title') }}">
+                    <i class="bi bi-plus-lg tb-label-long" aria-hidden="true"></i><span class="tb-label-long">{{ __('device_categories.add_category') }}</span><span class="tb-label-short">+{{ __('devices.short_category') }}</span>
+                </a>
+            @endcan
             <a class="tb-btn tb-btn-primary" href="{{ route('devices.create') }}" data-modal-frame data-modal-title="{{ __('devices.add_device') }}" data-modal-size="xl">
-                <i class="bi bi-plus-lg"></i>{{ __('devices.add_device') }}
+                <i class="bi bi-plus-lg tb-label-long" aria-hidden="true"></i><span class="tb-label-long">{{ __('devices.add_device') }}</span><span class="tb-label-short">+{{ __('devices.short_device') }}</span>
             </a>
         </div>
     </div>
@@ -98,7 +105,7 @@
                     @forelse ($devices as $device)
                         <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link">
                             <td>
-                                <a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a>
+                                <a href="{{ route('devices.show', $device) }}" class="text-decoration-none" data-modal-frame data-modal-title="設備詳細" data-modal-size="xl">{{ $device->device_code }}</a>
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
                                     <a href="{{ route('repairs.index', ['device_id' => $device->id]) }}" class="d-block small text-danger text-decoration-none"
@@ -156,16 +163,16 @@
     {{-- 分頁按鈕。 --}}
     <div>@include('layouts.pager', ['paginator' => $devices])</div>
 
-    {{-- 右下角：批量匯入（對話框打開）、匯出 Excel（先開預覽視窗勾選欄位與設備）、列印 QR 貼紙（依目前的篩選條件，新分頁開啟）。
+    {{-- 右下角：批量匯入（對話框打開）、匯出 Excel（先開預覽視窗勾選欄位與設備）、列印 QR 貼紙（先開對話框勾選設備，按「列印」在新分頁開貼紙頁）。
          手機上三個按鈕並排、剛好跟畫面同寬（tb-bottom-actions，樣式在 theme-b.css）。 --}}
     <div class="tb-bottom-actions">
         @can('devices.manage')
             <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'devices') }}" data-modal-frame data-modal-title="{{ __('imports.title', ['label' => '設備']) }}" data-modal-size="xl"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
             <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#deviceExportModal"><i class="bi bi-download" aria-hidden="true"></i><span class="tb-label-long">匯出 Excel</span><span class="tb-label-short">匯出</span></button>
         @endcan
-        <a class="tb-btn tb-btn-outline" href="{{ route('devices.qr-sheet', request()->query()) }}" target="_blank" rel="noopener">
-            <i class="bi bi-qr-code"></i><span class="tb-label-long">{{ __('devices.qr_sheet.button') }}</span><span class="tb-label-short">列印 QR</span>
-        </a>
+        <button type="button" class="tb-btn tb-btn-outline" data-bs-toggle="modal" data-bs-target="#deviceQrModal">
+            <i class="bi bi-qr-code" aria-hidden="true"></i><span class="tb-label-long">{{ __('devices.qr_sheet.button') }}</span><span class="tb-label-short">列印 QR</span>
+        </button>
     </div>
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
@@ -177,4 +184,11 @@
         'columnsClass' => \App\Support\DeviceExportColumns::class, 'items' => $exportDevices, 'total' => $devices->total(), 'unit' => '台設備',
     ])
 @endcan
+{{-- 列印 QR 貼紙：跟匯出預覽同一個對話框，只是不選欄位；勾選設備後按「列印」，在新分頁打開貼紙頁（devices.qr-sheet）。 --}}
+@include('layouts.partials.export-preview', [
+    'modalId' => 'deviceQrModal', 'title' => __('devices.qr_sheet.button'), 'action' => route('devices.qr-sheet'),
+    'columnsClass' => \App\Support\DeviceQrColumns::class, 'items' => $qrDevices, 'total' => $devices->total(), 'unit' => '台設備',
+    'limit' => $qrLimit, 'showColumns' => false, 'verb' => '列印', 'formTarget' => '_blank',
+    'submitLabel' => __('devices.qr_sheet.print'), 'submitIcon' => 'bi-printer', 'submitClass' => 'btn-primary',
+])
 @endsection

@@ -10,7 +10,8 @@ use Illuminate\Http\Request;     // 這一次瀏覽器送來的請求
 /**
  * 設備類別主檔（投影機、電腦、冷氣...）：列表／搜尋、新增、編輯、刪除。
  * 需要 device-categories.manage 權限（見 routes/web.php）。
- * 刪除規則：還有設備使用這個類別時不能刪除。
+ * 刪除規則：還有設備使用這個類別時不能刪除（已停用的設備也算：它們只是從列表隱藏，資料還指向這個類別）。
+ * 平常是從設備主檔右上角的「新增類別」在對話框裡打開列表（?modal=1）：新增、刪除後留在對話框裡（網址保留 modal=1）。
  *
  * 【Controller 基本觀念】請先看 UserController.php 檔頭；每個 public 方法對應一個網址動作。
  */
@@ -54,7 +55,7 @@ class DeviceCategoryController extends Controller
 
         AuditLogger::log('created', $category, $data);
 
-        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.created'));
+        return redirect()->route('device-categories.index', $this->modalQuery($request))->with('success', __('device_categories.flash.created'));
     }
 
     /** 顯示編輯表單（GET /device-categories/{deviceCategory}/edit）。 */
@@ -84,17 +85,29 @@ class DeviceCategoryController extends Controller
     }
 
     /** 刪除類別（DELETE /device-categories/{deviceCategory}）：還有設備在用就擋下。 */
-    public function destroy(DeviceCategory $deviceCategory)
+    public function destroy(Request $request, DeviceCategory $deviceCategory)
     {
+        $back = $this->modalQuery($request);
+
         // exists()：只問「有沒有」，不需要真的把設備全部撈出來。
         if ($deviceCategory->devices()->exists()) {
-            return redirect()->route('device-categories.index')->with('error', __('device_categories.errors.in_use'));
+            return redirect()->route('device-categories.index', $back)->with('error', __('device_categories.errors.in_use'));
+        }
+        // 已停用的設備（軟刪除）不算「使用中」，但資料仍指向這個類別，刪掉會違反外鍵，所以也擋下並說明。
+        if ($deviceCategory->devices()->onlyTrashed()->exists()) {
+            return redirect()->route('device-categories.index', $back)->with('error', __('device_categories.errors.has_disabled_devices'));
         }
 
         $deviceCategory->delete();
 
         AuditLogger::log('deleted', $deviceCategory);
 
-        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.deleted'));
+        return redirect()->route('device-categories.index', $back)->with('success', __('device_categories.flash.deleted'));
+    }
+
+    /** 在對話框裡操作（?modal=1）時，回列表也帶著 modal=1，結果留在對話框裡顯示。 */
+    private function modalQuery(Request $request): array
+    {
+        return $request->boolean('modal') ? ['modal' => 1] : [];
     }
 }

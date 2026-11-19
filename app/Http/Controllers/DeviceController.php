@@ -61,8 +61,11 @@ class DeviceController extends Controller
         $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
         // 「匯出 Excel」預覽視窗要列的設備（目前篩選條件下最多 500 台）。
         $exportDevices = $this->exportQuery($request)->limit(500)->get();
+        // 「列印 QR 貼紙」對話框要列的設備（目前篩選條件下，最多一次能印的張數）。
+        $qrDevices = $exportDevices->take(self::QR_SHEET_LIMIT);
+        $qrLimit = self::QR_SHEET_LIMIT;
 
-        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart', 'exportDevices'));
+        return view('devices.index', compact('devices', 'classrooms', 'categories', 'chart', 'exportDevices', 'qrDevices', 'qrLimit'));
     }
 
     /**
@@ -229,6 +232,11 @@ class DeviceController extends Controller
     {
         $query = Device::with(['category', 'classroom'])->orderBy('device_code');
         $this->applyFilters($query, $request);
+        // 從「列印 QR 貼紙」對話框勾選的設備（ids[]）：只印勾選的；沒帶就印目前篩選條件下的全部（最多 QR_SHEET_LIMIT 張）。
+        $request->validate(['ids' => ['nullable', 'array'], 'ids.*' => ['integer']]);
+        if ($request->filled('ids')) {
+            $query->whereIn('devices.id', $request->input('ids'));
+        }
 
         $total = (clone $query)->count();
         $labels = $query->limit(self::QR_SHEET_LIMIT)->get()->map(fn (Device $device) => [

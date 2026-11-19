@@ -10,7 +10,9 @@
     $inModal = request()->boolean('modal');   // 在空間申請列表的對話框裡打開
     $weekdays = ['日', '一', '二', '三', '四', '五', '六'];
     // 逐節審核：只要有任何一節已經有結果（例如部分核准、或有一節被別人借走而自動拒絕），每一節各自標示同意／拒絕／待審核。
-    $showSlotResult = $reservation->slots->whereNotNull('status')->isNotEmpty() && $reservation->status !== \App\Models\ClassroomReservation::STATUS_REJECTED;
+    // 整筆已核准（每一節都同意）或整筆已拒絕時不標：上面的申請狀態已經說明了，每節再寫「同意」是重複的。
+    $showSlotResult = $reservation->slots->whereNotNull('status')->isNotEmpty()
+        && ! in_array($reservation->status, [\App\Models\ClassroomReservation::STATUS_REJECTED, \App\Models\ClassroomReservation::STATUS_APPROVED], true);
 @endphp
 
 {{-- 預約詳細：空間申請列表點一筆時，在畫面中的對話框（標題「預約詳細」）裡打開這一頁（?modal=1，不顯示頁首）；

@@ -29,7 +29,9 @@ class SidebarNavigationTest extends TestCase
         foreach (['報修服務', '自助知識庫', '空間申請'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
-        foreach (['保養管理', '保養項目', '零件庫存', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
+        // 零件選單項目叫「零件履歷」，版面註解裡也有這四個字，所以改看有沒有連到零件列表。
+        $this->assertStringNotContainsString('href="' . route('parts.index') . '"', $html);
+        foreach (['保養管理', '保養項目', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
             $this->assertStringNotContainsString($text, $html);
         }
     }
@@ -42,7 +44,7 @@ class SidebarNavigationTest extends TestCase
         $this->assertStringContainsString('保養管理', $html);
         $this->assertStringContainsString('保養工單', $html);
         $this->assertStringNotContainsString('AI 預防保養', $html);
-        $this->assertStringNotContainsString('零件庫存', $html);
+        $this->assertStringNotContainsString('href="' . route('parts.index') . '"', $html);   // 沒有「零件履歷」選單
     }
 
     // 設備管理員：保養、AI、零件庫存、設備相關主檔、操作紀錄都有；但沒有用戶、身分、部門主檔。
@@ -50,7 +52,7 @@ class SidebarNavigationTest extends TestCase
     {
         $html = $this->dashboardAs($this->makeItManager());
 
-        foreach (['AI 預防保養', '零件庫存', '教室主檔', '設備主檔', '操作紀錄'] as $text) {
+        foreach (['AI 預防保養', '零件履歷', '教室主檔', '設備主檔', '操作紀錄'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
         foreach (['用戶主檔', '身分主檔', '部門主檔'] as $text) {

@@ -42,8 +42,8 @@ class NavMenu
                 $link(__('common.nav.departments'), 'bi-diagram-3', 'departments.index', ['departments.*'], $can('departments.manage')),
                 $link(__('common.nav.majors'), 'bi-mortarboard', 'majors.index', ['majors.*'], $can('majors.manage')),
                 $link(__('common.nav.classrooms'), 'bi-building', 'classrooms.index', ['classrooms.*'], $can('classrooms.manage')),
-                $link(__('common.nav.device_categories'), 'bi-tags', 'device-categories.index', ['device-categories.*'], $can('device-categories.manage')),
-                $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*'], $can('devices.manage')),
+                // 設備類別不放在選單：改由設備主檔右上角的「新增類別」在對話框裡管理。
+                $link(__('common.nav.devices'), 'bi-pc-display', 'devices.index', ['devices.*', 'device-categories.*'], $can('devices.manage')),
             ]],
             ['type' => 'group', 'id' => 'work', 'label' => __('common.nav.repair_section'), 'icon' => 'bi-tools', 'children' => [
                 // 「我的報修」不放選單：在報修頁右上角按「我的報修」，用對話框打開（像空間申請的「我的申請」）。

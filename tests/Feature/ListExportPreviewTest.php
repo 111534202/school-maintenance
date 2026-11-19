@@ -59,7 +59,7 @@ class ListExportPreviewTest extends TestCase
             ->assertSee('name="status" value="normal"', false)      // 目前的篩選條件一起送出
             ->assertSee('data-export-total="1"', false)
             ->assertDontSee('匯出 PDF')
-            ->assertSeeInOrder(['class="tb-bottom-actions"', route('imports.index', 'devices'), 'data-bs-target="#deviceExportModal"', route('devices.qr-sheet', ['status' => 'normal'])], false);
+            ->assertSeeInOrder(['class="tb-bottom-actions"', route('imports.index', 'devices'), 'data-bs-target="#deviceExportModal"', 'data-bs-target="#deviceQrModal"'], false);
 
         $this->get(route('users.index'))->assertOk()
             ->assertSee('id="userExportModal"', false)

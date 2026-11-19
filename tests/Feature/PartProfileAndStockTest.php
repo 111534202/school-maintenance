@@ -183,7 +183,7 @@ class PartProfileAndStockTest extends TestCase
         $this->makePart(['name' => 'HDMI 線', 'brand' => 'Cable Master', 'model' => 'HD-1M', 'current_stock' => 5, 'unit_price' => 20]);
         $this->makePart(['name' => '網路線', 'brand' => 'D-Link', 'model' => 'CAT6', 'current_stock' => 5, 'unit_price' => 20]);
 
-        $this->get(route('parts.index'))->assertOk()->assertSee('零件庫存列表')->assertSee('PART-1')->assertSee('PART-2');
+        $this->get(route('parts.index'))->assertOk()->assertSee('零件列表')->assertSee('PART-1')->assertSee('PART-2');
 
         $this->get(route('parts.index', ['keyword' => 'PART-2']))->assertSee('網路線')->assertDontSee('HD-1M');
         $this->get(route('parts.index', ['keyword' => 'Cable']))->assertSee('HDMI 線')->assertDontSee('CAT6');

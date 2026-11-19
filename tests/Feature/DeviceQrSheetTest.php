@@ -72,10 +72,40 @@ class DeviceQrSheetTest extends TestCase
         $this->assertSame(240, substr_count($response->getContent(), '<div class="label">'));
     }
 
-    public function test_device_list_has_the_print_button_carrying_current_filters(): void
+    // 設備列表的「列印 QR 貼紙」先開對話框：列出目前篩選到的設備讓人勾選（不選欄位），篩選條件一起送出，按「列印」在新分頁開貼紙頁。
+    public function test_device_list_print_button_opens_a_selection_dialog_carrying_current_filters(): void
     {
         $this->loginAsAnyUser();
+        $category = DeviceCategory::create(['name' => '投影機']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $device = Device::create(['device_code' => 'DEV-Q1', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
 
-        $this->get(route('devices.index', ['status' => 'normal']))->assertOk()->assertSee(route('devices.qr-sheet', ['status' => 'normal']), false);
+        $html = $this->get(route('devices.index', ['status' => 'normal']))->assertOk()
+            ->assertSee('data-bs-target="#deviceQrModal"', false)
+            ->getContent();
+
+        $this->assertSame(1, preg_match('#<div class="modal fade" id="deviceQrModal".*?</form>#s', $html, $m));
+        $dialog = $m[0];
+        $this->assertStringContainsString('action="' . route('devices.qr-sheet') . '"', $dialog);
+        $this->assertStringContainsString('target="_blank"', $dialog);
+        $this->assertStringContainsString('name="status" value="normal"', $dialog);
+        $this->assertStringContainsString('name="ids[]" value="' . $device->id . '"', $dialog);
+        $this->assertStringNotContainsString('name="columns[]"', $dialog);
+
+        // 設備編號的連結也是開「設備詳細」對話框，不跳到整頁的設備詳細資料。
+        $this->assertStringContainsString('href="' . route('devices.show', $device) . '" class="text-decoration-none" data-modal-frame', $html);
+        $this->assertStringContainsString(__('devices.qr_sheet.print'), $dialog);
+    }
+
+    // 對話框勾選的設備（ids[]）：貼紙頁只印勾選的。
+    public function test_sheet_prints_only_the_selected_devices(): void
+    {
+        $this->loginAsAnyUser();
+        $category = DeviceCategory::create(['name' => '投影機']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $a = Device::create(['device_code' => 'DEV-SA', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
+        Device::create(['device_code' => 'DEV-SB', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
+
+        $this->get(route('devices.qr-sheet', ['ids' => [$a->id]]))->assertOk()->assertSee('DEV-SA')->assertDontSee('DEV-SB');
     }
 }

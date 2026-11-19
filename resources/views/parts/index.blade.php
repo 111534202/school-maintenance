@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', '零件庫存列表')
+@section('title', '零件列表')
 
 @section('content')
 <div class="tb">
     <div class="tb-header">
         <div>
-            <h1 class="tb-title">零件庫存列表</h1>
+            <h1 class="tb-title">零件列表</h1>
         </div>
         {{-- 右上角：「目前低庫存零件 N」（有低庫存零件時才出現，開啟低庫存視窗，可預覽匯出 Excel）＋「新增零件」。
              不論螢幕寬窄都一樣，不再顯示紅色提示卡片。 --}}

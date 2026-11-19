@@ -6,11 +6,15 @@ return [
     'index_title' => '設備類別',
     'add_category' => '新增類別',
     'empty_list' => '尚無設備類別',
+    'existing' => '現有類別',
 
     // 搜尋列的文字。
     'filter' => [
         'keyword' => '類別名稱',
         'keyword_placeholder' => '選擇或輸入類別名稱',
+        'search_placeholder' => '搜尋類別名稱',
+        'search' => '搜尋',
+        'clear' => '清除',
     ],
 
     // 表格欄位標題。
@@ -30,6 +34,8 @@ return [
         'create_title' => '新增設備類別',
         'edit_title' => '編輯設備類別',
         'name' => '類別名稱',
+        'name_placeholder' => '輸入新的類別名稱',
+        'submit' => '新增',
     ],
 
     // 操作成功後顯示的綠色訊息。
@@ -42,5 +48,6 @@ return [
     // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'in_use' => '此類別仍有設備使用中，無法刪除。',
+        'has_disabled_devices' => '此類別還有已停用的設備，無法刪除。',
     ],
 ];

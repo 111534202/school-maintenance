@@ -349,20 +349,44 @@ class ReservationReviewTest extends TestCase
         $this->get(route('reservations.index'))->assertSee('顯示第')->assertSee('筆，共')->assertDontSee('Showing')->assertDontSee('results');
     }
 
-    // 列表的「申請狀態」欄顯示實際結果：已核准、已拒絕各自標清楚，不能都寫成「已審核」。
-    public function test_list_status_column_shows_approved_and_rejected_instead_of_just_reviewed(): void
+    // 空間申請（審核者的列表）的「申請狀態」只分未審核／已審核；我的申請才顯示實際結果（待審核／已核准／已拒絕）。
+    public function test_list_shows_pending_or_reviewed_but_my_requests_show_the_actual_result(): void
     {
-        $this->request([[3, '09:00', '10:00']], ['class_name' => '通過的班', 'status' => 'approved', 'reviewed_at' => now()]);
-        $this->request([[4, '09:00', '10:00']], ['class_name' => '被拒的班', 'status' => 'rejected', 'reviewed_at' => now()]);
-        $this->request([[5, '09:00', '10:00']], ['class_name' => '等待的班']);
+        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
+        $this->request([[3, '09:00', '10:00']], ['class_name' => '通過的班', 'status' => 'approved', 'reviewed_at' => now(), 'requester_id' => $manager->id]);
+        $this->request([[4, '09:00', '10:00']], ['class_name' => '被拒的班', 'status' => 'rejected', 'reviewed_at' => now(), 'requester_id' => $manager->id]);
+        $this->request([[5, '09:00', '10:00']], ['class_name' => '等待的班', 'requester_id' => $manager->id]);
 
-        $html = $this->actingAs($this->makeUserWithRole('it_manager', '資訊組主管'))->get(route('reservations.index'))->assertOk()->getContent();
-
-        foreach (['通過的班' => '已核准', '被拒的班' => '已拒絕', '等待的班' => '待審核'] as $class => $label) {
+        $this->actingAs($manager);
+        $row = function (string $html, string $class): string {
             $row = substr($html, strpos($html, $class));
-            $row = substr($row, 0, strpos($row, '</tr>'));
-            $this->assertStringContainsString($label, $row, "{$class} 的狀態應該顯示「{$label}」");
-            $this->assertStringNotContainsString('已審核', $row, "{$class} 的列不該只寫「已審核」");
+            return substr($row, 0, strpos($row, '</tr>'));
+        };
+
+        $list = $this->get(route('reservations.index'))->assertOk()->getContent();
+        foreach (['通過的班' => '已審核', '被拒的班' => '已審核', '等待的班' => '未審核'] as $class => $label) {
+            $this->assertStringContainsString('>' . $label . '</span>', $row($list, $class), "空間申請：{$class} 應該顯示「{$label}」");
         }
+
+        $mine = $this->get(route('reservations.mine'))->assertOk()->getContent();
+        foreach (['通過的班' => '已核准', '被拒的班' => '已拒絕', '等待的班' => '待審核'] as $class => $label) {
+            $this->assertStringContainsString('>' . $label . '</span>', $row($mine, $class), "我的申請：{$class} 應該顯示「{$label}」");
+        }
+    }
+
+    // 預約詳細：整筆已核准時，每一節不再標「同意」（上面的申請狀態已經寫了已核准）；部分核准時才逐節標示。
+    public function test_detail_hides_per_slot_badge_when_everything_is_approved(): void
+    {
+        $manager = $this->makeUserWithRole('it_manager', '資訊組主管');
+        $approved = $this->request([[3, '09:00', '10:00']], ['status' => 'approved', 'reviewed_at' => now()]);
+        $approved->slots()->update(['status' => 'approved']);
+        $partial = $this->request([[4, '09:00', '10:00'], [4, '10:00', '11:00']], ['status' => 'partially_approved', 'reviewed_at' => now(), 'class_name' => '部分班']);
+        $ids = $partial->slots()->orderBy('id')->pluck('id');
+        $partial->slots()->whereKey($ids->first())->update(['status' => 'approved']);   // 查詢層級更新（status 不在可批量指定的欄位裡）
+        $partial->slots()->whereKey($ids->last())->update(['status' => 'rejected']);
+
+        $this->actingAs($manager);
+        $this->get(route('reservations.show', $approved))->assertOk()->assertSee('已核准')->assertDontSee('ms-1">同意</span>', false);
+        $this->get(route('reservations.show', $partial))->assertOk()->assertSee('ms-1">同意</span>', false)->assertSee('ms-1">拒絕</span>', false);
     }
 }
