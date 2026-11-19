@@ -6,6 +6,7 @@ use App\Http\Requests\StoreMaintenanceItemRequest;
 use App\Http\Requests\UpdateMaintenanceItemRequest;
 use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -48,7 +49,8 @@ class MaintenanceItemController extends Controller
 
     public function store(StoreMaintenanceItemRequest $request): RedirectResponse
     {
-        MaintenanceItem::create($request->validated());
+        $item = MaintenanceItem::create($request->validated());
+        AuditLogger::log('created', $item, ['name' => $item->name], '新增保養項目「' . $item->name . '」');
 
         return redirect()
             ->route('maintenance-items.index')
@@ -66,6 +68,7 @@ class MaintenanceItemController extends Controller
     public function update(UpdateMaintenanceItemRequest $request, MaintenanceItem $maintenanceItem): RedirectResponse
     {
         $maintenanceItem->update($request->validated());
+        AuditLogger::log('updated', $maintenanceItem, ['name' => $maintenanceItem->name], '修改保養項目「' . $maintenanceItem->name . '」');
 
         return redirect()
             ->route('maintenance-items.index')
@@ -78,6 +81,7 @@ class MaintenanceItemController extends Controller
     public function toggleStatus(MaintenanceItem $maintenanceItem): RedirectResponse
     {
         $maintenanceItem->update(['is_active' => ! $maintenanceItem->is_active]);
+        AuditLogger::log('status_changed', $maintenanceItem, ['is_active' => $maintenanceItem->is_active], ($maintenanceItem->is_active ? '重新啟用' : '停用') . '保養項目「' . $maintenanceItem->name . '」');
 
         return redirect()
             ->route('maintenance-items.index')

@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateMaintenancePlanRequest;
 use App\Models\DeviceCategory;
 use App\Models\MaintenanceItem;
 use App\Models\MaintenancePlan;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -57,6 +58,7 @@ class MaintenancePlanController extends Controller
 
         $plan = MaintenancePlan::create($data);
         $plan->maintenanceItems()->sync($request->input('item_ids'));
+        AuditLogger::log('created', $plan, ['name' => $plan->name], '新增保養計畫「' . $plan->name . '」');
 
         return redirect()
             ->route('maintenance-plans.index')
@@ -80,6 +82,7 @@ class MaintenancePlanController extends Controller
 
         $maintenancePlan->update($data);
         $maintenancePlan->maintenanceItems()->sync($request->input('item_ids'));
+        AuditLogger::log('updated', $maintenancePlan, ['name' => $maintenancePlan->name], '修改保養計畫「' . $maintenancePlan->name . '」');
 
         return redirect()
             ->route('maintenance-plans.index')
@@ -92,6 +95,7 @@ class MaintenancePlanController extends Controller
     public function toggleStatus(MaintenancePlan $maintenancePlan): RedirectResponse
     {
         $maintenancePlan->update(['is_active' => ! $maintenancePlan->is_active]);
+        AuditLogger::log('status_changed', $maintenancePlan, ['is_active' => $maintenancePlan->is_active], ($maintenancePlan->is_active ? '重新啟用' : '停用') . '保養計畫「' . $maintenancePlan->name . '」');
 
         return redirect()
             ->route('maintenance-plans.index')

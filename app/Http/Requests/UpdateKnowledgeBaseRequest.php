@@ -31,8 +31,8 @@ class UpdateKnowledgeBaseRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],     // 標題：必填
             'category' => ['nullable', 'string', 'max:100'],  // 分類：可不填
-            'symptom' => ['required', 'string'],              // 常見故障現象：必填
-            'solution' => ['required', 'string'],             // 自助排除步驟：必填
+            'symptom' => ['required', 'string', 'max:5000'],  // 常見故障現象：必填
+            'solution' => ['required', 'string', 'max:5000'], // 自助排除步驟：必填
             'is_published' => ['required', 'boolean'],        // 是否上架：true / false
         ];
     }

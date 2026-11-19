@@ -200,7 +200,8 @@
                     </div>
                 @endif
                 {{-- 操作失敗訊息（Controller 用 ->with('error', ...) 帶過來）。 --}}
-                @if (session('error') && !request()->routeIs('reservations.index'))
+                {{-- 空間申請列表（有審核權限的人）自己會顯示這則訊息；沒有審核權限的人看到的是申請表單，要由這裡顯示。 --}}
+                @if (session('error') && !(request()->routeIs('reservations.index') && auth()->user()?->hasPermission('reservations.manage')))
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         {{ session('error') }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>

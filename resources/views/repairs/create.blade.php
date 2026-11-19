@@ -45,7 +45,7 @@
                     <div class="form-text">{{ __('repair_requests.create.device_code_hint') }}</div>
                     {{-- 查不到設備時顯示的紅字錯誤（預設隱藏，由 JavaScript 控制顯示）。 --}}
                     <div id="device_lookup_error" class="text-danger small mt-2" style="display:none;">
-                        <i class="bi bi-exclamation-circle me-1"></i>{{ __('repair_requests.create.device_lookup_error') }}
+                        <i class="bi bi-exclamation-circle me-1"></i><span id="device_lookup_error_text" data-default-text="{{ __('repair_requests.create.device_lookup_error') }}">{{ __('repair_requests.create.device_lookup_error') }}</span>
                     </div>
                     {{-- 查到設備時顯示的綠色確認框（預設隱藏；從設備入口頁帶 ?device= 過來時一開始就會顯示）。 --}}
                     <div id="device_display" class="alert alert-success py-2 mt-3 mb-0" style="{{ $device ? '' : 'display:none;' }}">

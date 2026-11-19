@@ -95,6 +95,7 @@
                 <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
             @endforeach
         </select>
+        @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-4 d-flex align-items-end">
         <div class="form-check">

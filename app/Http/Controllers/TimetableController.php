@@ -223,6 +223,7 @@ class TimetableController extends Controller
      */
     public function repairWeek(Request $request, RepairRequest $repairRequest, TimetableProvider $provider): JsonResponse
     {
+        \Illuminate\Support\Facades\Gate::authorize('view', $repairRequest);   // 跟自己無關的案件不給課表
         $validated = $request->validate([
             'date' => ['nullable', 'date_format:Y-m-d'],
         ]);

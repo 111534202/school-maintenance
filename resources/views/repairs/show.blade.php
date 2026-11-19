@@ -108,7 +108,7 @@
 
                         {{-- 驗收人：派工時指定的人；沒指定就是報修人本人。 --}}
                         <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-clipboard-check me-2"></i>驗收人：</dt>
-                        <dd class="col-6 col-sm-7 mb-0">{{ $repairRequest->acceptor?->name ?? '報修人本人' }}</dd>
+                        <dd class="col-6 col-sm-7 mb-0">{{ $repairRequest->acceptor?->name ?? ($repairRequest->requester?->can('repairs.accept') ? '報修人本人' : '系統管理員（報修人沒有驗收權限或沒有報修人，未另外指定驗收人）') }}</dd>
 
                         <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-clock me-2"></i>{{ __('repair_requests.show.submitted_prefix') }}</dt>
                         <dd class="col-6 col-sm-7 mb-0">{{ $repairRequest->created_at->format('Y-m-d H:i') }}</dd>
@@ -172,6 +172,8 @@
                                     <div class="form-text">維修完成後由這個人驗收；除了管理員，只有報修人、維修人員、驗收人看得到「待驗收」與「已結案」的案件。</div>
                                     @if ($repairRequest->requester_id === null)
                                         <div class="form-text text-danger">這張單沒有報修人（例如保養 NG 轉來的），請指定驗收人，否則只有系統管理員能驗收。</div>
+                                    @elseif (! $repairRequest->requester?->can('repairs.accept'))
+                                        <div class="form-text text-danger">報修人沒有驗收權限，請指定驗收人，否則只有系統管理員能驗收。</div>
                                     @endif
                                 </div>
                                 <div class="mb-3">
@@ -248,7 +250,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="reassign_scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
-                                        <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at">
+                                        <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at" value="{{ old('scheduled_at', $repairRequest->scheduled_at?->format('Y-m-d\TH:i')) }}">
                                         @if ($timetableClassroom)
                                             <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="reassign_scheduled_at">
                                                 <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂

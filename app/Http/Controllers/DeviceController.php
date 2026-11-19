@@ -141,6 +141,12 @@ class DeviceController extends Controller
         $newIsCore = $request->boolean('is_core');
         unset($data['status'], $data['is_core']);
 
+        // 還有沒結案的報修單時，不能把狀態從「維修中／已淘汰／停用」直接改回「正常」（要先把報修單處理完）。
+        if ($newStatus === 'normal' && $device->status !== 'normal'
+            && $device->repairRequests()->where('status', '!=', RepairRequestStatus::Completed->value)->exists()) {
+            return back()->withInput()->withErrors(['status' => '這台設備還有沒結案的報修單，不能直接改成「正常」。請先完成報修單的驗收。']);
+        }
+
         // 記住修改前的教室：如果這次把設備搬到別間，舊教室也要重新計算異常標記。
         $oldClassroom = $device->classroom;
 
@@ -249,6 +255,9 @@ class DeviceController extends Controller
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
             'is_core' => ['sometimes', 'boolean'],                                    // 是否為核心設備；sometimes = 有送才檢查
+        ], [
+            // 已停用（軟刪除）的設備編號仍被占用，要讓人知道原因。
+            'device_code.unique' => '這個設備編號已經被使用（可能是已停用的設備，停用的設備編號不能重複使用）。',
         ]);
     }
 }

@@ -36,6 +36,12 @@
                 headers: { 'Accept': 'application/json' },
             })
                 .then(function (response) {
+                    if (response.status === 422) {
+                        // 設備已淘汰等「找得到但不能報修」的情況：顯示後端給的原因。
+                        return response.json().then(function (body) {
+                            throw new Error(body.message || 'not found');
+                        });
+                    }
                     if (!response.ok) {
                         // 後端回 404（找不到設備）就丟出錯誤，由下面的 catch 顯示錯誤提示。
                         throw new Error('not found');
@@ -58,9 +64,16 @@
                     }
                 })
                 // 找不到設備或網路錯誤：清掉設備編號、隱藏設備資訊、顯示紅字錯誤提示。
-                .catch(function () {
+                .catch(function (error) {
                     deviceIdField.value = '';
                     displayBox.style.display = 'none';
+                    // 找不到設備沿用原本的提示；有明確原因（例如已淘汰）就改顯示原因。
+                    var text = document.getElementById('device_lookup_error_text');
+                    if (text) {
+                        text.textContent = (error && error.message && error.message !== 'not found' && error.message.indexOf('fetch') === -1)
+                            ? error.message
+                            : text.dataset.defaultText;
+                    }
                     errorBox.style.display = '';
                 });
         }

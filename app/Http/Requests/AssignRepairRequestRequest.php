@@ -43,7 +43,7 @@ class AssignRepairRequestRequest extends FormRequest
             'assigned_to' => [
                 'required',
                 'integer',
-                Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role_id', $assignableRoleIds)->where('is_active', true)),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role_id', $assignableRoleIds)->where('is_active', true)->whereNull('deleted_at')),
             ],
             // 驗收人：可以不填（不填＝由報修人本人驗收）；有填必須是「有驗收權限（或系統管理員）、帳號啟用中」的人。
             'accepted_by' => [
@@ -52,7 +52,17 @@ class AssignRepairRequestRequest extends FormRequest
                 Rule::exists('users', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')->whereIn('role_id', $acceptorRoleIds)),
             ],
             // 預計處理時間：可以不填；有填就必須是正確的日期時間格式。
-            'scheduled_at' => ['nullable', 'date'],
+            // 上限 2037 年：資料庫的時間欄位超過 2038 年會寫入失敗（整頁 500），先在這裡擋下並說明。
+            'scheduled_at' => ['nullable', 'date', 'after:1971-01-01', 'before:2038-01-01'],
+        ];
+    }
+
+    /** 時間欄位的錯誤訊息：不要把「+5 minutes」這種程式用語顯示給使用者。 */
+    public function messages(): array
+    {
+        return [
+            'scheduled_at.before' => ':attribute 不能晚於 2037 年底。',
+            'scheduled_at.after' => ':attribute 不是合理的日期，請重新選擇。',
         ];
     }
 }

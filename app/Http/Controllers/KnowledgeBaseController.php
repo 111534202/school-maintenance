@@ -25,6 +25,8 @@ class KnowledgeBaseController extends Controller
      */
     public function index(Request $request)
     {
+        // 網址上的篩選條件格式不對（例如 keyword[]=x）時回到上一頁並提示，不要整頁 500。
+        $request->validate(['keyword' => ['nullable', 'string', 'max:100'], 'category' => ['nullable', 'string', 'max:100']], [], ['keyword' => '關鍵字', 'category' => '分類']);
         $keyword = trim((string) $request->query('keyword', ''));
         $category = trim((string) $request->query('category', ''));
 
@@ -125,6 +127,9 @@ class KnowledgeBaseController extends Controller
      */
     public function resolved(KnowledgeBase $knowledgeBase)
     {
+        // 未上架的文章對一般人不存在：不能藉由這個網址看到文章標題。
+        abort_unless($knowledgeBase->is_published || auth()->user()->can('knowledge-base.manage'), 404);
+
         return redirect()
             ->route('knowledge-base.index')
             ->with('success', __('knowledge_base.flash.resolved_message', ['title' => $knowledgeBase->title]));

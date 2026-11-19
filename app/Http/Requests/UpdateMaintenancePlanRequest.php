@@ -20,7 +20,7 @@ class UpdateMaintenancePlanRequest extends FormRequest
             'name' => ['required', 'string', 'max:200'],
             'device_category_id' => ['nullable', 'integer', 'exists:device_categories,id'],
             'cycle_days' => ['required', 'integer', 'min:1', 'max:3650'],
-            'start_date' => ['required', 'date'],
+            'start_date' => ['required', 'date', 'after_or_equal:2020-01-01', 'before:2038-01-01'],
             'is_active' => ['sometimes', 'boolean'],
             'item_ids' => ['required', 'array', 'min:1'],
             'item_ids.*' => ['integer', 'exists:maintenance_items,id'],

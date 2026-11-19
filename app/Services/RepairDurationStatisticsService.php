@@ -48,7 +48,7 @@ class RepairDurationStatisticsService
         }
 
         $requests = RepairRequest::query()
-            ->visibleTo($user)
+            ->visibleOnBoard($user)
             ->where('status', RepairRequestStatus::Completed->value)
             ->whereHas('repairLogs', function ($query) use ($start, $end) {
                 $query->whereNotNull('ended_at')

@@ -160,7 +160,7 @@ class UserImporter extends BulkImporter
             // 已經登入過、或已有報修／預約紀錄的帳號不收回，避免弄丟歷史資料。
             $used = $user->last_login_at !== null
                 || RepairRequest::where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->exists()
-                || ClassroomReservation::where('user_id', $user->id)->exists();
+                || ClassroomReservation::where('requester_id', $user->id)->exists();
             if ($used) {
                 $kept++;
 

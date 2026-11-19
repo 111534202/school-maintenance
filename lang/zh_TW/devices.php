@@ -112,6 +112,7 @@ return [
         'need_help' => '需要協助嗎？',
         'go_repair' => '前往報修',
         'go_repair_unavailable' => '前往報修（功能尚未上線）',
+        'go_repair_retired' => '此設備已淘汰，無法報修',
         'view_kb' => '查看自助排除知識庫',
         'tips_title' => '自助排除小提醒：',
         'tip_power' => '先確認電源與連接線是否正常',

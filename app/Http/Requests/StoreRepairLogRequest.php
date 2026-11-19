@@ -25,13 +25,16 @@ class StoreRepairLogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cause' => ['required', 'string'],
-            'resolution' => ['required', 'string'],
-            'started_at' => ['required', 'date'],
+            'cause' => ['required', 'string', 'max:5000'],
+            'resolution' => ['required', 'string', 'max:5000'],
+            // 維修時間不能是未來（容許 5 分鐘的電腦時間誤差）；也避免填到 2038 年之後造成資料庫寫入失敗。
+            'started_at' => ['required', 'date', 'after:1971-01-01', 'before_or_equal:+5 minutes'],
             'ended_at' => [
                 'required',
                 'date',
                 'after_or_equal:started_at',
+                'after:1971-01-01',
+                'before_or_equal:+5 minutes',
             ],
 
             // 零件使用明細：允許完全不使用零件。
@@ -62,6 +65,17 @@ class StoreRepairLogRequest extends FormRequest
                 'file',
                 'mimes:' . \App\Support\AttachmentLimit::MIMES,
             ],
+        ];
+    }
+
+    /** 時間欄位的錯誤訊息：不要把「+5 minutes」這種程式用語顯示給使用者。 */
+    public function messages(): array
+    {
+        return [
+            'started_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
+            'ended_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
+            'started_at.after' => ':attribute 不是合理的日期，請重新選擇。',
+            'ended_at.after' => ':attribute 不是合理的日期，請重新選擇。',
         ];
     }
 }

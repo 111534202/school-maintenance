@@ -87,7 +87,7 @@ class DeviceCategoryController extends Controller
     public function destroy(DeviceCategory $deviceCategory)
     {
         // exists()：只問「有沒有」，不需要真的把設備全部撈出來。
-        if ($deviceCategory->devices()->exists()) {
+        if ($deviceCategory->devices()->withTrashed()->exists()) {
             return redirect()->route('device-categories.index')->with('error', __('device_categories.errors.in_use'));
         }
 

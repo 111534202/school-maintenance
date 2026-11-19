@@ -75,8 +75,10 @@ class WorkOrderEditCancelTest extends TestCase
 
     public function test_a_completed_repair_request_cannot_be_edited(): void
     {
-        $repair = RepairRequest::factory()->create(['title' => '已結案的單', 'status' => 'completed']);
-        $this->actingAs($this->dispatcher());
+        $dispatcher = $this->dispatcher();
+        // 已結案的案件，派工者也要「跟案件有關」才看得到（這裡指定由他驗收）。
+        $repair = RepairRequest::factory()->create(['title' => '已結案的單', 'status' => 'completed', 'accepted_by' => $dispatcher->id]);
+        $this->actingAs($dispatcher);
 
         $this->put(route('repairs.update', $repair), $this->payload())->assertSessionHas('error');
 
@@ -103,10 +105,11 @@ class WorkOrderEditCancelTest extends TestCase
 
     public function test_a_repair_request_with_a_repair_log_cannot_be_cancelled(): void
     {
-        $this->actingAs($this->dispatcher());
+        $dispatcher = $this->dispatcher();
+        $this->actingAs($dispatcher);
 
         foreach (['pending_review', 'completed'] as $status) {
-            $repair = RepairRequest::factory()->create(['status' => $status]);
+            $repair = RepairRequest::factory()->create(['status' => $status, 'accepted_by' => $dispatcher->id]);
             $this->delete(route('repairs.destroy', $repair))->assertSessionHas('error');
             $this->assertNull($repair->fresh()->deleted_at);
         }
