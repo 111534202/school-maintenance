@@ -66,7 +66,7 @@ class DashboardController extends Controller
             ->where('created_at', '<', $nextMonthStart)
             ->count();
 
-        // 本月平均累計維修工時：以本月 ended_at 判斷資格，符合資格後加總該單全部歷史紀錄。
+        // 本月案件平均工時（卡片標題）：以本月 ended_at 判斷資格，符合資格後加總該單全部歷史紀錄。
         $repairDurationStats = app(RepairDurationStatisticsService::class)->forPeriod(
             $user,
             $monthStart->copy(),

@@ -22,7 +22,7 @@ return [
         'users' => '用戶數量',
         'classrooms' => '教室數量',
         'classrooms_abnormal' => '設備異常教室 :count 間',
-        'average_repair_hours' => '本月平均累計維修工時',
+        'average_repair_hours' => '本月案件平均工時',
         'repair_hours_missing' => '有 :count 張已結案報修單缺少可計算工時',
         'unit_hours' => '小時',
         'unit_repairs' => '張',

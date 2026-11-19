@@ -118,7 +118,7 @@ class GenerateSchemaDocs extends Command
         'name' => '名稱', 'description' => '說明', 'is_active' => '是否啟用', 'status' => '狀態', 'title' => '標題', 'email' => '電子信箱', 'phone' => '電話',
         'role_id' => '所屬身分', 'department_id' => '所屬單位', 'account' => '登入帳號（唯一）', 'password' => '密碼（雜湊後儲存，不存明碼）', 'last_login_at' => '最後登入時間', 'temporary_password' => '忘記密碼寄出的臨時密碼（只存雜湊，用過即作廢）', 'temporary_password_expires_at' => '臨時密碼的有效期限（寄出後 30 分鐘）', 'is_password_change_required' => '是否一定要先設定新密碼（用臨時密碼登入後為是，設定完成才取消）',
         'remember_token' => '「記住我」登入憑證', 'email_verified_at' => 'Email 驗證時間',
-        'role_code' => '身分代碼（程式判斷用，唯一）', 'is_system' => '是否系統內建身分（內建的不能刪除）', 'permission' => '權限代碼（格式「功能.動作」，清單見 PermissionCatalog）',
+        'role_code' => '身分代碼（程式判斷用，唯一）', 'is_system' => '是否系統內建身分（代碼固定；沒人使用時可刪，系統管理員除外）', 'permission' => '權限代碼（格式「功能.動作」，清單見 PermissionCatalog）',
         'department_code' => '部門代碼（唯一）', 'major_code' => '科系代碼（選填、唯一）', 'host' => '寄信伺服器位址', 'smtp_account' => '寄信帳號（通常是信箱）', 'encryption' => '加密方式（tls／ssl／none）', 'from_address' => '寄件人信箱', 'from_label' => '寄件人顯示名稱', 'abbreviation' => '班級名稱用的簡稱（例如資→資一忠）', 'grade_count' => '年級數（各科系不同，1～9）', 'class_count' => '每個年級的班數（1～4，依序忠孝仁愛）', 'major_id' => '申請班級的科系（majors.id，舊資料為空）', 'class_grade' => '申請班級的年級', 'class_section' => '申請班級的班別（1忠 2孝 3仁 4愛）', 'campus' => '校區', 'building' => '大樓', 'floor' => '樓層', 'classroom_code' => '教室代碼（唯一）',
         'manager_id' => '教室管理人（users.id）', 'reservation_status' => '設備異常旗標（normal 正常／abnormal 有核心設備異常，異常時不開放預約）',
         'device_code' => '設備管制編號（唯一，QR Code 內容）', 'asset_code' => '資產編號', 'device_category_id' => '設備類別（device_categories.id）', 'brand' => '品牌／製造商', 'model' => '型號規格',

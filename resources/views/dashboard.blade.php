@@ -104,7 +104,7 @@
     <div class="row g-2 g-lg-3 mb-3">
         {{-- 逐張畫出數字卡片；整張卡片是一個連結（<a>），點了就跳轉。 --}}
         @foreach ($cards as $card)
-            {{-- 卡片標題允許換行（窄螢幕時「本月平均累計維修工時」這類長標題不會蓋到右邊的圖示）；數字本身不換行。 --}}
+            {{-- 卡片標題允許換行（窄螢幕時「本月案件平均工時」這類長標題不會蓋到右邊的圖示）；數字本身不換行。 --}}
             <div class="col-6 col-md-4 col-xl-2">
                 <a href="{{ $card['url'] }}" class="card shadow-sm h-100 text-decoration-none text-body kpi-card">
                     <div class="card-body d-flex align-items-center justify-content-between gap-2 py-2 px-3">

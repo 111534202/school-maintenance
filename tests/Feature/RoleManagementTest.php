@@ -163,14 +163,26 @@ class RoleManagementTest extends TestCase
         $response->assertSee('value="devices.manage"', false);
     }
 
-    // 系統內建身分不能刪除。
-    public function test_system_roles_cannot_be_deleted(): void
+    // 系統內建身分沒人使用時可以刪除；只有系統管理員不能刪。
+    public function test_unused_system_role_can_be_deleted_but_admin_cannot(): void
     {
         $technician = $this->makeRole('technician', '維修人員');
+        $this->delete(route('roles.destroy', $technician))->assertSessionHas('success');
+        $this->assertDatabaseMissing('roles', ['id' => $technician->id]);
 
-        $this->delete(route('roles.destroy', $technician))->assertSessionHas('error');
+        $admin = $this->makeRole('admin', '系統管理員');
+        $this->delete(route('roles.destroy', $admin))->assertSessionHas('error', __('roles.errors.admin_role'));
+        $this->assertDatabaseHas('roles', ['id' => $admin->id]);
+    }
 
-        $this->assertDatabaseHas('roles', ['id' => $technician->id]);
+    // 身分列表：系統內建身分的刪除鈕可以按，只有系統管理員的是停用的。
+    public function test_only_admin_delete_button_is_disabled(): void
+    {
+        $this->makeRole('teacher', '教師');
+        $html = $this->get(route('roles.index'))->assertOk()->getContent();
+
+        preg_match_all('/<button class="btn btn-outline-danger btn-sm icon-btn" type="submit"( disabled(="disabled")?)?/', $html, $m);
+        $this->assertSame(1, count(array_filter($m[1])), '只有系統管理員那一列的刪除鈕是停用的');
     }
 
     // 還有用戶在用的身分不能刪；沒人用的自訂身分可以刪。

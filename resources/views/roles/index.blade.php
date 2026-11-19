@@ -56,7 +56,7 @@
                             <tr data-modal-frame-href="{{ route('roles.edit', $role) }}" data-modal-title="修改身分" data-modal-size="lg" tabindex="0" role="link">
                                 <td>
                                     <span class="fw-semibold">{{ $role->name }}</span>
-                                    {{-- 系統內建的身分加上「系統內建」徽章（內建身分不能刪除）。 --}}
+                                    {{-- 系統內建的身分加上「系統內建」徽章（代碼固定；沒人使用時仍可刪除，只有系統管理員不能刪）。 --}}
                                     @if ($role->is_system)
                                         <span class="badge tb-pill tb-pill-info ms-1">{{ __('roles.system_badge') }}</span>
                                     @endif
@@ -77,13 +77,13 @@
                                         {{-- 編輯按鈕（鉛筆圖示）。 --}}
                                         <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('roles.edit', $role) }}" data-modal-frame data-modal-title="修改身分" data-modal-size="lg"
                                             title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
-                                        {{-- 刪除按鈕（垃圾桶圖示）：送出前先確認；系統內建身分的按鈕是停用狀態（@disabled）。 --}}
+                                        {{-- 刪除按鈕（垃圾桶圖示）：送出前先確認；只有系統管理員的按鈕是停用狀態（@disabled）。還有用戶在用時，送出後會提示不能刪。 --}}
                                         <form method="POST" action="{{ route('roles.destroy', $role) }}"
                                             data-confirm="{{ __('roles.confirm.delete', ['name' => $role->name]) }}">
                                             @csrf
                                             {{-- 用隱藏欄位把 POST 偽裝成 DELETE。 --}}
                                             @method('DELETE')
-                                            <button class="btn btn-outline-danger btn-sm icon-btn" type="submit" @disabled($role->is_system)
+                                            <button class="btn btn-outline-danger btn-sm icon-btn" type="submit" @disabled($role->isAdmin())
                                                 title="{{ __('common.buttons.delete') }}" aria-label="{{ __('common.buttons.delete') }}"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </div>

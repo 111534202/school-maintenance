@@ -16,7 +16,8 @@ use Illuminate\Validation\Rule;        // 進階驗證規則
  * 用戶主檔的「身分權限」下拉選單就是從這張表讀。路由整組需要 roles.manage 權限。
  *
  * 規則：
- * - 系統內建的五個身分（is_system）不能刪除，代碼（role_code）也不能改，但可以調整名稱、說明與權限。
+ * - 系統內建的五個身分（is_system）代碼（role_code）不能改；沒人使用時可以刪除，唯一例外是「系統管理員」
+ *   （程式靠 role_code = admin 判斷全部權限，刪掉就沒有人能再被設成管理員），所以系統管理員不能刪。
  * - 系統管理員（admin）永遠擁有全部權限，畫面上全部勾選且不能取消，後端也會忽略送來的勾選。
  * - 還有用戶使用中的身分不能刪除，請先把那些用戶改成別的身分。
  *
@@ -108,12 +109,12 @@ class RoleController extends Controller
         return redirect()->route('roles.index')->with('success', __('roles.flash.updated'));
     }
 
-    /** 刪除身分（DELETE /roles/{role}）：系統內建的、或還有人在用的都不能刪。 */
+    /** 刪除身分（DELETE /roles/{role}）：系統管理員、或還有人在用的都不能刪（系統內建的其他身分沒人用就能刪）。 */
     public function destroy(Role $role): RedirectResponse
     {
-        // 系統內建身分（管理員、主管等）是整個系統運作的基礎，不允許刪除。
-        if ($role->is_system) {
-            return back()->with('error', __('roles.errors.system_role'));
+        // 系統管理員是唯一擁有全部權限的身分（程式用 role_code = admin 判斷），刪掉就再也設不出管理員，所以不能刪。
+        if ($role->isAdmin()) {
+            return back()->with('error', __('roles.errors.admin_role'));
         }
 
         // withTrashed：連「已被軟刪除的用戶」也算進來，因為還原他們時需要這個身分還在。

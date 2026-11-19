@@ -165,7 +165,7 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertOk();
 
         // (5 + 2) / 2 = 3.50 小時；缺少工時的第三張不納入平均。
-        $response->assertSee('本月平均累計維修工時');
+        $response->assertSee('本月案件平均工時');
         $response->assertSee('3.50');
         $response->assertSee('有 1 張已結案報修單缺少可計算工時');
 

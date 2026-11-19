@@ -825,7 +825,7 @@
                     Array.prototype.forEach.call(cell.querySelectorAll('a[href], form, .btn.disabled'), function (el) {
                         if (el.parentElement.closest('form') || (el.matches('.btn.disabled') && el.closest('a, form'))) return;
                         if (el.matches('a') && (el.hidden || new URL(el.href, window.location.href).pathname === url.pathname)) return;
-                        // 不能按的「已回報」這種文字標籤不放；表單的按鈕是停用狀態的（例如不能停用、刪除自己的帳號、系統內建身分不能刪除）
+                        // 不能按的「已回報」這種文字標籤不放；表單的按鈕是停用狀態的（例如不能停用、刪除自己的帳號、系統管理員身分不能刪除）
                         // 照樣放上去、顯示成灰色不能按，跟表格檢視的操作欄一樣，看得出有這個功能、只是現在不能用。
                         if (el.matches('.btn.disabled')) return;
                         var copy = el.cloneNode(true);

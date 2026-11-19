@@ -14,7 +14,7 @@
 <div class="card shadow-sm mb-3">
     <div class="card-header bg-white form-section-title"><i class="bi bi-person-badge me-2"></i>{{ __('roles.form.section_basic') }}</div>
     <div class="card-body">
-        {{-- 編輯系統內建身分時，顯示提醒：代碼與刪除受限，但名稱、說明、權限可以調整。 --}}
+        {{-- 編輯系統內建身分時，顯示提醒：代碼固定，名稱、說明、權限可以調整，沒人使用時可以刪除。 --}}
         @if ($role?->is_system)
             {{-- 說明文字一律用灰字（不用藍色提示框）。 --}}
             <p class="text-muted small mb-3"><i class="bi bi-info-circle me-1"></i>{{ __('roles.form.system_notice') }}</p>

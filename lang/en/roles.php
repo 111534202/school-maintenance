@@ -41,7 +41,7 @@ return [
         'select_all' => 'Select all',
         'clear_all' => 'Clear all',
         'admin_notice' => 'The system administrator always has every permission and cannot be changed.',
-        'system_notice' => 'This is a built-in role: you can change its name, description and permissions, but it cannot be deleted.',
+        'system_notice' => 'This is a built-in role: its code is fixed; you can change its name, description and permissions, and delete it when no user has it.',
     ],
 
     // 操作成功後顯示的綠色訊息。
@@ -53,7 +53,7 @@ return [
 
     // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
-        'system_role' => 'Built-in roles cannot be deleted.',
+        'admin_role' => 'The administrator role cannot be deleted: the system needs one role with every permission.',
         'in_use' => ':count user(s) still use this role, so it cannot be deleted. Move them to another role first.',
     ],
 ];

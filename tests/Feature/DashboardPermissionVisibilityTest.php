@@ -58,7 +58,7 @@ class DashboardPermissionVisibilityTest extends TestCase
         $this->actingAs($this->makeUserWithPermissions(['repairs.create']))->get(route('dashboard'))->assertOk()
             ->assertSee('進行中工單')
             ->assertSee('本月新增報修')
-            ->assertDontSee('本月平均累計維修工時')
+            ->assertDontSee('本月案件平均工時')
             ->assertDontSee('逾時工單')
             ->assertDontSee('待派工')
             ->assertDontSee('待驗收')

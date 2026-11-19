@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * 使用者的所有功能存取都由他的身分決定。系統管理員（role_code = admin）永遠擁有全部權限。
  *
  * 欄位說明：name 顯示名稱；role_code 內部代碼（系統內建身分固定，自訂身分是自動產生的）；
- * description 說明；is_system 是否系統內建（內建的不能刪除）。
+ * description 說明；is_system 是否系統內建（代碼固定；沒人使用時可刪，系統管理員除外）。
  * 勾選的權限存在 role_permissions 資料表（一列一個權限，第一正規化）；程式裡仍然用 $role->permissions
  * 讀寫「權限代碼的陣列」，Role 會自動同步那張表，所以呼叫端不用改。
  *
