@@ -14,7 +14,7 @@
     $repairColors = ['pending' => '#6c757d', 'assigned' => '#0dcaf0', 'returned' => '#dc3545', 'pending_review' => '#0d6efd', 'completed' => '#198754'];
     // 數字卡片清單：標題、數字、單位、圖示、顏色、點擊後要跳去的網址、右下角的備註文字。前三張（報修）所有人都看得到。
     $cards = [
-        ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index'), 'note' => null],
+        ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index', ['status' => 'assigned,pending_review']), 'note' => null],
 	    ['label' => __('dashboard.cards.monthly_repairs'), 'value' => $monthlyRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-calendar-month', 'color' => 'info', 'url' => route('repairs.index'), 'note' => null],
         [
             'label' => __('dashboard.cards.average_repair_hours'),
@@ -32,14 +32,14 @@
                 ])
                 : null,
         ],
-        ['label' => __('dashboard.cards.pending_repairs'), 'value' => $pendingRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index'), 'note' => null],
+        ['label' => __('dashboard.cards.pending_repairs'), 'value' => $pendingRepairCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending,assigned']), 'note' => null],
         ['label' => __('dashboard.cards.in_progress'), 'value' => $inProgressCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'assigned']), 'note' => null],
         ['label' => __('dashboard.cards.pending_dispatch'), 'value' => $pendingCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-inbox', 'color' => 'secondary', 'url' => route('repairs.index', ['status' => 'pending']), 'note' => null, 'can' => ['repairs.dispatch']],
         ['label' => __('dashboard.cards.pending_review'), 'value' => $pendingReviewCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-clipboard-check', 'color' => 'warning', 'url' => route('repairs.index', ['status' => 'pending_review']), 'note' => null, 'can' => ['repairs.accept']],
         // 空間預約待審核：點了進到只列「未審核」的預約列表。
         ['label' => __('dashboard.cards.pending_reservations'), 'value' => $pendingReservationCount, 'unit' => __('dashboard.cards.unit_reservations'), 'icon' => 'bi-calendar-check', 'color' => 'primary', 'url' => route('reservations.index', ['status' => 'pending']), 'note' => null, 'can' => ['reservations.manage']],
         // 逾時工單：還沒結案、且已經超過預計處理時間（沒填預計時間的不算），紅色提醒主管該催進度了。
-        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['overdue' => 1]), 'note' => null, 'can' => ['repairs.process', 'repairs.dispatch', 'repairs.accept']],
+        ['label' => __('dashboard.cards.overdue'), 'value' => $overdueCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-alarm', 'color' => 'danger', 'url' => route('repairs.index', ['status' => 'overdue']), 'note' => null, 'can' => ['repairs.process', 'repairs.dispatch', 'repairs.accept']],
     ];
     // 沒有權限的卡片整張不顯示（不是顯示 0）：每張卡片的 'can' 是需要的權限（任一個即可），沒有 'can' 的所有人都看得到。
     //（'can' 之外，下面三張主檔卡片另外由 Controller 依權限決定要不要算。）

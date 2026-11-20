@@ -21,7 +21,6 @@
                 </div>
                 <div class="d-flex gap-2 ms-auto">
                     <a href="#" id="attachmentModalOpen" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">在新分頁開啟</a>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">關閉</button>
                 </div>
             </div>
         </div>

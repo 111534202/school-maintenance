@@ -38,16 +38,27 @@
                 </div>
                 <div>
                     <label for="status" class="form-label small mb-1">{{ __('repair_requests.filter.status') }}</label>
+                    @php
+                        // 目前的狀態篩選（逾時、單一狀態，或主控台帶來的好幾個狀態，例如「已派工、待驗收」）。
+                        $statusFilter = \App\Http\Controllers\RepairRequestController::boardStatusFilter(request());
+                        $statusValue = implode(',', $statusFilter);
+                    @endphp
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
                         <option value="">{{ __('repair_requests.filter.status_all') }}</option>
+                        {{-- 主控台卡片帶來的好幾個狀態：多一個選項顯示「已派工、待驗收」並選起來，篩選列看得出目前的範圍。 --}}
+                        @if (count($statusFilter) > 1)
+                            <option value="{{ $statusValue }}" selected>{{ collect($statusFilter)->map(fn ($s) => \App\Enums\RepairRequestStatus::from($s)->label())->implode('、') }}</option>
+                        @endif
                         {{-- 狀態下拉選單：列出所有案件狀態（新報修、已派工、已退回、待驗收、已結案）。 --}}
                         @foreach ($statuses as $statusOption)
                             {{-- 沒有驗收權限的人，看板的「待驗收」「已結案」選項整個隱藏。 --}}
                             @continue(in_array($statusOption->value, ['pending_review', 'completed'], true) && ! auth()->user()->can('repairs.accept'))
-                            <option value="{{ $statusOption->value }}" @selected(request('status') === $statusOption->value)>
+                            <option value="{{ $statusOption->value }}" @selected($statusValue === $statusOption->value)>
                                 {{ $statusOption->label() }}
                             </option>
                         @endforeach
+                        {{-- 逾時：未結案且超過預計處理時間（主控台「逾時工單」卡片連過來就是選這個）。 --}}
+                        <option value="overdue" @selected($statusValue === 'overdue')>{{ __('repair_requests.overdue') }}</option>
                     </select>
                 </div>
                 <div>
@@ -76,23 +87,11 @@
                 @if (request('device_id'))
                     <input type="hidden" name="device_id" value="{{ request('device_id') }}">
                 @endif
-                {{-- 從主控台「逾時工單」卡片連過來時網址帶有 overdue=1，同樣要帶著，不然一篩選就被洗掉。 --}}
-                @if (request('overdue'))
-                    <input type="hidden" name="overdue" value="1">
-                @endif
                 @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue', 'mine']])
             </form>
         </div>
     </div>
     @endunless
-
-    {{-- 從主控台「逾時工單」卡片連過來（?overdue=1）時，提醒目前篩選範圍。 --}}
-    @if (request('overdue'))
-        <div class="alert alert-danger py-2 d-flex justify-content-between align-items-center">
-            <span><i class="bi bi-alarm me-2"></i>{{ __('repair_requests.filter.only_overdue') }}</span>
-            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['overdue', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
-        </div>
-    @endif
 
     {{-- 查不到任何案件時顯示提示；否則顯示表格。 --}}
     @if ($repairRequests->isEmpty())

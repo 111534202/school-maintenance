@@ -59,9 +59,10 @@ class MaintenanceOrderExportColumns
 
         return [
             'number' => $o->displayNumber(),
-            'device_code' => $o->device?->device_code,
-            'device' => $o->device ? trim(($o->device->category?->name ?? '') . ' ' . $o->device->brand . ' ' . $o->device->model) : null,
-            'category' => $o->categoryName(),
+            // 一張工單可以有好幾個保養對象：設備編號、設備資訊、類別都用「、」串起來。
+            'device_code' => $o->targetItems()->map(fn ($item) => $item['device']?->device_code)->filter()->implode('、') ?: null,
+            'device' => $o->targetItems()->map(fn ($item) => $item['device'] ? trim(($item['category']?->name ?? '') . ' ' . $item['device']->brand . ' ' . $item['device']->model) : null)->filter()->implode('、') ?: null,
+            'category' => $o->targetItems()->map(fn ($item) => $item['category']?->name)->filter()->unique()->implode('、') ?: null,
             'plan' => $o->maintenancePlan?->name ?? ($o->source === MaintenanceOrder::SOURCE_AI ? 'AI 預防保養（無計畫）' : null),
             'source' => $o->sourceLabel(),
             'status' => $o->statusLabel()[0],

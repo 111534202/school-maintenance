@@ -219,52 +219,46 @@ class MaintenanceOrderFlowTest extends TestCase
         $this->assertSame('已完成', $order->fresh(['result'])->statusLabel()[0]);
     }
 
-    // ---------- 下次到期日往後推 ----------
+    // ---------- 下次到期日：只跟日期有關 ----------
+    // 新規則（劉家芸確認）：工單提早一個週期產生；到了「下次到期日 − 週期」那天產生排定在下次到期日的工單，
+    // 下次到期日同時往後推一個週期。工單做完、取消都不會動下次到期日（也不會讓計畫停住）。
 
     private function plan(string $nextDue, int $cycle = 30): MaintenancePlan
     {
         return MaintenancePlan::factory()->create(['cycle_days' => $cycle, 'next_due_date' => $nextDue, 'start_date' => '2026-01-01', 'is_active' => true]);
     }
 
-    public function test_finishing_the_current_order_moves_the_plan_to_the_next_cycle(): void
+    public function test_finishing_an_order_does_not_move_the_plan(): void
     {
-        $plan = $this->plan(now()->addDays(2)->toDateString(), 30);
+        $plan = $this->plan(now()->addDays(32)->toDateString(), 30);
         $this->actingAs($reporter = $this->reporter());
-        $order = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => $plan->next_due_date]);
+        $order = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => now()->addDays(2)]);
         $this->report($order)->assertRedirect();
 
-        $this->assertSame(now()->addDays(32)->toDateString(), $plan->fresh()->next_due_date->toDateString());   // 排定日 + 30 天
+        $this->assertSame(now()->addDays(32)->toDateString(), $plan->fresh()->next_due_date->toDateString());
     }
 
-    public function test_a_very_late_order_skips_missed_cycles_instead_of_creating_a_backlog(): void
+    public function test_a_plan_left_behind_catches_up_without_a_huge_backlog(): void
     {
+        // 下次到期日停在 100 天前（例如計畫停用很久又打開）：補產生到「下一張排定日在未來」為止，最多 24 期。
         $plan = $this->plan(now()->subDays(100)->toDateString(), 30);
-        $this->actingAs($reporter = $this->reporter());
-        $order = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => $plan->next_due_date]);
-        $this->report($order)->assertRedirect();
+        $created = app(\App\Services\DueMaintenanceOrderGenerator::class)->generateForPlan($plan);
 
+        $this->assertCount(5, $created);   // −100、−70、−40、−10、+20
         $next = $plan->fresh()->next_due_date;
-        $this->assertTrue($next->greaterThanOrEqualTo(now()->startOfDay()));          // 不會停在過去
-        $this->assertTrue($next->lessThanOrEqualTo(now()->addDays(30)->endOfDay()));  // 也不會跳太遠
+        $this->assertTrue($next->greaterThan(now()->addDays(30)->startOfDay()->subDay()));   // 下一期的產生日在未來
+        $this->assertSame(now()->addDays(50)->toDateString(), $next->toDateString());
     }
 
-    public function test_an_order_that_is_not_the_plans_current_cycle_does_not_move_the_plan(): void
+    public function test_cancelling_an_order_does_not_move_the_plan_or_recreate_that_order(): void
     {
-        $plan = $this->plan(now()->addDays(10)->toDateString(), 30);
-        $this->actingAs($reporter = $this->reporter());
-        $manual = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => now()->addDays(1)]);
-        $this->report($manual)->assertRedirect();
-
-        $this->assertSame(now()->addDays(10)->toDateString(), $plan->fresh()->next_due_date->toDateString());
-    }
-
-    public function test_cancelling_the_current_order_also_moves_the_plan_so_it_does_not_stall(): void
-    {
-        $plan = $this->plan(now()->addDays(2)->toDateString(), 14);
-        $order = MaintenanceOrder::factory()->create(['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'status' => 'pending', 'scheduled_date' => $plan->next_due_date]);
+        $plan = $this->plan(now()->addDays(16)->toDateString(), 14);
+        $order = MaintenanceOrder::factory()->create(['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'status' => 'pending', 'scheduled_date' => now()->addDays(2)]);
 
         $this->actingAs($this->manager())->delete(route('maintenance-orders.destroy', $order))->assertSessionHas('success');
 
         $this->assertSame(now()->addDays(16)->toDateString(), $plan->fresh()->next_due_date->toDateString());
+        $this->assertSame(0, app(\App\Services\DueMaintenanceOrderGenerator::class)->generate());   // 下一期的產生日（+2 天）還沒到
+        $this->assertSame(0, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
     }
 }

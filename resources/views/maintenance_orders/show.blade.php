@@ -5,8 +5,8 @@
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
-    {{-- 在對話框裡打開時只有標題隱藏（跟對話框標題重複）；「回報保養結果」有 data-modal-header，會被搬到對話框標題列（✕ 左邊）；
-         修改日期、取消工單留在頁面上。 --}}
+    {{-- 在對話框裡打開時只有標題隱藏（跟對話框標題重複）；「回報保養結果」「修改日期」「取消工單」都有 data-modal-header，
+         會被搬到對話框標題列（✕ 左邊），修改日期、取消工單是圓形圖示按鈕（跟修改用戶的標題列一樣）。 --}}
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="tb-title mb-0" data-modal-hide>保養紀錄</h1>
         <div class="d-inline-flex flex-wrap gap-2">
@@ -18,14 +18,15 @@
                  取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
             @can('maintenance.manage')
                 @if (! $maintenanceOrder->result && in_array($maintenanceOrder->status, [\App\Models\MaintenanceOrder::STATUS_PENDING, \App\Models\MaintenanceOrder::STATUS_IN_PROGRESS], true))
-                    <a href="{{ route('maintenance-orders.edit', $maintenanceOrder) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil me-1"></i>修改日期</a>
+                    <a href="{{ route('maintenance-orders.edit', $maintenanceOrder) }}" class="btn btn-outline-primary btn-sm icon-btn" data-modal-header
+                        data-modal-frame data-modal-title="修改保養日期" title="修改日期" aria-label="修改日期"><i class="bi bi-pencil"></i></a>
                 @endif
                 @if (! $maintenanceOrder->result && in_array($maintenanceOrder->status, [\App\Models\MaintenanceOrder::STATUS_PENDING, \App\Models\MaintenanceOrder::STATUS_IN_PROGRESS], true))
-                    <form method="POST" action="{{ route('maintenance-orders.destroy', $maintenanceOrder) }}"
+                    <form method="POST" action="{{ route('maintenance-orders.destroy', $maintenanceOrder) }}" data-modal-header
                         data-confirm="請問確定要取消保養工單 {{ $maintenanceOrder->displayNumber() }} 嗎？取消後會從列表與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf
                         @method('DELETE')
-                        <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-x-circle me-1"></i>取消工單</button>
+                        <button class="btn btn-outline-danger btn-sm icon-btn" type="submit" title="取消工單" aria-label="取消工單"><i class="bi bi-x-circle"></i></button>
                     </form>
                 @endif
             @endcan
@@ -36,7 +37,7 @@
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">工單編號</dt>
-                <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }} fs-6">{{ $maintenanceOrder->displayNumber() }}</span></dd>
+                <dd class="col-sm-9"><span class="badge text-bg-{{ $maintenanceOrder->sourceColor() }}">{{ $maintenanceOrder->displayNumber() }}</span></dd>
 
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">

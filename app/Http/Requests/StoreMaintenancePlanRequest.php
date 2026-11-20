@@ -52,6 +52,24 @@ class StoreMaintenancePlanRequest extends FormRequest
     public function after(): array
     {
         return [
+            // 下次到期日（起始日＋週期）不能已經過了：例如今天 11/21，起始日 11/17、週期 3 天 → 下次到期 11/20，已經過期，擋下。
+            // 修改舊計畫時，只有改了起始日或週期才檢查（沒改的話照原本的資料，不影響只改名稱、說明）。
+            function (Validator $validator) {
+                if ($validator->errors()->hasAny(['start_date', 'cycle_days'])) {
+                    return;
+                }
+                $plan = $this->route('maintenancePlan');
+                $changed = ! $plan instanceof MaintenancePlan
+                    || $plan->start_date?->toDateString() !== \Illuminate\Support\Carbon::parse($this->input('start_date'))->toDateString()
+                    || (int) $plan->cycle_days !== (int) $this->input('cycle_days');
+                if (! $changed) {
+                    return;
+                }
+                $nextDue = \Illuminate\Support\Carbon::parse($this->input('start_date'))->startOfDay()->addDays((int) $this->input('cycle_days'));
+                if ($nextDue->lt(today())) {
+                    $validator->errors()->add('start_date', '依起始日加上週期設定，下次到期日是 ' . $nextDue->toDateString() . '，已經過了。請修改起始日或將週期調長。');
+                }
+            },
             function (Validator $validator) {
                 if ($validator->errors()->isNotEmpty()) {
                     return;

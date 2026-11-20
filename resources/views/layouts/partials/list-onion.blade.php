@@ -2,6 +2,8 @@
      點某一筆，詳細內容在畫面中央的對話框打開（右上角 ✕ 或點外面關掉），每一欄的內容與原本的操作按鈕（編輯、刪除…）都在裡面。 --}}
 {{-- 原本的表格仍然在網頁裡，只是預設收起來；右上角的按鈕可以切回表格檢視（每一張表各自記在這台瀏覽器）。
      不想套用的表格：在 <table> 加 data-no-onion。只要清單、不要「表格檢視」切換按鈕：在 <table> 加 data-onion-list-only。
+     清單每一筆的副標題預設是第 2、3 欄；想指定副標題放哪幾欄：在那幾個 <th> 加 data-onion-sub="格式"（{v} 換成那一格內容），
+     要換順序再加 data-onion-sub-order="1"、"2"…（沒加就照表頭順序）。
      沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
 <style>
     .onion-item { text-align: left; min-height: 3.25rem; }
@@ -43,7 +45,8 @@
         function split(td) {
             var c = td.cloneNode(true);
             var notes = [];
-            Array.prototype.forEach.call(c.querySelectorAll('.badge'), function (b) { b.remove(); });
+            // 徽章不算文字（狀態另外放右邊）；加了 data-onion-text 的徽章例外，例如保養工單編號要當清單標題。
+            Array.prototype.forEach.call(c.querySelectorAll('.badge:not([data-onion-text])'), function (b) { b.remove(); });
             Array.prototype.forEach.call(c.querySelectorAll('small, .small, .text-muted'), function (n) { var t = text(n); if (t) notes.push(t); n.remove(); });
             return { main: text(c), note: notes.join(' ') };
         }
@@ -203,6 +206,18 @@
                 }
                 var title = texts[0] || text(cells[0]) || '（無標題）';
                 var sub = texts.slice(1, 3).join(' · ');
+                // 表頭有 data-onion-sub 的欄位：副標題改成只放這些欄位，依表頭順序；屬性值是格式，{v} 換成那一格的內容
+                //（例如保養計畫：data-onion-sub="下次到期日 {v}"、data-onion-sub="週期：{v} 天" → 「下次到期日 2026-11-20 · 週期：30 天」）。
+                var subHeads = Array.prototype.slice.call(table.querySelectorAll('thead th'));
+                if (subHeads.some(function (th) { return th.hasAttribute('data-onion-sub'); })) {
+                    sub = subHeads.map(function (th, i) {
+                        if (!th.hasAttribute('data-onion-sub') || !cells[i]) return null;
+                        var v = split(cells[i]).main;
+                        if (!v || v === '—' || v === '-') return null;
+                        var format = th.getAttribute('data-onion-sub') || '{v}';
+                        return { order: parseInt(th.getAttribute('data-onion-sub-order'), 10) || i, text: format.indexOf('{v}') === -1 ? format + v : format.replace('{v}', v) };
+                    }).filter(Boolean).sort(function (a, b) { return a.order - b.order; }).map(function (x) { return x.text; }).join(' · ');
+                }
 
                 var item = document.createElement('button');
                 item.type = 'button';

@@ -49,10 +49,11 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
-        {{-- 修改：只給有派工權限的人；已結案、已退回不能改。報修單不能刪除（原本的「取消工單」改成右欄的「退回報修單」）。 --}}
+        {{-- 修改：只給有派工權限的人；已結案、已退回不能改。報修單不能刪除（原本的「取消工單」改成右欄的「退回報修單」）。
+             圓形圖示按鈕，在對話框裡會搬到標題列 ✕ 左邊（data-modal-header）。 --}}
         @can('repairs.dispatch')
             @unless ($status->isClosed())
-                <a class="btn btn-outline-primary btn-sm flex-shrink-0" href="{{ route('repairs.edit', $repairRequest) }}" data-modal-frame data-modal-title="修改報修單" data-modal-size="lg"><i class="bi bi-pencil me-1"></i>修改</a>
+                <a class="btn btn-outline-primary btn-sm icon-btn flex-shrink-0" href="{{ route('repairs.edit', $repairRequest) }}" data-modal-header data-modal-frame data-modal-title="修改報修單" data-modal-size="lg" title="修改" aria-label="修改"><i class="bi bi-pencil"></i></a>
             @endunless
         @endcan
     </div>
@@ -284,9 +285,10 @@
             @foreach ($repairRequest->repairLogs as $log)
                 <div class="card shadow-sm mb-3">
                     <div class="card-header bg-white form-section-title d-flex flex-wrap justify-content-between gap-2">
+                        {{-- 時間：結束和開始同一年就省略年份（2026-11-20 00:26 ～ 11-20 13:24）；畫面窄時時間自動換到標題下一行。 --}}
                         <div>
                             <span class="fw-semibold me-2">維修紀錄 #{{ $log->id }}</span>
-                            <span><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format('Y-m-d H:i') }}</span>
+                            <span class="d-block d-sm-inline text-nowrap"><i class="bi bi-clock-history me-2"></i>{{ $log->started_at->format('Y-m-d H:i') }} ～ {{ $log->ended_at->format($log->ended_at->year === $log->started_at->year ? 'm-d H:i' : 'Y-m-d H:i') }}</span>
                         </div>
                         <span class="text-muted">{{ __('repair_requests.show.total_hours_suffix', ['hours' => $log->total_hours]) }}</span>
                     </div>

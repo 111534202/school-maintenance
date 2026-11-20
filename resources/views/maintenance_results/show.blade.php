@@ -14,7 +14,7 @@
         <div class="card-body">
             <dl class="row mb-0">
                 <dt class="col-sm-3">工單編號</dt>
-                <dd class="col-sm-9"><span class="badge text-bg-{{ $order->sourceColor() }} fs-6">{{ $order->displayNumber() }}</span></dd>
+                <dd class="col-sm-9"><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->displayNumber() }}</span></dd>
 
                 <dt class="col-sm-3">來源保養計畫</dt>
                 <dd class="col-sm-9">@if ($order->maintenancePlan)@include('maintenance_orders._plan_name', ['plan' => $order->maintenancePlan])@else — @endif</dd>

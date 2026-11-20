@@ -104,11 +104,12 @@ class AiOrderLifecycleTest extends TestCase
         $this->assertSame(7, MaintenanceOrder::where('device_id', $device->id)->count());
     }
 
-    public function test_order_list_links_each_order_to_its_device_profile(): void
+    // 工單列表第一欄是工單編號（AI 預防保養是 AI- 開頭）；設備在工單詳細裡，可以點到設備履歷。
+    public function test_order_list_shows_the_number_and_the_detail_links_to_the_device_profile(): void
     {
         $order = $this->approvedAiOrder('T-LINK');
 
-        $this->get(route('maintenance-orders.index'))
-            ->assertSee(route('device-profile.show', $order->device), false);
+        $this->get(route('maintenance-orders.index'))->assertSee($order->displayNumber());
+        $this->get(route('maintenance-orders.show', $order))->assertSee(route('device-profile.show', $order->device), false);
     }
 }

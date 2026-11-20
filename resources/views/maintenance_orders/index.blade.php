@@ -71,16 +71,15 @@
     @else
     <section class="tb-table-wrap" data-no-fit>
     <div class="table-responsive">
-        <table class="tb-table tb-table-hover" data-onion-primary="5">
+        <table class="tb-table tb-table-hover">
             <thead>
                 <tr>
-                    <th>設備</th>
-                    <th>來源計畫</th>
-                    <th>設備類別</th>
-                    <th>來源</th>
+                    <th>工單編號</th>
+                    {{-- 手機清單：標題是工單編號，副標題「來源計畫 · 排定 日期」。 --}}
+                    <th data-onion-sub="{v}">來源計畫</th>
                     <th>狀態</th>
                     <th>負責人</th>
-                    <th>排定保養日期</th>
+                    <th data-onion-sub="排定 {v}">排定保養日期</th>
                     <th>建立時間</th>
                     <th class="text-end tb-col-fit">操作</th>
                 </tr>
@@ -89,19 +88,10 @@
                 @foreach ($orders as $order)
                     @php [$statusText, $statusColor] = $order->statusLabel(); @endphp
                     <tr data-modal-frame-href="{{ route('maintenance-orders.show', $order) }}" data-modal-title="保養紀錄" data-modal-size="xl" tabindex="0" role="link">
-                        {{-- 設備編號：點字換頁到設備履歷；點這一列的其他地方在對話框打開工單詳細。 --}}
-                        <td class="fw-semibold">
-                            @if ($order->device)
-                                <a href="{{ route('device-profile.show', $order->device) }}">{{ $order->device->device_code }}</a>
-                            @else
-                                —
-                            @endif
-                            {{-- 工單編號：AI 預防保養是 AI-開頭、定期保養是 MO-開頭，列表上一眼就分得出來。 --}}
-                            <div><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->displayNumber() }}</span></div>
-                        </td>
+                        {{-- 工單編號：AI 預防保養是 AI-開頭（淺藍）、定期保養是 MO-開頭（灰），列表上一眼就分得出來來源。
+                             保養的設備／類別（一張工單可以有好幾個）在工單詳細裡看；點這一列在對話框打開。 --}}
+                        <td class="fw-semibold"><span class="badge text-bg-{{ $order->sourceColor() }}" data-onion-text title="{{ $order->sourceLabel() }}">{{ $order->displayNumber() }}</span></td>
                         <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
-                        <td>{{ $order->categoryName() ?? '—' }}</td>
-                        <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td>
                             <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
                         </td>

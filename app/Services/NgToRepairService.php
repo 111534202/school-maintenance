@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 /**
  * 保養 NG 轉報修（依《報修與保養流程修改說明》）。
  *
- * - 回報 NG 時要選出異常的設備（計畫是一台設備就是那台；計畫是設備類別就從那一類的設備裡複選），並填寫說明。
+ * - 回報 NG 時要選出異常的設備（從工單的保養對象裡選：設備就是那台、設備類別就是那一類的設備，可複選），並填寫說明。
  * - 每台 NG 的設備各自建立一張「新報修」報修單（呼叫彭仕衡提供的 CreateRepairRequestFromMaintenanceNg），
  *   報修單帶入保養的說明，repair_requests.maintenance_result_id 指回這筆保養結果，報修人是回報 NG 的人。
  * - 工單狀態改成「已轉報修」；這些報修單全部結案（已結案或已退回）後，由 MaintenanceNgRepairSync 把工單改成「已完成」。
@@ -22,23 +22,28 @@ use Illuminate\Support\Collection;
 class NgToRepairService
 {
     /**
-     * 回報 NG 時可以選的設備：工單（計畫）指定了一台設備就只有那台；指定設備類別就是那一類、還沒淘汰的設備。
+     * 回報 NG 時可以選的設備：工單的每個保養對象——一台設備就是那台；一個設備類別就是那一類、還沒淘汰的設備；
+     * 好幾個對象就合在一起（不重複，依設備編號排序）。沒有對象清單的舊工單用工單本身的設備／類別。
      *
      * @return Collection<int, Device>
      */
     public function selectableDevices(MaintenanceOrder $order): Collection
     {
-        if ($order->device_id !== null) {
-            return Device::query()->with(['category', 'classroom'])->whereKey($order->device_id)->get();
+        $targets = $order->targets()->get(['device_id', 'device_category_id']);
+        if ($targets->isEmpty()) {
+            $targets = collect([(object) ['device_id' => $order->device_id, 'device_category_id' => $order->device_id ? null : $order->device_category_id]]);
         }
 
-        if ($order->device_category_id === null) {
+        $deviceIds = $targets->pluck('device_id')->filter()->values()->all();
+        $categoryIds = $targets->whereNull('device_id')->pluck('device_category_id')->filter()->values()->all();
+        if ($deviceIds === [] && $categoryIds === []) {
             return collect();
         }
 
         return Device::query()->with(['category', 'classroom'])
-            ->where('device_category_id', $order->device_category_id)
-            ->where('status', '<>', 'retired')
+            ->where(fn ($query) => $query
+                ->whereIn('id', $deviceIds)
+                ->orWhere(fn ($q) => $q->whereIn('device_category_id', $categoryIds)->where('status', '<>', 'retired')))
             ->orderBy('device_code')
             ->get();
     }
@@ -67,7 +72,9 @@ class NgToRepairService
 
         $repairs = $devices->map(function (Device $device) use ($result, $order) {
             $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(
-                sourceLabel: 'maintenance_result:' . $result->id,
+                // 來源標記寫在故障描述最前面，給人看的：「【保養 NG 自動轉入，來源：保養工單 MO-00001】」
+                //（程式要追溯時用 repair_requests.maintenance_result_id，不靠這段文字）。
+                sourceLabel: '保養工單 ' . ($order?->displayNumber() ?? '—'),
                 title: '保養檢查 NG：' . $device->device_code,
                 description: '定期保養檢查結果為 NG（異常）。'
                     . "\n工單：" . ($order?->displayNumber() ?? '—')

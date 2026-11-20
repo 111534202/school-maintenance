@@ -46,7 +46,7 @@
         @endforeach
     </div>
     <button type="button" id="planTargetAdd" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>新增設備／類別</button>
-    <div class="form-text">選「設備類別」＝這一類的設備一起保養；選「設備」＝只保養這一台。可以加好幾個，建立工單時每個各建一張。</div>
+    <div class="form-text">選「設備類別」＝這一類的設備一起保養；選「設備」＝只保養這台。</div>
     @if ($targetError)
         <div class="invalid-feedback d-block">{{ $targetError }}</div>
     @endif
@@ -81,7 +81,7 @@
         <input type="date" name="start_date" id="start_date"
             class="form-control @error('start_date') is-invalid @enderror"
             value="{{ old('start_date', $plan->start_date?->format('Y-m-d')) }}" required>
-        <div class="form-text">下次到期日會依「起始日 + 週期天數」自動計算。</div>
+        <div class="form-text">第一期排定日＝起始日 + 週期天數；啟用的計畫存檔就產生這一期的保養工單，之後每到一期的排定日，就產生下一期的工單。</div>
         @error('start_date')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror

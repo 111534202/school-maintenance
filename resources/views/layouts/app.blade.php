@@ -865,6 +865,7 @@
                     copy.setAttribute('data-hoisted', '');
                     if (copy.pathname) hoistedPaths.push(copy.pathname);
                     actionsBox.appendChild(copy);
+                    el.style.setProperty('display', 'none', 'important');   // 頁面裡原本那一個藏起來，不重複顯示
                 });
                 showActions();
             });

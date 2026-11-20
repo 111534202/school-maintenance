@@ -121,21 +121,23 @@ class DeviceProfileTest extends TestCase
 
         $htmlA = $this->get(route('device-profile.show', $deviceA))->assertOk()->getContent();
         $this->assertSame(1, substr_count($htmlA, '風扇異音報修'));
-        $this->assertStringContainsString('維修紀錄 1', $htmlA);
-        $this->assertStringContainsString('維修紀錄 2', $htmlA);
-        $this->assertStringNotContainsString('維修紀錄 3', $htmlA);
-        $this->assertStringContainsString('散熱風扇 x1', $htmlA);
-        $this->assertStringContainsString('維修工時合計 3.50 小時', $htmlA);
-        // 每個附件只列一次（檔名連結；預覽視窗的資料裡也有檔名，所以只數連結文字）。
-        $this->assertSame(1, substr_count($htmlA, '>req-photo.jpg</a>'));
-        $this->assertSame(1, substr_count($htmlA, '>log-photo.jpg</a>'));
+        // 維修紀錄用表格列出（每張報修單一列、工時是各筆維修紀錄加總）；完整內容按「詳細」在對話框看報修案件。
+        $this->assertStringContainsString('<h2 class="tb-section-title">維修紀錄</h2>', $htmlA);
+        $this->assertStringContainsString('3.50 小時', $htmlA);
+        $this->assertStringContainsString('href="' . route('repairs.show', $repairA) . '" class="btn btn-sm btn-outline-primary" data-modal-frame', $htmlA);
+        $this->assertStringContainsString('共 1 張報修單、工時累計 3.50 小時', $htmlA);
+        // 同一張報修單的附件（報修照片＋維修紀錄照片）合成一列「報修單 #編號」，點了在預覽視窗看這張單的全部附件。
+        $this->assertSame(1, substr_count($htmlA, '</i>報修單 #' . $repairA->id . '<span class="text-muted ms-2">2 個檔案</span></a>'));
+        $this->assertStringContainsString('2 個檔案', $htmlA);
+        $this->assertSame(1, substr_count($htmlA, 'req-photo.jpg&quot;'));
+        $this->assertSame(1, substr_count($htmlA, 'log-photo.jpg&quot;'));
         $this->assertStringContainsString('附件（2）', $htmlA);
         $this->assertStringNotContainsString('電源無法開機報修', $htmlA);
         $this->assertStringNotContainsString('b-photo.jpg', $htmlA);
 
         $htmlB = $this->get(route('device-profile.show', $deviceB))->assertOk()->getContent();
         $this->assertSame(1, substr_count($htmlB, '電源無法開機報修'));
-        $this->assertStringContainsString('維修工時合計 3.00 小時', $htmlB);
+        $this->assertStringContainsString('工時累計 3.00 小時', $htmlB);
         $this->assertStringContainsString('附件（1）', $htmlB);
         $this->assertStringNotContainsString('風扇異音報修', $htmlB);
     }

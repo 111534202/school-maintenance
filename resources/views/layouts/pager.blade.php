@@ -2,7 +2,7 @@
      用法：@include('layouts.pager', ['paginator' => $users])（零件庫存、空間申請等列表頁共用）。 --}}
 @if ($paginator->total() > 0)
     @if ($paginator->hasPages())
-        <div>{{ $paginator->links() }}</div>
+        <div>{{ $paginator->links('pagination.tb') }}</div>
     @else
         <p class="small text-muted mb-0">顯示第 {{ $paginator->firstItem() }} 到 {{ $paginator->lastItem() }} 筆，共 {{ $paginator->total() }} 筆</p>
     @endif

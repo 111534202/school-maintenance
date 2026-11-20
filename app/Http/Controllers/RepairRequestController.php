@@ -86,6 +86,21 @@ class RepairRequestController extends Controller
     }
 
     /**
+     * 看板網址上的狀態篩選：['overdue']（逾時）、一個或好幾個狀態代碼（逗號分開，不認得的代碼略過），或 []（全部）。
+     *
+     * @return list<string>
+     */
+    public static function boardStatusFilter(Request $request): array
+    {
+        if ($request->boolean('overdue') || $request->input('status') === 'overdue') {
+            return ['overdue'];
+        }
+        $valid = array_map(fn (RepairRequestStatus $status) => $status->value, RepairRequestStatus::cases());
+
+        return array_values(array_intersect(array_map('trim', explode(',', (string) $request->input('status', ''))), $valid));
+    }
+
+    /**
      * 看板的查詢（列表與匯出共用）：只列這位用戶看得到的案件，再套用網址上的搜尋與篩選條件，最新的在前面。
      */
     private function indexQuery(Request $request)
@@ -93,7 +108,7 @@ class RepairRequestController extends Controller
         // 網址上的篩選條件格式不對（例如被亂改成 status[]=x）時，回到上一頁並提示，不要整頁 500。
         $request->validate([
             'keyword' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'string', 'max:30'],
+            'status' => ['nullable', 'string', 'max:60'],
             'assignee' => ['nullable', 'string', 'max:100'],
         ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員']);
 
@@ -136,9 +151,10 @@ class RepairRequestController extends Controller
             // 我的報修：?mine=1 只看「我提出的」報修單（選單的「我的報修」連過來）；所有身分都能用，管理員與主管也能只看自己提的。
             ->when($request->boolean('mine'), fn ($query) => $query->where('requester_id', $request->user()->id))
             // 狀態篩選：有帶 ?status= 才套用。
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
-            ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
+            //   ?status=overdue：只看已逾時（未結案且超過預計處理時間）的案件（主控台「逾時工單」卡片；舊網址 ?overdue=1 也一樣）。
+            //   ?status=assigned,pending_review：好幾個狀態用逗號分開（主控台「進行中工單」＝已派工＋待驗收、「待修數」＝新報修＋已派工）。
+            ->when(self::boardStatusFilter($request) === ['overdue'], fn ($query) => $query->overdue())
+            ->when(self::boardStatusFilter($request) !== [] && self::boardStatusFilter($request) !== ['overdue'], fn ($query) => $query->whereIn('status', self::boardStatusFilter($request)))
             // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
             ->when($request->filled('assignee'), fn ($query) => $query->whereHas(
                 'assignedTechnician',

@@ -71,7 +71,7 @@ class RepairBoardTweaksTest extends TestCase
         Attachment::create(['attachable_type' => RepairRequest::class, 'attachable_id' => $repair->id, 'file_name' => 'photo.jpg', 'file_path' => 'x/photo.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 100]);
 
         $html = $this->get(route('repairs.show', $repair))->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/href="' . preg_quote(route('repairs.edit', $repair), '/') . '" data-modal-frame/', $html);
+        $this->assertMatchesRegularExpression('/href="' . preg_quote(route('repairs.edit', $repair), '/') . '" data-modal-header data-modal-frame/', $html);
         $this->assertStringContainsString('發現地點：', $html);
         $this->assertStringContainsString('data-bs-target="#attachmentModal"', $html);
         $this->assertStringContainsString('id="attachmentModal"', $html);
@@ -150,5 +150,34 @@ class RepairBoardTweaksTest extends TestCase
 
         $names = $this->get(route('device-categories.index'))->assertOk()->viewData('categories')->pluck('name')->all();
         $this->assertSame(['一般設備', '交換器', '冷氣', '筆電', '螢幕', 'Projector'], $names);
+    }
+
+    // 已停用（軟刪除）的設備：舊的保養工單改日期時查課表不會出現「No query results」錯誤。
+    public function test_the_device_timetable_works_for_a_soft_deleted_device(): void
+    {
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'));
+        $device = $this->device('DEV-GONE');
+        $device->delete();
+
+        $this->getJson(route('devices.timetable', $device->id))->assertOk();
+    }
+
+    // 設備履歷的「備品耗用成本」：列出維修紀錄登記的零件（同零件合併數量，金額只給零件庫存管理者看），文字寫的使用備品說明列在其他備註。
+    public function test_device_profile_lists_parts_used_on_the_device(): void
+    {
+        $device = $this->device('DEV-PART');
+        $repair = RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
+        $log = $repair->repairLogs()->create(['cause' => '壞', 'resolution' => '修', 'parts_used_note' => '束線帶兩條', 'started_at' => now()->subHours(2), 'ended_at' => now()->subHour(), 'total_hours' => 1]);
+        $part = \App\Models\Part::create(['part_code' => 'P-FAN', 'name' => '散熱風扇', 'unit' => '個', 'current_stock' => 0, 'safety_stock' => 0]);
+        \App\Models\RepairPartUsage::create(['repair_log_id' => $log->id, 'part_id' => $part->id, 'quantity' => 2, 'unit_price' => 150]);
+
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'));
+        $this->get(route('device-profile.show', $device))->assertOk()
+            ->assertSee('散熱風扇')->assertSee('2 個')->assertSee('合計 300 元')->assertSee('束線帶兩條')->assertSee('報修單 #' . $repair->id);
+
+        $viewer = $this->makeUserWithPermissions(['devices.view', 'maintenance.view', 'repairs.view']);
+        $repair->update(['requester_id' => $viewer->id]);   // 報修人看得到自己的報修單
+        $this->actingAs($viewer);
+        $this->get(route('device-profile.show', $device))->assertOk()->assertSee('散熱風扇')->assertDontSee('合計 300 元');
     }
 }

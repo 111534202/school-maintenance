@@ -29,8 +29,9 @@
                     <th>計畫名稱</th>
                     <th>設備／類別</th>
                     <th>說明</th>
-                    <th>週期（天）</th>
-                    <th>下次到期日</th>
+                    {{-- 清單檢視的副標題：「下次到期日 2026-11-20 · 週期：30 天」（data-onion-sub）。 --}}
+                    <th data-onion-sub="週期：{v} 天" data-onion-sub-order="2">週期（天）</th>
+                    <th data-onion-sub="下次到期日 {v}" data-onion-sub-order="1">下次到期日</th>
                     <th>狀態</th>
                     <th class="text-end tb-col-fit">操作</th>
                 </tr>

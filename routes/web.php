@@ -398,7 +398,8 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         ->only(['index', 'show']);
 
     // 保養排日期時看設備所在教室的一週課表（權限在控制器內檢查：保養管理或 AI 預防保養管理）。
-    Route::get('device-timetable/{device}', [\App\Http\Controllers\TimetableController::class, 'deviceWeek'])->name('devices.timetable');
+    // withTrashed：已停用（軟刪除）的設備，舊的保養工單改日期時也要能看課表，不然會出現「No query results」錯誤。
+    Route::get('device-timetable/{device}', [\App\Http\Controllers\TimetableController::class, 'deviceWeek'])->name('devices.timetable')->withTrashed();
 
     // 附件下載（報修與維修紀錄的照片、影片）：檔案存在私有磁碟，不能直接用網址開，
     // 這裡先檢查「能不能檢視所屬的報修單」才輸出檔案（見 AttachmentController）。

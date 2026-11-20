@@ -57,7 +57,8 @@ class NgToRepairServiceTest extends TestCase
         $this->assertSame($result->id, $repair->maintenance_result_id);
         $this->assertSame($repair->id, $result->repair_request_id);
         $this->assertSame('pending', $repair->status);
-        $this->assertStringContainsString('maintenance_result:'.$result->id, $repair->description);
+        $this->assertStringContainsString('【保養 NG 自動轉入，來源：保養工單 ' . $result->maintenanceOrder->displayNumber() . '】', $repair->description);
+        $this->assertStringNotContainsString('maintenance_result:', $repair->description);
         $this->assertStringContainsString('風扇異音', $repair->description);
         $this->assertSame($deviceId, $repair->device_id);
     }

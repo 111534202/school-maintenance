@@ -92,15 +92,50 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(0, MaintenanceOrder::count());
     }
 
+    // 工單提早一個週期產生：下次到期日是昨天（那一期早該產生）→ 補產生昨天那一期，而且昨天就到了下一期的產生日，
+    // 所以下一期（昨天＋30 天）也一起產生；重跑不會疊加。
     public function test_due_order_generator_creates_one_order_per_due_date_only(): void
     {
         $plan = $this->makePlan($this->makeDevice(), ['next_due_date' => now()->subDay()->toDateString()]);
         $generator = app(DueMaintenanceOrderGenerator::class);
 
-        $this->assertSame(1, $generator->generate());
+        $this->assertSame(2, $generator->generate());
         $this->assertSame(0, $generator->generate()); // 重跑不會疊加
 
-        $this->assertSame(1, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
+        $this->assertSame(
+            [now()->subDay()->toDateString(), now()->addDays(29)->toDateString()],
+            MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all()
+        );
+        $this->assertSame(now()->addDays(59)->toDateString(), $plan->fresh()->next_due_date->toDateString());
+    }
+
+    // 劉家芸確認的例子：11/01 新增計畫，起始日 11/01、週期 10 天 → 存檔馬上產生排定 11/11 的工單，下次到期日 11/21；
+    // 11/10 之前都不會再產生；到了 11/11 產生排定 11/21 的工單，下次到期日 12/01。工單有沒有做完都不影響。
+    public function test_orders_are_generated_one_cycle_ahead(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-01 09:00'));
+        $device = $this->makeDevice();
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '十天一次', 'targets' => ['device:' . $device->id], 'description' => '清潔', 'cycle_days' => 10, 'start_date' => '2026-11-01', 'is_active' => 1,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success', fn ($m) => str_contains($m, '排定 2026-11-11'));
+
+        $plan = \App\Models\MaintenancePlan::where('name', '十天一次')->sole();
+        $dates = fn () => MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all();
+        $this->assertSame(['2026-11-11'], $dates());
+        $this->assertSame('2026-11-21', $plan->fresh()->next_due_date->toDateString());
+
+        $generator = app(DueMaintenanceOrderGenerator::class);
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-10 00:00'));
+        $this->assertSame(0, $generator->generate());
+
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 00:00'));
+        $this->assertSame(1, $generator->generate());
+        $this->assertSame(['2026-11-11', '2026-11-21'], $dates());
+        $this->assertSame('2026-12-01', $plan->fresh()->next_due_date->toDateString());
+
+        // 第一張到了 11/12 還沒做完：逾期，但下一張照常（不會因為沒做完而停住）。
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-12 09:00'));
+        $this->assertTrue(MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->first()->isOverdue());
     }
 
     // ---- OK / NG 回報 ----

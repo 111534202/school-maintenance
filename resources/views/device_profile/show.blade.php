@@ -169,74 +169,64 @@
         @endif
     </div>
 
-    {{-- 報修與維修紀錄：唯讀顯示彭仕衡模組的資料，只列出目前使用者有權限檢視的報修單。 --}}
+    {{-- 維修紀錄：唯讀顯示彭仕衡模組的資料，只列出目前使用者有權限檢視的報修單（已退回的不列）。
+         跟上面的保養紀錄一樣用表格／清單（清單檢視固定一頁 5 筆）；故障原因、處置方式等完整內容按「詳細」在對話框打開報修案件看。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h2 class="tb-section-title">報修與維修紀錄</h2>
+            <h2 class="tb-section-title">維修紀錄</h2>
             {{-- 沒有任何報修單（全部是 0）就不顯示統計。 --}}
             @if ($repairStats['total'] > 0)
                 <span class="text-muted small">
-                    共 {{ $repairStats['total'] }} 張報修單、維修工時合計 {{ number_format($repairStats['hours'], 2) }} 小時
+                    共 {{ $repairStats['total'] }} 張報修單、工時累計 {{ number_format($repairStats['hours'], 2) }} 小時
                 </span>
             @endif
         </div>
-        <div class="list-group list-group-flush">
-            @forelse ($repairRequests as $repair)
-                @php
-                    $statusColor = match ($repair->status->value) {
-                        'pending' => 'secondary',
-                        'assigned' => 'info',
-                        'returned' => 'danger',
-                        'pending_review' => 'warning',
-                        'completed' => 'success',
-                        default => 'light',
-                    };
-                    $impactText = ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'][$repair->impact_level] ?? $repair->impact_level;
-                    $ngSource = $ngSources->get($repair->id);
-                @endphp
-                <div class="list-group-item">
-                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                        <div>
-                            <a href="{{ route('repairs.show', $repair) }}" class="fw-semibold">#{{ $repair->id }} {{ $repair->title }}</a>
-                            <span class="badge text-bg-{{ $statusColor }} ms-1">{{ $repair->status->label() }}</span>
-                            <span class="badge text-bg-light border ms-1">影響：{{ $impactText }}</span>
-                            @if ($ngSource)
-                                <span class="badge text-bg-danger ms-1">保養 NG 轉入</span>
-                            @endif
-                        </div>
-                        <span class="text-muted small">{{ $repair->created_at?->format('Y-m-d H:i') }}</span>
-                    </div>
-                    <div class="text-muted small mt-1">
-                        報修人：{{ $repair->requester?->name ?? '系統轉入' }}
-                        ／ 維修人員：{{ $repair->assignedTechnician?->name ?? '尚未指派' }}
-                        @if ($ngSource?->maintenanceOrder)
-                            ／ 來源：<a href="{{ route('maintenance-orders.results.show', $ngSource->maintenanceOrder) }}">保養工單 #{{ $ngSource->maintenance_order_id }} 的 NG 結果</a>
-                        @endif
-                    </div>
-
-                    @forelse ($repair->repairLogs->sortBy('id')->values() as $index => $log)
-                        <div class="border-start border-3 ps-3 mt-2 small">
-                            <div class="fw-semibold">
-                                維修紀錄 {{ $index + 1 }}
-                                <span class="text-muted fw-normal">
-                                    {{ $log->started_at?->format('Y-m-d H:i') ?? '—' }} ～ {{ $log->ended_at?->format('Y-m-d H:i') ?? '—' }}
-                                    @if ($log->total_hours !== null)（{{ number_format((float) $log->total_hours, 2) }} 小時）@endif
-                                </span>
-                            </div>
-                            <div>故障原因：{{ $log->cause ?? '—' }}</div>
-                            <div>處置方式：{{ $log->resolution ?? '—' }}</div>
-                            <div>使用備品：{{ $log->parts_used_note ?: '—' }}</div>
-                            @if ($log->attachments->isNotEmpty())
-                                <div>附件：{{ $log->attachments->count() }} 個（見下方「附件」）</div>
-                            @endif
-                        </div>
+        <div class="table-responsive" data-no-fit data-fit-per-page="5">
+            <table class="tb-table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th data-onion-title>報修單</th>
+                        <th class="text-center">狀態</th>
+                        <th class="text-center">影響程度</th>
+                        <th>送出時間</th>
+                        <th>維修人員</th>
+                        <th class="text-end">工時</th>
+                        <th class="text-end tb-col-fit">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($repairRequests as $repair)
+                        @php
+                            $ngSource = $ngSources->get($repair->id);
+                            $hours = (float) $repair->repairLogs->sum('total_hours');
+                        @endphp
+                        <tr>
+                            <td>
+                                <span class="fw-semibold">#{{ $repair->id }} {{ $repair->title }}</span>
+                                {{-- 保養 NG 轉入的報修單：標籤可以點，在對話框打開來源的保養結果。 --}}
+                                @if ($ngSource?->maintenanceOrder)
+                                    <a href="{{ route('maintenance-orders.results.show', $ngSource->maintenanceOrder) }}" class="badge text-bg-danger text-decoration-none ms-1"
+                                        data-modal-frame data-modal-title="保養結果" data-modal-size="lg" title="保養工單 #{{ $ngSource->maintenance_order_id }} 的 NG 結果">保養 NG 轉入</a>
+                                @elseif ($ngSource)
+                                    <span class="badge text-bg-danger ms-1">保養 NG 轉入</span>
+                                @endif
+                            </td>
+                            <td class="text-center">@include('repairs._status-badge', ['status' => $repair->status])</td>
+                            <td class="text-center"><span class="badge {{ ['low' => 'text-bg-success', 'medium' => 'text-bg-warning', 'high' => 'text-bg-danger'][$repair->impact_level] ?? 'text-bg-secondary' }}">{{ __('repair_requests.impact_level.' . $repair->impact_level) }}</span></td>
+                            <td>{{ $repair->created_at?->format('Y-m-d H:i') }}</td>
+                            <td>{{ $repair->assignedTechnician?->name ?? '尚未指派' }}</td>
+                            <td class="text-end">{{ $repair->repairLogs->isNotEmpty() ? number_format($hours, 2) . ' 小時' : '—' }}</td>
+                            <td class="text-end tb-col-fit">
+                                <a href="{{ route('repairs.show', $repair) }}" class="btn btn-sm btn-outline-primary" data-modal-frame data-modal-title="報修案件" data-modal-size="xl">詳細</a>
+                            </td>
+                        </tr>
                     @empty
-                        <div class="text-muted small mt-2">尚無維修紀錄</div>
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">這台設備目前沒有維修紀錄</td>
+                        </tr>
                     @endforelse
-                </div>
-            @empty
-                <div class="list-group-item text-center text-muted py-4">這台設備目前沒有報修紀錄</div>
-            @endforelse
+                </tbody>
+            </table>
         </div>
         @if ($hiddenRepairCount > 0)
             <div class="card-footer text-muted small">另有 {{ $hiddenRepairCount }} 張報修單因權限限制無法在此顯示。</div>
@@ -246,10 +236,50 @@
     <div class="row row-cols-1 row-cols-md-2 g-3">
         <div class="col">
             <div class="card h-100">
-                <div class="card-header"><h2 class="tb-section-title">備品耗用成本</h2></div>
-                <div class="card-body text-muted small">
-                    備品的使用情形請見上方各張報修單的維修紀錄；金額只有零件庫存管理者能在零件頁查看。
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h2 class="tb-section-title">備品耗用成本</h2>
+                    @if ($canSeePartCost && $partUsage->isNotEmpty())
+                        <span class="text-muted small">合計 {{ number_format($partUsage->sum('amount')) }} 元</span>
+                    @endif
                 </div>
+                {{-- 這台設備的維修紀錄、保養結果正式登記的零件（同一個零件合併數量）；金額只給零件庫存管理者看。
+                     維修紀錄裡只用文字寫的「使用備品說明」沒有登記成正式零件，列在下面「其他備註」，沒有金額。 --}}
+                @if ($partUsage->isEmpty() && $partNotes->isEmpty())
+                    <div class="card-body text-muted small">這台設備目前沒有備品耗用紀錄。</div>
+                @else
+                    @if ($partUsage->isNotEmpty())
+                        <div class="table-responsive" data-no-fit data-no-onion>
+                            <table class="tb-table tb-table-sm mb-0 align-middle" data-no-onion>
+                                <thead>
+                                    <tr>
+                                        <th>零件</th>
+                                        <th class="text-end">數量</th>
+                                        @if ($canSeePartCost)<th class="text-end">金額</th>@endif
+                                        <th>來源</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($partUsage as $row)
+                                        <tr>
+                                            <td>{{ $row['part']?->name ?? '（已刪除的零件）' }}</td>
+                                            <td class="text-end">{{ $row['quantity'] }} {{ $row['part']?->unit }}</td>
+                                            @if ($canSeePartCost)<td class="text-end">{{ number_format($row['amount']) }}</td>@endif
+                                            <td class="small text-muted">{{ $row['sources']->implode('、') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                    @if ($partNotes->isNotEmpty())
+                        <div class="card-body small {{ $partUsage->isNotEmpty() ? 'border-top' : '' }}">
+                            <div class="text-muted mb-1">其他備註（維修紀錄的使用備品說明，沒有登記成正式零件）</div>
+                            @foreach ($partNotes as $note)
+                                <div>{{ $note['note'] }}<span class="text-muted">（{{ $note['source'] }}）</span></div>
+                            @endforeach
+                        </div>
+                    @endif
+                @endif
             </div>
         </div>
         <div class="col">
@@ -258,17 +288,15 @@
                 @if ($attachments->isEmpty())
                     <div class="card-body text-muted small">這台設備的報修單與維修紀錄目前沒有附件。</div>
                 @else
-                    @php $previewItems = collect($attachments)->map(fn ($item) => ['url' => $item['file']->url(), 'mime' => $item['file']->mime_type, 'filename' => $item['file']->file_name])->values()->toJson(); @endphp
-                    <ul class="list-group list-group-flush small">
-                        @foreach ($attachments as $item)
-                            <li class="list-group-item">
-                                {{-- 點檔名在目前畫面的預覽視窗打開（不換頁），可以左右切換。 --}}
-                                <a href="{{ $item['file']->url() }}" data-bs-toggle="modal" data-bs-target="#attachmentModal"
-                                    data-title="附件" data-attachments="{{ $previewItems }}" data-index="{{ $loop->index }}">{{ $item['file']->file_name }}</a>
-                                <span class="text-muted">— {{ $item['from'] }}</span>
-                            </li>
+                    {{-- 同一張報修單的附件（報修時上傳的＋維修紀錄的前後照片）合成一顆灰色橢圓按鈕「📎 報修單 #14　4 個檔案」；
+                         點了在目前畫面的預覽視窗打開這張單的全部附件（不換頁），可以左右切換。 --}}
+                    <div class="card-body d-flex flex-wrap align-items-start align-content-start gap-2">
+                        @foreach (collect($attachments)->groupBy(fn ($item) => $item['repair']->id) as $repairId => $group)
+                            @php $previewItems = $group->map(fn ($item) => ['url' => $item['file']->url(), 'mime' => $item['file']->mime_type, 'filename' => $item['file']->file_name])->values()->toJson(); @endphp
+                            <a href="{{ $group->first()['file']->url() }}" class="btn btn-sm btn-light border rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                data-title="報修單 #{{ $repairId }} 的附件" data-attachments="{{ $previewItems }}" data-index="0"><i class="bi bi-paperclip me-1"></i>報修單 #{{ $repairId }}<span class="text-muted ms-2">{{ $group->count() }} 個檔案</span></a>
                         @endforeach
-                    </ul>
+                    </div>
                 @endif
             </div>
         </div>

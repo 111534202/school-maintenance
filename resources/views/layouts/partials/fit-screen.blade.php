@@ -1,6 +1,8 @@
 {{-- 讓列表頁「剛好一個畫面」：不用整頁一直往下滑。 --}}
 {{-- 電腦版：頁面外框（標題、篩選列、分頁）固定在畫面內，只有清單／表格本身在框內捲動（表頭固定在最上面）。 --}}
-{{-- 手機版：清單一頁顯示 15 筆（跟伺服器分頁一樣），超過 15 筆才用「上一頁／下一頁」切換（跟伺服器的分頁合併成同一組按鈕，不會有兩排分頁）。 --}}
+{{-- 手機版：清單一頁顯示 15 筆（跟伺服器分頁一樣），所以直接用伺服器的分頁「‹ 1 / 10 ›」（pagination/tb）；
+     只有固定筆數（data-fit-per-page）的清單才在畫面上自己分頁，同樣是「‹ 1 / 3 ›」。
+     兩種分頁的目前頁數都放在有外框的輸入框裡，可以直接改成要跳到的頁數。 --}}
 {{-- 做法：載入後量畫面高度再調整；改變視窗大小或切換「清單／表格」檢視時重新量。沒有 JavaScript 時就是原本的長頁面，什麼都不會少。 --}}
 {{-- 不想套用的清單：在清單外層或表格加 data-no-fit。 --}}
 {{-- 想固定一頁顯示幾筆（不管畫面大小、電腦或手機）：在表格外層加 data-fit-per-page="5"，清單檢視就固定 5 筆一頁。 --}}
@@ -19,8 +21,48 @@
     .fit-pager .btn { width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
     .fit-pager .fit-label { flex: 0 0 auto; min-width: 3.5em; text-align: center; font-size: .95rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
     .fit-pager .fit-label small { display: block; color: #6c757d; }
+    /* 伺服器分頁的手機版（pagination/tb）：外觀和上面相同。 */
+    .tb-page-jump { padding: .5rem 0; }
+    .tb-page-jump .btn { width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+    /* 左右箭頭按鈕：不管是連結還是停用的按鈕都一樣大、一樣高；箭頭圖示用固定行高置中（Windows 字型的圖示基線會偏，造成左右看起來高低不同）。 */
+    .tb-page-jump .btn, .fit-pager .btn { flex: 0 0 2.25rem; min-height: 0; margin: 0; line-height: 1; box-sizing: border-box; vertical-align: middle; }
+    .tb-page-jump .btn .bi, .fit-pager .btn .bi { display: block; line-height: 1; font-size: 1rem; }
+    .tb-page-jump .btn .bi::before, .fit-pager .btn .bi::before { vertical-align: top; }
+    .tb-page-label { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .tb-page-input { width: 3.2em; padding: .15rem .25rem; text-align: center; }
 </style>
 <script>
+    // 頁數輸入框：目前頁數放在有外框的輸入框裡，直接改數字，按 Enter（或點旁邊）就跳過去；
+    // 不是數字、小於 1 或超過總頁數就不跳，輸入框還原成目前頁數。按 Esc 也還原。
+    window.tbBindPageInput = function (input, total, jump) {
+        function restore() { input.value = input.dataset.current; }
+        function go() {
+            var text = input.value.trim();
+            var n = /^\d+$/.test(text) ? parseInt(text, 10) : NaN;
+            if (!n || n < 1 || n > total || String(n) === input.dataset.current) { restore(); return; }
+            jump(n);
+        }
+        input.addEventListener('focus', function () { input.select(); });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); go(); }
+            if (e.key === 'Escape') { restore(); input.blur(); }
+        });
+        input.addEventListener('change', go);
+    };
+
+    // 伺服器分頁的手機版（pagination/tb）：跳頁＝換成那一頁的網址（保留篩選條件）。
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.tb-page-jump').forEach(function (box) {
+            var input = box.querySelector('.tb-page-input');
+            if (!input) return;
+            window.tbBindPageInput(input, parseInt(box.dataset.lastPage, 10) || 1, function (page) {
+                var url = new URL(box.dataset.pageUrl, window.location.href);
+                url.searchParams.set(box.dataset.pageName || 'page', page);
+                window.location.href = url.href;
+            });
+        });
+    });
+
     (function () {
         var desktop = window.matchMedia('(min-width: 992px)');
         var pagers = [];        // 手機版建立過的分頁列，重新量的時候先拆掉
@@ -78,8 +120,9 @@
             var next = document.querySelector('.app-content a[rel="next"]');
             var prev = document.querySelector('.app-content a[rel="prev"]');
             var active = document.querySelector('.app-content .page-item.active .page-link');
-            var max = 0;
-            document.querySelectorAll('.app-content .pagination .page-link').forEach(function (a) { var n = parseInt(a.textContent, 10); if (n > max) max = n; });
+            var pg = document.querySelector('.app-content .pagination[data-last-page]');
+            var max = pg ? parseInt(pg.dataset.lastPage, 10) : 0;
+            if (!max) document.querySelectorAll('.app-content .pagination .page-link').forEach(function (a) { var n = parseInt(a.textContent, 10); if (n > max) max = n; });
             return { next: next ? next.href : null, prev: prev ? prev.href : null, page: active ? parseInt(active.textContent, 10) : 1, total: max || 1 };
         }
 
@@ -93,7 +136,7 @@
             // 一頁固定 15 筆（跟伺服器的分頁一樣，全站一致）；有設定 data-fit-per-page 的清單照設定。
             var n = per > 0 ? per : 15;
             var pages = Math.ceil(items.length / n);
-            if (pages <= 1 && !srv.next && !srv.prev) return;        // 一個畫面放得下、也沒有下一批資料：不用分頁
+            if (pages <= 1) return;        // 一頁放得下：不用畫面分頁（有下一批資料時就用伺服器的分頁「‹ 1 / 10 ›」）
 
             var page = 0;
             var serverNav = serverNavOf(list);
@@ -112,9 +155,8 @@
 
             function render() {
                 items.forEach(function (it, i) { var on = i >= page * n && i < (page + 1) * n; if (on) it.style.removeProperty('display'); else it.style.setProperty('display', 'none', 'important'); });
-                var text = (page + 1) + ' / ' + pages;
-                if (srv.total > 1) text += '<small>資料第 ' + srv.page + ' / ' + srv.total + ' 批</small>';
-                label.innerHTML = text;
+                label.innerHTML = '<input type="text" inputmode="numeric" pattern="[0-9]*" class="form-control form-control-sm d-inline-block tb-page-input" value="' + (page + 1) + '" data-current="' + (page + 1) + '" aria-label="可輸入要跳到的頁數（共 ' + pages + ' 頁）"> / ' + pages;
+                window.tbBindPageInput(label.querySelector('.tb-page-input'), pages, function (n) { page = n - 1; render(); });
                 prevBtn.disabled = page === 0 && !srv.prev;
                 nextBtn.disabled = page >= pages - 1 && !srv.next;
             }

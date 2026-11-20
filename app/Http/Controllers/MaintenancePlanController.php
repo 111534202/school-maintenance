@@ -58,7 +58,7 @@ class MaintenancePlanController extends Controller
 
         return redirect()
             ->route('maintenance-plans.index')
-            ->with('success', '保養計畫新增成功');
+            ->with('success', '保養計畫新增成功' . $this->generateNow($plan));
     }
 
     public function edit(MaintenancePlan $maintenancePlan): View
@@ -69,7 +69,13 @@ class MaintenancePlanController extends Controller
     public function update(UpdateMaintenancePlanRequest $request, MaintenancePlan $maintenancePlan): RedirectResponse
     {
         $data = $request->planData();
-        $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
+        // 改了起始日或週期才重算下次到期日（起始日＋週期）；只改名稱、說明、對象時保持原本的下次到期日，
+        // 不然已經產生過的工單又會被重新排一次。
+        $scheduleChanged = $maintenancePlan->start_date?->toDateString() !== $request->date('start_date')?->toDateString()
+            || (int) $maintenancePlan->cycle_days !== (int) $request->integer('cycle_days');
+        if ($scheduleChanged || $maintenancePlan->next_due_date === null) {
+            $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
+        }
 
         $maintenancePlan->update($data);
         $this->syncTargets($maintenancePlan, $request->targets());
@@ -77,7 +83,7 @@ class MaintenancePlanController extends Controller
 
         return redirect()
             ->route('maintenance-plans.index')
-            ->with('success', '保養計畫更新成功');
+            ->with('success', '保養計畫更新成功' . $this->generateNow($maintenancePlan));
     }
 
     /**
@@ -120,6 +126,21 @@ class MaintenancePlanController extends Controller
             });
 
         return ['targets' => $categories->concat($devices)->values()];
+    }
+
+    /**
+     * 存檔後馬上檢查這個計畫要不要產生工單（不用等半夜的排程）：起始日已經到了、而且勾選啟用，
+     * 就產生排定在下次到期日的工單，下次到期日往後推一個週期（規則見 DueMaintenanceOrderGenerator）。
+     * 回傳要接在成功訊息後面的說明。
+     */
+    private function generateNow(MaintenancePlan $plan): string
+    {
+        $orders = app(\App\Services\DueMaintenanceOrderGenerator::class)->generateForPlan($plan);
+        if ($orders->isEmpty()) {
+            return '';
+        }
+
+        return '；已產生保養工單 ' . $orders->map(fn ($order) => $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）')->implode('、');
     }
 
     /** 保養對象換成表單送來的清單（先刪掉舊的再依順序建立）。 */

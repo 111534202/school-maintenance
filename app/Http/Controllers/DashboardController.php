@@ -54,8 +54,8 @@ class DashboardController extends Controller
             ];
         }
 
-        // 「進行中工單」= 除了「已結案」「已退回」以外全部加起來。
-        $openCount = collect($repairStatuses)->whereNotIn('key', RepairRequestStatus::closedValues())->sum('count');
+        // 「進行中工單」= 已派工＋待驗收（已經有人在處理的；新報修還沒派工不算）。點卡片到看板，篩選同樣這兩個狀態，筆數一致。
+        $openCount = collect($repairStatuses)->whereIn('key', RepairRequestStatus::awaitingRepairValues())->sum('count');
 
         // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
         $monthStart = now()->startOfMonth();

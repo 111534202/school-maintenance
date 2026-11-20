@@ -59,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         // 全站已使用 Bootstrap 5，分頁元件也要用 Bootstrap 樣式，
         // 否則 Laravel 預設的 Tailwind 分頁在沒有 Tailwind CSS 時會破版（箭頭變超大）。
         Paginator::useBootstrapFive();
+        Paginator::defaultView('pagination.tb');   // 全站分頁：電腦版一組 10 頁「‹ 1 … 10 … ›」、手機版「‹ 1 / 10 ›」（點兩下頁數可輸入跳頁）
 
         // 匯出 Excel 時，= + - @ 開頭的文字不當公式執行（防 Excel 公式注入）。
         config(['excel.value_binder.default' => \App\Support\SafeExcelValueBinder::class]);

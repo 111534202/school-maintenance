@@ -56,16 +56,17 @@ class DeviceProfileController extends Controller
     {
         $device->load(['category', 'classroom']);
 
+        // 包含這台設備的保養工單：工單本身的設備，或保養對象清單裡有這台設備（一張工單可以有好幾台設備）。
         $maintenanceOrders = MaintenanceOrder::query()
-            ->where('device_id', $device->id)
-            ->with(['result', 'maintenancePlan'])
+            ->coveringDevice($device->id)
+            ->with(['result.partUsages.part', 'maintenancePlan'])
             ->orderByDesc('scheduled_date')
             ->get();
 
         $maintenanceStats = [
             'total' => $maintenanceOrders->count(),
             // 用 Model 上已經寫好的 completed scope（本來就是給設備履歷、Dashboard 這類其他模組用的穩定介面）。
-            'completed' => MaintenanceOrder::query()->where('device_id', $device->id)->completed()->count(),
+            'completed' => MaintenanceOrder::query()->coveringDevice($device->id)->completed()->count(),
             'ok' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->result && ! $order->result->isNg())->count(),
             'ng' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->result?->isNg())->count(),
         ];
@@ -85,7 +86,7 @@ class DeviceProfileController extends Controller
         $repairRequests = RepairRequest::visibleOnBoard($request->user())   // 待驗收／已結案只給跟案件有關的人看，和看板一致
             ->where('device_id', $device->id)
             ->where('status', '<>', \App\Enums\RepairRequestStatus::Returned->value)
-            ->with(['repairLogs.attachments', 'attachments', 'requester', 'assignedTechnician'])
+            ->with(['repairLogs.attachments', 'repairLogs.partUsages.part', 'attachments', 'requester', 'assignedTechnician'])
             ->orderByDesc('id')
             ->get();
 
@@ -114,7 +115,33 @@ class DeviceProfileController extends Controller
             return $own->concat($fromLogs);
         })->values();
 
+        // 備品耗用：這台設備的維修紀錄、保養結果正式登記的零件（同一個零件合併數量；金額只給零件庫存管理者看），
+        // 再加上維修紀錄裡只用文字寫的「使用備品說明」（沒有登記成正式零件，所以沒有金額）。
+        $partRows = collect();
+        foreach ($repairRequests as $r) {
+            foreach ($r->repairLogs as $log) {
+                foreach ($log->partUsages as $usage) {
+                    $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '報修單 #' . $r->id]);
+                }
+            }
+        }
+        foreach ($maintenanceOrders as $order) {
+            foreach ($order->result?->partUsages ?? [] as $usage) {
+                $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '保養工單 ' . $order->displayNumber()]);
+            }
+        }
+        $partUsage = $partRows->groupBy(fn ($row) => $row['part']?->id ?? 0)->map(fn ($rows) => [
+            'part' => $rows->first()['part'],
+            'quantity' => $rows->sum('quantity'),
+            'amount' => $rows->sum('amount'),
+            'sources' => $rows->pluck('source')->unique()->values(),
+        ])->values();
+        $partNotes = $repairRequests->flatMap(fn ($r) => $r->repairLogs->filter(fn ($log) => filled($log->parts_used_note))
+            ->map(fn ($log) => ['note' => $log->parts_used_note, 'source' => '報修單 #' . $r->id]))->values();
+        $canSeePartCost = $request->user()->can('parts.manage');
+
         return view('device_profile.show', compact(
+            'partUsage', 'partNotes', 'canSeePartCost',
             'device', 'maintenanceOrders', 'maintenanceStats', 'prediction', 'candidates',
             'repairRequests', 'hiddenRepairCount', 'ngSources', 'repairStats', 'attachments'
         ));
