@@ -45,11 +45,8 @@
                     @endif
                 </dd>
 
-                <dt class="col-sm-3">核心設備</dt>
-                <dd class="col-sm-9">{{ $device->is_core ? '是' : '否' }}</dd>
-
                 <dt class="col-sm-3">狀態</dt>
-                <dd class="col-sm-9"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
+                <dd class="col-sm-9"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->display_status) }}">{{ \App\Models\Device::statusLabel($device->display_status) }}</span></dd>
             </dl>
         </div>
     </div>
@@ -189,7 +186,7 @@
                     $statusColor = match ($repair->status->value) {
                         'pending' => 'secondary',
                         'assigned' => 'info',
-                        'in_progress' => 'primary',
+                        'returned' => 'danger',
                         'pending_review' => 'warning',
                         'completed' => 'success',
                         default => 'light',
@@ -261,10 +258,13 @@
                 @if ($attachments->isEmpty())
                     <div class="card-body text-muted small">這台設備的報修單與維修紀錄目前沒有附件。</div>
                 @else
+                    @php $previewItems = collect($attachments)->map(fn ($item) => ['url' => $item['file']->url(), 'mime' => $item['file']->mime_type, 'filename' => $item['file']->file_name])->values()->toJson(); @endphp
                     <ul class="list-group list-group-flush small">
                         @foreach ($attachments as $item)
                             <li class="list-group-item">
-                                <a href="{{ $item['file']->url() }}" target="_blank" rel="noopener">{{ $item['file']->file_name }}</a>
+                                {{-- 點檔名在目前畫面的預覽視窗打開（不換頁），可以左右切換。 --}}
+                                <a href="{{ $item['file']->url() }}" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                    data-title="附件" data-attachments="{{ $previewItems }}" data-index="{{ $loop->index }}">{{ $item['file']->file_name }}</a>
                                 <span class="text-muted">— {{ $item['from'] }}</span>
                             </li>
                         @endforeach
@@ -273,5 +273,6 @@
             </div>
         </div>
     </div>
+    @include('parts._attachment-modal')
     @endif
 @endsection

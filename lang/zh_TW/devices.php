@@ -6,7 +6,7 @@ return [
     // 設備狀態的顯示名稱（資料庫存的是英文代碼，畫面一律顯示這裡的中文）
     'status' => [
         'normal' => '正常',
-        'repairing' => '維修中',
+        'repairing' => '待維修',
         'retired' => '已淘汰',
         'disabled' => '停用',
     ],
@@ -19,7 +19,6 @@ return [
     'no_value' => '－',
     'yes' => '是',
     'no' => '否',
-    'core_badge' => '核心',
     // 重複報修提醒：近 Device::REPEAT_REPAIR_DAYS 天報修次數達門檻時，顯示在設備主檔與報修看板上。
     'repeat_repair_badge' => '近30天報修:count次',
     'repeat_repair_hint' => '這台設備短期內多次報修，建議優先檢查或評估汰換',
@@ -47,7 +46,7 @@ return [
         'category_all' => '所有類別',
         'status' => '狀態',
         'status_all' => '所有狀態',
-        'only_abnormal' => '目前只顯示異常設備（維修中、已淘汰、停用）',
+        'only_abnormal' => '目前只顯示異常設備（有未結案的報修單，不含已淘汰）',
     ],
 
     // 表格欄位標題。
@@ -57,7 +56,6 @@ return [
         'brand_model' => '品牌／型號',
         'classroom' => '所在教室',
         'status' => '狀態',
-        'core' => '核心設備',
         'open_repairs' => '進行中工單',
         'actions' => '操作',
     ],
@@ -92,7 +90,6 @@ return [
         'serial_number' => '序號',
         'warranty_end_date' => '保固期限',
         'status' => '狀態',
-        'is_core' => '核心設備',
     ],
 
     // 設備詳細頁。
@@ -110,7 +107,6 @@ return [
     'entry' => [
         'title_suffix' => '設備入口',
         'current_status' => '目前狀態',
-        'core_device' => '核心設備',
         'need_help' => '需要協助嗎？',
         'go_repair' => '前往報修',
         'go_repair_unavailable' => '前往報修（功能尚未上線）',

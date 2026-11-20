@@ -81,22 +81,15 @@
     </dl>
 
     {{-- 教室設備狀況：沒有設備在報修就不顯示。每次打開都重新檢查，所以送出申請後才報修的設備也會出現在這裡。 --}}
-    @if ($repairNotices || $classroomSuspended)
-        <div class="alert {{ $classroomSuspended ? 'alert-danger' : 'alert-warning' }} small mt-3 mb-0">
+    @if ($repairNotices)
+        {{-- 只是提醒，仍可以核准（依《報修與保養流程修改說明》，教室不再因設備狀況暫停預約）。 --}}
+        <div class="alert alert-warning small mt-3 mb-0">
             <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>教室設備報修中</div>
-            @if ($repairNotices)
-                <ul class="mb-0 ps-3">
-                    @foreach ($repairNotices as $notice)
-                        <li>
-                            {{ $notice['text'] }}
-                            @if ($notice['core'])<span class="badge text-bg-danger ms-1">核心設備</span>@endif
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-            @if ($classroomSuspended)
-                <div class="mt-1">核心設備正在維修，這間教室目前暫停預約，無法核准（仍可拒絕）。</div>
-            @endif
+            <ul class="mb-0 ps-3">
+                @foreach ($repairNotices as $notice)
+                    <li>{{ $notice['text'] }}</li>
+                @endforeach
+            </ul>
         </div>
     @endif
 
@@ -153,10 +146,10 @@
                         </span>
                         <div class="btn-group btn-group-sm" role="group" aria-label="{{ $slot->label() }} 的審核結果">
                             <input type="radio" class="btn-check" name="decisions[{{ $slot->id }}]" id="approve_{{ $slot->id }}" value="approved"
-                                @checked(! $blocked && old("decisions.{$slot->id}", 'approved') === 'approved') @disabled($blocked || $classroomSuspended)>
+                                @checked(! $blocked && old("decisions.{$slot->id}", 'approved') === 'approved') @disabled($blocked)>
                             <label class="btn btn-outline-success" for="approve_{{ $slot->id }}">同意</label>
                             <input type="radio" class="btn-check" name="decisions[{{ $slot->id }}]" id="reject_{{ $slot->id }}" value="rejected"
-                                @checked($blocked || $classroomSuspended || old("decisions.{$slot->id}") === 'rejected')>
+                                @checked($blocked || old("decisions.{$slot->id}") === 'rejected')>
                             <label class="btn btn-outline-danger" for="reject_{{ $slot->id }}">拒絕</label>
                         </div>
                     </div>
@@ -164,7 +157,7 @@
             </div>
             @if ($undecided->count() > 1)
                 <div class="d-flex gap-2 mb-3">
-                    <button type="button" class="btn btn-link btn-sm p-0" data-decide-all="approved" @disabled($classroomSuspended)>全部同意</button>
+                    <button type="button" class="btn btn-link btn-sm p-0" data-decide-all="approved">全部同意</button>
                     <button type="button" class="btn btn-link btn-sm p-0 text-danger" data-decide-all="rejected">全部拒絕</button>
                 </div>
             @endif

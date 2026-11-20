@@ -6,7 +6,7 @@ return [
     // Display names for device status codes stored in the database.
     'status' => [
         'normal' => 'Normal',
-        'repairing' => 'Under repair',
+        'repairing' => 'Awaiting repair',
         'retired' => 'Retired',
         'disabled' => 'Disabled',
     ],
@@ -19,7 +19,6 @@ return [
     'no_value' => '-',
     'yes' => 'Yes',
     'no' => 'No',
-    'core_badge' => 'Core',
     // Repeat-repair notice: shown on the device list and repair board when the repair count in the last
     // Device::REPEAT_REPAIR_DAYS days reaches the threshold.
     'repeat_repair_badge' => ':count repairs in 30 days',
@@ -47,7 +46,7 @@ return [
         'category_all' => 'All categories',
         'status' => 'Status',
         'status_all' => 'All statuses',
-        'only_abnormal' => 'Showing abnormal devices only (under repair, retired, disabled)',
+        'only_abnormal' => 'Showing abnormal devices only (with open repair requests, retired excluded)',
     ],
 
     'table' => [
@@ -56,7 +55,6 @@ return [
         'brand_model' => 'Brand / Model',
         'classroom' => 'Classroom',
         'status' => 'Status',
-        'core' => 'Core Device',
         'open_repairs' => 'Open Repairs',
         'actions' => 'Actions',
     ],
@@ -88,7 +86,6 @@ return [
         'serial_number' => 'Serial Number',
         'warranty_end_date' => 'Warranty Until',
         'status' => 'Status',
-        'is_core' => 'Core device',
     ],
 
     'show' => [
@@ -104,7 +101,6 @@ return [
     'entry' => [
         'title_suffix' => 'Device entry',
         'current_status' => 'Current status',
-        'core_device' => 'Core device',
         'need_help' => 'Need help?',
         'go_repair' => 'Report a problem',
         'go_repair_unavailable' => 'Report a problem (not available yet)',

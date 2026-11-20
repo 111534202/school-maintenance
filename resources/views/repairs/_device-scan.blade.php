@@ -52,10 +52,11 @@
                     // 查到了：隱藏錯誤、填入設備編號、顯示設備資訊；標題還是空的就自動帶入建議標題。
                     errorBox.style.display = 'none';
                     input.value = data.device_code; // 把掃到的整串網址換成乾淨的設備編號
+                    lookedUpCode = data.device_code;
                     deviceIdField.value = data.id;
                     displayText.textContent = data.device_code + ' ' + data.display + (data.serial_number ? '（序號 ' + data.serial_number + '）' : '');
                     displayBox.style.display = '';
-                    // 設備地點自動帶入設備所在的教室（例如掃到 DEV-0001 → 資訊教室一）。
+                    // 發現地點自動帶入設備所在的教室（例如掃到 DEV-0001 → 資訊教室一）。
                     if (data.classroom && window.setRepairClassroom) {
                         window.setRepairClassroom(data.classroom.id, data.classroom.label);
                     }
@@ -87,6 +88,29 @@
         });
         // 輸入框失去焦點（點到別處）時也查詢。
         input.addEventListener('blur', lookup);
+
+        // 設備條碼／編號可以留空（例如電燈壞了沒有條碼可掃），由維修人員填維修紀錄時再補上設備。
+        // 輸入框內容一改（包含清空），就把之前查到的設備清掉，不會留著上一次掃到的設備；
+        // 瀏覽器按上一頁、重新整理而自動還原表單時也一樣：輸入框是空的就不帶任何設備。
+        var lookedUpCode = input.value.trim();
+        function clearDevice() {
+            deviceIdField.value = '';
+            displayBox.style.display = 'none';
+            errorBox.style.display = 'none';
+        }
+        input.addEventListener('input', function () {
+            if (input.value.trim() !== lookedUpCode) {
+                clearDevice();
+            }
+        });
+        function resetIfEmpty() {
+            if (input.value.trim() === '') {
+                clearDevice();
+                lookedUpCode = '';
+            }
+        }
+        window.addEventListener('pageshow', resetIfEmpty);
+        resetIfEmpty();
 
         // ---- 相機掃描 ----
         // 共用元件掃到內容後會把原文填進輸入框並觸發 code-scanned：立刻查詢設備（後端認得設備編號、資產編號、序號與 QR 網址）。

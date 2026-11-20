@@ -44,11 +44,11 @@ class BulkImportTest extends TestCase
     private function seedMasters(): void
     {
         DeviceCategory::create(['name' => '投影機']);
-        Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
-        Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '2F', 'classroom_code' => 'A201', 'name' => 'A201 教室', 'type' => '一般教室', 'is_active' => false, 'reservation_status' => 'normal']);
+        Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
+        Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '2F', 'classroom_code' => 'A201', 'name' => 'A201 教室', 'type' => '一般教室', 'is_active' => false]);
     }
 
-    private const DEVICE_HEAD = ['設備編號*', '資產編號', '類別*', '品牌', '型號', '序號', '保固到期日', '教室*', '狀態', '核心設備'];
+    private const DEVICE_HEAD = ['設備編號*', '資產編號', '類別*', '品牌', '型號', '序號', '保固到期日', '教室*', '狀態'];
 
     private function preview(string $type, UploadedFile $file)
     {
@@ -61,17 +61,17 @@ class BulkImportTest extends TestCase
     {
         $this->loginAsAnyUser();
         $this->seedMasters();
-        Device::create(['device_code' => 'DEV-EXIST', 'device_category_id' => DeviceCategory::first()->id, 'classroom_id' => Classroom::first()->id, 'status' => 'normal', 'is_core' => false]);
+        Device::create(['device_code' => 'DEV-EXIST', 'device_category_id' => DeviceCategory::first()->id, 'classroom_id' => Classroom::first()->id, 'status' => 'normal']);
 
         $response = $this->preview('devices', $this->csv([
             self::DEVICE_HEAD,
-            ['DEV-001', '', '投影機', 'Epson', 'EB-X', 'SN1', '2027/12/31', 'A101', '正常', '是'],
-            ['DEV-002', '', '電視', '', '', '', '', 'A101', '', ''],            // 類別不存在
-            ['DEV-003', '', '投影機', '', '', '', '', 'A201', '', ''],          // 教室已停用
-            ['DEV-EXIST', '', '投影機', '', '', '', '', 'A101', '', ''],        // 編號已存在
-            ['DEV-001', '', '投影機', '', '', '', '', 'A101', '', ''],          // 檔案內重複
-            ['DEV-006', '', '投影機', '', '', '', '', 'A101', '壞掉', ''],      // 狀態看不懂
-            ['DEV-007', '', '投影機', '', '', '', '2027-13-45', 'A101', '', 'x'], // 日期、核心設備格式錯
+            ['DEV-001', '', '投影機', 'Epson', 'EB-X', 'SN1', '2027/12/31', 'A101', '正常'],
+            ['DEV-002', '', '電視', '', '', '', '', 'A101', ''],            // 類別不存在
+            ['DEV-003', '', '投影機', '', '', '', '', 'A201', ''],          // 教室已停用
+            ['DEV-EXIST', '', '投影機', '', '', '', '', 'A101', ''],        // 編號已存在
+            ['DEV-001', '', '投影機', '', '', '', '', 'A101', ''],          // 檔案內重複
+            ['DEV-006', '', '投影機', '', '', '', '', 'A101', '維修中'],    // 狀態看不懂（待維修由報修單判斷，不能匯入）
+            ['DEV-007', '', '投影機', '', '', '', '2027-13-45', 'A101', ''], // 日期格式錯
         ]))->assertOk();
 
         $response->assertSee('可匯入 1 列')->assertSee('有問題 6 列')
@@ -79,16 +79,16 @@ class BulkImportTest extends TestCase
         $this->assertSame(1, Device::count());   // 預覽不寫入（只有原本那一台）
     }
 
-    public function test_device_confirm_imports_only_good_rows_logs_and_syncs_classroom_flag(): void
+    public function test_device_confirm_imports_only_good_rows_and_logs(): void
     {
         $this->loginAsAnyUser();
         $this->seedMasters();
 
         $file = $this->csv([
             self::DEVICE_HEAD,
-            ['DEV-001', 'A-1', '投影機', 'Epson', 'EB-X', 'SN1', '2027/12/31', 'A101', '正常', '是'],
-            ['DEV-002', '', '投影機', '', '', '', '', 'A101', '維修中', '是'],
-            ['DEV-BAD', '', '不存在的類別', '', '', '', '', 'A101', '', ''],
+            ['DEV-001', 'A-1', '投影機', 'Epson', 'EB-X', 'SN1', '2027/12/31', 'A101', '正常'],
+            ['DEV-002', '', '投影機', '', '', '', '', 'A101', '已淘汰'],
+            ['DEV-BAD', '', '不存在的類別', '', '', '', '', 'A101', ''],
         ]);
         $token = $this->tokenFrom($this->preview('devices', $file));
 
@@ -97,14 +97,11 @@ class BulkImportTest extends TestCase
 
         $this->assertSame(2, Device::count());
         $device = Device::firstWhere('device_code', 'DEV-001');
-        $this->assertTrue($device->is_core);
         $this->assertSame('2027-12-31', $device->warranty_end_date->toDateString());
-        $this->assertSame('repairing', Device::firstWhere('device_code', 'DEV-002')->status);
+        $this->assertSame('retired', Device::firstWhere('device_code', 'DEV-002')->status);
         $this->assertDatabaseMissing('devices', ['device_code' => 'DEV-BAD']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_type' => Device::class, 'loggable_id' => $device->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_type' => null]);   // 整批的摘要紀錄
-        // 核心設備維修中：教室要被標成「設備異常」（和手動新增設備一樣）。
-        $this->assertSame('abnormal', Classroom::firstWhere('classroom_code', 'A101')->reservation_status);
         // 確認後暫存檔刪除，不能重複確認。
         $this->assertSame([], Storage::disk('local')->files('imports'));
         $this->post(route('imports.confirm', 'devices'), ['token' => $token])->assertRedirect(route('imports.index', 'devices'))->assertSessionHas('error');
@@ -116,7 +113,7 @@ class BulkImportTest extends TestCase
         $this->loginAsAnyUser();
         $this->seedMasters();
 
-        Excel::store(new TableExport('匯入資料', self::DEVICE_HEAD, [['DEV-XLSX', '', '投影機', '', '', '', '2027-06-30', 'A101', '', '']]), 'tmp-import.xlsx', 'local');
+        Excel::store(new TableExport('匯入資料', self::DEVICE_HEAD, [['DEV-XLSX', '', '投影機', '', '', '', '2027-06-30', 'A101', '']]), 'tmp-import.xlsx', 'local');
         $file = new UploadedFile(Storage::disk('local')->path('tmp-import.xlsx'), 'devices.xlsx', null, null, true);
         $token = $this->tokenFrom($this->preview('devices', $file)->assertSee('可匯入 1 列'));
 

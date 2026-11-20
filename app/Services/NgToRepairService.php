@@ -2,88 +2,102 @@
 
 namespace App\Services;
 
+use App\Actions\CreateRepairRequestFromMaintenanceNg;
+use App\Models\Device;
+use App\Models\MaintenanceOrder;
 use App\Models\MaintenanceResult;
-use Illuminate\Support\Facades\Schema;
+use App\Models\RepairRequest;
+use Illuminate\Support\Collection;
 
 /**
- * NG 轉報修的介接點。
+ * 保養 NG 轉報修（依《報修與保養流程修改說明》）。
  *
- * 依《03_王佑恩_任務分工與執行指示》Phase 2 規則：「NG 時呼叫彭仕衡提供的報修建立介面，
- * 不直接複製 repair_requests 寫入邏輯」。彭仕衡提供的穩定入口是
- * App\Actions\CreateRepairRequestFromMaintenanceNg（見其 docs/待確認/Week3_王佑恩.md）。
+ * - 回報 NG 時要選出異常的設備（計畫是一台設備就是那台；計畫是設備類別就從那一類的設備裡複選），並填寫說明。
+ * - 每台 NG 的設備各自建立一張「新報修」報修單（呼叫彭仕衡提供的 CreateRepairRequestFromMaintenanceNg），
+ *   報修單帶入保養的說明，repair_requests.maintenance_result_id 指回這筆保養結果，報修人是回報 NG 的人。
+ * - 工單狀態改成「已轉報修」；這些報修單全部結案（已結案或已退回）後，由 MaintenanceNgRepairSync 把工單改成「已完成」。
  *
- * - 報修模組已併入（Action 類別存在、repair_requests 表存在）：
- *   呼叫 Action 建立「新報修」報修單，並把報修單 id 回寫到 maintenance_results.repair_request_id，
- *   狀態標為 converted；報修單描述會帶「maintenance_result:{id}」來源標記，雙向可追溯。
- * - 報修模組尚未併入：維持原行為，只標記 pending_handoff（待轉報修），不寫任何報修資料。
- *
- * convert() 可重複呼叫：已轉過（repair_request_id 有值）就不會再建第二張報修單。
+ * 以前「NG 只建一張報修單、建不了就標記待轉報修再手動建單」的做法已拿掉。
  */
 class NgToRepairService
 {
-    public function convert(MaintenanceResult $result): void
+    /**
+     * 回報 NG 時可以選的設備：工單（計畫）指定了一台設備就只有那台；指定設備類別就是那一類、還沒淘汰的設備。
+     *
+     * @return Collection<int, Device>
+     */
+    public function selectableDevices(MaintenanceOrder $order): Collection
+    {
+        if ($order->device_id !== null) {
+            return Device::query()->with(['category', 'classroom'])->whereKey($order->device_id)->get();
+        }
+
+        if ($order->device_category_id === null) {
+            return collect();
+        }
+
+        return Device::query()->with(['category', 'classroom'])
+            ->where('device_category_id', $order->device_category_id)
+            ->where('status', '<>', 'retired')
+            ->orderBy('device_code')
+            ->get();
+    }
+
+    /**
+     * 為每台 NG 的設備建立一張報修單，回傳建立的報修單。
+     *
+     * @param  array<int, int>  $deviceIds
+     * @return Collection<int, RepairRequest>
+     */
+    public function convert(MaintenanceResult $result, array $deviceIds): Collection
     {
         if (! $result->isNg()) {
             $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE]);
 
-            return;
+            return collect();
         }
 
-        // 防止重複建立報修單。
-        if ($result->repair_request_id !== null) {
-            return;
+        // 已經轉過就不重複建立（例如重送）。
+        if ($result->repairRequests()->exists()) {
+            return $result->repairRequests()->get();
         }
 
-        if (! $this->repairModuleAvailable()) {
-            $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_PENDING]);
+        $order = $result->maintenanceOrder()->first();
+        $devices = Device::query()->with('classroom')->whereKey($deviceIds)->orderBy('device_code')->get();
 
-            return;
-        }
+        $repairs = $devices->map(function (Device $device) use ($result, $order) {
+            $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(
+                sourceLabel: 'maintenance_result:' . $result->id,
+                title: '保養檢查 NG：' . $device->device_code,
+                description: '定期保養檢查結果為 NG（異常）。'
+                    . "\n工單：" . ($order?->displayNumber() ?? '—')
+                    . "\n執行人：" . ($result->executor?->name ?? '—')
+                    . "\n說明：" . ($result->note ?: '（未填寫）'),
+                deviceNote: trim($device->device_code . ' ' . ($device->classroom?->name ?? '')),
+                deviceId: $device->id,
+            );
 
-        $order = $result->maintenanceOrder()->with(['device', 'maintenancePlan'])->first();
-        $device = $order?->device;
+            // 補上保養結果的關聯、設備所在教室，報修人＝回報 NG 的人（才看得到自己轉出的報修單、也能驗收）。
+            $repairRequest->forceFill([
+                'maintenance_result_id' => $result->id,
+                'classroom_id' => $repairRequest->classroom_id ?? $device->classroom_id,
+                'requester_id' => $repairRequest->requester_id ?? $result->executed_by,
+            ])->save();
 
-        $deviceNote = $device
-            ? trim($device->device_code.' '.($device->name ?? ''))
-            : $order?->categoryName();
+            AuditLogger::log('created', $repairRequest, [
+                'title' => $repairRequest->title,
+                'device_id' => $repairRequest->device_id,
+                'source' => 'maintenance_result:' . $result->id,
+            ], '保養 NG 自動建立報修單「' . $repairRequest->title . '」');
 
-        $title = '保養檢查 NG：'.($device?->device_code ?? $order?->categoryName() ?? '未指定設備');
-        $description = '定期保養檢查結果為 NG（異常）。'
-            ."\n工單：#".($order?->id ?? '—')
-            ."\n執行人：".($result->executor?->name ?? '—')
-            ."\n說明：".($result->note ?: '（未填寫）');
-
-        $repairRequest = app(\App\Actions\CreateRepairRequestFromMaintenanceNg::class)->execute(
-            sourceLabel: 'maintenance_result:'.$result->id,
-            title: $title,
-            description: $description,
-            deviceNote: $deviceNote,
-        );
-
-        // 彭仕衡的 Action 目前沒有 device_id 參數；報修單 device_id 欄位是已有外鍵的正式欄位，
-        // 這裡補上設備關聯，設備履歷才能撈到這張報修單。（已建議他之後在 Action 加 deviceId 參數）
-        if ($device && $repairRequest->device_id === null) {
-            $repairRequest->device_id = $device->id;
-            $repairRequest->save();
-        }
+            return $repairRequest;
+        });
 
         $result->update([
             'ng_conversion_status' => MaintenanceResult::NG_CONVERSION_CONVERTED,
-            'repair_request_id' => $repairRequest->id,
+            'repair_request_id' => $repairs->first()?->id,   // 舊欄位：只記第一張（完整清單看 repair_requests.maintenance_result_id）
         ]);
 
-        // 自動建的報修單也要留操作紀錄（和手動新增報修單一致）。
-        AuditLogger::log('created', $repairRequest, [
-            'title' => $repairRequest->title,
-            'device_id' => $repairRequest->device_id,
-            'source' => 'maintenance_result:' . $result->id,
-        ], '保養 NG 自動建立報修單「' . $repairRequest->title . '」');
-    }
-
-    /** 彭仕衡的報修模組是否已併入並完成 migration。 */
-    public function repairModuleAvailable(): bool
-    {
-        return class_exists(\App\Actions\CreateRepairRequestFromMaintenanceNg::class)
-            && Schema::hasTable('repair_requests');
+        return $repairs;
     }
 }

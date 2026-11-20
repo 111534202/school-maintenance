@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型
  *   （例如手動輸入、沒有對應真實設備的案件）。
  * - status（案件狀態）欄位請一律透過 App\Services\RepairRequestWorkflow 這支
  *   service 來修改，不要在 Controller 或其他地方直接寫 `$repairRequest->status = ...`。
- *   因為狀態怎麼轉換是有規則的（例如「新報修」不能直接跳到「處理中」），這些
+ *   因為狀態怎麼轉換是有規則的（例如「新報修」不能直接跳到「待驗收」），這些
  *   規則全部寫在那支 service 裡，統一管理比較不會出錯。
  *
  *
@@ -34,6 +34,10 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;   // 「一對多的多型
  * @property bool $is_class_affected
  * @property \App\Enums\RepairRequestStatus $status
  * @property string|null $rejection_reason
+ * @property string|null $return_reason
+ * @property int|null $returned_by
+ * @property \Illuminate\Support\Carbon|null $returned_at
+ * @property int|null $maintenance_result_id
  * @property int|null $requester_id
  * @property int|null $device_id
  * @property string|null $device_note
@@ -65,7 +69,7 @@ class RepairRequest extends Model
      * - device_note：沒有掃描設備條碼、手動輸入的案件，用文字描述設備位置（device_id 會是空的）
      * - scheduled_at：預計處理日期
      * - rejection_reason：驗收不通過退回時，驗收人填的退回原因
-     * - classroom_id：設備地點（只能選現有教室）。掃描設備時自動帶入設備所在的教室；
+     * - classroom_id：發現地點（只能選現有教室）。掃描設備時自動帶入設備所在的教室；
      *   記的是「報修當時」的地點，設備之後搬走也不會改變。
      */
     protected $fillable = [
@@ -81,6 +85,10 @@ class RepairRequest extends Model
         'accepted_by',   // 指定的驗收人（沒指定就是報修人本人）
         'scheduled_at',
         'rejection_reason',
+        'return_reason',          // 退回原因（已退回時必填）
+        'returned_by',            // 退回的人
+        'returned_at',            // 退回時間
+        'maintenance_result_id',  // 保養 NG 轉來的報修單：指回那筆保養結果（每台 NG 設備一張）
         'classroom_id',
     ];
 
@@ -96,6 +104,7 @@ class RepairRequest extends Model
         'is_class_affected' => 'boolean',
         'status' => RepairRequestStatus::class,
         'scheduled_at' => 'datetime',
+        'returned_at' => 'datetime',
     ];
 
     /**
@@ -160,6 +169,17 @@ class RepairRequest extends Model
     }
 
     /**
+     * 未結束的案件：不是「已結案」也不是「已退回」（已退回不算待處理、不算待維修）。
+     *
+     * @param  Builder<RepairRequest>  $query
+     * @return Builder<RepairRequest>
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->whereNotIn($query->qualifyColumn('status'), RepairRequestStatus::closedValues());
+    }
+
+    /**
      * 只撈「已逾時」的案件：還沒結案，且預計處理時間已經過了。沒填預計處理時間
      * （scheduled_at 是 null，例如還沒派工）的案件不算逾時，因為根本沒有期限可比較。
      * 主控台「逾時工單」卡片與看板的 ?overdue=1 篩選都用它，數字才會一致。
@@ -167,7 +187,7 @@ class RepairRequest extends Model
     public function scopeOverdue(Builder $query): Builder
     {
         return $query
-            ->where('status', '!=', RepairRequestStatus::Completed->value)
+            ->open()
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<', now());
     }
@@ -175,7 +195,7 @@ class RepairRequest extends Model
     /** 這張案件現在是不是已經逾時（給看板單筆顯示用，邏輯跟 scopeOverdue 一致）。 */
     public function getIsOverdueAttribute(): bool
     {
-        return $this->status !== RepairRequestStatus::Completed
+        return ! $this->status->isClosed()
             && $this->scheduled_at !== null
             && $this->scheduled_at->isPast();
     }
@@ -192,7 +212,7 @@ class RepairRequest extends Model
     }
 
     /**
-     * 設備地點（教室）。含已停用（軟刪除）的教室，舊報修單才查得到當時的地點。
+     * 發現地點（教室）。含已停用（軟刪除）的教室，舊報修單才查得到當時的地點。
      *
      * @return BelongsTo<Classroom, $this>
      */
@@ -215,6 +235,16 @@ class RepairRequest extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requester_id');
+    }
+
+    /**
+     * 退回這張報修單的人（已退回時才有值）。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function returnedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'returned_by');
     }
 
     /**

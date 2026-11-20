@@ -19,21 +19,23 @@ use Illuminate\Support\Facades\DB;           // 直接操作資料庫（這裡�
  * 這樣才能保證「狀態不會亂跳」（例如不會有人漏寫檢查，讓「新報修」直接
  * 變成「已結案」）。
  *
- * 五個狀態的意思：
+ * 五個狀態的意思（依《報修與保養流程修改說明》，拿掉了「處理中」）：
  * - pending（新報修）：使用者剛送出報修單，還沒有人接手
- * - assigned（已派工）：主管已經指定維修人員
- * - in_progress（處理中）：維修人員正在處理
+ * - assigned（已派工）：主管已經指定維修人員；維修人員直接填維修紀錄
+ * - returned（已退回）：派工的人（新報修時）或被指派的維修人員（已派工時）退回，必填原因；流程結束，仍留在看板
  * - pending_review（待驗收）：維修人員填完維修紀錄，等報修人確認有沒有修好
  * - completed（已結案）：報修人確認修好了，整個流程結束（無法再變動）
  *
  * 完整流程圖：
  *
- *   新報修 → 已派工 → 處理中 → 待驗收 → 已結案
- *                                  └──（驗收不通過）──> 處理中
+ *   新報修 → 已派工 → 待驗收 → 已結案
+ *     │        │ ↑        │
+ *     │        │ └（驗收不通過，填原因）
+ *     └→ 已退回 ←┘（退回，填原因）
  *
- * 「驗收不通過」這條路是 Week1 就先討論好的規則：退回「處理中」而不是退回
- * 「已派工」，因為維修人員通常不會換，只是要回去補修；之前填過的維修紀錄
- * （RepairLog）不會被刪除或修改，退回後維修人員會再填一筆新的維修紀錄。
+ * 驗收不通過退回「已派工」：維修人員通常不會換，只是要回去補修；之前填過的維修紀錄（RepairLog）
+ * 不會被刪除或修改，退回後維修人員會再填一筆新的維修紀錄。
+ * 設備狀態不再跟著報修單改寫：「待維修」由報修單推算（見 RepairRequestStatus::awaitingRepairValues）。
  *
  * 【想改流程（例如新增一個「待料中」狀態）】
  * 1. app/Enums/RepairRequestStatus.php 加新狀態；2. 下面 TRANSITIONS 表加上它能轉去哪、誰能轉到它；
@@ -44,23 +46,17 @@ class RepairRequestWorkflow
     /**
      * 狀態轉換規則表：key 是「目前狀態」，value 是「可以轉成的狀態清單」。
      * 例如 'pending' => ['assigned'] 表示：狀態是「新報修」時，只能轉成「已派工」，
-     * 不能跳過去直接變成「處理中」或其他狀態。
+     * 或「已退回」，不能跳過去直接變成「待驗收」或其他狀態。
      *
      * @var array<string, list<string>>
      */
     private const TRANSITIONS = [
-        'pending' => ['assigned'],
-        'assigned' => ['in_progress'],
-        'in_progress' => ['pending_review'],
-        'pending_review' => ['completed', 'in_progress'],
+        'pending' => ['assigned', 'returned'],
+        'assigned' => ['pending_review', 'returned'],
+        'pending_review' => ['completed', 'assigned'],
+        'returned' => [],  // 已退回是終點（使用者需要時重新報修）
         'completed' => [], // 已結案是終點，不能再轉去任何狀態
     ];
-
-    // 建構子：Laravel 建立這個類別時會自動把 DeviceStatusSync 準備好並傳進來（「依賴注入」）。
-    // 參數前面寫 private，等於同時宣告了一個屬性 $this->deviceStatusSync 並把它存起來。
-    public function __construct(private DeviceStatusSync $deviceStatusSync)
-    {
-    }
 
     /**
      * 檢查「這張報修單現在的狀態」能不能轉成「$to 這個狀態」。
@@ -99,14 +95,12 @@ class RepairRequestWorkflow
     }
 
     /**
-     * 真正執行狀態轉換：檢查合法性 → 更新 status 欄位並存檔 → 視情況通知
-     * DeviceStatusSync，依報修單狀態同步更新設備狀態。
+     * 真正執行狀態轉換：檢查合法性 → 更新 status 欄位並存檔。
+     * 設備狀態不跟著改：設備是否「待維修」由報修單推算。
+     * 報修單結案時，若它是保養 NG 轉來的，順便檢查那張保養工單能不能完成（MaintenanceNgRepairSync）。
      */
     public function transitionTo(RepairRequest $repairRequest, RepairRequestStatus $to): RepairRequest
     {
-
-        // 將報修單狀態更新與設備同步放在同一個交易中。
-        // 任一步驟失敗，資料庫變更都會回滾。
         return DB::transaction(function () use ($repairRequest, $to): RepairRequest {
             // 第一步一定先檢查，不合法就在這裡丟例外。
             $this->assertCanTransition($repairRequest, $to);
@@ -114,19 +108,12 @@ class RepairRequestWorkflow
             $repairRequest->status = $to;
             $repairRequest->save();
 
-            // 案件開始「處理中」：將關聯設備標記為「維修中」。
-            if ($to === RepairRequestStatus::InProgress) {
-                $this->deviceStatusSync->markUnderRepair($repairRequest);
-            }
-
-            // 只有案件進入「已結案」時，才檢查設備能否恢復正常。
-            if ($to === RepairRequestStatus::Completed) {
-                $this->deviceStatusSync->markNormalIfNoActiveRepairs($repairRequest);
+            if ($to->isClosed()) {
+                MaintenanceNgRepairSync::repairClosed($repairRequest);
             }
 
             return $repairRequest;
         });
-
     }
 
     /**
@@ -144,7 +131,8 @@ class RepairRequestWorkflow
      */
     public function assign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
-        $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
+        // 轉換表也允許「待驗收 → 已派工」（驗收不通過），所以派工要另外限定只能從「新報修」開始。
+        $this->assertStatus($repairRequest, RepairRequestStatus::Pending, RepairRequestStatus::Assigned);
 
         // DB::transaction：裡面的動作「要嘛全部成功，要嘛全部取消」。
         return DB::transaction(function () use ($repairRequest, $scheduledAt, $assignedTo) {
@@ -156,30 +144,7 @@ class RepairRequestWorkflow
         });
     }
     /**
-     * 維修人員開始處理：已派工 -> 處理中。
-     *
-     * 為什麼要多檢查「現在一定是已派工」：轉換表為了讓「驗收不通過退回」可行，允許
-     * 待驗收 -> 處理中。如果這裡只靠轉換表，維修人員（或管理員）就能對「待驗收」的案件按
-     * 「開始處理」，不經報修人、不填退回原因就把案件拉回處理中。所以「待驗收退回」只能走 reject()。
-     *
-     * @throws DomainException 案件不是「已派工」狀態時
-     */
-    public function start(RepairRequest $repairRequest): RepairRequest
-    {
-        if ($repairRequest->status !== RepairRequestStatus::Assigned) {
-            throw new DomainException(
-                __('repair_requests.errors.invalid_transition', [
-                    'from' => $repairRequest->status->label(),
-                    'to' => RepairRequestStatus::InProgress->label(),
-                ])
-            );
-        }
-
-        return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
-    }
-
-    /**
-     * 送出維修紀錄後自動進入待驗收：處理中 -> 待驗收。
+     * 送出維修紀錄後自動進入待驗收：已派工 -> 待驗收。
      * 這個方法本身不建立維修紀錄（那是 RepairLogController 的工作），
      * 只負責「維修紀錄填完之後」把案件狀態往前推一步。
      */
@@ -198,8 +163,7 @@ class RepairRequestWorkflow
     }
 
     /**
-     * 報修人驗收不通過，把案件退回「處理中」讓維修人員重新處理
-     * （依《第三週個人工作計畫》第 3 項「驗收退回」，轉換方向是 Week1 就先決定好的規則）。
+     * 報修人驗收不通過，把案件退回「已派工」讓維修人員重新處理（依《報修與保養流程修改說明》，原本退回「處理中」）。
      *
      * $reason 是退回原因（例如「還是會閃退，沒有真的修好」），一定要填，
      * 讓維修人員知道要補做什麼；存在 repair_requests.rejection_reason 欄位，
@@ -212,14 +176,48 @@ class RepairRequestWorkflow
     public function reject(RepairRequest $repairRequest, string $reason): RepairRequest
     {
         // 同樣先檢查合法性，再寫退回原因，避免「畫面說失敗、原因卻被偷偷改掉」。
-        $this->assertCanTransition($repairRequest, RepairRequestStatus::InProgress);
+        // 轉換表允許「新報修 → 已派工」（派工），所以這裡要另外限定：驗收不通過只能從「待驗收」退回。
+        $this->assertStatus($repairRequest, RepairRequestStatus::PendingReview, RepairRequestStatus::Assigned);
 
         return DB::transaction(function () use ($repairRequest, $reason) {
             $repairRequest->rejection_reason = $reason;   // 記下退回原因（覆蓋成最新一次）
             $repairRequest->save();
 
-            return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
+            return $this->transitionTo($repairRequest, RepairRequestStatus::Assigned);
         });
+    }
+
+    /**
+     * 退回報修單：新報修（由派工的人）或已派工（由被指派的維修人員）-> 已退回，必須填原因。
+     * 退回後流程結束，報修單仍留在看板、不算待維修；使用者需要時重新報修。誰可以退回由 RepairRequestPolicy::returnRequest 判斷。
+     */
+    public function returnRequest(RepairRequest $repairRequest, string $reason, int $returnedBy): RepairRequest
+    {
+        $this->assertCanTransition($repairRequest, RepairRequestStatus::Returned);
+
+        return DB::transaction(function () use ($repairRequest, $reason, $returnedBy) {
+            $repairRequest->return_reason = $reason;
+            $repairRequest->returned_by = $returnedBy;
+            $repairRequest->returned_at = now();
+            $repairRequest->save();
+
+            return $this->transitionTo($repairRequest, RepairRequestStatus::Returned);
+        });
+    }
+
+    /**
+     * 限定「現在一定是 $expected 狀態」才能做這個動作（不合法就丟出跟轉換表一樣的錯誤訊息）。
+     *
+     * @throws DomainException
+     */
+    private function assertStatus(RepairRequest $repairRequest, RepairRequestStatus $expected, RepairRequestStatus $to): void
+    {
+        if ($repairRequest->status !== $expected) {
+            throw new DomainException(__('repair_requests.errors.invalid_transition', [
+                'from' => $repairRequest->status->label(),
+                'to' => $to->label(),
+            ]));
+        }
     }
 
     /**
@@ -228,14 +226,13 @@ class RepairRequestWorkflow
      * 跟著變動（跟 assign() 不一樣，assign() 是「新報修 -> 已派工」的狀態轉換，
      * reassign() 純粹只是換人、不改變狀態）。
      *
-     * 只允許在「已派工」或「處理中」這兩個狀態做重新指派——「新報修」還沒
-     * 派過工，應該走 assign()；「待驗收」「已結案」代表已經在走驗收流程，
-     * 這時候換人意義不大，也容易造成混亂，所以不開放。
+     * 只允許在「已派工」做重新指派——「新報修」還沒派過工，應該走 assign()；
+     * 「待驗收」「已結案」代表已經在走驗收流程，「已退回」流程已結束，所以不開放。
      */
     public function reassign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
         // 這個動作不改狀態，所以不走 TRANSITIONS 表，直接列出「允許換人的狀態」。
-        $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
+        $allowedStatuses = [RepairRequestStatus::Assigned];
 
         if (! in_array($repairRequest->status, $allowedStatuses, true)) {
             throw new DomainException(

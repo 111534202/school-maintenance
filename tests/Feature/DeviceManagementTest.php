@@ -75,7 +75,6 @@ class DeviceManagementTest extends TestCase
         $device = Device::firstWhere('device_code', 'DEV-NEW');
         $this->assertSame('AS-1', $device->asset_code);
         $this->assertSame('2030-01-31', $device->warranty_end_date->toDateString());
-        $this->assertFalse($device->is_core);   // 核取方塊沒勾 = 不是核心設備
         $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'loggable_id' => $device->id, 'loggable_type' => Device::class]);
     }
 
@@ -94,62 +93,40 @@ class DeviceManagementTest extends TestCase
         $this->assertSame(1, Device::count());
     }
 
-    // 新增一台「核心設備、維修中」的設備，所在教室立刻被標成設備異常。
-    public function test_creating_a_broken_core_device_marks_its_classroom_abnormal(): void
+    // 「待維修」不能手動選（由報修單推算）：送 repairing 會被驗證擋下。
+    public function test_awaiting_repair_cannot_be_chosen_by_hand(): void
     {
-        $this->post(route('devices.store'), $this->payload(['is_core' => '1', 'status' => 'repairing']));
-
-        $this->assertSame('abnormal', $this->room->fresh()->reservation_status);
+        $this->post(route('devices.store'), $this->payload(['status' => 'repairing']))->assertSessionHasErrors('status');
+        $this->assertSame(0, Device::count());
+        $this->get(route('devices.create'))->assertOk()->assertDontSee('value="repairing"', false)->assertDontSee('name="is_core"', false);
     }
 
-    // 非核心設備壞掉，不影響教室的異常標記。
-    public function test_a_broken_non_core_device_does_not_mark_the_classroom(): void
+    // 修改設備的狀態會寫進操作紀錄（from/to）。
+    public function test_updating_status_is_logged(): void
     {
-        $this->post(route('devices.store'), $this->payload(['status' => 'repairing']));
+        $device = $this->makeDevice();
 
-        $this->assertSame('normal', $this->room->fresh()->reservation_status);
-    }
-
-    // 修改設備的狀態會寫進操作紀錄（from/to），並重新計算教室異常標記；修好之後教室回到正常。
-    public function test_updating_status_is_logged_and_the_classroom_flag_follows(): void
-    {
-        $device = $this->makeDevice(['is_core' => true]);
-
-        $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-1', 'is_core' => '1', 'status' => 'repairing']))
+        $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-1', 'status' => 'retired']))
             ->assertRedirect(route('devices.index'));
-        $this->assertSame('repairing', $device->fresh()->status);
-        $this->assertSame('abnormal', $this->room->fresh()->reservation_status);
+        $this->assertSame('retired', $device->fresh()->status);
         $log = AuditLog::where('action', 'status_changed')->where('loggable_id', $device->id)->latest('id')->first();
-        $this->assertSame(['from' => 'normal', 'to' => 'repairing'], $log->changes);
-
-        $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-1', 'is_core' => '1', 'status' => 'normal']));
-        $this->assertSame('normal', $this->room->fresh()->reservation_status);
+        $this->assertSame(['from' => 'normal', 'to' => 'retired'], $log->changes);
     }
 
-    // 取消「核心設備」勾選也會重新計算教室標記，並寫進操作紀錄。
-    public function test_unticking_core_recalculates_the_classroom_and_is_logged(): void
+    // 設備有已派工／待驗收的報修單時，畫面顯示「待維修」；報修單結案後自動回到「正常」（資料庫的狀態一直是正常）。
+    public function test_awaiting_repair_follows_the_repair_requests(): void
     {
-        $device = $this->makeDevice(['is_core' => true, 'status' => 'repairing']);
-        $this->room->update(['reservation_status' => 'abnormal']);
+        $device = $this->makeDevice();
+        $repair = \App\Models\RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'pending']);
+        $this->assertSame('normal', $device->fresh()->display_status);   // 新報修還沒派工：不算待維修
 
-        $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-1', 'status' => 'repairing']));
+        $repair->update(['status' => 'assigned']);
+        $this->assertSame('repairing', $device->fresh()->display_status);
+        $this->get(route('devices.index'))->assertSee('待維修');
 
-        $this->assertFalse($device->fresh()->is_core);
-        $this->assertSame('normal', $this->room->fresh()->reservation_status);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'core_flag_changed', 'loggable_id' => $device->id]);
-    }
-
-    // 把壞掉的核心設備搬到另一間教室：舊教室恢復正常，新教室變成異常。
-    public function test_moving_a_broken_core_device_updates_both_classrooms(): void
-    {
-        $other = $this->makeClassroom('B202');
-        $device = $this->makeDevice(['is_core' => true, 'status' => 'repairing']);
-        $this->room->update(['reservation_status' => 'abnormal']);
-
-        $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-1', 'is_core' => '1', 'status' => 'repairing', 'classroom_id' => $other->id]));
-
-        $this->assertSame('normal', $this->room->fresh()->reservation_status);
-        $this->assertSame('abnormal', $other->fresh()->reservation_status);
+        $repair->update(['status' => 'completed']);
+        $this->assertSame('normal', $device->fresh()->display_status);
+        $this->assertSame('normal', $device->fresh()->status);
     }
 
     public function test_update_keeps_own_device_code_but_cannot_take_another(): void
@@ -161,11 +138,10 @@ class DeviceManagementTest extends TestCase
         $this->put(route('devices.update', $device), $this->payload(['device_code' => 'DEV-2']))->assertSessionHasErrors('device_code');
     }
 
-    // 停用設備：狀態變成 disabled 並軟刪除（資料保留、列表看不到），所在教室重新計算標記。
-    public function test_disable_soft_deletes_the_device_and_recalculates_the_classroom(): void
+    // 停用設備：狀態變成 disabled 並軟刪除（資料保留、列表看不到）。
+    public function test_disable_soft_deletes_the_device(): void
     {
-        $device = $this->makeDevice(['is_core' => true, 'status' => 'repairing']);
-        $this->room->update(['reservation_status' => 'abnormal']);
+        $device = $this->makeDevice();
 
         $this->patch(route('devices.disable', $device))->assertRedirect(route('devices.index'));
 
@@ -180,12 +156,14 @@ class DeviceManagementTest extends TestCase
         $other = $this->makeClassroom('B202');
         $screen = DeviceCategory::create(['name' => '螢幕']);
         $this->makeDevice(['device_code' => 'PRJ-001', 'brand' => 'Epson', 'status' => 'normal']);
-        $this->makeDevice(['device_code' => 'SCR-001', 'device_category_id' => $screen->id, 'classroom_id' => $other->id, 'status' => 'repairing']);
+        $screenDevice = $this->makeDevice(['device_code' => 'SCR-001', 'device_category_id' => $screen->id, 'classroom_id' => $other->id]);
+        \App\Models\RepairRequest::factory()->create(['device_id' => $screenDevice->id, 'status' => 'assigned']);   // 待維修
 
         $this->get(route('devices.index', ['keyword' => 'Epson']))->assertSee('PRJ-001')->assertDontSee('SCR-001');
         $this->get(route('devices.index', ['classroom_id' => $other->id]))->assertSee('SCR-001')->assertDontSee('PRJ-001');
         $this->get(route('devices.index', ['device_category_id' => $screen->id]))->assertSee('SCR-001')->assertDontSee('PRJ-001');
         $this->get(route('devices.index', ['status' => 'repairing']))->assertSee('SCR-001')->assertDontSee('PRJ-001');
+        $this->get(route('devices.index', ['status' => 'normal']))->assertSee('PRJ-001')->assertDontSee('SCR-001');
     }
 
     // QR Code 回傳 SVG 圖片，內容編碼的是設備入口頁的固定網址（只含設備編號，不寫死教室等會變動的資料）。
@@ -203,12 +181,13 @@ class DeviceManagementTest extends TestCase
     // 設備詳細頁與入口頁都能正常開啟並顯示中文狀態（任何登入者都能開入口頁）。
     public function test_show_and_entry_pages_render_with_the_chinese_status(): void
     {
-        $device = $this->makeDevice(['device_code' => 'DEV-1', 'status' => 'repairing']);
+        $device = $this->makeDevice(['device_code' => 'DEV-1']);
+        \App\Models\RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'pending_review']);
 
-        $this->get(route('devices.show', $device))->assertOk()->assertSee('DEV-1')->assertSee('維修中');
+        $this->get(route('devices.show', $device))->assertOk()->assertSee('DEV-1')->assertSee('待維修');
 
         $this->actingAs($this->makeTechnician());
-        $this->get(route('devices.entry', $device))->assertOk()->assertSee('維修中')->assertSee('前往報修');
+        $this->get(route('devices.entry', $device))->assertOk()->assertSee('待維修')->assertSee('前往報修');
     }
 
     // 停用（軟刪除）後的設備，入口頁網址找不到（404）。

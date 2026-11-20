@@ -31,7 +31,7 @@ class ReservationReviewTest extends TestCase
         $this->applicant = $this->makeUserWithRole('teacher', '教師', ['name' => '林老師']);
         $this->classroom = Classroom::create([
             'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室',
-            'is_active' => true, 'reservation_status' => 'normal',
+            'is_active' => true,
         ]);
     }
 

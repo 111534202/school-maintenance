@@ -69,8 +69,8 @@ class WorkOrderEditCancelTest extends TestCase
 
         $this->get(route('repairs.edit', $repair))->assertForbidden();
         $this->put(route('repairs.update', $repair), $this->payload())->assertForbidden();
-        $this->delete(route('repairs.destroy', $repair))->assertForbidden();
-        $this->assertNull($repair->fresh()->deleted_at);
+        $this->post(route('repairs.return', $repair), ['return_reason' => '不用修'])->assertForbidden();
+        $this->assertSame('pending', $repair->fresh()->status->value);
     }
 
     public function test_a_completed_repair_request_cannot_be_edited(): void
@@ -85,37 +85,68 @@ class WorkOrderEditCancelTest extends TestCase
         $this->assertSame('已結案的單', $repair->fresh()->title);
     }
 
-    // ---------- 報修單：取消（刪除） ----------
+    // ---------- 報修單：退回（取代原本的取消／刪除） ----------
 
-    public function test_cancelling_a_repair_request_soft_deletes_it_and_removes_it_from_the_board_and_dashboard(): void
+    // 能派工的人可以退回新報修：必填原因，狀態變「已退回」，仍留在看板（報修單不能再刪除）。
+    public function test_a_dispatcher_can_return_a_new_request_with_a_reason_and_it_stays_on_the_board(): void
     {
-        $repair = RepairRequest::factory()->create(['title' => '要取消的單', 'status' => 'pending']);
-        $this->actingAs($this->dispatcher());
-        $this->get(route('repairs.index'))->assertSee('要取消的單');
-
-        $this->delete(route('repairs.destroy', $repair))->assertRedirect(route('repairs.index'))->assertSessionHas('success');
-
-        $this->assertSoftDeleted('repair_requests', ['id' => $repair->id]);   // 資料還在，只是標記已取消
-        $this->get(route('repairs.index'));   // 第一次打開會顯示「已取消」的成功訊息（訊息裡有標題），先讓它消耗掉
-        $this->get(route('repairs.index'))->assertDontSee('要取消的單');
-        $this->get(route('repairs.show', $repair))->assertNotFound();
-        $this->assertSame(0, RepairRequest::count());
-        $this->assertDatabaseHas('audit_logs', ['action' => 'deleted', 'loggable_id' => $repair->id]);
-    }
-
-    public function test_a_repair_request_with_a_repair_log_cannot_be_cancelled(): void
-    {
+        $repair = RepairRequest::factory()->create(['title' => '要退回的單', 'status' => 'pending']);
         $dispatcher = $this->dispatcher();
         $this->actingAs($dispatcher);
 
-        foreach (['pending_review', 'completed'] as $status) {
-            $repair = RepairRequest::factory()->create(['status' => $status, 'accepted_by' => $dispatcher->id]);
-            $this->delete(route('repairs.destroy', $repair))->assertSessionHas('error');
-            $this->assertNull($repair->fresh()->deleted_at);
+        $this->post(route('repairs.return', $repair), ['return_reason' => ''])->assertSessionHasErrors('return_reason');
+        $this->assertSame('pending', $repair->fresh()->status->value);
+
+        $this->post(route('repairs.return', $repair), ['return_reason' => '不是設備問題'])
+            ->assertRedirect(route('repairs.show', $repair))->assertSessionHas('success');
+
+        $repair->refresh();
+        $this->assertSame('returned', $repair->status->value);
+        $this->assertSame('不是設備問題', $repair->return_reason);
+        $this->assertSame($dispatcher->id, $repair->returned_by);
+        $this->assertNotNull($repair->returned_at);
+        $this->assertNull($repair->deleted_at);
+        $this->get(route('repairs.index'))->assertSee('要退回的單');
+        $this->get(route('repairs.show', $repair))->assertSee('退回原因：')->assertSee('不是設備問題');
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('repairs.destroy'), '報修單不能刪除');
+    }
+
+    // 已派工的報修單：被指派的維修人員、能派工的人都能退回；別的維修人員不行。新報修只有能派工的人能退回。
+    public function test_an_assigned_request_can_be_returned_by_its_technician_or_a_dispatcher(): void
+    {
+        $technician = $this->makeTechnician();
+        $repair = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
+
+        $this->actingAs($this->makeTechnician());
+        $this->post(route('repairs.return', $repair), ['return_reason' => 'x'])->assertForbidden();
+
+        $this->actingAs($technician);
+        $this->post(route('repairs.return', $repair), ['return_reason' => '需要廠商處理'])->assertSessionHas('success');
+        $this->assertSame('returned', $repair->fresh()->status->value);
+
+        $another = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
+        $this->actingAs($this->dispatcher());
+        $this->post(route('repairs.return', $another), ['return_reason' => '重複報修'])->assertSessionHas('success');
+        $this->assertSame('returned', $another->fresh()->status->value);
+
+        $pending = RepairRequest::factory()->create(['status' => 'pending']);
+        $this->actingAs($technician);
+        $this->post(route('repairs.return', $pending), ['return_reason' => 'x'])->assertForbidden();
+    }
+
+    // 待驗收、已結案、已退回都不能再退回。
+    public function test_requests_past_assignment_cannot_be_returned(): void
+    {
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'));
+
+        foreach (['pending_review', 'completed', 'returned'] as $status) {
+            $repair = RepairRequest::factory()->create(['status' => $status]);
+            $this->post(route('repairs.return', $repair), ['return_reason' => 'x'])->assertForbidden();
+            $this->assertSame($status, $repair->fresh()->status->value);
         }
     }
 
-    public function test_show_page_offers_edit_and_cancel_only_when_allowed(): void
+    public function test_show_page_offers_edit_and_return_only_when_allowed(): void
     {
         $dispatcher = $this->dispatcher();
         $pending = RepairRequest::factory()->create(['status' => 'pending']);
@@ -123,11 +154,11 @@ class WorkOrderEditCancelTest extends TestCase
         $review = RepairRequest::factory()->create(['status' => 'pending_review', 'accepted_by' => $dispatcher->id]);
         $this->actingAs($dispatcher);
 
-        $this->get(route('repairs.show', $pending))->assertSee('取消工單')->assertSee(route('repairs.edit', $pending), false);
-        $this->get(route('repairs.show', $review))->assertDontSee('取消工單')->assertSee(route('repairs.edit', $review), false);
+        $this->get(route('repairs.show', $pending))->assertSee('退回報修單')->assertDontSee('取消工單')->assertSee(route('repairs.edit', $pending), false);
+        $this->get(route('repairs.show', $review))->assertDontSee('退回報修單')->assertSee(route('repairs.edit', $review), false);
 
         $this->actingAs($this->makeUserWithRole('teacher', '教師'));
-        $this->get(route('repairs.show', $pending))->assertDontSee('取消工單')->assertDontSee(route('repairs.edit', $pending), false);
+        $this->get(route('repairs.show', $pending))->assertDontSee('退回報修單')->assertDontSee(route('repairs.edit', $pending), false);
     }
 
     // ---------- 保養工單 ----------

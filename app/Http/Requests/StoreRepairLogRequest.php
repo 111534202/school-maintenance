@@ -25,6 +25,12 @@ class StoreRepairLogRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // 報修時沒有設備（例如沒有條碼可掃）：維修人員一定要補選設備，才能送出維修紀錄；已經有設備的不用。
+            'device_id' => [
+                \Illuminate\Validation\Rule::requiredIf(fn () => $this->route('repair_request')?->device_id === null),
+                'nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('devices', 'id')->whereNull('deleted_at')->where(fn ($query) => $query->where('status', '<>', 'retired')),
+            ],
             'cause' => ['required', 'string', 'max:5000'],
             'resolution' => ['required', 'string', 'max:5000'],
             // 維修時間不能是未來（容許 5 分鐘的電腦時間誤差）；也避免填到 2038 年之後造成資料庫寫入失敗。
@@ -72,6 +78,8 @@ class StoreRepairLogRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'device_id.required' => '這張報修單報修時沒有設備，請選擇維修的設備後再送出。',
+            'device_id.exists' => '找不到這台設備，或設備已淘汰，請重新選擇。',
             'started_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
             'ended_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
             'started_at.after' => ':attribute 不是合理的日期，請重新選擇。',

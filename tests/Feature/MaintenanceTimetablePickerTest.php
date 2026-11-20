@@ -23,9 +23,9 @@ class MaintenanceTimetablePickerTest extends TestCase
     private function deviceInClassroom(string $code = 'DEV-TT1'): Device
     {
         $category = DeviceCategory::firstOrCreate(['name' => '投影機']);
-        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
 
-        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal', 'is_core' => false]);
+        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
     }
 
     public function test_the_device_timetable_returns_the_week_of_the_classroom_the_device_is_in(): void

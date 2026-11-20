@@ -31,7 +31,7 @@ class SidebarNavigationTest extends TestCase
         }
         // 零件選單項目叫「零件履歷」，版面註解裡也有這四個字，所以改看有沒有連到零件列表。
         $this->assertStringNotContainsString('href="' . route('parts.index') . '"', $html);
-        foreach (['保養管理', '保養項目', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
+        foreach (['保養管理', '用戶主檔', '設備主檔', '操作紀錄'] as $text) {
             $this->assertStringNotContainsString($text, $html);
         }
     }
@@ -95,7 +95,7 @@ class SidebarNavigationTest extends TestCase
         $html = $this->actingAs($admin)->withSession(['locale' => 'en'])->get(route('dashboard'))->assertOk()->getContent();
 
         // 先確認真的是英文介面（避免語言沒切成功而讓下面的檢查白白通過）。
-        foreach (['Repair Services', 'Maintenance Items', 'Space Requests', 'Parts Inventory', 'AI Preventive Maintenance'] as $text) {
+        foreach (['Repair Services', 'Maintenance Plans', 'Space Requests', 'Parts Inventory', 'AI Preventive Maintenance'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
         $this->assertStringNotContainsString('common.nav.', $html);
@@ -105,7 +105,7 @@ class SidebarNavigationTest extends TestCase
     public function test_repair_menu_stays_open_on_the_repair_log_page(): void
     {
         $tech = $this->makeTechnician();
-        $case = \App\Models\RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $tech->id]);
+        $case = \App\Models\RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $tech->id]);
 
         $html = $this->actingAs($tech)->get(route('repair-logs.create', $case))->assertOk()->getContent();
 

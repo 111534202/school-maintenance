@@ -2,29 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\MaintenanceItem;
 use App\Models\MaintenancePlan;
 use Illuminate\Database\Seeder;
 
+/**
+ * 保養計畫示範資料：計畫用「說明」描述要做的保養（依《報修與保養流程修改說明》，不再勾選保養項目）。
+ */
 class MaintenancePlanSeeder extends Seeder
 {
     public function run(): void
     {
-        $itemIds = MaintenanceItem::query()->pluck('id');
-
-        if ($itemIds->isEmpty()) {
-            $this->command?->warn('沒有保養項目可供關聯，請先跑 MaintenanceItemSeeder。');
-
-            return;
-        }
-
-        MaintenancePlan::factory()
-            ->count(4)
-            ->create()
-            ->each(function (MaintenancePlan $plan) use ($itemIds) {
-                $plan->maintenanceItems()->sync(
-                    $itemIds->random(min(3, $itemIds->count()))->all()
-                );
-            });
+        MaintenancePlan::factory()->count(4)->create();
     }
 }

@@ -34,14 +34,16 @@ class DashboardAndNotificationTest extends TestCase
     {
         $classroom = Classroom::create([
             'department_id' => Department::create(['name' => '資訊組'])->id, 'campus' => '本校區', 'building' => 'A棟',
-            'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'reservation_status' => 'abnormal',
+            'floor' => '1', 'classroom_code' => 'A101', 'name' => 'A101 教室',
         ]);
         $category = DeviceCategory::create(['name' => '投影機']);
-        foreach (['normal', 'normal', 'repairing'] as $i => $status) {
-            Device::create([
+        foreach (['normal', 'normal', 'normal'] as $i => $status) {
+            $device = Device::create([
                 'device_code' => "DEV-$i", 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => $status,
             ]);
         }
+        // 最後一台有已派工的報修單：畫面上是「待維修」，教室也算有異常設備。
+        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
     }
 
     // ---------- 主控台 ----------
@@ -58,13 +60,14 @@ class DashboardAndNotificationTest extends TestCase
         $this->loginAsAnyUser();
         RepairRequest::factory()->count(2)->create(['status' => 'pending']);
         RepairRequest::factory()->count(3)->create(['status' => 'pending_review']);
-        RepairRequest::factory()->create(['status' => 'in_progress']);
+        RepairRequest::factory()->create(['status' => 'assigned']);
         RepairRequest::factory()->create(['status' => 'completed']);
+        RepairRequest::factory()->create(['status' => 'returned']);   // 已退回跟已結案一樣不算進行中
 
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        // 進行中工單 = 除了已結案以外全部 = 2 + 3 + 1 = 6
+        // 進行中工單 = 除了已結案、已退回以外全部 = 2 + 3 + 1 = 6
         $response->assertSeeInOrder(['進行中工單', '6']);
         $response->assertSeeInOrder(['待派工', '2']);
         $response->assertSeeInOrder(['待驗收', '3']);
@@ -337,9 +340,9 @@ class DashboardAndNotificationTest extends TestCase
         $this->makeDevices();
         $admin = $this->loginAsAnyUser();
 
-        // 設備狀態圖表點「維修中」→ 設備主檔只剩 1 台，而且畫面顯示中文狀態而不是 repairing
+        // 設備狀態圖表點「待維修」→ 設備主檔只剩 1 台，而且畫面顯示中文狀態而不是 repairing
         $page = $this->get(route('devices.index', ['status' => 'repairing']));
-        $page->assertOk()->assertSee('DEV-2')->assertDontSee('DEV-0')->assertSee('維修中');
+        $page->assertOk()->assertSee('DEV-2')->assertDontSee('DEV-0')->assertSee('待維修');
         $page->assertDontSee('>repairing<', false);
 
         // 用戶身分圖表點某個身分 → 用戶主檔只列該身分
@@ -388,7 +391,7 @@ class DashboardAndNotificationTest extends TestCase
         $other = $this->makeTechnician();
         $this->actingAs($technician);
         RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
-        RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id]);
+        RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
         RepairRequest::factory()->create(['status' => 'completed', 'assigned_to' => $technician->id]);   // 已結案不算
         RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $other->id]);          // 別人的不算
         RepairRequest::factory()->create(['status' => 'pending']);                                        // 沒有派工權限，不通知
@@ -505,7 +508,6 @@ class DashboardAndNotificationTest extends TestCase
             'floor' => '1',
             'classroom_code' => 'A101',
             'name' => '一樓教室',
-            'reservation_status' => 'normal',
         ]);
 
         $classroomB = Classroom::create([
@@ -515,7 +517,6 @@ class DashboardAndNotificationTest extends TestCase
             'floor' => '2',
             'classroom_code' => 'B202',
             'name' => '二樓教室',
-            'reservation_status' => 'normal',
         ]);
 
         $projector = DeviceCategory::create(['name' => '投影機']);
@@ -573,14 +574,14 @@ class DashboardAndNotificationTest extends TestCase
         );
     }
 
-    // 儀表板統計：待修 = 待派工 + 已派工，維修中與待驗收分開計算。
-    public function test_dashboard_counts_pending_assigned_in_progress_and_pending_review_separately(): void
+    // 儀表板統計：待修 = 待派工 + 已派工，已派工與待驗收各自另外一張卡片（原本的「處理中」已拿掉）。
+    public function test_dashboard_counts_pending_assigned_and_pending_review_separately(): void
     {
         $this->loginAsAnyUser();
 
         RepairRequest::factory()->count(2)->create(['status' => 'pending']);
         RepairRequest::factory()->count(3)->create(['status' => 'assigned']);
-        RepairRequest::factory()->count(4)->create(['status' => 'in_progress']);
+        RepairRequest::factory()->count(4)->create(['status' => 'returned']);   // 已退回不算待修
         RepairRequest::factory()->count(5)->create(['status' => 'pending_review']);
         RepairRequest::factory()->count(2)->create(['status' => 'completed']);
 
@@ -591,8 +592,8 @@ class DashboardAndNotificationTest extends TestCase
         // 待修 = 待派工 2 + 已派工 3 = 5。
         $response->assertSeeInOrder(['待修數', '5']);
 
-        // 維修中只計算 in_progress。
-        $response->assertSeeInOrder(['維修中', '4']);
+        // 已派工卡片：只算已派工。
+        $response->assertSeeInOrder(['已派工', '3']);
 
         // 待驗收獨立計算，不併入待修數。
         $response->assertSeeInOrder(['待驗收', '5']);

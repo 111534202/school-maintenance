@@ -98,7 +98,7 @@ class RepairRequestFlowTest extends TestCase
         ]);
     }
 
-    // 設備地點只能選現有教室：送出不存在的教室編號會被擋下。
+    // 發現地點只能選現有教室：送出不存在的教室編號會被擋下。
     public function test_location_must_be_an_existing_classroom(): void
     {
         $this->post(route('repairs.store'), [

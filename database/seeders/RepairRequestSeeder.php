@@ -73,7 +73,7 @@ class RepairRequestSeeder extends Seeder
                 'description' => "現場檢查疑似天線老化，可能需要更換無線 AP 的天線或整台更換。",
                 'impact_level' => 'medium',
                 'is_class_affected' => false,
-                'status' => 'in_progress',
+                'status' => 'assigned',
                 'device_note' => 'C305 無線 AP',
                 'classroom_id' => $classroomId('IT-301'),
                 'requester_id' => $teacherId,

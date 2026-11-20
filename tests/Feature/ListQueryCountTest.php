@@ -45,8 +45,8 @@ class ListQueryCountTest extends TestCase
     private function pages(): array
     {
         $category = DeviceCategory::create(['name' => '投影機']);
-        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
-        $device = fn (int $i) => Device::create(['device_code' => 'DEV-' . $i . '-' . uniqid(), 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal', 'is_core' => false]);
+        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
+        $device = fn (int $i) => Device::create(['device_code' => 'DEV-' . $i . '-' . uniqid(), 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
         $device(0);
 
         return [
@@ -55,7 +55,7 @@ class ListQueryCountTest extends TestCase
             'audit-logs.index' => fn (int $i) => AuditLog::create(['user_id' => User::inRandomOrder()->value('id'), 'action' => 'created', 'description' => "紀錄 {$i}"]),
             'repairs.index' => fn (int $i) => RepairRequest::factory()->create(['classroom_id' => $classroom->id, 'requester_id' => User::inRandomOrder()->value('id')]),
             'parts.index' => fn (int $i) => Part::create(['name' => "零件 {$i}", 'unit' => '個', 'safety_stock' => 1]),
-            'classrooms.index' => fn (int $i) => Classroom::create(['campus' => '本校區', 'building' => 'B棟', 'floor' => '1F', 'classroom_code' => 'B' . $i . uniqid(), 'name' => "B{$i}", 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']),
+            'classrooms.index' => fn (int $i) => Classroom::create(['campus' => '本校區', 'building' => 'B棟', 'floor' => '1F', 'classroom_code' => 'B' . $i . uniqid(), 'name' => "B{$i}", 'type' => '一般教室', 'is_active' => true]),
             'maintenance-orders.index' => fn (int $i) => MaintenanceOrder::factory()->create(),
             'maintenance-items.index' => fn (int $i) => MaintenanceItem::factory()->create(),
             'maintenance-plans.index' => fn (int $i) => MaintenancePlan::factory()->create(),

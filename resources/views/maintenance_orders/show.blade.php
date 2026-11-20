@@ -17,10 +17,10 @@
             {{-- 修改（排定日期）與取消（刪除）：需要 maintenance.manage；已完成或已回報結果的工單不能改、不能取消。
                  取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
             @can('maintenance.manage')
-                @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED)
+                @if (! $maintenanceOrder->result && in_array($maintenanceOrder->status, [\App\Models\MaintenanceOrder::STATUS_PENDING, \App\Models\MaintenanceOrder::STATUS_IN_PROGRESS], true))
                     <a href="{{ route('maintenance-orders.edit', $maintenanceOrder) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil me-1"></i>修改日期</a>
                 @endif
-                @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && ! $maintenanceOrder->result)
+                @if (! $maintenanceOrder->result && in_array($maintenanceOrder->status, [\App\Models\MaintenanceOrder::STATUS_PENDING, \App\Models\MaintenanceOrder::STATUS_IN_PROGRESS], true))
                     <form method="POST" action="{{ route('maintenance-orders.destroy', $maintenanceOrder) }}"
                         data-confirm="請問確定要取消保養工單 {{ $maintenanceOrder->displayNumber() }} 嗎？取消後會從列表與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf
@@ -58,15 +58,8 @@
                 <dt class="col-sm-3">狀態</dt>
                 <dd class="col-sm-9">
                     <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
-                    @if ($maintenanceOrder->started_at)
-                        <span class="text-muted small ms-2">{{ $maintenanceOrder->started_at->format('Y-m-d H:i') }} 開始保養</span>
-                    @endif
-                    @if ($maintenanceOrder->canBeStartedBy(auth()->user()))
-                        <form method="POST" action="{{ route('maintenance-orders.start', $maintenanceOrder) }}" class="d-inline ms-2">
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-play-circle me-1"></i>開始保養</button>
-                        </form>
+                    @if ($maintenanceOrder->status === \App\Models\MaintenanceOrder::STATUS_CONVERTED)
+                        <span class="text-muted small ms-2">轉出的報修單全部結案（已結案或已退回）後，工單會自動改成已完成。</span>
                     @endif
                 </dd>
 
@@ -80,18 +73,25 @@
 
                 <dt class="col-sm-3">負責人</dt>
                 <dd class="col-sm-9">
-                    {{-- 保養管理者可以指派負責人（只能指派給有保養回報權限的人）；指派之後只有負責人與保養管理者能回報，通知鈴鐺也只提醒負責人。留空＝沒指派。 --}}
-                    @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && auth()->user()->can('maintenance.manage'))
+                    {{-- 待處理：保養管理者選負責人按「確認派工」→ 進行中，負責人才能回報結果。
+                         進行中：保養管理者可以改派（負責人必填）。只能派給有保養回報權限、帳號啟用中的人。 --}}
+                    @php $canDispatch = in_array($maintenanceOrder->status, [\App\Models\MaintenanceOrder::STATUS_PENDING, \App\Models\MaintenanceOrder::STATUS_IN_PROGRESS], true) && auth()->user()->can('maintenance.manage'); @endphp
+                    @if ($canDispatch)
                         <form method="POST" action="{{ route('maintenance-orders.assign', $maintenanceOrder) }}" class="d-flex flex-wrap gap-2 align-items-center">
                             @csrf
                             @method('PATCH')
-                            <select name="assigned_to" class="form-select form-select-sm w-auto" aria-label="負責人">
-                                <option value="">（還沒指派）</option>
+                            <select name="assigned_to" class="form-select form-select-sm w-auto @error('assigned_to') is-invalid @enderror" aria-label="負責人" required>
+                                <option value="">（請選擇負責人）</option>
                                 @foreach ($assignees as $assignee)
-                                    <option value="{{ $assignee->id }}" @selected($maintenanceOrder->assigned_to === $assignee->id)>{{ $assignee->name }}</option>
+                                    <option value="{{ $assignee->id }}" @selected((int) old('assigned_to', $maintenanceOrder->assigned_to) === $assignee->id)>{{ $assignee->name }}</option>
                                 @endforeach
                             </select>
-                            <button class="btn btn-outline-primary btn-sm" type="submit"><i class="bi bi-person-check me-1"></i>指派</button>
+                            @if ($maintenanceOrder->status === \App\Models\MaintenanceOrder::STATUS_PENDING)
+                                <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-person-check me-1"></i>確認派工</button>
+                            @else
+                                <button class="btn btn-outline-primary btn-sm" type="submit"><i class="bi bi-arrow-left-right me-1"></i>改派</button>
+                            @endif
+                            @error('assigned_to')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </form>
                     @else
                         {{ $maintenanceOrder->assignee?->name ?? '—' }}
@@ -122,27 +122,24 @@
                     <dt class="col-sm-3">執行時間</dt>
                     <dd class="col-sm-9">{{ $maintenanceOrder->result->executed_at?->format('Y-m-d H:i') }}</dd>
 
-                    <dt class="col-sm-3">備註</dt>
-                    <dd class="col-sm-9">{{ $maintenanceOrder->result->note ?? '—' }}</dd>
+                    <dt class="col-sm-3">說明</dt>
+                    <dd class="col-sm-9" style="white-space: pre-line;">{{ $maintenanceOrder->result->note ?? '—' }}</dd>
 
                     @if ($maintenanceOrder->result->isNg())
-                        <dt class="col-sm-3">轉報修狀態</dt>
+                        <dt class="col-sm-3">轉出的報修單</dt>
                         <dd class="col-sm-9">
-                            @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
-                                <span class="badge text-bg-warning">待轉報修（尚未建立報修單）</span>
-                                @can('repairs.create')
-                                    <a class="btn btn-sm btn-primary ms-2" href="{{ route('repairs.create', ['from_result' => $maintenanceOrder->result->id]) }}"><i class="bi bi-tools me-1"></i>建立報修單</a>
-                                @endcan
-                            @elseif ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
-                                <span class="badge text-bg-success">已轉報修</span>
-                                @if (\Illuminate\Support\Facades\Route::has('repairs.show'))
-                                    <a href="{{ route('repairs.show', $maintenanceOrder->result->repair_request_id) }}">報修單 #{{ $maintenanceOrder->result->repair_request_id }}</a>
-                                @else
-                                    報修單 #{{ $maintenanceOrder->result->repair_request_id }}
-                                @endif
-                            @else
-                                {{ $maintenanceOrder->result->ng_conversion_status ?? '—' }}
-                            @endif
+                            @forelse ($maintenanceOrder->result->repairRequests as $ngRepair)
+                                <div>
+                                    @can('view', $ngRepair)
+                                        <a href="{{ route('repairs.show', $ngRepair) }}">#{{ $ngRepair->id }} {{ $ngRepair->title }}</a>
+                                    @else
+                                        #{{ $ngRepair->id }} {{ $ngRepair->title }}
+                                    @endcan
+                                    @include('repairs._status-badge', ['status' => $ngRepair->status])
+                                </div>
+                            @empty
+                                —
+                            @endforelse
                         </dd>
                     @endif
                 </dl>
@@ -150,19 +147,10 @@
         </div>
     @endif
 
-    @if ($maintenanceOrder->maintenancePlan?->maintenanceItems->isNotEmpty())
+    @if ($maintenanceOrder->maintenancePlan?->description)
         <div class="card mt-3">
-            <div class="card-header bg-white form-section-title"><i class="bi bi-list-check me-2"></i>來源計畫包含的保養項目</div>
-            <ul class="list-group list-group-flush">
-                @foreach ($maintenanceOrder->maintenancePlan->maintenanceItems as $item)
-                    <li class="list-group-item">
-                        {{ $item->name }}
-                        @if ($item->deviceCategory)
-                            <span class="text-muted small">（{{ $item->deviceCategory->name }}）</span>
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
+            <div class="card-header bg-white form-section-title"><i class="bi bi-card-text me-2"></i>保養說明（來源計畫）</div>
+            <div class="card-body" style="white-space: pre-line;">{{ $maintenanceOrder->maintenancePlan->description }}</div>
         </div>
     @endif
 @endsection

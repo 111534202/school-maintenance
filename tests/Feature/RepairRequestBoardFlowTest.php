@@ -68,14 +68,9 @@ class RepairRequestBoardFlowTest extends TestCase
         $this->assertSame($technician->id, $repairRequest->fresh()->assigned_to);
         Mail::assertSent(RepairDispatchedMail::class, fn ($mail) => $mail->hasTo($technician->email));
 
-        // 開始處理
-        $this->post(route('repairs.start', $repairRequest))
-            ->assertRedirect(route('repairs.show', $repairRequest));
-        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
-
-        // 填寫維修紀錄
+        // 填寫維修紀錄（已派工就能直接填，原本的「開始處理」已拿掉）
         $response = $this->post(route('repair-logs.store', $repairRequest), [
-            'cause' => '燈泡使用超過壽命',
+            'device_id' => $this->anyDeviceId(), 'cause' => '燈泡使用超過壽命',
             'resolution' => '更換新燈泡並測試投影正常',
             'started_at' => now()->subHour()->format('Y-m-d\TH:i'),
             'ended_at' => now()->format('Y-m-d\TH:i'),
@@ -90,18 +85,20 @@ class RepairRequestBoardFlowTest extends TestCase
         $this->assertEquals(1.0, (float) $repairRequest->fresh()->repairLogs->first()->total_hours);
     }
 
-    // 還沒派工的案件不能直接「開始處理」，會得到錯誤訊息且狀態不變。
-    public function test_cannot_start_a_request_that_has_not_been_assigned_yet(): void
+    // 還沒派工的案件不能填維修紀錄（不能跳過派工），狀態不變。
+    public function test_cannot_fill_a_repair_log_before_the_request_is_assigned(): void
     {
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
 
-        // pending 案件還沒派工，不能直接「開始處理」（跳過 assigned 這一步）。
-        // Controller 會接住 DomainException，導回詳細頁顯示錯誤，不是噴 500。
-        $response = $this->post(route('repairs.start', $repairRequest));
+        $response = $this->post(route('repair-logs.store', $repairRequest), [
+            'device_id' => $this->anyDeviceId(), 'cause' => 'x', 'resolution' => 'y',
+            'started_at' => now()->subHour()->format('Y-m-d\TH:i'), 'ended_at' => now()->format('Y-m-d\TH:i'),
+        ]);
 
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $response->assertSessionHas('error');
         $this->assertSame('pending', $repairRequest->fresh()->status->value);
+        $this->assertCount(0, $repairRequest->fresh()->repairLogs);
     }
 
     // 已派工的案件被重複送出派工，不會悄悄覆蓋原本的維修人員。
@@ -128,7 +125,7 @@ class RepairRequestBoardFlowTest extends TestCase
     }
 
     // 案件不在「處理中」時重複送出維修紀錄，不會留下孤兒紀錄。
-    public function test_resubmitting_repair_log_on_a_request_not_in_progress_leaves_no_orphan_log(): void
+    public function test_resubmitting_repair_log_on_a_request_not_assigned_leaves_no_orphan_log(): void
     {
         // 迴歸測試：曾經的 bug 是先建立 repair_log（可能還帶附件）才檢查狀態，
         // 若案件已經是 pending_review（例如重複送出同一份表單），會留下一筆孤兒
@@ -136,7 +133,7 @@ class RepairRequestBoardFlowTest extends TestCase
         $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
-            'cause' => '重複送出測試',
+            'device_id' => $this->anyDeviceId(), 'cause' => '重複送出測試',
             'resolution' => '不應該被寫入',
             'started_at' => now()->subHour()->format('Y-m-d\TH:i'),
             'ended_at' => now()->format('Y-m-d\TH:i'),
@@ -160,7 +157,7 @@ class RepairRequestBoardFlowTest extends TestCase
     }
 
     // 驗收人可以把待驗收的案件退回「處理中」，並留下退回原因。
-    public function test_reviewer_can_reject_a_pending_review_case_back_to_in_progress(): void
+    public function test_reviewer_can_reject_a_pending_review_case_back_to_assigned(): void
     {
         // 依《第三週個人工作計畫》第 3 項：驗收不通過退回「處理中」（不是退回「已派工」），
         // 且要記錄退回原因，讓維修人員知道還要補做什麼。
@@ -171,7 +168,7 @@ class RepairRequestBoardFlowTest extends TestCase
         ]);
 
         $response->assertRedirect(route('repairs.show', $repairRequest));
-        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+        $this->assertSame('assigned', $repairRequest->fresh()->status->value);   // 驗收不通過回到「已派工」
         $this->assertSame('開機還是會自動關機，沒有真的修好。', $repairRequest->fresh()->rejection_reason);
     }
 
@@ -205,13 +202,13 @@ class RepairRequestBoardFlowTest extends TestCase
     // 不是「待驗收」的案件不能直接結案。
     public function test_cannot_complete_a_case_that_is_not_pending_review(): void
     {
-        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'assigned']);
 
         $response = $this->post(route('repairs.complete', $repairRequest));
 
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $response->assertSessionHas('error');
-        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+        $this->assertSame('assigned', $repairRequest->fresh()->status->value);
     }
 
     // 看板上每位維修人員旁邊顯示他手上未結案的件數。
@@ -221,7 +218,7 @@ class RepairRequestBoardFlowTest extends TestCase
         // 只顯示客觀數字，不做自動派工推薦。
         $technician = $this->makeTechnician();
         RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
-        RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id]);
+        RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
         RepairRequest::factory()->create(['status' => 'completed', 'assigned_to' => $technician->id]);
 
         $response = $this->get(route('repairs.index'));
@@ -286,23 +283,19 @@ class RepairRequestBoardFlowTest extends TestCase
         Mail::assertSent(RepairDispatchedMail::class, fn ($mail) => $mail->hasTo($newTechnician->email));
     }
 
-    // 處理中的案件也可以重新指派。
-    public function test_can_reassign_an_in_progress_case(): void
+    // 待驗收的案件不能重新指派（只有已派工可以換人）。
+    public function test_cannot_reassign_a_pending_review_case(): void
     {
         $originalTechnician = $this->makeTechnician();
-        $newTechnician = $this->makeTechnician();
         $repairRequest = RepairRequest::factory()->create([
-            'status' => 'in_progress',
+            'status' => 'pending_review',
             'assigned_to' => $originalTechnician->id,
         ]);
 
-        $response = $this->post(route('repairs.reassign', $repairRequest), [
-            'assigned_to' => $newTechnician->id,
-        ]);
-
-        $response->assertRedirect(route('repairs.show', $repairRequest));
-        $this->assertSame($newTechnician->id, $repairRequest->fresh()->assigned_to);
-        $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
+        $this->post(route('repairs.reassign', $repairRequest), [
+            'assigned_to' => $this->makeTechnician()->id,
+        ])->assertSessionHas('error');
+        $this->assertSame($originalTechnician->id, $repairRequest->fresh()->assigned_to);
     }
 
     // 還沒派過工的案件不能「重新指派」（要走一般派工）。
@@ -345,10 +338,10 @@ class RepairRequestBoardFlowTest extends TestCase
     {
         // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
         Storage::fake('local');
-        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'assigned']);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
-            'cause' => '風扇葉片變形產生異音',
+            'device_id' => $this->anyDeviceId(), 'cause' => '風扇葉片變形產生異音',
             'resolution' => '更換風扇並錄影確認運轉恢復正常',
             'parts_used_note' => '投影機散熱風扇 x1',
             'started_at' => now()->subHour()->format('Y-m-d\TH:i'),

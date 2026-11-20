@@ -86,7 +86,7 @@ class PreventiveCandidateScanTest extends TestCase
 
     public function test_only_normal_status_devices_are_scanned(): void
     {
-        $device = $this->makeDevice('T-REPAIR', 'repairing');
+        $device = $this->makeDevice('T-REPAIR', 'disabled');
         $this->addHistory($device, 'ononnn');
 
         $summary = $this->service()->scan();

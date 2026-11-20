@@ -77,7 +77,7 @@ class AcceptanceAssigneeTest extends TestCase
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $this->repair(['title' => '待驗收的投影機', 'requester_id' => $teacher->id, 'assigned_to' => $technician->id, 'accepted_by' => $acceptor->id]);
         $this->repair(['title' => '已結案的冷氣', 'status' => RepairRequestStatus::Completed->value, 'requester_id' => $teacher->id, 'assigned_to' => $technician->id, 'accepted_by' => $acceptor->id]);
-        RepairRequest::factory()->create(['title' => '處理中的電腦', 'status' => RepairRequestStatus::InProgress->value, 'requester_id' => $teacher->id]);
+        RepairRequest::factory()->create(['title' => '處理中的電腦', 'status' => RepairRequestStatus::Assigned->value, 'requester_id' => $teacher->id]);
 
         foreach ([$teacher, $acceptor, $technician, $admin] as $related) {
             $this->actingAs($related)->get(route('repairs.index'))->assertSee('待驗收的投影機')->assertSee('已結案的冷氣');
@@ -91,7 +91,7 @@ class AcceptanceAssigneeTest extends TestCase
     {
         $manager = $this->makeItManager();
         $pendingReview = $this->repair();
-        $inProgress = RepairRequest::factory()->create(['status' => RepairRequestStatus::InProgress->value]);
+        $inProgress = RepairRequest::factory()->create(['status' => RepairRequestStatus::Assigned->value]);
 
         $this->actingAs($manager)->get(route('repairs.show', $pendingReview))->assertForbidden();
         $this->actingAs($manager)->get(route('repairs.show', $inProgress))->assertOk();
@@ -104,7 +104,7 @@ class AcceptanceAssigneeTest extends TestCase
         $teacher = $this->makeUserWithRole('teacher', '教師');
 
         $this->actingAs($technician)->get(route('repairs.index'))->assertOk()
-            ->assertDontSee('value="pending_review"', false)->assertDontSee('value="completed"', false)->assertSee('value="in_progress"', false);
+            ->assertDontSee('value="pending_review"', false)->assertDontSee('value="completed"', false)->assertSee('value="assigned"', false);
         $this->actingAs($teacher)->get(route('repairs.index'))->assertSee('value="pending_review"', false)->assertSee('value="completed"', false);
     }
 
@@ -127,7 +127,7 @@ class AcceptanceAssigneeTest extends TestCase
     public function test_part_prices_are_only_shown_to_people_with_the_parts_permission(): void
     {
         $teacher = $this->makeUserWithRole('teacher', '教師');
-        $repair = RepairRequest::factory()->create(['requester_id' => $teacher->id, 'status' => RepairRequestStatus::InProgress->value]);
+        $repair = RepairRequest::factory()->create(['requester_id' => $teacher->id, 'status' => RepairRequestStatus::Assigned->value]);
         $log = RepairLog::factory()->create(['repair_request_id' => $repair->id]);
         $part = Part::create(['part_code' => 'P-1', 'name' => '秘密零件', 'unit' => '個', 'safety_stock' => 1]);
         $purchase = $part->purchases()->create(['purchase_date' => now()->toDateString(), 'vendor_name' => 'V', 'quantity' => 5, 'unit_price' => 12345, 'remaining_quantity' => 4]);

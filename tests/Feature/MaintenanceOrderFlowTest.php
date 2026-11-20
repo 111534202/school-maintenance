@@ -12,8 +12,8 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 保養工單流程：逾期標示、7 天內到期通知、指派負責人（只有負責人與管理者能回報）、
- * 回報時可上傳附件、NG 直接顯示「已轉報修」、做完或取消後計畫的下次到期日往後推一個週期。
+ * 保養工單流程：逾期標示、7 天內到期通知、確認派工（只有負責人與管理者能回報）、
+ * 回報時可上傳附件、NG 顯示「已轉報修」、做完或取消後計畫的下次到期日往後推一個週期。
  */
 class MaintenanceOrderFlowTest extends TestCase
 {
@@ -35,6 +35,12 @@ class MaintenanceOrderFlowTest extends TestCase
         return $this->post(route('maintenance-orders.results.store', $order), array_merge([
             'result' => 'ok', 'executed_at' => now()->format('Y-m-d\TH:i'),
         ], $extra));
+    }
+
+    /** 已確認派工給這位用戶的工單（進行中），他可以直接回報。 */
+    private function dispatchedTo(User $user, array $attributes = []): MaintenanceOrder
+    {
+        return MaintenanceOrder::factory()->create(array_merge(['status' => 'in_progress', 'assigned_to' => $user->id], $attributes));
     }
 
     // ---------- 逾期 ----------
@@ -85,14 +91,20 @@ class MaintenanceOrderFlowTest extends TestCase
         $order = MaintenanceOrder::factory()->create(['status' => 'pending']);
         $reporter = $this->reporter();
 
-        $this->actingAs($this->manager())->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $reporter->id])->assertSessionHas('success');
+        $this->actingAs($this->manager())->get(route('maintenance-orders.show', $order))->assertSee('確認派工');
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $reporter->id])->assertSessionHas('success');
 
         $this->assertSame($reporter->id, $order->fresh()->assigned_to);
+        $this->assertSame('in_progress', $order->fresh()->status);   // 確認派工＝進行中
         $this->assertDatabaseHas('audit_logs', ['action' => 'assigned', 'loggable_id' => $order->id]);
-        $this->get(route('maintenance-orders.show', $order))->assertSee($reporter->name);
+        $this->get(route('maintenance-orders.show', $order))->assertSee($reporter->name)->assertSee('改派')->assertDontSee('</i>確認派工</button>', false);
 
-        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => ''])->assertSessionHas('success');   // 取消指派
-        $this->assertNull($order->fresh()->assigned_to);
+        // 進行中可以改派，但不能取消派工（負責人必填）。
+        $another = $this->reporter();
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $another->id])->assertSessionHas('success');
+        $this->assertSame($another->id, $order->fresh()->assigned_to);
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => ''])->assertSessionHasErrors('assigned_to');
+        $this->assertSame($another->id, $order->fresh()->assigned_to);
     }
 
     public function test_only_people_who_can_report_can_be_assigned_and_only_managers_can_assign(): void
@@ -106,19 +118,21 @@ class MaintenanceOrderFlowTest extends TestCase
         $this->actingAs($this->reporter())->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $this->reporter()->id])->assertForbidden();
     }
 
-    public function test_a_completed_order_cannot_be_assigned(): void
+    public function test_a_completed_or_converted_order_cannot_be_assigned(): void
     {
-        $order = MaintenanceOrder::factory()->create(['status' => 'completed']);
+        foreach (['completed', 'converted'] as $status) {
+            $order = MaintenanceOrder::factory()->create(['status' => $status]);
 
-        $this->actingAs($this->manager())->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $this->reporter()->id])->assertSessionHas('error');
-        $this->assertNull($order->fresh()->assigned_to);
+            $this->actingAs($this->manager())->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $this->reporter()->id])->assertSessionHas('error');
+            $this->assertNull($order->fresh()->assigned_to);
+        }
     }
 
     public function test_an_assigned_order_can_only_be_reported_by_the_assignee_or_a_manager(): void
     {
         $assignee = $this->reporter();
         $stranger = $this->reporter();
-        $order = MaintenanceOrder::factory()->create(['status' => 'pending', 'assigned_to' => $assignee->id]);
+        $order = $this->dispatchedTo($assignee);
 
         $this->actingAs($stranger)->get(route('maintenance-orders.results.create', $order))->assertForbidden();
         $this->report($order)->assertForbidden();
@@ -133,21 +147,23 @@ class MaintenanceOrderFlowTest extends TestCase
         $this->assertTrue($order->fresh()->result()->exists());
     }
 
-    public function test_an_order_without_an_assignee_can_be_reported_by_anyone_who_may_report(): void
+    // 還沒確認派工（待處理）的工單：誰都不能回報，要先由保養管理者確認派工。
+    public function test_an_order_that_is_not_dispatched_yet_cannot_be_reported(): void
     {
         $order = MaintenanceOrder::factory()->create(['status' => 'pending', 'assigned_to' => null]);
 
-        $this->actingAs($this->reporter());
-        $this->report($order)->assertRedirect();
-        $this->assertTrue($order->fresh()->result()->exists());
+        $this->actingAs($this->manager());
+        $this->get(route('maintenance-orders.results.create', $order))->assertRedirect(route('maintenance-orders.show', $order))->assertSessionHas('error');
+        $this->report($order)->assertSessionHas('error');
+        $this->assertFalse($order->fresh()->result()->exists());
     }
 
     // ---------- 附件 ----------
 
     public function test_a_result_can_have_attachments_that_are_shown_and_downloadable_with_view_permission(): void
     {
-        $order = MaintenanceOrder::factory()->create(['status' => 'pending']);
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $order = $this->dispatchedTo($reporter);
 
         $this->report($order, ['attachments' => [UploadedFile::fake()->image('before.jpg'), UploadedFile::fake()->image('after.png')]])->assertRedirect();
 
@@ -162,8 +178,8 @@ class MaintenanceOrderFlowTest extends TestCase
 
     public function test_result_attachments_follow_the_five_file_five_megabyte_limit(): void
     {
-        $order = MaintenanceOrder::factory()->create(['status' => 'pending']);
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $order = $this->dispatchedTo($reporter);
 
         $this->report($order, ['attachments' => [UploadedFile::fake()->create('big.pdf', 6000, 'application/pdf')]])->assertSessionHasErrors('attachments');
         $this->report($order, ['attachments' => array_map(fn ($i) => UploadedFile::fake()->image("p{$i}.jpg"), range(1, 6))])->assertSessionHasErrors('attachments');
@@ -174,15 +190,20 @@ class MaintenanceOrderFlowTest extends TestCase
 
     public function test_an_ng_order_shows_converted_to_repair_instead_of_completed(): void
     {
-        $order = MaintenanceOrder::factory()->create(['status' => 'pending']);
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $device = \App\Models\Device::create([
+            'device_code' => 'NG-1', 'status' => 'normal',
+            'device_category_id' => \App\Models\DeviceCategory::create(['name' => '飲水機'])->id,
+            'classroom_id' => \App\Models\Classroom::create(['campus' => '本校區', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'A1 教室'])->id,
+        ]);
+        $order = $this->dispatchedTo($reporter, ['device_id' => $device->id]);
 
-        $this->report($order, ['result' => 'ng', 'note' => '漏水'])->assertRedirect();
+        $this->report($order, ['result' => 'ng', 'note' => '漏水', 'ng_device_ids' => [$order->device_id]])->assertRedirect();
         $order = $order->fresh(['result']);
 
         $this->assertSame(MaintenanceResult::NG_CONVERSION_CONVERTED, $order->result->ng_conversion_status);
-        $this->assertSame('completed', $order->status);                // 資料庫狀態仍是 completed（檢查動作做完了）
-        $this->assertSame('已轉報修', $order->statusLabel()[0]);       // 畫面直接寫去向
+        $this->assertSame('converted', $order->status);                // 已轉報修：轉出的報修單全部結案後才會變已完成
+        $this->assertSame('已轉報修', $order->statusLabel()[0]);
         // 列表的狀態徽章：寫「已轉報修」，不是「已完成」（篩選下拉選單本來就有「已完成」選項，所以檢查徽章本身）。
         $this->get(route('maintenance-orders.index'))->assertSee('text-bg-info">已轉報修</span>', false)->assertDontSee('text-bg-success">已完成</span>', false);
         $this->get(route('maintenance-orders.show', $order))->assertSee('已轉報修');
@@ -190,8 +211,8 @@ class MaintenanceOrderFlowTest extends TestCase
 
     public function test_an_ok_order_still_shows_completed(): void
     {
-        $order = MaintenanceOrder::factory()->create(['status' => 'pending']);
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $order = $this->dispatchedTo($reporter);
 
         $this->report($order)->assertRedirect();
 
@@ -208,9 +229,8 @@ class MaintenanceOrderFlowTest extends TestCase
     public function test_finishing_the_current_order_moves_the_plan_to_the_next_cycle(): void
     {
         $plan = $this->plan(now()->addDays(2)->toDateString(), 30);
-        $order = MaintenanceOrder::factory()->create(['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'status' => 'pending', 'scheduled_date' => $plan->next_due_date]);
-
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $order = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => $plan->next_due_date]);
         $this->report($order)->assertRedirect();
 
         $this->assertSame(now()->addDays(32)->toDateString(), $plan->fresh()->next_due_date->toDateString());   // 排定日 + 30 天
@@ -219,9 +239,8 @@ class MaintenanceOrderFlowTest extends TestCase
     public function test_a_very_late_order_skips_missed_cycles_instead_of_creating_a_backlog(): void
     {
         $plan = $this->plan(now()->subDays(100)->toDateString(), 30);
-        $order = MaintenanceOrder::factory()->create(['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'status' => 'pending', 'scheduled_date' => $plan->next_due_date]);
-
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $order = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => $plan->next_due_date]);
         $this->report($order)->assertRedirect();
 
         $next = $plan->fresh()->next_due_date;
@@ -232,9 +251,8 @@ class MaintenanceOrderFlowTest extends TestCase
     public function test_an_order_that_is_not_the_plans_current_cycle_does_not_move_the_plan(): void
     {
         $plan = $this->plan(now()->addDays(10)->toDateString(), 30);
-        $manual = MaintenanceOrder::factory()->create(['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'status' => 'pending', 'scheduled_date' => now()->addDays(1)]);
-
-        $this->actingAs($this->reporter());
+        $this->actingAs($reporter = $this->reporter());
+        $manual = $this->dispatchedTo($reporter, ['maintenance_plan_id' => $plan->id, 'device_id' => $plan->device_id, 'scheduled_date' => now()->addDays(1)]);
         $this->report($manual)->assertRedirect();
 
         $this->assertSame(now()->addDays(10)->toDateString(), $plan->fresh()->next_due_date->toDateString());

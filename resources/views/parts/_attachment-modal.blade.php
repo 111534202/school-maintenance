@@ -1,8 +1,9 @@
 {{-- 附件預覽視窗：圖片直接顯示、PDF 用內嵌檢視器；其他格式提供下載連結。
      用法：按鈕加上 data-bs-toggle="modal" data-bs-target="#attachmentModal" data-title，以及
        - 一個附件：data-url data-mime data-filename；
-       - 好幾個附件：data-attachments='[{"url":…,"mime":…,"filename":…}, …]'，視窗裡用「‹ ›」左右切換（鍵盤左右鍵也可以），標題旁顯示第幾個／共幾個。
-     零件履歷（parts/show）與修改採購（parts/purchases/form）共用。 --}}
+       - 好幾個附件：data-attachments='[{"url":…,"mime":…,"filename":…}, …]'，視窗裡用「‹ ›」左右切換（鍵盤左右鍵也可以），標題旁顯示第幾個／共幾個；
+         加 data-index 可以指定先顯示第幾個（從 0 開始，例如點第三張縮圖就從第三張開始）。
+     零件履歷、修改採購、報修單附件（repairs/_attachment-list）、保養結果、設備履歷共用；一頁只要引入一次。 --}}
 <div class="modal fade" id="attachmentModal" tabindex="-1" aria-labelledby="attachmentModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable attachment-dialog">
         <div class="modal-content">
@@ -84,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
             items = [];
         }
         if (!items.length) items = [{ url: button.dataset.url, mime: button.dataset.mime, filename: button.dataset.filename }];
-        index = 0;
+        index = Math.min(Math.max(parseInt(button.dataset.index || '0', 10) || 0, 0), items.length - 1);
         render();
     });
 

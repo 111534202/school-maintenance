@@ -20,7 +20,6 @@ class DeviceExportColumns
         'classroom_code' => '教室代碼',
         'classroom' => '教室',
         'status' => '狀態',
-        'is_core' => '核心設備',
         'warranty_end_date' => '保固到期日',
         'created_at' => '建立時間',
     ];
@@ -63,8 +62,7 @@ class DeviceExportColumns
             'serial_number' => $device->serial_number,
             'classroom_code' => $device->classroom?->classroom_code,
             'classroom' => $device->classroom?->name,
-            'status' => Device::statusLabel($device->status),
-            'is_core' => $device->is_core ? '是' : '否',
+            'status' => Device::statusLabel($device->display_status),
             'warranty_end_date' => $device->warranty_end_date?->format('Y-m-d'),
             'created_at' => $device->created_at?->format('Y-m-d H:i'),
         ];

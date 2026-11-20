@@ -45,7 +45,7 @@
                         <td>{{ $device->category?->name ?? '—' }}</td>
                         <td>{{ $device->brand }} {{ $device->model }}</td>
                         <td>{{ $device->classroom?->name ?? '—' }}</td>
-                        <td><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
+                        <td><span class="badge {{ \App\Models\Device::statusBadgeClass($device->display_status) }}">{{ \App\Models\Device::statusLabel($device->display_status) }}</span></td>
                         <td class="text-end tb-col-fit">
                             <a href="{{ route('device-profile.show', $device) }}" class="btn btn-sm btn-outline-primary">查看履歷</a>
                         </td>

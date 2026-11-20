@@ -43,10 +43,11 @@ class GenerateSchemaDocs extends Command
         'devices' => ['設備主檔', '第 7 章 devices', '符合 3NF。類別與教室只存外鍵；brand／model 依規格書是文字欄位。'],
         'maintenance_items' => ['保養項目', '第 7 章 maintenance_items', '符合 3NF。適用設備類別以 device_category_id 關聯（原本是自由文字）。'],
         'maintenance_plans' => ['保養計畫', '第 7 章 maintenance_plans', '符合 3NF。針對「一台設備」或「一類設備」二選一，指定設備後類別由設備推得、不另存。next_due_date 是由 start_date 加週期推得的值，排程要用，所以保留。'],
-        'maintenance_plan_items' => ['保養計畫明細', '第 7 章 maintenance_plan_items', '純關聯表（多對多），符合 2NF／3NF。'],
+        'maintenance_plan_items' => ['保養計畫明細', '第 7 章 maintenance_plan_items', '純關聯表（多對多），符合 2NF／3NF。保養項目的畫面已拿掉（計畫改成直接輸入說明），資料保留。'],
+        'maintenance_plan_targets' => ['保養計畫對象', '（新增）maintenance_plan_targets', '一個計畫可以有好幾個保養對象，每一列是一台設備或一個設備類別（擇一）。maintenance_plans.device_id／device_category_id 存第一個對象，給舊的程式讀，屬刻意保留的重複資料。'],
         'maintenance_orders' => ['保養工單', '第 7 章 maintenance_orders', '符合 3NF（設備與類別二選一，理由同保養計畫）。'],
         'maintenance_results' => ['保養結果', '第 7 章 maintenance_results', '符合 3NF。執行人以 executed_by（users.id）關聯，不再存姓名文字。ng_conversion_status 與 repair_request_id 有部分重疊（converted 代表已有報修單），因為還需要區分「待轉」與「不需轉」兩種沒有報修單的情況，所以保留。'],
-        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note 是「沒有綁定設備」時的後備文字。設備地點以 classroom_id 關聯教室（原本自由輸入的 location 文字已移除，舊資料依教室代碼或名稱轉換）；它記的是「報修當時」的地點，設備之後搬到別的教室也不會改變，所以不是由設備推得的重複資料。'],
+        'repair_requests' => ['報修單', '第 7 章 repair_requests', '大致符合 3NF。維修人員只存 assigned_to（原本另存 assignee_note 文字，已移除）。device_note 是「沒有綁定設備」時的後備文字。發現地點以 classroom_id 關聯教室（原本自由輸入的 location 文字已移除，舊資料依教室代碼或名稱轉換）；它記的是「報修當時」的地點，設備之後搬到別的教室也不會改變，所以不是由設備推得的重複資料。'],
         'repair_logs' => ['維修紀錄', '第 7 章 repair_logs', '大致符合 3NF。total_hours 是由起訖時間推得的值，規格書要求存起來所以保留；parts_used_note 是自由文字備註，結構化的備品使用已改存 repair_part_usages（舊資料與額外說明仍可寫在這裡）。'],
         'repair_part_usages' => ['維修零件使用明細', '規格書未列（備品使用的結構化）', '符合 3NF。unit_price 是扣料當下那一批採購的單價（先進先出的成本快照），part_purchase_id 記錄扣的是哪一批；一次用料跨兩批時拆成兩列。舊資料沒有批次時 part_purchase_id 為空。'],
         'attachments' => ['附件資料', '第 7 章 attachments', '符合 3NF。用 Laravel 多型關聯（attachable_type + attachable_id）指向報修單、維修紀錄等，不加外鍵。'],
@@ -83,6 +84,7 @@ class GenerateSchemaDocs extends Command
         'maintenance_items' => ['主檔', 'maintenance', 'items'],
         'maintenance_plans' => ['主檔', 'maintenance', 'plans'],
         'maintenance_plan_items' => ['關聯明細', 'maintenance_plan', 'items'],
+        'maintenance_plan_targets' => ['明細', 'maintenance_plan', 'targets'],
         'maintenance_orders' => ['單據', 'maintenance', 'orders'],
         'maintenance_results' => ['明細', 'maintenance', 'results'],
         'repair_requests' => ['單據', 'repair', 'requests'],
@@ -144,7 +146,7 @@ class GenerateSchemaDocs extends Command
     private array $columnTextSpecific = [
         'part_scraps.quantity' => '報廢數量', 'part_scrap_batches.quantity' => '從這一批扣的數量', 'part_scrap_batches.unit_price' => '這一批的單價（報廢損失用）',
         'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'maintenance_orders.assigned_to' => '負責人（users.id，保養管理者指派，沒指派是空白）', 'majors.name' => '科系名稱（唯一）', 'mail_settings.password' => '寄信密碼（加密後存放，畫面不顯示）', 'mail_settings.port' => '寄信連接埠（587 或 465）', 'mail_settings.is_enabled' => '是否啟用（啟用後全站寄信改用這組設定）', 'mail_settings.updated_by' => '最後修改者（users.id）', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
-        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
+        'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '發現地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
     ];
 
     /**
@@ -159,10 +161,10 @@ class GenerateSchemaDocs extends Command
         'classrooms.reservation_status' => ['normal' => '正常（可預約）', 'abnormal' => '有核心設備異常（不開放預約）'],
         'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准（全部時段同意）', 'rejected' => '已駁回（全部時段拒絕）', 'partially_approved' => '部分核准（有同意也有拒絕的時段）'],
         'classroom_reservation_slots.status' => ['approved' => '同意', 'rejected' => '拒絕'],
-        'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中', 'completed' => '已完成'],
+        'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中（已確認派工）', 'converted' => '已轉報修（NG 轉出的報修單還沒全部結案）', 'completed' => '已完成'],
         'maintenance_orders.source' => ['periodic' => '定期', 'ai' => 'AI 預防'],
         'maintenance_results.result' => ['ok' => '正常', 'ng' => '異常'],
-        'maintenance_results.ng_conversion_status' => ['pending_handoff' => '待轉報修', 'not_applicable' => '不需轉報修', 'converted' => '已轉成報修單'],
+        'maintenance_results.ng_conversion_status' => ['pending_handoff' => '待轉報修（舊資料，已不再使用）', 'not_applicable' => '不需轉報修', 'converted' => '已轉成報修單'],
         'preventive_candidates.status' => ['pending' => '待審核', 'approved' => '已核准建單', 'rejected' => '已駁回', 'auto_created' => '自動建單', 'duplicate' => '重複未建單'],
         'audit_logs.action' => ['created' => '新增', 'updated' => '修改', 'deleted' => '刪除', 'assigned' => '派工', 'reassigned' => '重新指派', 'status_changed' => '狀態變更', 'logged_in' => '登入', 'logged_out' => '登出', 'login_failed' => '登入失敗'],
     ];

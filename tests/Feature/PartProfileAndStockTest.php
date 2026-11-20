@@ -475,6 +475,7 @@ class PartProfileAndStockTest extends TestCase
         $order = $this->makeOpenOrder($this->makeDevice(), 0);
 
         $technician = $this->makeUserWithPermissions(['maintenance.view', 'maintenance.report'], ['name' => '王小明']);
+        $order->update(['status' => 'in_progress', 'assigned_to' => $technician->id]);   // 已確認派工給他
         $this->actingAs($technician)
             ->post(route('maintenance-orders.results.store', $order), [
                 'result' => 'ok',
@@ -500,7 +501,9 @@ class PartProfileAndStockTest extends TestCase
         $this->buy($part, '2026-10-10', 1, 20);
         $order = $this->makeOpenOrder($this->makeDevice(), 0);
 
-        $this->actingAs($this->makeUserWithPermissions(['maintenance.view', 'maintenance.report']))
+        $reporter = $this->makeUserWithPermissions(['maintenance.view', 'maintenance.report']);
+        $order->update(['status' => 'in_progress', 'assigned_to' => $reporter->id]);   // 已確認派工給他
+        $this->actingAs($reporter)
             ->post(route('maintenance-orders.results.store', $order), [
                 'result' => 'ok',
                 'executed_at' => '2026-10-15 10:00',
@@ -515,10 +518,11 @@ class PartProfileAndStockTest extends TestCase
 
     public function test_a_used_part_cannot_be_deleted_and_shows_a_message_instead_of_an_error_page(): void
     {
-        $this->loginAsAnyUser();
+        $user = $this->loginAsAnyUser();
         $part = $this->makePart();
         $this->buy($part, '2026-10-10', 2, 20);
         $order = $this->makeOpenOrder($this->makeDevice(), 0);
+        $order->update(['status' => 'in_progress', 'assigned_to' => $user->id]);
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok', 'executed_at' => '2026-10-15 10:00', 'part_usages' => [['part_id' => $part->id, 'quantity' => 1]],
         ]);

@@ -100,7 +100,7 @@ class RepairCostAnalysisController extends Controller
             'end_date' => ['nullable', 'date_format:Y-m-d'],
             'status' => [
                 'nullable',
-                'in:pending,assigned,in_progress,pending_review,completed',
+                'in:pending,assigned,returned,pending_review,completed',
             ],
             // 報廢損失：include＝一起顯示（預設）、exclude＝不顯示。
             'scraps' => ['nullable', 'in:include,exclude'],

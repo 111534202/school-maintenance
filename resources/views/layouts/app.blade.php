@@ -84,7 +84,7 @@
                 <button class="btn btn-outline-light btn-sm tb-nav-btn tb-nav-btn-square flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-label="開啟選單">
                     <i class="bi bi-list fs-5"></i>
                 </button>
-                {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
+                {{-- 「上一步」按鈕（文字見 common.buttons.back）：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
                      點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回父頁（清單頁或所屬的工單，規則見 App\Support\BackLink），再不行回主控台。
                      各頁面不再自己放返回連結，返回只放在這裡（守門測試：BackLinkTest）。 --}}
                 @unless (request()->routeIs('dashboard'))
@@ -671,6 +671,8 @@
     @endauth
     {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
     @include('layouts.partials.form-stepper')
+    {{-- 必填欄位：標籤自動加紅色星號，漏填時紅框＋「此欄位為必填」。 --}}
+    @include('layouts.partials.required-fields')
     {{-- 篩選列的洋蔥式：一長排篩選欄位收成「篩選條件」摘要列，點開從右邊滑入、直向排列。 --}}
     @include('layouts.partials.filter-onion')
     {{-- 清單的洋蔥式檢視：列表頁的寬表格變成一列一列的簡短清單，點進去詳細內容從右邊滑入。 --}}
@@ -1016,8 +1018,18 @@
                     // 疊上去的一層送出成功、要回到上一層的頁面（例如報修案件裡「填寫維修紀錄」送出後回到案件）：
                     // 留在對話框裡，回到上一層並重新載入（成功訊息會顯示在那一層），不換整頁。
                     if (backToPreviousLayer(done, true)) return;
+                    // 送出後要去的是別的頁面（不是外面這個列表本身）：例如在報修案件的對話框裡退回、驗收，
+                    // 或在列表直接打開「回報結果」送出後要看保養紀錄——留在對話框裡顯示那一頁（成功訊息也顯示在對話框裡），不換整頁；
+                    // 關掉對話框時外面的列表自動重新整理，馬上看到新的狀態（見 hidden.bs.modal 的 changed）。
+                    if (done.pathname !== window.location.pathname) {
+                        changed = true;
+                        done.searchParams.set('modal', '1');
+                        done.searchParams.set('_r', Date.now());
+                        frame.src = done.href;
+                        return;
+                    }
                     // 回到同一個列表頁（例如在預約列表審核完）：保留目前的篩選（?status=pending）。
-                    if (done.pathname === window.location.pathname && !done.search) done.search = window.location.search;
+                    if (!done.search) done.search = window.location.search;
                     window.location.href = done.href;
                 } else if (data.type === 'modal-navigate') {
                     var target = new URL(data.url, window.location.href);

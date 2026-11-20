@@ -1,5 +1,5 @@
 {{-- 報修單詳細頁（對應 RepairRequestController::show）：左欄是設備資料、故障描述與附件；右欄是「依目前狀態、依你的權限」才出現的派工與處理；最下面是維修紀錄與材料費明細。 --}}
-{{-- 案件狀態流程：新報修 → 已派工 → 處理中 → 待驗收 → 已結案（驗收不通過會退回處理中），規則在 App\Services\RepairRequestWorkflow。 --}}
+{{-- 案件狀態流程：新報修 → 已派工 → 待驗收 → 已結案（驗收不通過填原因退回已派工）；新報修、已派工可以退回（填原因，流程結束）。規則在 App\Services\RepairRequestWorkflow。 --}}
 {{-- （Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 {{-- 套用主版面。 --}}
 @extends('layouts.app')
@@ -14,9 +14,9 @@
     $deviceDisplay = $repairRequest->device
         ? trim($repairRequest->device->device_code . ' ' . ($repairRequest->device->category->name ?? '') . ' ' . $repairRequest->device->brand . ' ' . $repairRequest->device->model . '（' . ($repairRequest->device->classroom->name ?? $repairRequest->device->classroom->classroom_code ?? '') . '）')
         : ($repairRequest->device_note ?? __('repair_requests.not_filled'));
-    // 設備地點：報修單選的教室（掃描設備時自動帶入設備所在教室）。
+    // 發現地點：報修單選的教室（掃描設備時自動帶入設備所在教室）。
     $locationDisplay = $repairRequest->locationLabel() ?? __('repair_requests.not_filled');
-    // 派工時查課表用的教室：報修單的設備地點，沒有就用設備所在的教室。
+    // 派工時查課表用的教室：報修單的發現地點，沒有就用設備所在的教室。
     $timetableClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom;
 
     // 維修人員欄只顯示 assigned_to 關聯的真實使用者姓名。
@@ -29,17 +29,16 @@
     $viewer = auth()->user();
     // 「派工」表單：案件是新報修，而且你有派工權限。
     $showDispatch = $status === \App\Enums\RepairRequestStatus::Pending && $viewer->can('repairs.dispatch');
-    // 「開始處理」按鈕：案件已派工，而且你是被指派的維修人員（或管理員）。
-    $showStart = $status === \App\Enums\RepairRequestStatus::Assigned && $viewer->can('start', $repairRequest);
-    // 「填寫維修紀錄」按鈕：案件處理中，而且你是被指派的維修人員（或管理員）。
-    $showFillLog = $status === \App\Enums\RepairRequestStatus::InProgress && $viewer->can('fillLog', $repairRequest);
+    // 「填寫維修紀錄」按鈕：案件已派工，而且你是被指派的維修人員（或管理員）。（原本要先按「開始處理」，已拿掉。）
+    $showFillLog = $status === \App\Enums\RepairRequestStatus::Assigned && $viewer->can('fillLog', $repairRequest);
+    // 「退回報修單」：新報修由能派工的人、已派工由被指派的維修人員退回（必填原因，規則見 RepairRequestPolicy::returnRequest）。
+    $showReturn = $viewer->can('returnRequest', $repairRequest);
     // 「驗收」區塊：案件待驗收，而且你是報修人（或管理員，或沒有報修人的案件由有驗收權限者處理）。
     $showAccept = $status === \App\Enums\RepairRequestStatus::PendingReview && $viewer->can('accept', $repairRequest);
-    // 「重新指派」：案件是已派工或處理中，而且你有派工權限。
-    $canReassign = in_array($status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::InProgress], true)
-        && $viewer->can('repairs.dispatch');
+    // 「重新指派」：案件是已派工，而且你有派工權限。
+    $canReassign = $status === \App\Enums\RepairRequestStatus::Assigned && $viewer->can('repairs.dispatch');
     // 只要有任何一個操作可做，才顯示右欄的操作卡片。
-    $hasActions = $showDispatch || $showStart || $showFillLog || $showAccept || $canReassign;
+    $hasActions = $showDispatch || $showFillLog || $showAccept || $canReassign || $showReturn;
 @endphp
 
 @section('content')
@@ -50,22 +49,11 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
-        {{-- 修改、取消（刪除）：只給有派工權限的人。已結案不能改；已填維修紀錄（待驗收、已結案）不能取消（見 RepairRequestController::destroy）。
-             取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
+        {{-- 修改：只給有派工權限的人；已結案、已退回不能改。報修單不能刪除（原本的「取消工單」改成右欄的「退回報修單」）。 --}}
         @can('repairs.dispatch')
-            <div class="d-inline-flex gap-2 flex-shrink-0">
-                @if ($status !== \App\Enums\RepairRequestStatus::Completed)
-                    <a class="btn btn-outline-primary btn-sm" href="{{ route('repairs.edit', $repairRequest) }}"><i class="bi bi-pencil me-1"></i>修改</a>
-                @endif
-                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed], true))
-                    <form method="POST" action="{{ route('repairs.destroy', $repairRequest) }}"
-                        data-confirm="請問確定要取消報修單「{{ $repairRequest->title }}」嗎？取消後會從看板與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
-                        @csrf
-                        @method('DELETE')
-                        <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-x-circle me-1"></i>取消工單</button>
-                    </form>
-                @endunless
-            </div>
+            @unless ($status->isClosed())
+                <a class="btn btn-outline-primary btn-sm flex-shrink-0" href="{{ route('repairs.edit', $repairRequest) }}" data-modal-frame data-modal-title="修改報修單" data-modal-size="lg"><i class="bi bi-pencil me-1"></i>修改</a>
+            @endunless
         @endcan
     </div>
 
@@ -82,7 +70,7 @@
                         <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.show.device_location_prefix') }}</dt>
                         <dd class="col-6 col-sm-7 mb-0">{{ $deviceDisplay }}</dd>
 
-                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-geo-alt me-2"></i>設備地點：</dt>
+                        <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-geo-alt me-2"></i>發現地點：</dt>
                         <dd class="col-6 col-sm-7 mb-0">{{ $locationDisplay }}</dd>
 
                         <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-speedometer me-2"></i>{{ __('repair_requests.show.impact_level_prefix') }}</dt>
@@ -115,6 +103,17 @@
                     </dl>
                 </div>
             </div>
+
+            @if ($status === \App\Enums\RepairRequestStatus::Returned)
+                {{-- 已退回：流程結束，顯示誰在什麼時候退回、原因。使用者需要時重新報修。 --}}
+                <div class="alert alert-danger d-flex gap-2">
+                    <i class="bi bi-reply mt-1"></i>
+                    <div>
+                        <strong>退回原因：</strong>{{ $repairRequest->return_reason }}
+                        <div class="small mt-1">{{ $repairRequest->returnedBy?->name ?? '—' }}・{{ $repairRequest->returned_at?->format('Y-m-d H:i') }}。如果還需要維修，請重新報修。</div>
+                    </div>
+                </div>
+            @endif
 
             @if ($repairRequest->rejection_reason)
                 {{-- 這張案件曾經被驗收退回，把最新一次的退回原因秀出來，讓維修人員知道要補做什麼。 --}}
@@ -187,16 +186,10 @@
                                 </div>
                                 <button class="btn btn-primary w-100" type="submit"><i class="bi bi-person-check me-1"></i>{{ __('repair_requests.show.confirm_dispatch') }}</button>
                             </form>
-                        {{-- 狀態二：已派工 → 顯示「開始處理」按鈕。 --}}
-                        @elseif ($showStart)
-                            <form method="POST" action="{{ route('repairs.start', $repairRequest) }}">
-                                @csrf
-                                <button class="btn btn-primary w-100" type="submit"><i class="bi bi-play-fill me-1"></i>{{ __('repair_requests.show.start_processing') }}</button>
-                            </form>
-                        {{-- 狀態三：處理中 → 顯示「填寫維修紀錄」按鈕（送出後案件自動變成待驗收）。 --}}
+                        {{-- 狀態二：已派工 → 顯示「填寫維修紀錄」按鈕（送出後案件自動變成待驗收）。 --}}
                         @elseif ($showFillLog)
                             <a class="btn btn-primary w-100" href="{{ route('repair-logs.create', $repairRequest) }}" data-modal-frame data-modal-title="{{ __('repair_requests.show.fill_repair_log') }}" data-modal-size="lg"><i class="bi bi-journal-plus me-1"></i>{{ __('repair_requests.show.fill_repair_log') }}</a>
-                        {{-- 狀態四：待驗收 → 顯示驗收區：通過直接結案；不通過展開輸入框填退回原因。 --}}
+                        {{-- 狀態三：待驗收 → 顯示驗收區：通過直接結案；不通過展開輸入框填退回原因。 --}}
                         @elseif ($showAccept)
                             <h2 class="h6 mb-3"><i class="bi bi-clipboard-check me-2"></i>{{ __('repair_requests.show.acceptance_heading') }}</h2>
                             {{-- 驗收兩條路：通過就結案（不用填原因），不通過要退回並說明原因。 --}}
@@ -218,7 +211,7 @@
                             </div>
                         @endif
 
-                        {{-- 重新指派（依《第四週個人工作計畫》第 1 項）：已派工／處理中都可以換人，
+                        {{-- 重新指派（依《第四週個人工作計畫》第 1 項）：已派工可以換人，
                              不影響案件本身的狀態，跟「派工」（新報修 -> 已派工）是不同的動作。 --}}
                         {{-- 重新指派區塊：同樣用可收合的方式，點按鈕才展開。 --}}
                         @if ($canReassign)
@@ -258,6 +251,23 @@
                                         @endif
                                     </div>
                                     <button class="btn btn-secondary w-100" type="submit"><i class="bi bi-arrow-left-right me-1"></i>{{ __('repair_requests.show.confirm_reassign') }}</button>
+                                </form>
+                            </div>
+                        @endif
+
+                        {{-- 退回報修單（取代原本的「取消工單」）：必填原因，退回後流程結束、仍留在看板；使用者需要時重新報修。 --}}
+                        @if ($showReturn)
+                            @if ($showDispatch || $showFillLog || $canReassign)<hr>@endif
+                            <button class="btn btn-outline-danger w-100" type="button" data-bs-toggle="collapse" data-bs-target="#returnBox" aria-expanded="{{ $errors->has('return_reason') ? 'true' : 'false' }}">
+                                <i class="bi bi-reply me-1"></i>退回報修單
+                            </button>
+                            <div class="collapse mt-3 {{ $errors->has('return_reason') ? 'show' : '' }}" id="returnBox">
+                                <form method="POST" action="{{ route('repairs.return', $repairRequest) }}"
+                                    data-confirm="請問確定要退回報修單「{{ $repairRequest->title }}」嗎？退回後流程就結束，使用者需要時要重新報修。" data-confirm-ok="確認退回">
+                                    @csrf
+                                    <label for="return_reason" class="form-label">退回原因（必填）</label>
+                                    <textarea class="form-control mb-3 @error('return_reason') is-invalid @enderror" id="return_reason" name="return_reason" rows="3" maxlength="1000" required>{{ old('return_reason') }}</textarea>
+                                    <button class="btn btn-danger w-100" type="submit"><i class="bi bi-reply me-1"></i>確認退回</button>
                                 </form>
                             </div>
                         @endif
@@ -376,8 +386,11 @@
             @endif
         </div>
     </div>
-    {{-- 教室課表視窗（派工、重新指派共用）：顯示設備地點那間教室一週的課表，點空堂就把時間填進「建議處理時間」。 --}}
+    {{-- 教室課表視窗（派工、重新指派共用）：顯示發現地點那間教室一週的課表，點空堂就把時間填進「建議處理時間」。 --}}
     @if ($timetableClassroom && ($showDispatch || $canReassign))
         @include('layouts.partials.classroom-timetable-modal', ['classroom' => $timetableClassroom, 'url' => route('repairs.timetable', $repairRequest), 'mode' => 'datetime', 'busyLabel' => '已排維修', 'busyHint' => '同一節已有別張報修單'])
     @endif
+
+    {{-- 附件預覽視窗：報修附件、維修紀錄附件點了都在這裡打開（不換頁）。 --}}
+    @include('parts._attachment-modal')
 @endsection

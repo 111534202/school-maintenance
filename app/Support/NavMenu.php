@@ -51,7 +51,7 @@ class NavMenu
                 $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ]],
             ['type' => 'group', 'id' => 'maintenance', 'label' => __('common.nav.maintenance_section'), 'icon' => 'bi-wrench-adjustable', 'children' => [
-                $link(__('common.nav.maintenance_items'), 'bi-list-check', 'maintenance-items.index', ['maintenance-items.*'], $can('maintenance.view')),
+                // 保養項目：依《報修與保養流程修改說明》計畫改成直接輸入說明，選單不再列出（資料表與舊資料保留）。
                 $link(__('common.nav.maintenance_plans'), 'bi-calendar-event', 'maintenance-plans.index', ['maintenance-plans.*'], $can('maintenance.view')),
                 $link(__('common.nav.maintenance_orders'), 'bi-wrench-adjustable', 'maintenance-orders.index', ['maintenance-orders.*'], $can('maintenance.view')),
                 $link(__('common.nav.device_profile'), 'bi-journal-text', 'device-profile.index', ['device-profile.*'], $can('maintenance.view')),

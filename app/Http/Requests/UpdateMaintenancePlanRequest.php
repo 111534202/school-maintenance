@@ -2,28 +2,7 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-
-class UpdateMaintenancePlanRequest extends FormRequest
+/** 修改保養計畫：規則和新增相同（見 StoreMaintenancePlanRequest）。 */
+class UpdateMaintenancePlanRequest extends StoreMaintenancePlanRequest
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function rules(): array
-    {
-        return [
-            'name' => ['required', 'string', 'max:200'],
-            'device_category_id' => ['nullable', 'integer', 'exists:device_categories,id'],
-            'cycle_days' => ['required', 'integer', 'min:1', 'max:3650'],
-            'start_date' => ['required', 'date', 'after_or_equal:2020-01-01', 'before:2038-01-01'],
-            'is_active' => ['sometimes', 'boolean'],
-            'item_ids' => ['required', 'array', 'min:1'],
-            'item_ids.*' => ['integer', 'exists:maintenance_items,id'],
-        ];
-    }
 }

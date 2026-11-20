@@ -7,6 +7,6 @@
 
     <form action="{{ route('maintenance-plans.update', $plan) }}" method="POST">
         @method('PUT')
-        @include('maintenance_plans._form', ['plan' => $plan, 'items' => $items, 'selectedItemIds' => $selectedItemIds])
+        @include('maintenance_plans._form', ['plan' => $plan, 'targets' => $targets])
     </form>
 @endsection

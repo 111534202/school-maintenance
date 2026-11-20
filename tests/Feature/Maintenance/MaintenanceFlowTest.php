@@ -2,8 +2,13 @@
 
 namespace Tests\Feature\Maintenance;
 
+use App\Enums\RepairRequestStatus;
+use App\Models\Device;
 use App\Models\MaintenanceOrder;
+use App\Models\MaintenancePlan;
 use App\Models\MaintenanceResult;
+use App\Models\RepairRequest;
+use App\Services\RepairRequestWorkflow;
 use App\Services\DueMaintenanceOrderGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -11,7 +16,7 @@ use Tests\Concerns\CreatesMaintenanceFixtures;
 use Tests\TestCase;
 
 /**
- * 第 4 週任務 6：保養主流程測試——計畫 → 工單、OK／NG 回報、NG → 報修。
+ * 保養主流程測試——計畫 → 工單 → 確認派工 → OK／NG 回報、NG → 每台設備一張報修單（依《報修與保養流程修改說明》）。
  */
 class MaintenanceFlowTest extends TestCase
 {
@@ -23,10 +28,13 @@ class MaintenanceFlowTest extends TestCase
         parent::setUp();
 
         $this->travelTo(Carbon::parse('2026-10-07 09:00:00'));
-        $this->actingAs($this->makeUser('admin'));
+        $this->actingAs($this->admin = $this->makeUser('admin'));
     }
 
-    private function pendingOrder(): MaintenanceOrder
+    private \App\Models\User $admin;
+
+    /** 已確認派工（進行中、負責人是目前登入的管理員）的工單，可以直接回報。 */
+    private function pendingOrder(string $status = MaintenanceOrder::STATUS_IN_PROGRESS): MaintenanceOrder
     {
         $device = $this->makeDevice();
 
@@ -35,9 +43,26 @@ class MaintenanceFlowTest extends TestCase
             'device_id' => $device->id,
             'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
-            'status' => MaintenanceOrder::STATUS_PENDING,
+            'status' => $status,
+            'assigned_to' => $status === MaintenanceOrder::STATUS_PENDING ? null : $this->admin->id,
             'scheduled_date' => now()->toDateString(),
         ]);
+    }
+
+    /** 計畫是一整個設備類別的工單（已派工），類別裡有 $codes 這幾台設備。 */
+    private function categoryOrder(array $codes): array
+    {
+        $devices = collect($codes)->map(fn ($code) => $this->makeDevice($code));
+        $plan = MaintenancePlan::create([
+            'name' => '整類月檢', 'description' => '清潔', 'device_category_id' => $devices[0]->device_category_id,
+            'cycle_days' => 30, 'start_date' => now()->subMonth()->toDateString(), 'next_due_date' => now()->toDateString(), 'is_active' => true,
+        ]);
+        $order = MaintenanceOrder::create([
+            'maintenance_plan_id' => $plan->id, 'device_category_id' => $plan->device_category_id, 'source' => MaintenanceOrder::SOURCE_PERIODIC,
+            'status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'assigned_to' => $this->admin->id, 'scheduled_date' => now()->toDateString(),
+        ]);
+
+        return [$order, $devices];
     }
 
     // ---- 計畫 → 工單 ----
@@ -96,29 +121,91 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE, $result->ng_conversion_status);
     }
 
-    public function test_reporting_ng_completes_the_order_and_hands_off_to_repair(): void
+    // 確認派工：待處理 → 進行中；沒派工的工單不能回報，也沒有「回報結果」按鈕。
+    public function test_dispatching_moves_the_order_to_in_progress_and_only_then_it_can_be_reported(): void
+    {
+        $order = $this->pendingOrder(MaintenanceOrder::STATUS_PENDING);
+        $technician = $this->makeUser('technician');
+
+        $this->get(route('maintenance-orders.index'))->assertSee('確認派工')->assertDontSee(route('maintenance-orders.results.create', $order), false);
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-10-07 08:30:00'])
+            ->assertRedirect(route('maintenance-orders.show', $order))->assertSessionHas('error');
+        $this->assertSame(0, MaintenanceResult::count());
+
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => ''])->assertSessionHasErrors('assigned_to');
+        $this->assertSame(MaintenanceOrder::STATUS_PENDING, $order->fresh()->status);
+
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $technician->id])->assertSessionHas('success');
+        $this->assertSame(MaintenanceOrder::STATUS_IN_PROGRESS, $order->fresh()->status);
+        $this->assertSame($technician->id, $order->fresh()->assigned_to);
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('maintenance-orders.start'), '開始保養已拿掉');
+
+        $this->actingAs($technician)->get(route('maintenance-orders.index'))->assertSee(route('maintenance-orders.results.create', $order), false);
+    }
+
+    // NG（計畫是一台設備）：那台設備建一張報修單、帶入說明，工單「已轉報修」；報修單結案後工單才「已完成」。
+    public function test_reporting_ng_converts_the_order_and_completes_it_when_the_repair_is_closed(): void
     {
         $order = $this->pendingOrder();
 
         $this->post(route('maintenance-orders.results.store', $order), [
-            'result' => 'ng',
-            'executed_at' => '2026-10-07 08:30:00',
-            'note' => '風扇異音',
+            'result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '風扇異音', 'ng_device_ids' => [$order->device_id],
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
-        $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
-
-        // NG → 報修：報修模組（彭仕衡）尚未併入時標記「待轉報修」；併入後會真的建立報修單
-        // （詳細斷言見 NgToRepairServiceTest）。
+        $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status);
+        $this->assertSame(['已轉報修', 'info'], $order->fresh()->statusLabel());
         $result = MaintenanceResult::firstOrFail();
-        $this->assertSame(MaintenanceResult::RESULT_NG, $result->result);
-        $this->assertSame(
-            app(\App\Services\NgToRepairService::class)->repairModuleAvailable()
-                ? MaintenanceResult::NG_CONVERSION_CONVERTED
-                : MaintenanceResult::NG_CONVERSION_PENDING,
-            $result->ng_conversion_status
-        );
         $this->assertSame('風扇異音', $result->note);
+        $repair = RepairRequest::where('maintenance_result_id', $result->id)->sole();
+        $this->assertSame($order->device_id, $repair->device_id);
+        $this->assertSame(RepairRequestStatus::Pending, $repair->status);
+        $this->assertStringContainsString('說明：風扇異音', $repair->description);
+        $this->assertSame($this->admin->id, $repair->requester_id);
+
+        $repair->update(['status' => RepairRequestStatus::PendingReview->value]);
+        app(RepairRequestWorkflow::class)->complete($repair);
+        $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
+    }
+
+    // NG（計畫是設備類別）：從這一類的設備複選，每台各一張報修單；全部結束（已退回也算）才完成。
+    public function test_category_ng_creates_one_repair_per_selected_device(): void
+    {
+        [$order, $devices] = $this->categoryOrder(['CAT-1', 'CAT-2', 'CAT-3']);
+
+        $this->get(route('maintenance-orders.results.create', $order))->assertOk()->assertSee('CAT-1')->assertSee('CAT-3');
+        $this->post(route('maintenance-orders.results.store', $order), [
+            'result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '濾網破損', 'ng_device_ids' => [$devices[0]->id, $devices[2]->id],
+        ])->assertSessionHasNoErrors();
+
+        $repairs = RepairRequest::orderBy('id')->get();
+        $this->assertSame([$devices[0]->id, $devices[2]->id], $repairs->pluck('device_id')->all());
+        $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status);
+
+        $workflow = app(RepairRequestWorkflow::class);
+        $workflow->returnRequest($repairs[0], '不是故障', $this->admin->id);
+        $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status, '還有一張沒結案');
+        $repairs[1]->update(['status' => RepairRequestStatus::PendingReview->value]);
+        $workflow->complete($repairs[1]->fresh());
+        $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
+    }
+
+    // NG 一定要選設備、填說明；選了不在這張工單範圍的設備會被擋下，什麼都不寫入。OK 不用選設備。
+    public function test_ng_needs_devices_from_the_order_and_a_note(): void
+    {
+        [$order, $devices] = $this->categoryOrder(['CAT-1']);
+        $other = Device::create(['device_code' => 'OTHER', 'device_category_id' => \App\Models\DeviceCategory::create(['name' => '別類'])->id, 'classroom_id' => $devices[0]->classroom_id, 'status' => 'normal']);
+        $base = ['result' => 'ng', 'executed_at' => '2026-10-07 08:30:00'];
+
+        $this->post(route('maintenance-orders.results.store', $order), $base)->assertSessionHasErrors(['note', 'ng_device_ids']);
+        $this->post(route('maintenance-orders.results.store', $order), $base + ['note' => 'x', 'ng_device_ids' => [$other->id]])->assertSessionHasErrors('ng_device_ids');
+
+        $this->assertSame(0, MaintenanceResult::count());
+        $this->assertSame(0, RepairRequest::count());
+        $this->assertSame(MaintenanceOrder::STATUS_IN_PROGRESS, $order->fresh()->status);
+
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-10-07 08:30:00', 'ng_device_ids' => [$other->id]])->assertSessionHasNoErrors();
+        $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(0, RepairRequest::count());
     }
 
     public function test_result_requires_a_valid_result_value(): void
@@ -131,7 +218,7 @@ class MaintenanceFlowTest extends TestCase
         ])->assertSessionHasErrors('result');
 
         $this->assertSame(0, MaintenanceResult::count());
-        $this->assertSame(MaintenanceOrder::STATUS_PENDING, $order->fresh()->status);
+        $this->assertSame(MaintenanceOrder::STATUS_IN_PROGRESS, $order->fresh()->status);
     }
 
     public function test_an_order_cannot_be_reported_twice(): void

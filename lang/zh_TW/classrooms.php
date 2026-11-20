@@ -46,9 +46,7 @@ return [
         'view_devices' => '到設備主檔查看這間教室的設備',
         'view_abnormal_devices' => '到設備主檔查看這間教室的異常設備',
         'view_repairs' => '到報修看板查看這間教室設備的進行中報修單',
-        'core_abnormal_hint' => '核心設備異常：這間教室被標示為設備異常',
     ],
-    'core_abnormal' => '核心',
 
     // 按鈕的提示文字（滑鼠移上去時看到的說明）。
     'actions' => [

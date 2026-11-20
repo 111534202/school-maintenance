@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ExportsList;
 use App\Support\MaintenanceOrderExportColumns;
-use App\Models\MaintenanceResult;
 use App\Models\MaintenanceOrder;
 use App\Models\MaintenancePlan;
 use App\Models\User;
@@ -73,38 +72,22 @@ class MaintenanceOrderController extends Controller
                     }
                 });
             })
-            // 狀態：待處理、進行中照資料表的狀態；「已完成」只算保養結果正常（OK）的，
-            // 結果 NG 的已完成工單畫面上顯示「待轉報修」或「已轉報修」，篩選也分開（見 MaintenanceOrder::statusLabel）。
-            ->when($request->filled('status'), function ($query) use ($request) {
-                $ng = fn ($result) => $result->where('result', MaintenanceResult::RESULT_NG);
-                match ($request->string('status')->toString()) {
-                    'completed' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)->whereDoesntHave('result', $ng),
-                    'pending_conversion' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)
-                        ->whereHas('result', fn ($result) => $ng($result)->where(fn ($q) => $q->whereNull('ng_conversion_status')->orWhere('ng_conversion_status', '<>', MaintenanceResult::NG_CONVERSION_CONVERTED))),
-                    'converted' => $query->where('status', MaintenanceOrder::STATUS_COMPLETED)
-                        ->whereHas('result', fn ($result) => $ng($result)->where('ng_conversion_status', MaintenanceResult::NG_CONVERSION_CONVERTED)),
-                    default => $query->where('status', $request->string('status')),
-                };
-            })
+            // 狀態：待處理、進行中、已轉報修、已完成，直接照資料表的狀態篩選。
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('scheduled_date', '<=', $request->date('to')))
             // 排序：
-            // 1. 先分「還沒回報」與「已回報」：待處理排最前面，進行中其次，已回報（已完成）的排後面。
-            // 2. 已回報的再依畫面上的狀態分：待轉報修（NG、還沒轉報修）→ 已轉報修（NG、已轉報修）→ 已完成（OK）。
-            // 3. 還沒回報的（待處理、進行中）：排定日期近的在上 → 同一天建立得早的在上 → 再依來源計畫名稱 A→Z。
-            // 4. 已回報的同一種狀態裡：排定日期遠的（最新的）在上 → 同一天建立得晚的在上（早的在下）→ 再依來源計畫名稱 A→Z。
-            // 最後用工單編號，讓完全相同的幾筆每次順序都一樣。
-            ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
-            ->orderBy(MaintenanceResult::query()
-                ->selectRaw('CASE WHEN result = ? AND (ng_conversion_status IS NULL OR ng_conversion_status <> ?) THEN 0 WHEN result = ? THEN 1 ELSE 2 END',
-                    [MaintenanceResult::RESULT_NG, MaintenanceResult::NG_CONVERSION_CONVERTED, MaintenanceResult::RESULT_NG])
-                ->whereColumn('maintenance_results.maintenance_order_id', 'maintenance_orders.id')
-                ->limit(1))
-            ->orderByRaw('CASE WHEN status <> ? THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status = ? THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status <> ? THEN created_at END ASC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status = ? THEN created_at END DESC', [MaintenanceOrder::STATUS_COMPLETED])
+            // 1. 依狀態：待處理 → 進行中 → 已轉報修 → 已完成。
+            // 2. 還沒做完的（待處理、進行中）：排定日期近的在上 → 同一天建立得早的在上。
+            // 3. 已回報的（已轉報修、已完成）：排定日期遠的（最新的）在上 → 同一天建立得晚的在上。
+            // 再依來源計畫名稱 A→Z，最後用工單編號，讓完全相同的幾筆每次順序都一樣。
+            ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 ELSE 3 END',
+                [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS, MaintenanceOrder::STATUS_CONVERTED])
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
+            ->orderByRaw('CASE WHEN status NOT IN (?, ?) THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN created_at END ASC', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
+            ->orderByRaw('CASE WHEN status NOT IN (?, ?) THEN created_at END DESC', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
             ->orderBy(MaintenancePlan::select('name')->whereColumn('maintenance_plans.id', 'maintenance_orders.maintenance_plan_id'))
             ->orderBy('maintenance_orders.id');
     }
@@ -121,7 +104,7 @@ class MaintenanceOrderController extends Controller
     /** 匯出與預覽共用的查詢：列表的查詢，再一併載入匯出欄位要用的關聯。 */
     private function exportQuery(Request $request)
     {
-        return $this->indexQuery($request)->with(['result.executor', 'deviceCategory', 'device.category']);
+        return $this->indexQuery($request)->with(['result.executor', 'result.repairRequests', 'deviceCategory', 'device.category']);
     }
 
     /**
@@ -129,7 +112,7 @@ class MaintenanceOrderController extends Controller
      */
     public function show(MaintenanceOrder $maintenanceOrder): View
     {
-        $maintenanceOrder->load('maintenancePlan.maintenanceItems', 'result', 'device', 'assignee');
+        $maintenanceOrder->load('maintenancePlan', 'result.repairRequests', 'device', 'assignee');
 
         // 「指派負責人」下拉選單：有保養回報權限、帳號啟用中的人。
         $assignees = $this->assignableUsers();
@@ -149,35 +132,37 @@ class MaintenanceOrderController extends Controller
         }
 
         // 同一計畫、同一個排定日期已經有還沒完成的工單時不再重複建立（連按兩次或兩個分頁各按一次）。
-        $order = DB::transaction(function () use ($maintenancePlan) {
+        // 計畫有好幾個保養對象（設備或類別）時，每個對象各建一張工單。
+        $orders = DB::transaction(function () use ($maintenancePlan) {
             MaintenancePlan::query()->whereKey($maintenancePlan->id)->lockForUpdate()->first();   // 鎖住這個計畫，兩個請求不會同時通過下面的檢查
 
             $duplicate = MaintenanceOrder::query()
                 ->where('maintenance_plan_id', $maintenancePlan->id)
                 ->whereDate('scheduled_date', $maintenancePlan->next_due_date)
-                ->where('status', '!=', MaintenanceOrder::STATUS_COMPLETED)
+                ->unfinished()
                 ->exists();
             if ($duplicate) {
                 return null;
             }
 
-            return MaintenanceOrder::create([
+            return collect($maintenancePlan->orderTargets())->map(fn (array $target) => MaintenanceOrder::create([
                 'maintenance_plan_id' => $maintenancePlan->id,
-                'device_id' => $maintenancePlan->device_id,
-                'device_category_id' => $maintenancePlan->device_category_id,
+                ...$target,
                 'source' => MaintenanceOrder::SOURCE_PERIODIC,
                 'status' => MaintenanceOrder::STATUS_PENDING,
                 'scheduled_date' => $maintenancePlan->next_due_date,
-            ]);
+            ]));
         });
 
-        if ($order === null) {
+        if ($orders === null) {
             return redirect()->route('maintenance-orders.index')->with('error', '這個計畫在 ' . $maintenancePlan->next_due_date?->toDateString() . ' 已經有還沒完成的保養工單，不重複建立。');
         }
 
-        AuditLogger::log('created', $order, ['maintenance_plan_id' => $maintenancePlan->id], '依保養計畫「' . $maintenancePlan->name . '」建立保養工單 ' . $order->displayNumber());
+        foreach ($orders as $order) {
+            AuditLogger::log('created', $order, ['maintenance_plan_id' => $maintenancePlan->id], '依保養計畫「' . $maintenancePlan->name . '」建立保養工單 ' . $order->displayNumber());
+        }
 
-        return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單');
+        return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立 ' . $orders->count() . ' 張保養工單');
     }
 
     /**
@@ -186,8 +171,8 @@ class MaintenanceOrderController extends Controller
      */
     public function edit(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成的保養工單不能修改。');
+        if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已回報結果的保養工單不能修改。');
         }
 
         return view('maintenance_orders.edit', compact('maintenanceOrder'));
@@ -196,8 +181,8 @@ class MaintenanceOrderController extends Controller
     /** 儲存修改（PUT /maintenance-orders/{id}）：更新排定日期並寫操作紀錄。 */
     public function update(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成的保養工單不能修改。');
+        if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已回報結果的保養工單不能修改。');
         }
 
         $validated = $request->validate([
@@ -225,7 +210,7 @@ class MaintenanceOrderController extends Controller
      */
     public function destroy(MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED || $maintenanceOrder->result()->exists()) {
+        if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成或已回報保養結果的工單不能取消。');
         }
 
@@ -241,49 +226,39 @@ class MaintenanceOrderController extends Controller
     }
 
     /**
-     * 開始保養（PATCH /maintenance-orders/{id}/start）：待處理 → 進行中，並記下開始時間。
-     * 只有能回報這張工單的人（負責人與保養管理者）可以按；已經開始或已回報的工單不能再按。
-     */
-    public function start(MaintenanceOrder $maintenanceOrder): RedirectResponse
-    {
-        abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以開始保養。');
-
-        if (! $maintenanceOrder->canBeStartedBy(request()->user())) {
-            return back()->with('error', '這張工單已經開始或已回報結果，不能再按「開始保養」。');
-        }
-
-        $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'started_at' => now()]);
-        AuditLogger::log('status_changed', $maintenanceOrder, ['status' => ['old' => MaintenanceOrder::STATUS_PENDING, 'new' => MaintenanceOrder::STATUS_IN_PROGRESS]],
-            '開始保養工單 #' . $maintenanceOrder->id);
-
-        return back()->with('success', '已開始保養，狀態改為進行中。做完請按「回報結果」。');
-    }
-
-    /**
-     * 指派負責人（PATCH /maintenance-orders/{id}/assign）：需要 maintenance.manage。
-     * 負責人必須是「有保養回報權限、帳號啟用中」的人；已完成的工單不能再改；留空＝取消指派（回到有回報權限的人都能回報）。
+     * 確認派工／改負責人（PATCH /maintenance-orders/{id}/assign）：需要 maintenance.manage。
+     * - 待處理：選好負責人按「確認派工」，狀態改成進行中（負責人才能回報結果）。
+     * - 進行中：可以改派給別人（負責人必填，不能取消派工）。
+     * - 已轉報修、已完成：已經回報過，不能再改。
+     * 負責人必須是「有保養回報權限、帳號啟用中」的人。
      */
     public function assign(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return back()->with('error', '已完成的保養工單不能再指派負責人。');
+        if (! in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS], true)) {
+            return back()->with('error', '已回報結果的保養工單不能再派工。');
         }
 
         $validated = $request->validate([
-            'assigned_to' => ['nullable', 'integer', Rule::in($this->assignableUsers()->pluck('id')->all())],
+            'assigned_to' => ['required', 'integer', Rule::in($this->assignableUsers()->pluck('id')->all())],
         ], [
+            'assigned_to.required' => '請選擇負責人。',
             'assigned_to.in' => '只能指派給有「保養回報」權限、帳號啟用中的人。',
         ]);
 
-        $old = $maintenanceOrder->assigned_to;
-        $maintenanceOrder->update(['assigned_to' => $validated['assigned_to'] ?? null]);
+        $oldAssignee = $maintenanceOrder->assigned_to;
+        $oldStatus = $maintenanceOrder->status;
+        $maintenanceOrder->update(['assigned_to' => (int) $validated['assigned_to'], 'status' => MaintenanceOrder::STATUS_IN_PROGRESS]);
+        $maintenanceOrder->load('assignee');
 
-        if ($old !== $maintenanceOrder->assigned_to) {
-            AuditLogger::log('assigned', $maintenanceOrder, ['assigned_to' => ['old' => $old, 'new' => $maintenanceOrder->assigned_to]],
-                '指派保養工單 #' . $maintenanceOrder->id . ' 的負責人' . ($maintenanceOrder->assignee ? '：' . $maintenanceOrder->assignee->name : '（取消指派）'));
+        $dispatched = $oldStatus === MaintenanceOrder::STATUS_PENDING;
+        if ($dispatched || $oldAssignee !== $maintenanceOrder->assigned_to) {
+            AuditLogger::log('assigned', $maintenanceOrder, [
+                'assigned_to' => ['old' => $oldAssignee, 'new' => $maintenanceOrder->assigned_to],
+                'status' => ['old' => $oldStatus, 'new' => $maintenanceOrder->status],
+            ], ($dispatched ? '確認派工' : '改派') . '保養工單 ' . $maintenanceOrder->displayNumber() . '：' . $maintenanceOrder->assignee?->name);
         }
 
-        return back()->with('success', $maintenanceOrder->assigned_to ? '已指派負責人。' : '已取消指派。');
+        return back()->with('success', $dispatched ? '已確認派工，狀態改為進行中。' : '已改派負責人。');
     }
 
     /**

@@ -41,27 +41,24 @@
                 <dt class="col-sm-3">執行時間</dt>
                 <dd class="col-sm-9">{{ $result->executed_at?->format('Y-m-d H:i') ?? '—' }}</dd>
 
-                <dt class="col-sm-3">說明 / 備註</dt>
-                <dd class="col-sm-9">{{ $result->note ?? '—' }}</dd>
+                <dt class="col-sm-3">說明</dt>
+                <dd class="col-sm-9" style="white-space: pre-line;">{{ $result->note ?? '—' }}</dd>
 
                 @if ($result->isNg())
-                    <dt class="col-sm-3">轉報修狀態</dt>
+                    <dt class="col-sm-3">轉出的報修單</dt>
                     <dd class="col-sm-9">
-                        @if ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_PENDING)
-                            <span class="badge text-bg-warning">待轉報修（尚未建立報修單）</span>
-                            @can('repairs.create')
-                                <a class="btn btn-sm btn-primary ms-2" href="{{ route('repairs.create', ['from_result' => $result->id]) }}"><i class="bi bi-tools me-1"></i>建立報修單</a>
-                            @endcan
-                        @elseif ($result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED)
-                            <span class="badge text-bg-success">已轉報修</span>
-                            @if (\Illuminate\Support\Facades\Route::has('repairs.show'))
-                                <a href="{{ route('repairs.show', $result->repair_request_id) }}">報修單 #{{ $result->repair_request_id }}</a>
-                            @else
-                                報修單 #{{ $result->repair_request_id }}
-                            @endif
-                        @else
-                            {{ $result->ng_conversion_status ?? '—' }}
-                        @endif
+                        @forelse ($result->repairRequests as $ngRepair)
+                            <div>
+                                @can('view', $ngRepair)
+                                    <a href="{{ route('repairs.show', $ngRepair) }}">#{{ $ngRepair->id }} {{ $ngRepair->title }}</a>
+                                @else
+                                    #{{ $ngRepair->id }} {{ $ngRepair->title }}
+                                @endcan
+                                @include('repairs._status-badge', ['status' => $ngRepair->status])
+                            </div>
+                        @empty
+                            —
+                        @endforelse
                     </dd>
                 @endif
 
@@ -105,10 +102,13 @@
         <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>附件</div>
         <div class="card-body">
             {{-- 附件和報修共用同一套機制：檔案放私有磁碟，點下去先檢查權限（maintenance.view）才輸出。 --}}
+            @php $previewItems = $result->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values()->toJson(); @endphp
             @forelse ($result->attachments as $attachment)
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <i class="bi bi-paperclip text-muted"></i>
-                    <a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener">{{ $attachment->file_name }}</a>
+                    {{-- 點檔名在目前畫面的預覽視窗打開（不換頁），可以左右切換。 --}}
+                    <a href="{{ route('attachments.show', $attachment) }}" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                        data-title="保養結果附件" data-attachments="{{ $previewItems }}" data-index="{{ $loop->index }}">{{ $attachment->file_name }}</a>
                     <span class="text-muted small">{{ $attachment->size_bytes >= 1048576 ? round($attachment->size_bytes / 1048576, 1) . ' MB' : max(1, round($attachment->size_bytes / 1024)) . ' KB' }}</span>
                 </div>
             @empty
@@ -116,4 +116,6 @@
             @endforelse
         </div>
     </div>
+
+    @include('parts._attachment-modal')
 @endsection

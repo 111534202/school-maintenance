@@ -58,8 +58,8 @@
                                 {{-- 只在出錯時顯示紅字（例如還沒選教室、課表查詢失敗），放在「教室／日期／查詢課表」那一列下面。 --}}
                                 <div id="timetable_status" class="small text-danger" role="alert"></div>
                             </div>
-                            {{-- 選好教室後，若該教室有設備在等待維修，這裡會顯示提醒（內容由下方程式依 repairNotices 填入）：
-                                 一般情況黃色；教室因核心設備維修而暫停預約時紅色（可查課表、不能送出）。 --}}
+                            {{-- 選好教室後，若該教室有設備在等待維修，這裡會顯示黃色提醒（內容由下方程式依 repairNotices 填入）。
+                                 只是提醒，仍可以送出預約（依《報修與保養流程修改說明》，教室不再因設備狀況暫停預約）。 --}}
                             <div id="classroom_repair_notice" class="alert small mt-3 mb-0" role="status" hidden></div>
                             <div id="timetable_result" class="mt-3" hidden></div>
                         </div>
@@ -103,10 +103,8 @@
                             >
                                 @foreach ($classrooms as $classroom)
                                     @php
-                                        // 選項文字顏色：紅＝暫停預約（核心設備維修中）；黃＝有設備在報修；黑＝正常。
-                                        $roomTone = in_array($classroom->id, $suspendedIds, true)
-                                            ? 'text-danger fw-semibold'
-                                            : (! empty($repairNotices[$classroom->id]) ? 'room-has-repair fw-semibold' : '');
+                                        // 選項文字顏色：黃＝有設備在報修（只是提醒，仍可預約）；黑＝正常。
+                                        $roomTone = ! empty($repairNotices[$classroom->id]) ? 'room-has-repair fw-semibold' : '';
                                     @endphp
                                     <button
                                         type="button"
@@ -462,45 +460,18 @@ document.addEventListener('DOMContentLoaded', function () {
         optionsList.querySelectorAll('button[data-id]')
     );
 
-    // 教室目前在等待維修的設備：{ 教室編號: [{ text, core }] }；暫停預約的教室編號清單。
+    // 教室目前在等待維修的設備：{ 教室編號: [{ text }] }。只是提醒，不擋送出。
     const repairNotices = @json((object) $repairNotices);
-    const suspendedIds = @json($suspendedIds).map(String);
     const repairNotice = document.getElementById('classroom_repair_notice');
 
-    function isSuspended() {
-        return suspendedIds.includes(String(classroomInput.value));
-    }
-
-    // 暫停預約時，第二步的送出按鈕停用並說明原因（後端也會再擋一次）。
-    function updateSubmitState() {
-        const submit = searchInput.closest('form').querySelector('button[type="submit"]');
-        if (!submit) {
-            return;
-        }
-        let note = document.getElementById('suspended_submit_note');
-        if (!note) {
-            note = document.createElement('div');
-            note.id = 'suspended_submit_note';
-            note.className = 'alert alert-danger small mb-2 w-100';
-            note.textContent = '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。請改選其他教室。';
-            submit.parentElement.insertBefore(note, submit.parentElement.firstChild);
-        }
-        const suspended = isSuspended();
-        submit.disabled = suspended;
-        note.hidden = !suspended;
-    }
-
     function updateRepairNotice() {
-        updateSubmitState();
         applyRoomTone();
         if (!repairNotice) {
             return;
         }
         const items = repairNotices[classroomInput.value] || [];
-        const suspended = isSuspended();
-        repairNotice.hidden = items.length === 0 && !suspended;
-        repairNotice.classList.toggle('alert-warning', !suspended);
-        repairNotice.classList.toggle('alert-danger', suspended);
+        repairNotice.hidden = items.length === 0;
+        repairNotice.classList.add('alert-warning');
         repairNotice.replaceChildren();
         if (repairNotice.hidden) {
             return;
@@ -508,21 +479,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const title = document.createElement('div');
         title.className = 'fw-semibold mb-1';
         title.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>';
-        title.append(suspended
-            ? '這間教室的核心設備正在維修，目前暫停預約（可以查詢課表，但無法送出申請）：'
-            : '這間教室目前有設備在報修，使用時可能受影響：');
+        title.append('這間教室目前有設備在報修，使用時可能受影響（仍可以預約）：');
         repairNotice.appendChild(title);
-        if (items.length === 0) {
-            const p = document.createElement('div');
-            p.textContent = '教室設備異常。';
-            repairNotice.appendChild(p);
-            return;
-        }
         const list = document.createElement('ul');
         list.className = 'mb-0 ps-3';
         items.forEach(function (item) {
             const li = document.createElement('li');
-            li.textContent = item.text + (item.core ? '（核心設備）' : '');
+            li.textContent = item.text;
             list.appendChild(li);
         });
         repairNotice.appendChild(list);

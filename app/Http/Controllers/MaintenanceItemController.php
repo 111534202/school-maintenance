@@ -43,7 +43,7 @@ class MaintenanceItemController extends Controller
     {
         return view('maintenance_items.create', [
             'item' => new MaintenanceItem(['is_active' => true]),
-            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
+            'deviceCategories' => \App\Support\StrokeOrder::sort(DeviceCategory::all()),
         ]);
     }
 
@@ -61,7 +61,7 @@ class MaintenanceItemController extends Controller
     {
         return view('maintenance_items.edit', [
             'item' => $maintenanceItem,
-            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
+            'deviceCategories' => \App\Support\StrokeOrder::sort(DeviceCategory::all()),
         ]);
     }
 

@@ -23,57 +23,23 @@ class IndependentReviewFixesTest extends TestCase
     use RefreshDatabase;
     use InteractsWithRolesAndUsers;
 
-    // ---- 第 1 項：開始處理不能繞過驗收退回 ----
+    // ---- 第 1 項：驗收退回只能走「驗收不通過」（原本的「開始處理」已拿掉）----
 
-    // 待驗收的案件，被指派的維修人員按「開始處理」→ 被擋下，狀態不變，也沒有留下狀態變更紀錄。
-    public function test_start_is_refused_on_a_case_waiting_for_review(): void
+    // 待驗收的案件，被指派的維修人員不能再填維修紀錄把它拉回去；只能由報修人驗收不通過（必填原因）。
+    public function test_a_case_waiting_for_review_cannot_be_pulled_back_by_the_technician(): void
     {
         $tech = $this->makeTechnician();
         $case = RepairRequest::factory()->create(['status' => 'pending_review', 'assigned_to' => $tech->id]);
         $this->actingAs($tech);
 
-        $this->post(route('repairs.start', $case))->assertRedirect(route('repairs.show', $case))->assertSessionHas('error');
+        $this->get(route('repair-logs.create', $case))->assertRedirect(route('repairs.show', $case))->assertSessionHas('error');
+        $this->post(route('repairs.return', $case), ['return_reason' => 'x'])->assertForbidden();
 
         $this->assertSame(RepairRequestStatus::PendingReview, $case->fresh()->status);
     }
 
-    // 管理員也一樣：不能用「開始處理」把待驗收拉回處理中。
-    public function test_start_is_refused_for_admin_on_a_case_waiting_for_review(): void
-    {
-        $case = RepairRequest::factory()->create(['status' => 'pending_review']);
-        $this->loginAsAnyUser();
-
-        $this->post(route('repairs.start', $case))->assertSessionHas('error');
-
-        $this->assertSame(RepairRequestStatus::PendingReview, $case->fresh()->status);
-    }
-
-    // 其他不是「已派工」的狀態也都不能開始處理（新報修、處理中、已結案）。
-    public function test_start_only_works_from_assigned(): void
-    {
-        $this->loginAsAnyUser();
-
-        foreach (['pending', 'in_progress', 'completed'] as $status) {
-            $case = RepairRequest::factory()->create(['status' => $status]);
-            $this->post(route('repairs.start', $case))->assertSessionHas('error');
-            $this->assertSame($status, $case->fresh()->status->value, "狀態 {$status} 不應被改變");
-        }
-    }
-
-    // 正常情況不受影響：已派工 → 處理中。
-    public function test_start_still_works_from_assigned(): void
-    {
-        $tech = $this->makeTechnician();
-        $case = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $tech->id]);
-        $this->actingAs($tech);
-
-        $this->post(route('repairs.start', $case))->assertSessionHasNoErrors();
-
-        $this->assertSame(RepairRequestStatus::InProgress, $case->fresh()->status);
-    }
-
-    // 待驗收退回處理中，仍然可以走「報修人驗收退回」（必填原因）。
-    public function test_rejection_by_the_reporter_still_returns_the_case_to_in_progress(): void
+    // 驗收不通過（報修人，必填原因）退回「已派工」，維修人員再填一次維修紀錄。
+    public function test_rejection_by_the_reporter_returns_the_case_to_assigned(): void
     {
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $case = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher->id]);
@@ -81,7 +47,7 @@ class IndependentReviewFixesTest extends TestCase
 
         $this->post(route('repairs.reject', $case), ['rejection_reason' => '還是會閃退'])->assertSessionHasNoErrors();
 
-        $this->assertSame(RepairRequestStatus::InProgress, $case->fresh()->status);
+        $this->assertSame(RepairRequestStatus::Assigned, $case->fresh()->status);
     }
 
     // ---- 第 4 項：未上架的知識庫文章 ----
@@ -128,13 +94,13 @@ class IndependentReviewFixesTest extends TestCase
 
     // ---- 第 5 項：填維修紀錄的表單要看案件狀態 ----
 
-    // 已結案、待驗收、已派工（還沒開始）的案件，被指派的維修人員開表單 → 導回案件頁並顯示錯誤。
-    public function test_repair_log_form_is_not_opened_unless_the_case_is_in_progress(): void
+    // 已結案、待驗收、已退回的案件，被指派的維修人員開表單 → 導回案件頁並顯示錯誤（已派工才能填）。
+    public function test_repair_log_form_is_not_opened_unless_the_case_is_assigned(): void
     {
         $tech = $this->makeTechnician();
         $this->actingAs($tech);
 
-        foreach (['completed', 'pending_review', 'assigned'] as $status) {
+        foreach (['completed', 'pending_review', 'returned'] as $status) {
             $case = RepairRequest::factory()->create(['status' => $status, 'assigned_to' => $tech->id]);
             $this->get(route('repair-logs.create', $case))
                 ->assertRedirect(route('repairs.show', $case))
@@ -142,11 +108,11 @@ class IndependentReviewFixesTest extends TestCase
         }
     }
 
-    // 處理中的案件照常開得起來；不是被指派的人仍然是 403（授權檢查沒有被狀態檢查取代）。
+    // 已派工的案件照常開得起來；不是被指派的人仍然是 403（授權檢查沒有被狀態檢查取代）。
     public function test_repair_log_form_still_opens_for_the_assigned_technician_and_stays_forbidden_to_others(): void
     {
         $tech = $this->makeTechnician();
-        $case = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $tech->id]);
+        $case = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $tech->id]);
 
         $this->actingAs($tech);
         $this->get(route('repair-logs.create', $case))->assertOk();

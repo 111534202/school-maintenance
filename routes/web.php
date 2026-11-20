@@ -156,14 +156,13 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         Route::middleware('can:maintenance.report')->group(function () {
             Route::get('/{maintenanceOrder}/result/create', [MaintenanceResultController::class, 'create'])->name('results.create');
             Route::post('/{maintenanceOrder}/result', [MaintenanceResultController::class, 'store'])->name('results.store');
-            Route::patch('/{maintenanceOrder}/start', [MaintenanceOrderController::class, 'start'])->name('start');   // 開始保養：待處理 → 進行中
         });
 
         // 修改排定日期與取消（刪除）保養工單：需要 maintenance.manage（取消與刪除是同一件事，軟刪除）。
         Route::middleware('can:maintenance.manage')->group(function () {
             Route::get('/{maintenanceOrder}/edit', [MaintenanceOrderController::class, 'edit'])->name('edit');
             Route::put('/{maintenanceOrder}', [MaintenanceOrderController::class, 'update'])->name('update');
-            Route::patch('/{maintenanceOrder}/assign', [MaintenanceOrderController::class, 'assign'])->name('assign');   // 指派負責人
+            Route::patch('/{maintenanceOrder}/assign', [MaintenanceOrderController::class, 'assign'])->name('assign');   // 確認派工（待處理 → 進行中）／改派負責人
             Route::delete('/{maintenanceOrder}', [MaintenanceOrderController::class, 'destroy'])->name('destroy');
         });
 
@@ -409,17 +408,18 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     Route::middleware('can:repairs.dispatch')->group(function () {
         Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])->name('repairs.assign');
         Route::post('repairs/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])->name('repairs.reassign');
-        // 修改與取消（刪除）報修單：同樣需要 repairs.dispatch（取消與刪除是同一件事，軟刪除）。
+        // 修改報修單：同樣需要 repairs.dispatch。（報修單不能刪除，改成「退回」，見下面。）
         Route::get('repairs/{repair_request}/edit', [RepairRequestController::class, 'edit'])->name('repairs.edit');
         Route::put('repairs/{repair_request}', [RepairRequestController::class, 'update'])->name('repairs.update');
-        Route::delete('repairs/{repair_request}', [RepairRequestController::class, 'destroy'])->name('repairs.destroy');
         // 派工時查詢報修地點那間教室的一週課表，挑空堂當建議處理時間。
         Route::get('repairs/{repair_request}/timetable', [\App\Http\Controllers\TimetableController::class, 'repairWeek'])->name('repairs.timetable');
     });
 
-    // 維修人員處理：開始處理、填維修紀錄（送出後自動推進到待驗收）：需要 repairs.process。
+    // 退回報修單（必填原因）：新報修由能派工的人、已派工由被指派的維修人員退回（權限在 ReturnRepairRequestRequest／RepairRequestPolicy 檢查）。
+    Route::post('repairs/{repair_request}/return', [RepairRequestController::class, 'returnRequest'])->name('repairs.return');
+
+    // 維修人員處理：已派工後直接填維修紀錄（送出後自動推進到待驗收）：需要 repairs.process。
     Route::middleware('can:repairs.process')->group(function () {
-        Route::post('repairs/{repair_request}/start', [RepairRequestController::class, 'start'])->name('repairs.start');
         Route::get('repairs/{repair_request}/repair-logs/create', [RepairLogController::class, 'create'])->name('repair-logs.create');
         Route::post('repairs/{repair_request}/repair-logs', [RepairLogController::class, 'store'])->name('repair-logs.store');
     });

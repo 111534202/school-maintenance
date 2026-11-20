@@ -44,7 +44,7 @@ class ListExportTest extends TestCase
         Excel::fake();
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $mine = RepairRequest::factory()->create(['title' => '我的投影機', 'status' => 'pending', 'requester_id' => $teacher->id]);
-        $others = RepairRequest::factory()->create(['title' => '別人的冷氣', 'status' => 'in_progress', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
+        $others = RepairRequest::factory()->create(['title' => '別人的冷氣', 'status' => 'assigned', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
         // 別人已結案的案件：能派工的人也匯出不到（驗收階段只有跟自己有關的人看得到）。
         RepairRequest::factory()->create(['title' => '別人已結案的電腦', 'status' => 'completed', 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id]);
 
@@ -104,7 +104,7 @@ class ListExportTest extends TestCase
     public function test_reservation_export_gives_managers_everything_and_others_only_their_own(): void
     {
         Excel::fake();
-        $classroom = \App\Models\Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'X101', 'name' => 'X101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $classroom = \App\Models\Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'X101', 'name' => 'X101 教室', 'type' => '一般教室', 'is_active' => true]);
         $teacher = $this->makeUserWithRole('teacher', '教師');
         $other = $this->makeUserWithRole('teacher', '教師');
         $make = fn ($user, $class, $status) => $this->makeReservation(['classroom_id' => $classroom->id, 'requester_id' => $user->id, 'class_name' => $class, 'reservation_date' => now()->addDays(3)->toDateString(), 'start_time' => '09:00', 'end_time' => '10:00', 'status' => $status]);

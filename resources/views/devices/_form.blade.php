@@ -94,21 +94,16 @@
 
     <div class="col-md-4">
         <label for="status" class="form-label">{{ __('devices.form.status') }}</label>
-        {{-- 狀態下拉選單：選項來自 Device::STATUSES，顯示名稱用 Device::statusLabel() 轉成中文。 --}}
+        {{-- 狀態下拉選單：選項來自 Device::STATUSES（正常、已淘汰、停用；「待維修」由報修單自動判斷，不能手動選）。
+             目前是「待維修」（有已派工、待驗收的報修單）的設備：不能直接改成正常，只能維持待維修，或改成已淘汰、停用。
+             已淘汰／停用的設備要改回正常時，送出會檢查有沒有沒結案的報修單（新報修也算），有就擋下。 --}}
+        @php $awaitingRepair = isset($device) && $device->exists && $device->isAwaitingRepair(); @endphp
         <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
             @foreach (\App\Models\Device::STATUSES as $status)
-                <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
+                <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ $awaitingRepair && $status === 'normal' ? \App\Models\Device::statusLabel('repairing') : \App\Models\Device::statusLabel($status) }}</option>
             @endforeach
         </select>
         @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
-    <div class="col-md-4 d-flex align-items-end">
-        <div class="form-check">
-            {{-- 「核心設備」核取方塊：勾選代表這台設備故障時會讓教室被標示為異常。 --}}
-            <input type="checkbox" name="is_core" value="1" class="form-check-input" id="is_core"
-                   @checked(old('is_core', $device->is_core ?? false))>
-            <label class="form-check-label" for="is_core">{{ __('devices.form.is_core') }}</label>
-        </div>
     </div>
 </div>
 </div>

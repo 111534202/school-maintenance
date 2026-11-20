@@ -11,8 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;   // 「軟刪除」功能：刪�
 
 /**
  * 教室（classrooms 資料表）。教室底下有設備；每間教室有所屬部門與管理人。
- * 教室的 reservation_status 欄位是「設備異常旗標」：有核心設備異常時會被標成 abnormal，
- * 由 App\Services\DeviceStatusService 自動維護，不要手動改。
+ * 「異常設備」＝有未結束報修單的設備（不含已淘汰），見 Device::scopeAbnormal；教室不會因此暫停預約。
  *
  *
  * @property int $id
@@ -25,7 +24,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;   // 「軟刪除」功能：刪�
  * @property string|null $type
  * @property int|null $manager_id
  * @property bool $is_active
- * @property string $reservation_status
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property \Illuminate\Support\Carbon|null $deleted_at
@@ -37,7 +35,7 @@ class Classroom extends Model
     // 允許批次寫入的欄位白名單。
     protected $fillable = [
         'department_id', 'campus', 'building', 'floor', 'classroom_code', 'name',
-        'type', 'manager_id', 'is_active', 'reservation_status',
+        'type', 'manager_id', 'is_active',
     ];
 
     // 型別轉換：資料庫存 0/1，這裡自動轉成 PHP 的 true/false。
@@ -65,7 +63,7 @@ class Classroom extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
-    /** 查詢範圍：只撈「有異常設備」的教室（異常的定義見 DeviceStatusService::PROBLEM_STATUSES）。 */
+    /** 查詢範圍：只撈「有異常設備」的教室（有未結束報修單的設備，定義見 Device::scopeAbnormal）。 */
     public function scopeWithAbnormalDevices(Builder $query): Builder
     {
         return $query->whereHas('devices', fn ($devices) => $devices->abnormal());

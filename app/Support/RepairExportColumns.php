@@ -19,7 +19,7 @@ class RepairExportColumns
         'device_code' => '設備編號',
         'device' => '設備（類別 品牌 型號）',
         'device_note' => '設備位置／描述',
-        'location' => '設備地點',
+        'location' => '發現地點',
         'requester' => '報修人',
         'technician' => '維修人員',
         'scheduled_at' => '預計處理時間',

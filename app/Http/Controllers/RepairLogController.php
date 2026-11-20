@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;
 use App\Http\Requests\StoreRepairLogRequest;
+use App\Models\Device;
 use App\Models\Part;
 use App\Models\RepairRequest;
 use App\Services\AttachmentUploader;
@@ -25,7 +26,7 @@ class RepairLogController extends Controller
     {
         Gate::authorize('fillLog', $repairRequest);
 
-        // 只有「處理中」的案件才能填維修紀錄（送出後會轉成待驗收）。已結案、待驗收、還沒開始處理的案件
+        // 只有「已派工」的案件才能填維修紀錄（送出後會轉成待驗收）。已結案、待驗收、已退回、還沒派工的案件
         // 連表單都不開，不要等使用者填完一大張才在送出時被擋。
         try {
             $workflow->assertCanTransition($repairRequest, RepairRequestStatus::PendingReview);
@@ -40,9 +41,14 @@ class RepairLogController extends Controller
             ->orderBy('id')
             ->get();
 
+        // 報修時沒有設備（例如電燈壞了沒有條碼可掃）：維修人員填紀錄時要補選設備，列出還沒淘汰的設備給他搜尋。
+        $devices = $repairRequest->device_id === null
+            ? Device::query()->with(['category', 'classroom'])->where('status', '<>', 'retired')->orderBy('device_code')->get()
+            : collect();
+
         return view(
             'repair-logs.create',
-            compact('repairRequest', 'parts')
+            compact('repairRequest', 'parts', 'devices')
         );
     }
 
@@ -94,6 +100,16 @@ class RepairLogController extends Controller
                     $lockedRequest,
                     RepairRequestStatus::PendingReview
                 );
+
+                // 報修時沒有設備：補上維修人員選的設備（發現地點沒填就用設備所在的教室），並留下操作紀錄。
+                if ($lockedRequest->device_id === null && ! empty($validated['device_id'])) {
+                    $device = Device::query()->findOrFail((int) $validated['device_id']);
+                    $lockedRequest->forceFill([
+                        'device_id' => $device->id,
+                        'classroom_id' => $lockedRequest->classroom_id ?? $device->classroom_id,
+                    ])->save();
+                    AuditLogger::log('updated', $lockedRequest, ['device_id' => ['old' => null, 'new' => $device->id]], '維修人員補上報修單的設備：' . $device->device_code);
+                }
 
                 // 建立維修紀錄。
                 $repairLog = $createdLog = $lockedRequest->repairLogs()->create([

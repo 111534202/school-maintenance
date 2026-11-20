@@ -49,17 +49,9 @@
                             （{{ $device->classroom->department->name ?? __('devices.no_department') }}）
                         </dd>
 
-                        <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.is_core') }}</dt>
-                        <dd class="col-sm-8 mb-0">
-                            @if ($device->is_core)
-                                <span class="badge text-bg-warning">{{ __('devices.yes') }}</span>
-                            @else
-                                {{ __('devices.no') }}
-                            @endif
-                        </dd>
 
                         <dt class="col-sm-4 text-muted fw-normal">{{ __('devices.form.status') }}</dt>
-                        <dd class="col-sm-8 mb-0"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></dd>
+                        <dd class="col-sm-8 mb-0"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->display_status) }}">{{ \App\Models\Device::statusLabel($device->display_status) }}</span></dd>
                     </dl>
                 </div>
             </div>

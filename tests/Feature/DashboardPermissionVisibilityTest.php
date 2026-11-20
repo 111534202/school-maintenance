@@ -36,7 +36,7 @@ class DashboardPermissionVisibilityTest extends TestCase
     public function test_technician_does_not_see_dispatch_review_or_reservation_cards(): void
     {
         $this->dashboardAs('technician', '維修人員')
-            ->assertSee('維修中')
+            ->assertSee('已派工')
             ->assertSee('逾時工單')
             ->assertDontSee('待派工')
             ->assertDontSee('待驗收')

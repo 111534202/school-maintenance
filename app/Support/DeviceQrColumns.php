@@ -39,7 +39,7 @@ class DeviceQrColumns
             'category' => $device->category?->name,
             'brand_model' => trim(($device->brand ?? '') . ' ' . ($device->model ?? '')) ?: null,
             'classroom' => $device->classroom ? $device->classroom->classroom_code . ' ' . $device->classroom->name : null,
-            'status' => Device::statusLabel($device->status),
+            'status' => Device::statusLabel($device->display_status),
         ];
     }
 }

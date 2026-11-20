@@ -114,7 +114,7 @@ class DeviceProfileTest extends TestCase
         $this->attach($repairA, 'req-photo.jpg');
         $this->attach($repairA->repairLogs()->orderBy('id')->first(), 'log-photo.jpg');
 
-        $repairB = $this->repairWithLog($deviceB, '電源無法開機報修', 'in_progress', [
+        $repairB = $this->repairWithLog($deviceB, '電源無法開機報修', 'assigned', [
             ['cause' => '電源供應器故障', 'resolution' => '更換電源', 'total_hours' => 3.00],
         ]);
         $this->attach($repairB, 'b-photo.jpg');
@@ -126,8 +126,9 @@ class DeviceProfileTest extends TestCase
         $this->assertStringNotContainsString('維修紀錄 3', $htmlA);
         $this->assertStringContainsString('散熱風扇 x1', $htmlA);
         $this->assertStringContainsString('維修工時合計 3.50 小時', $htmlA);
-        $this->assertSame(1, substr_count($htmlA, 'req-photo.jpg'));
-        $this->assertSame(1, substr_count($htmlA, 'log-photo.jpg'));
+        // 每個附件只列一次（檔名連結；預覽視窗的資料裡也有檔名，所以只數連結文字）。
+        $this->assertSame(1, substr_count($htmlA, '>req-photo.jpg</a>'));
+        $this->assertSame(1, substr_count($htmlA, '>log-photo.jpg</a>'));
         $this->assertStringContainsString('附件（2）', $htmlA);
         $this->assertStringNotContainsString('電源無法開機報修', $htmlA);
         $this->assertStringNotContainsString('b-photo.jpg', $htmlA);
@@ -158,14 +159,15 @@ class DeviceProfileTest extends TestCase
 
     public function test_ng_result_creates_a_repair_that_is_traceable_from_the_device_profile(): void
     {
-        $this->actingAs($this->makeUser('admin'));
+        $this->actingAs($admin = $this->makeUser('admin'));
         $device = $this->makeDevice('T-REP-NG');
         $order = MaintenanceOrder::create([
             'maintenance_plan_id' => $this->makePlan($device)->id,
             'device_id' => $device->id,
             'device_category_id' => $device->device_category_id,
             'source' => MaintenanceOrder::SOURCE_PERIODIC,
-            'status' => MaintenanceOrder::STATUS_PENDING,
+            'status' => MaintenanceOrder::STATUS_IN_PROGRESS,   // 已確認派工
+            'assigned_to' => $admin->id,
             'scheduled_date' => now()->toDateString(),
         ]);
 
@@ -173,6 +175,7 @@ class DeviceProfileTest extends TestCase
             'result' => 'ng',
             'executed_at' => '2026-10-07 08:30:00',
             'note' => '風扇異音',
+            'ng_device_ids' => [$device->id],
         ])->assertRedirect();
 
         $repair = RepairRequest::where('device_id', $device->id)->sole();

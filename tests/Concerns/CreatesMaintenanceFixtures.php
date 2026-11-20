@@ -46,7 +46,6 @@ trait CreatesMaintenanceFixtures
             'model' => 'TB-1',
             'classroom_id' => $classroom->id,
             'status' => $status,
-            'is_core' => false,
         ]);
     }
 

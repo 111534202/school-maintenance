@@ -81,13 +81,15 @@ class DeviceProfileController extends Controller
 
         // 第 5 週任務 3：報修／維修紀錄／附件（彭仕衡的模組，唯讀）。
         // visibleTo：只撈「這位使用者有權限檢視」的報修單（規則見 RepairRequestPolicy），其餘只顯示被隱藏的筆數。
+        // 已退回的報修單不算進設備履歷（退回＝不需要維修或不是這台設備的問題，流程已結束；要修的話會重新報修）。
         $repairRequests = RepairRequest::visibleOnBoard($request->user())   // 待驗收／已結案只給跟案件有關的人看，和看板一致
             ->where('device_id', $device->id)
+            ->where('status', '<>', \App\Enums\RepairRequestStatus::Returned->value)
             ->with(['repairLogs.attachments', 'attachments', 'requester', 'assignedTechnician'])
             ->orderByDesc('id')
             ->get();
 
-        $hiddenRepairCount = RepairRequest::where('device_id', $device->id)->count() - $repairRequests->count();
+        $hiddenRepairCount = RepairRequest::where('device_id', $device->id)->where('status', '<>', \App\Enums\RepairRequestStatus::Returned->value)->count() - $repairRequests->count();
 
         // 由保養 NG 轉入的報修單：保養結果 → 報修單的追溯（key 是報修單 id）。
         $ngSources = MaintenanceResult::query()
@@ -98,7 +100,7 @@ class DeviceProfileController extends Controller
 
         $repairStats = [
             'total' => $repairRequests->count(),
-            'open' => $repairRequests->filter(fn (RepairRequest $r) => $r->status !== \App\Enums\RepairRequestStatus::Completed)->count(),
+            'open' => $repairRequests->filter(fn (RepairRequest $r) => ! $r->status->isClosed())->count(),
             'hours' => (float) $repairRequests->flatMap->repairLogs->sum('total_hours'),
         ];
 

@@ -16,8 +16,8 @@ use Tests\TestCase;
  * 保養項目與保養計畫的四條寫入路由（之前沒有測試）：
  *   PUT   maintenance-items/{id}                 修改保養項目
  *   PATCH maintenance-items/{id}/toggle-status   啟用／停用保養項目
- *   POST  maintenance-plans                      新增保養計畫（順便寫入計畫的保養項目、算出下次到期日）
- *   PUT   maintenance-plans/{id}                 修改保養計畫（重算到期日、同步保養項目）
+ *   POST  maintenance-plans                      新增保養計畫（設備或設備類別擇一、必填說明、算出下次到期日）
+ *   PUT   maintenance-plans/{id}                 修改保養計畫（重算到期日；原本勾選的保養項目資料保留不動）
  * 每條都測四件事：成功時資料真的寫對、驗證失敗時什麼都不寫、沒有管理權限（maintenance.manage）會被擋下。
  */
 class MaintenanceItemAndPlanWriteTest extends TestCase
@@ -137,51 +137,92 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
 
     // ───────────── POST maintenance-plans ─────────────
 
-    public function test_storing_a_plan_saves_items_and_computes_the_next_due_date(): void
+    public function test_storing_a_plan_for_a_category_saves_the_description_and_computes_the_next_due_date(): void
     {
         $category = DeviceCategory::create(['name' => '電腦']);
-        $a = $this->item(['name' => '清潔風扇']);
-        $b = $this->item(['name' => '更新防毒']);
 
         $this->post(route('maintenance-plans.store'), [
             'name' => '電腦月保養',
-            'device_category_id' => $category->id,
+            'targets' => ['category:' . $category->id],
+            'description' => '清潔風扇、更新防毒',
             'cycle_days' => 30,
             'start_date' => '2026-10-07',
             'is_active' => 1,
-            'item_ids' => [$a->id, $b->id],
         ])->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫新增成功');
 
         $plan = MaintenancePlan::where('name', '電腦月保養')->firstOrFail();
         $this->assertSame(30, $plan->cycle_days);
         $this->assertSame($category->id, $plan->device_category_id);
         $this->assertNull($plan->device_id, '以設備類別建立的計畫不另存單一設備');
+        $this->assertSame('清潔風扇、更新防毒', $plan->description);
         $this->assertSame('2026-11-06', $plan->next_due_date->toDateString(), '下次到期日 = 開始日 + 週期天數');
-        $this->assertEqualsCanonicalizing([$a->id, $b->id], $plan->maintenanceItems()->pluck('maintenance_items.id')->all());
+        $this->assertDatabaseCount('maintenance_plan_items', 0);
+    }
+
+    public function test_storing_a_plan_for_a_single_device(): void
+    {
+        $device = $this->makeDevice('PLAN-DEV');
+
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '單台月檢', 'targets' => ['device:' . $device->id], 'description' => '檢查燈泡', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $plan = MaintenancePlan::where('name', '單台月檢')->firstOrFail();
+        $this->assertSame($device->id, $plan->device_id);
+        $this->assertNull($plan->device_category_id, '選設備時類別由設備推得，不另存');
+    }
+
+    // 一個計畫可以有好幾個保養對象（設備、類別混著選）；建立工單時每個對象各建一張。
+    public function test_a_plan_can_have_several_targets_and_creates_one_order_each(): void
+    {
+        $category = DeviceCategory::create(['name' => '冷氣']);
+        $a = $this->makeDevice('MULTI-A');
+        $b = $this->makeDevice('MULTI-B');
+
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '多對象月檢', 'targets' => ['device:' . $a->id, 'category:' . $category->id, '', 'device:' . $b->id],
+            'description' => '清潔', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $plan = MaintenancePlan::where('name', '多對象月檢')->firstOrFail();
+        $this->assertSame(['device:' . $a->id, 'category:' . $category->id, 'device:' . $b->id], $plan->targets->map->value()->all());
+        $this->assertSame($a->id, $plan->device_id, '第一個對象也存在計畫本身');
+        $this->get(route('maintenance-plans.index'))->assertSee('MULTI-A（測試電腦）、冷氣（整類）、MULTI-B（測試電腦）');
+        $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('設備：MULTI-A', false)->assertSee('類別：冷氣', false);
+
+        $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('success');
+        $orders = \App\Models\MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('id')->get();
+        $this->assertSame([$a->id, null, $b->id], $orders->pluck('device_id')->all());
+        $this->assertSame([null, $category->id, null], $orders->pluck('device_category_id')->all());
+        $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error');   // 同一期不重複建立
     }
 
     public function test_storing_a_plan_without_required_fields_saves_nothing(): void
     {
         $this->from(route('maintenance-plans.create'))
-            ->post(route('maintenance-plans.store'), ['name' => '', 'cycle_days' => 0, 'item_ids' => []])
+            ->post(route('maintenance-plans.store'), ['name' => '', 'cycle_days' => 0, 'description' => ''])
             ->assertRedirect(route('maintenance-plans.create'))
-            ->assertSessionHasErrors(['name', 'cycle_days', 'start_date', 'item_ids']);
+            ->assertSessionHasErrors(['name', 'cycle_days', 'start_date', 'description', 'targets']);
 
-        // 保養項目要真的存在，週期不能超過 3650 天
-        $this->post(route('maintenance-plans.store'), ['name' => '壞資料', 'cycle_days' => 3651, 'start_date' => '2026-10-07', 'item_ids' => [99999]])
-            ->assertSessionHasErrors(['cycle_days', 'item_ids.0']);
+        // 設備／類別要真的存在（亂打的值、不存在的編號都不行），週期不能超過 3650 天；已淘汰的設備不能選。
+        $retired = $this->makeDevice('RETIRED', 'retired');
+        $base = ['name' => '壞資料', 'description' => 'x', 'start_date' => '2026-10-07', 'cycle_days' => 30];
+        $this->post(route('maintenance-plans.store'), ['cycle_days' => 3651, 'targets' => ['category:1']] + $base)->assertSessionHasErrors('cycle_days');
+        $this->post(route('maintenance-plans.store'), ['targets' => ['category:99999']] + $base)->assertSessionHasErrors('targets.0');
+        $this->post(route('maintenance-plans.store'), ['targets' => ['foo']] + $base)->assertSessionHasErrors('targets.0');
+        $this->post(route('maintenance-plans.store'), ['targets' => ['device:' . $retired->id]] + $base)->assertSessionHasErrors('targets.0');
+        $this->post(route('maintenance-plans.store'), ['targets' => ['device:' . $retired->id, 'device:' . $retired->id]] + $base)->assertSessionHasErrors('targets.1');
 
         $this->assertDatabaseCount('maintenance_plans', 0);
-        $this->assertDatabaseCount('maintenance_plan_items', 0);
     }
 
     #[DataProvider('usersWithoutManagePermission')]
     public function test_storing_a_plan_needs_the_manage_permission(array $permissions): void
     {
-        $item = $this->item();
+        $category = DeviceCategory::create(['name' => '電腦']);
         $this->actingAs($this->makeUserWithPermissions($permissions));
 
-        $this->post(route('maintenance-plans.store'), ['name' => '不該被建立', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'item_ids' => [$item->id]])
+        $this->post(route('maintenance-plans.store'), ['name' => '不該被建立', 'targets' => ['category:' . $category->id], 'description' => 'x', 'cycle_days' => 30, 'start_date' => '2026-10-07'])
             ->assertForbidden();
 
         $this->assertDatabaseCount('maintenance_plans', 0);
@@ -193,6 +234,8 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
     {
         $plan = MaintenancePlan::create([
             'name' => '舊計畫',
+            'description' => '舊說明',
+            'device_category_id' => DeviceCategory::firstOrCreate(['name' => '投影機'])->id,
             'cycle_days' => 30,
             'start_date' => '2026-01-01',
             'next_due_date' => '2026-01-31',
@@ -203,36 +246,39 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         return $plan;
     }
 
-    public function test_updating_a_plan_recomputes_the_due_date_and_replaces_its_items(): void
+    private function updatePayload(MaintenancePlan $plan, array $override = []): array
+    {
+        return array_merge(['name' => '同名', 'targets' => ['category:' . $plan->device_category_id], 'description' => '舊說明', 'cycle_days' => 30, 'start_date' => '2026-01-01', 'is_active' => 1], $override);
+    }
+
+    public function test_updating_a_plan_recomputes_the_due_date_and_keeps_the_old_item_data(): void
     {
         $a = $this->item(['name' => '項目甲']);
-        $b = $this->item(['name' => '項目乙']);
-        $c = $this->item(['name' => '項目丙']);
-        $plan = $this->planWith([$a, $b]);
+        $plan = $this->planWith([$a]);
+        $device = $this->makeDevice('NEW-DEV');
 
-        $this->put(route('maintenance-plans.update', $plan), [
-            'name' => '新計畫',
-            'cycle_days' => 90,
-            'start_date' => '2026-10-07',
-            'is_active' => 1,
-            'item_ids' => [$b->id, $c->id],      // 拿掉甲、保留乙、新增丙
-        ])->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫更新成功');
+        $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('舊說明')->assertSee('類別：投影機')->assertDontSee('保養項目（可複選）');
+        $this->put(route('maintenance-plans.update', $plan), $this->updatePayload($plan, [
+            'name' => '新計畫', 'targets' => ['device:' . $device->id], 'description' => '新說明', 'cycle_days' => 90, 'start_date' => '2026-10-07',
+        ]))->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫更新成功');
 
         $plan->refresh();
         $this->assertSame('新計畫', $plan->name);
+        $this->assertSame('新說明', $plan->description);
+        $this->assertSame($device->id, $plan->device_id);
+        $this->assertNull($plan->device_category_id);
         $this->assertSame(90, $plan->cycle_days);
         $this->assertSame('2027-01-05', $plan->next_due_date->toDateString(), '下次到期日依新的開始日與週期重算');
-        $this->assertEqualsCanonicalizing([$b->id, $c->id], $plan->maintenanceItems()->pluck('maintenance_items.id')->all());
+        $this->assertSame([$a->id], $plan->maintenanceItems()->pluck('maintenance_items.id')->all(), '舊的保養項目資料保留');
         $this->assertDatabaseCount('maintenance_plans', 1);
     }
 
     public function test_updating_a_plan_can_deactivate_it(): void
     {
-        $item = $this->item();
-        $plan = $this->planWith([$item]);
+        $plan = $this->planWith([]);
 
         // 編輯畫面的啟用開關關掉時送出 is_active = 0，計畫就變成停用。
-        $this->put(route('maintenance-plans.update', $plan), ['name' => '同名', 'cycle_days' => 30, 'start_date' => '2026-01-01', 'is_active' => 0, 'item_ids' => [$item->id]])
+        $this->put(route('maintenance-plans.update', $plan), $this->updatePayload($plan, ['is_active' => 0]))
             ->assertRedirect(route('maintenance-plans.index'));
 
         $this->assertDatabaseHas('maintenance_plans', ['id' => $plan->id, 'is_active' => false]);
@@ -240,28 +286,26 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
 
     public function test_updating_a_plan_with_invalid_data_changes_nothing(): void
     {
-        $item = $this->item();
-        $plan = $this->planWith([$item]);
+        $plan = $this->planWith([]);
 
         $this->from(route('maintenance-plans.edit', $plan))
-            ->put(route('maintenance-plans.update', $plan), ['name' => '', 'cycle_days' => 0, 'start_date' => '不是日期', 'item_ids' => []])
+            ->put(route('maintenance-plans.update', $plan), ['name' => '', 'cycle_days' => 0, 'start_date' => '不是日期', 'description' => '', 'targets' => ['']])
             ->assertRedirect(route('maintenance-plans.edit', $plan))
-            ->assertSessionHasErrors(['name', 'cycle_days', 'start_date', 'item_ids']);
+            ->assertSessionHasErrors(['name', 'cycle_days', 'start_date', 'description', 'targets']);
 
         $plan->refresh();
         $this->assertSame('舊計畫', $plan->name);
+        $this->assertSame('舊說明', $plan->description);
         $this->assertSame('2026-01-31', $plan->next_due_date->toDateString());
-        $this->assertSame([$item->id], $plan->maintenanceItems()->pluck('maintenance_items.id')->all());
     }
 
     #[DataProvider('usersWithoutManagePermission')]
     public function test_updating_a_plan_needs_the_manage_permission(array $permissions): void
     {
-        $item = $this->item();
-        $plan = $this->planWith([$item]);
+        $plan = $this->planWith([]);
         $this->actingAs($this->makeUserWithPermissions($permissions));
 
-        $this->put(route('maintenance-plans.update', $plan), ['name' => '被偷改', 'cycle_days' => 1, 'start_date' => '2026-10-07', 'item_ids' => [$item->id]])
+        $this->put(route('maintenance-plans.update', $plan), $this->updatePayload($plan, ['name' => '被偷改', 'cycle_days' => 1]))
             ->assertForbidden();
 
         $this->assertDatabaseHas('maintenance_plans', ['id' => $plan->id, 'name' => '舊計畫', 'cycle_days' => 30]);

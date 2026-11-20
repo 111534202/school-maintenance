@@ -61,8 +61,8 @@
                     <label for="status" class="form-label small mb-1">{{ __('devices.filter.status') }}</label>
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
                         <option value="">{{ __('devices.filter.status_all') }}</option>
-                        {{-- 狀態下拉選單的選項：列出 Device::STATUSES 的每個狀態，顯示名稱用 Device::statusLabel() 轉成中文。 --}}
-                        @foreach (\App\Models\Device::STATUSES as $status)
+                        {{-- 狀態下拉選單的選項：畫面上的狀態（正常、待維修、已淘汰、停用；待維修由報修單推算），顯示名稱用 Device::statusLabel() 轉成中文。 --}}
+                        @foreach (\App\Models\Device::DISPLAY_STATUSES as $status)
                             <option value="{{ $status }}" @selected(request('status') === $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
                         @endforeach
                     </select>
@@ -95,7 +95,6 @@
                         <th>{{ __('devices.table.brand_model') }}</th>
                         <th>{{ __('devices.table.classroom') }}</th>
                         <th class="text-center">{{ __('devices.table.status') }}</th>
-                        <th class="text-center">{{ __('devices.table.core') }}</th>
                         <th class="text-center">{{ __('devices.table.open_repairs') }}</th>
                         <th class="text-end tb-col-fit">{{ __('devices.table.actions') }}</th>
                     </tr>
@@ -106,29 +105,21 @@
                         <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link">
                             <td>
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none" data-modal-frame data-modal-title="設備詳細" data-modal-size="xl">{{ $device->device_code }}</a>
-                                {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
+                                {{-- 重複報修提醒：近 30 天報修達到門檻次數，紅色粗體字；點了跳到報修看板，關鍵字帶入設備編號篩選；只有文字本身能點，點旁邊空白不會誤跳。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                    <a href="{{ route('repairs.index', ['device_id' => $device->id]) }}" class="d-block small text-danger text-decoration-none"
-                                        title="{{ __('devices.repeat_repair_hint') }}">
-                                        <i class="bi bi-arrow-repeat"></i> {{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}
-                                    </a>
+                                    <div><a href="{{ route('repairs.index', ['keyword' => $device->device_code]) }}" class="small text-danger fw-bold text-decoration-none"
+                                        title="{{ __('devices.repeat_repair_hint') }}">{{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}</a></div>
                                 @endif
                             </td>
                             <td>{{ $device->category->name ?? __('devices.no_value') }}</td>
                             <td>{{ $device->brand }} {{ $device->model }}</td>
                             <td>{{ $device->classroom->name ?? __('devices.no_value') }}</td>
-                            {{-- 狀態徽章依狀態上色：正常綠、維修中黃、已淘汰灰、停用紅（和主控台的設備狀態圖同一套顏色）。 --}}
-                            <td class="text-center"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->status) }}">{{ \App\Models\Device::statusLabel($device->status) }}</span></td>
-                            <td class="text-center">
-                                {{-- 核心設備才顯示「核心」徽章。 --}}
-                                @if ($device->is_core)
-                                    <span class="badge tb-pill tb-pill-warn">{{ __('devices.core_badge') }}</span>
-                                @endif
-                            </td>
+                            {{-- 狀態徽章依狀態上色：正常綠、待維修黃（由報修單推算）、已淘汰灰、停用紅（和主控台的設備狀態圖同一套顏色）。 --}}
+                            <td class="text-center"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->display_status) }}">{{ \App\Models\Device::statusLabel($device->display_status) }}</span></td>
                             {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這台設備的報修單。 --}}
                             <td class="text-center">
                                 @if ($device->open_repairs_count > 0)
-                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['keyword' => $device->device_code]) }}"
                                         title="{{ __('devices.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $device->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>

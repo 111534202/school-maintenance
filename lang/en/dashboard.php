@@ -14,7 +14,7 @@ return [
 	'monthly_repairs' => 'New Repairs This Month',
         'pending_dispatch' => 'Awaiting Dispatch',
         'pending_repairs' => 'Pending Repairs',
-        'in_progress' => 'In Progress',
+        'in_progress' => 'Assigned',
         'pending_review' => 'Awaiting Acceptance',
         'pending_reservations' => 'Reservations Awaiting Review',
         'overdue' => 'Overdue Repairs',
@@ -48,7 +48,7 @@ return [
     // 設備狀態的顯示名稱（主控台圖表用）。
     'device_status' => [
         'normal' => 'Normal',
-        'repairing' => 'Under repair',
+        'repairing' => 'Awaiting repair',
         'retired' => 'Retired',
         'disabled' => 'Disabled',
     ],

@@ -22,7 +22,7 @@ class ReservationExportPreviewTest extends TestCase
 
     private function reservation(User $user, string $class): ClassroomReservation
     {
-        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
 
         return ClassroomReservation::create(['classroom_id' => $classroom->id, 'requester_id' => $user->id, 'class_name' => $class, 'reservation_date' => now()->addDay()->toDateString(),
             'start_time' => '08:10', 'end_time' => '09:00', 'purpose' => '班級活動', 'status' => 'pending']);

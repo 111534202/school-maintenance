@@ -50,7 +50,7 @@ class ReviewFixesTest extends TestCase
         $this->actingAs($manager)->put(route('repairs.update', $case), ['title' => '被改掉', 'description' => 'x', 'impact_level' => 'low', 'is_class_affected' => 0, 'device_note' => 'x'])->assertForbidden();
         $this->actingAs($manager)->post(route('repairs.assign', $case), ['assigned_to' => $technician->id])->assertForbidden();
         $this->actingAs($manager)->post(route('repairs.reassign', $case), ['assigned_to' => $technician->id])->assertForbidden();
-        $this->actingAs($manager)->delete(route('repairs.destroy', $case))->assertForbidden();
+        $this->actingAs($manager)->post(route('repairs.return', $case), ['return_reason' => 'x'])->assertForbidden();
         $this->actingAs($manager)->getJson(route('repairs.timetable', $case))->assertForbidden();
         $this->assertSame('別人的待驗收', $case->fresh()->title);
     }
@@ -66,10 +66,10 @@ class ReviewFixesTest extends TestCase
     {
         $device = $this->device();
         RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'pending_review', 'title' => '別人的待驗收投影機']);
-        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'in_progress', 'title' => '處理中的投影機']);
+        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned', 'title' => '已派工的投影機']);
 
         $this->actingAs($this->makeItManager())->get(route('device-profile.show', $device))->assertOk()
-            ->assertDontSee('別人的待驗收投影機')->assertSee('處理中的投影機');
+            ->assertDontSee('別人的待驗收投影機')->assertSee('已派工的投影機');
     }
 
     // ---------- 500 改成明確提示 ----------
@@ -97,7 +97,7 @@ class ReviewFixesTest extends TestCase
             ->assertSessionHasErrors('description');
 
         $technician = $this->makeTechnician();
-        $repair = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id]);
+        $repair = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
         $base = ['cause' => '壞了', 'resolution' => '修好', 'started_at' => now()->subHour()->format('Y-m-d H:i'), 'ended_at' => now()->format('Y-m-d H:i')];
         $this->actingAs($technician)->post(route('repair-logs.store', $repair), ['cause' => str_repeat('字', 5001)] + $base)->assertSessionHasErrors('cause');
         $this->actingAs($technician)->post(route('repair-logs.store', $repair), ['started_at' => '2099-01-01 08:00', 'ended_at' => '2099-01-01 09:00'] + $base)
@@ -153,7 +153,7 @@ class ReviewFixesTest extends TestCase
     public function test_a_future_execution_time_is_rejected_and_a_report_is_logged(): void
     {
         $admin = $this->makeUserWithRole('admin', '系統管理員');
-        $order = MaintenanceOrder::factory()->create(['device_id' => $this->device()->id]);
+        $order = MaintenanceOrder::factory()->create(['device_id' => $this->device()->id, 'status' => 'in_progress', 'assigned_to' => $admin->id]);
 
         $this->actingAs($admin)->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2030-01-01 08:00'])
             ->assertSessionHasErrors('executed_at');
@@ -173,18 +173,18 @@ class ReviewFixesTest extends TestCase
         $this->assertSame(1, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
     }
 
+    // NG 轉報修由回報結果時自動建立（每台設備一張）；手動「建立報修單」的入口已拿掉，重送回報也不會再建一次。
     public function test_an_ng_result_cannot_be_turned_into_two_repair_requests(): void
     {
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $device = $this->device();
-        $order = MaintenanceOrder::factory()->create(['device_id' => $device->id, 'status' => MaintenanceOrder::STATUS_COMPLETED]);
-        $result = MaintenanceResult::factory()->create(['maintenance_order_id' => $order->id, 'result' => 'ng', 'ng_conversion_status' => MaintenanceResult::NG_CONVERSION_PENDING]);
-        $payload = ['title' => 'NG 轉報修', 'description' => '壞了', 'impact_level' => 'low', 'is_class_affected' => 0, 'device_id' => $device->id, 'maintenance_result_id' => $result->id];
+        $order = MaintenanceOrder::factory()->create(['device_id' => $device->id, 'status' => 'in_progress', 'assigned_to' => $admin->id]);
+        $payload = ['result' => 'ng', 'executed_at' => now()->subHour()->format('Y-m-d H:i'), 'note' => '壞了', 'ng_device_ids' => [$device->id]];
 
-        $this->actingAs($admin)->post(route('repairs.store'), $payload)->assertSessionHasNoErrors();
-        $this->actingAs($admin)->post(route('repairs.store'), $payload)->assertSessionHas('error');
+        $this->actingAs($admin)->post(route('maintenance-orders.results.store', $order), $payload)->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('maintenance-orders.results.store', $order), $payload)->assertSessionHas('error');
         $this->assertSame(1, RepairRequest::count());
-        $this->assertNotNull($result->fresh()->repair_request_id);
+        $this->assertSame(1, MaintenanceResult::firstOrFail()->repairRequests()->count());
     }
 
     // ---------- 其他 ----------
@@ -236,12 +236,12 @@ class ReviewFixesTest extends TestCase
     {
         $manager = $this->makeItManager();
         RepairRequest::factory()->create(['status' => 'pending_review']);   // 跟他無關的待驗收案件
-        RepairRequest::factory()->create(['status' => 'in_progress']);
+        RepairRequest::factory()->create(['status' => 'assigned']);
 
         $counts = collect($this->actingAs($manager)->get(route('dashboard'))->assertOk()->viewData('repairStatuses'))->pluck('count', 'key');
         // 跟他無關的待驗收案件不算進圖表（點進去的列表也看不到，數字才對得上）；其他狀態照常。
         $this->assertSame(0, (int) $counts['pending_review']);
-        $this->assertSame(1, (int) $counts['in_progress']);
+        $this->assertSame(1, (int) $counts['assigned']);
         $this->actingAs($manager)->get(route('repairs.index', ['status' => 'pending_review']))->assertSee('目前沒有符合條件的報修案件');
     }
 
@@ -321,7 +321,7 @@ class ReviewFixesTest extends TestCase
     public function test_future_time_errors_use_plain_words_and_the_dispatch_form_warns_for_a_deleted_reporter(): void
     {
         $technician = $this->makeTechnician();
-        $repair = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id]);
+        $repair = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
 
         $this->actingAs($technician)->post(route('repair-logs.store', $repair), ['cause' => 'a', 'resolution' => 'b', 'started_at' => now()->addDay()->format('Y-m-d H:i'), 'ended_at' => now()->addDay()->format('Y-m-d H:i')])
             ->assertSessionHasErrors('started_at');

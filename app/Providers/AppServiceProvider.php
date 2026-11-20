@@ -150,10 +150,10 @@ class AppServiceProvider extends ServiceProvider
             }
         }
 
-        // 有處理維修權限的人：提醒「指派給我、還沒做完（已派工或處理中）的案件」。
+        // 有處理維修權限的人：提醒「指派給我、還沒做完（已派工）的案件」。
         if ($user->can('repairs.process')) {
             $count = RepairRequest::where('assigned_to', $user->id)
-                ->whereIn('status', [RepairRequestStatus::Assigned->value, RepairRequestStatus::InProgress->value])
+                ->where('status', RepairRequestStatus::Assigned->value)
                 ->count();
             if ($count > 0) {
                 $items[] = [

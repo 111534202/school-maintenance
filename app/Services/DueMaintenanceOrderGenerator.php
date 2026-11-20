@@ -43,16 +43,18 @@ class DueMaintenanceOrderGenerator
                     return;
                 }
 
-                MaintenanceOrder::create([
-                    'maintenance_plan_id' => $plan->id,
-                    'device_id' => $plan->device_id,
-                    'device_category_id' => $plan->device_category_id,
-                    'source' => MaintenanceOrder::SOURCE_PERIODIC,
-                    'status' => MaintenanceOrder::STATUS_PENDING,
-                    'scheduled_date' => $plan->next_due_date,
-                ]);
+                // 計畫有好幾個保養對象（設備或類別）時，每個對象各建一張工單。
+                foreach ($plan->orderTargets() as $target) {
+                    MaintenanceOrder::create([
+                        'maintenance_plan_id' => $plan->id,
+                        ...$target,
+                        'source' => MaintenanceOrder::SOURCE_PERIODIC,
+                        'status' => MaintenanceOrder::STATUS_PENDING,
+                        'scheduled_date' => $plan->next_due_date,
+                    ]);
 
-                $created++;
+                    $created++;
+                }
             });
 
         return $created;

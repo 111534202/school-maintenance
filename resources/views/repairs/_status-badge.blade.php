@@ -4,7 +4,7 @@
     $statusBadgeClass = [
         'pending' => 'text-bg-secondary',
         'assigned' => 'text-bg-info',
-        'in_progress' => 'text-bg-warning',
+        'returned' => 'text-bg-danger',
         'pending_review' => 'text-bg-primary',
         'completed' => 'text-bg-success',
     // 用目前狀態的代碼查出顏色；查不到（未知狀態）就用淺灰色。

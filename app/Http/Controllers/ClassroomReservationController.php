@@ -170,16 +170,15 @@ class ClassroomReservationController extends Controller
             ))
             : [];
 
-        // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
+        // 教室目前在等待維修的設備（審核時參考，只是提醒，仍可核准）。
         $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id], withTitles: $request->user()->hasPermission('reservations.manage'))[$reservation->classroom_id] ?? [];
-        $classroomSuspended = ClassroomRepairNotices::isSuspended((int) $reservation->classroom_id);
 
-        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices', 'classroomSuspended', 'willAutoReject'));
+        return view('reservations.show', compact('reservation', 'canManage', 'repairNotices', 'willAutoReject'));
     }
 
     /**
      * 顯示新增預約表單。
-     * 所有啟用中的教室都可以選、可以查詢課表；暫停預約的教室（核心設備等待維修）不能送出申請。
+     * 所有啟用中的教室都可以選、可以查詢課表、可以送出申請；有設備在報修的教室只顯示提醒。
      */
     public function create(Request $request, ReservationReviewService $reviewService)
     {
@@ -193,15 +192,14 @@ class ClassroomReservationController extends Controller
             ->orderBy('name')
             ->get();
 
-        // 每間教室目前在等待維修的設備，以及哪些教室暫停預約；選好教室後在畫面上提醒。
+        // 每間教室目前在等待維修的設備；選好教室後在畫面上提醒（只是提醒，仍可以預約）。
         $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: $request->user()->hasPermission('reservations.manage'));
-        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
         $majors = $this->majorOptions();
 
         $exportReservations = $showMine ? $this->exportPreview($request) : collect();
 
-        return view('reservations.create', compact('classrooms', 'repairNotices', 'suspendedIds', 'myReservations', 'showMine', 'majors', 'exportReservations'));
+        return view('reservations.create', compact('classrooms', 'repairNotices', 'myReservations', 'showMine', 'majors', 'exportReservations'));
     }
 
     /** 我的申請（有審核權限的人從空間申請右上角打開的對話框；?modal=1）。 */
@@ -253,15 +251,13 @@ class ClassroomReservationController extends Controller
             ->orderBy('name')
             ->get();
 
-        // 報修提醒（黃色）與暫停預約（紅色）一樣顯示：讓人知道為什麼不能預約。
+        // 報修提醒（黃色）一樣顯示，只是提醒，不擋預約。
         // 不帶報修單標題（使用者自由填寫的文字，不對未登入的人公開；同步 integrate/all f3a55bf）。
         $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: false);
-        $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
         return view('reservations.create', [
             'classrooms' => $classrooms,
             'repairNotices' => $repairNotices,
-            'suspendedIds' => $suspendedIds,
             'myReservations' => null,
             'guest' => true,
             'majors' => $this->majorOptions(),
@@ -385,11 +381,6 @@ class ClassroomReservationController extends Controller
                 return ['type' => 'unavailable'];
             }
 
-            // 教室被標成設備異常（核心設備維修處理中／停用）：暫停預約，不能送出。
-            if (ClassroomRepairNotices::isSuspended($classroom->id)) {
-                return ['type' => 'suspended'];
-            }
-
 
             foreach ($slots as $slot) {
                 $date = $slot['reservation_date'];
@@ -450,12 +441,6 @@ class ClassroomReservationController extends Controller
             return back()
                 ->withInput()
                 ->with('error', '這間教室目前已停用，無法預約。');
-        }
-
-        if ($result['type'] === 'suspended') {
-            return back()
-                ->withInput()
-                ->with('error', '這間教室的核心設備正在維修，目前暫停預約，無法送出申請。');
         }
 
         if ($result['type'] === 'conflict') {
@@ -543,7 +528,7 @@ class ClassroomReservationController extends Controller
             'already_reviewed' => $redirect->with('error', '這筆預約已經審核過，無法重複操作。'),
             'incomplete' => back()->with('error', '請替每一節選擇同意或拒絕。'),
             'is_all_or_nothing' => back()->with('error', '申請人選了「其中一節無法借用就整筆不要」，只能全部同意或全部拒絕。'),
-            'unavailable' => $redirect->with('error', '教室目前已停用，或核心設備正在維修而暫停預約，無法同意此預約（仍可拒絕）。'),
+            'unavailable' => $redirect->with('error', '教室目前已停用，無法同意此預約（仍可拒絕）。'),
             'conflict' => ($result['whole_rejected'] ?? false)
                 ? $redirect->with('error', '下列節次已核准給其他申請；這筆申請選了整筆，已自動整筆拒絕：' . implode('、', $result['slots']))
                 : back()->with('error', '下列節次已核准給其他申請，不能同意，請改成拒絕：' . implode('、', $result['slots'])),

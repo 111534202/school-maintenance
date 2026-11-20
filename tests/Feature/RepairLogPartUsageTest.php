@@ -6,7 +6,6 @@ use App\Models\Part;
 use App\Models\RepairLog;
 use App\Models\RepairPartUsage;
 use App\Models\RepairRequest;
-use App\Services\RepairRequestWorkflow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
@@ -25,20 +24,14 @@ class RepairLogPartUsageTest extends TestCase
     }
 
     /**
-     * 建立一張已進入「處理中」狀態的報修單。
-     *
-     * 工作流程必須是 assigned -> in_progress，
+     * 建立一張「已派工」的報修單：已派工就能直接填維修紀錄（原本的「處理中」已拿掉）。
      * 不能直接將 pending 當成可填寫維修紀錄的案件。
      */
     private function makeInProgressRequest(): RepairRequest
     {
-        $repairRequest = RepairRequest::factory()->create([
+        return RepairRequest::factory()->create([
             'status' => 'assigned',
-        ]);
-
-        app(RepairRequestWorkflow::class)->start($repairRequest);
-
-        return $repairRequest->fresh();
+        ])->fresh();
     }
 
     /**
@@ -61,7 +54,7 @@ class RepairLogPartUsageTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_replace([
-            'cause' => '測試故障原因',
+            'device_id' => $this->anyDeviceId(), 'cause' => '測試故障原因',
             'resolution' => '測試維修處理方式',
             'started_at' => '2026-10-12T09:00',
             'ended_at' => '2026-10-12T10:00',
@@ -216,7 +209,7 @@ class RepairLogPartUsageTest extends TestCase
         );
 
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
@@ -265,7 +258,7 @@ class RepairLogPartUsageTest extends TestCase
         $response = $this->post(
             route('repair-logs.store', $repairRequest),
             $this->validPayload([
-                'cause' => '',
+                'device_id' => $this->anyDeviceId(), 'cause' => '',
                 'part_usages' => [
                     ['part_id' => $part->id, 'quantity' => 3],
                 ],
@@ -286,7 +279,7 @@ class RepairLogPartUsageTest extends TestCase
         );
 
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
@@ -318,7 +311,7 @@ class RepairLogPartUsageTest extends TestCase
         $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
@@ -349,7 +342,7 @@ class RepairLogPartUsageTest extends TestCase
         $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
@@ -380,7 +373,7 @@ class RepairLogPartUsageTest extends TestCase
         $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
@@ -412,18 +405,18 @@ class RepairLogPartUsageTest extends TestCase
         $this->assertDatabaseCount('repair_part_usages', 0);
         $this->assertSame(10, (int) $part->fresh()->current_stock);
         $this->assertSame(
-            'in_progress',
+            'assigned',
             $repairRequest->fresh()->status->value
         );
     }
 
 /**
-     * 尚未開始處理的案件，不應開放填寫維修紀錄。
+     * 還沒派工（新報修）的案件，不應開放填寫維修紀錄。
      */
-    public function test_repair_log_form_is_not_available_before_work_starts(): void
+    public function test_repair_log_form_is_not_available_before_dispatch(): void
     {
         $repairRequest = RepairRequest::factory()->create([
-            'status' => 'assigned',
+            'status' => 'pending',
         ]);
 
         $response = $this->get(
@@ -435,9 +428,9 @@ class RepairLogPartUsageTest extends TestCase
     }
 
     /**
-     * 案件進入處理中後，應可以開啟維修紀錄表單。
+     * 案件已派工後，應可以開啟維修紀錄表單。
      */
-    public function test_repair_log_form_is_available_while_in_progress(): void
+    public function test_repair_log_form_is_available_once_assigned(): void
     {
         $repairRequest = $this->makeInProgressRequest();
 

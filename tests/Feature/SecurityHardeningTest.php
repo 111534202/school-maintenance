@@ -239,33 +239,33 @@ protected function setUp(): void
         ];
     }
 
-    // 開始處理：只有被指派的維修人員本人；別的維修人員得到 403，案件狀態不變。
-    public function test_only_the_assigned_technician_can_start_a_case(): void
+    // 退回已派工的案件：只有被指派的維修人員本人；別的維修人員得到 403，案件狀態不變。
+    public function test_only_the_assigned_technician_can_return_a_case(): void
     {
         [$techA, $techB] = $this->twoTechniciansAndTwoTeachers();
         $case = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $techA->id]);
 
-        $this->actingAs($techB)->post(route('repairs.start', $case))->assertForbidden();
+        $this->actingAs($techB)->post(route('repairs.return', $case), ['return_reason' => '不是我的'])->assertForbidden();
         $this->assertSame('assigned', $case->fresh()->status->value);
 
-        $this->actingAs($techA)->post(route('repairs.start', $case))->assertRedirect(route('repairs.show', $case));
-        $this->assertSame('in_progress', $case->fresh()->status->value);
+        $this->actingAs($techA)->post(route('repairs.return', $case), ['return_reason' => '要廠商來修'])->assertRedirect(route('repairs.show', $case));
+        $this->assertSame('returned', $case->fresh()->status->value);
     }
 
     // 填維修紀錄：開啟表單與送出都一樣，只有被指派的維修人員本人；送出被擋時不會留下任何紀錄。
     public function test_only_the_assigned_technician_can_fill_the_repair_log(): void
     {
         [$techA, $techB] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $techA->id]);
+        $case = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $techA->id]);
         $payload = [
-            'cause' => '原因', 'resolution' => '處置',
+            'device_id' => $this->anyDeviceId(), 'cause' => '原因', 'resolution' => '處置',
             'started_at' => now()->subHour()->format('Y-m-d\TH:i'), 'ended_at' => now()->format('Y-m-d\TH:i'),
         ];
 
         $this->actingAs($techB)->get(route('repair-logs.create', $case))->assertForbidden();
         $this->post(route('repair-logs.store', $case), $payload)->assertForbidden();
         $this->assertSame(0, $case->fresh()->repairLogs()->count());
-        $this->assertSame('in_progress', $case->fresh()->status->value);
+        $this->assertSame('assigned', $case->fresh()->status->value);
 
         $this->actingAs($techA)->get(route('repair-logs.create', $case))->assertOk();
         $this->post(route('repair-logs.store', $case), $payload)->assertRedirect(route('repairs.show', $case));
@@ -296,7 +296,7 @@ protected function setUp(): void
         $this->assertSame('pending_review', $case->fresh()->status->value);
 
         $this->actingAs($teacher1)->post(route('repairs.reject', $case), ['rejection_reason' => '還是壞的'])->assertRedirect();
-        $this->assertSame('in_progress', $case->fresh()->status->value);
+        $this->assertSame('assigned', $case->fresh()->status->value);
     }
 
     // 沒有報修人的案件（例如保養 NG 自動轉入）：沒有指定驗收人時只有系統管理員能驗收；派工時指定了驗收人，就由他驗收。
@@ -330,9 +330,9 @@ protected function setUp(): void
         $assigned = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $techA->id]);
         $review = RepairRequest::factory()->create(['status' => 'pending_review', 'requester_id' => $teacher1->id]);
 
-        $this->post(route('repairs.start', $assigned))->assertRedirect();
+        $this->get(route('repair-logs.create', $assigned))->assertOk();   // 不是指派給管理員，也能填維修紀錄
         $this->post(route('repairs.complete', $review))->assertRedirect();
-        $this->assertSame('in_progress', $assigned->fresh()->status->value);
+        $this->assertSame('assigned', $assigned->fresh()->status->value);
         $this->assertSame('completed', $review->fresh()->status->value);
     }
 
@@ -407,13 +407,13 @@ protected function setUp(): void
         $this->actingAs($teacher1)->get(route('dashboard'))->assertSee('1 張工單待驗收')->assertDontSee('2 張工單待驗收');
     }
 
-    // 詳細頁上的按鈕只在「真的能操作」時才顯示：別的維修人員看不到「開始處理」。
+    // 詳細頁上的按鈕只在「真的能操作」時才顯示：被指派的維修人員直接看到「填寫維修紀錄」與「退回報修單」（沒有「開始處理」）。
     public function test_buttons_are_hidden_when_the_viewer_may_not_act_on_the_case(): void
     {
         [$techA, $techB] = $this->twoTechniciansAndTwoTeachers();
         $case = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $techA->id]);
 
-        $this->actingAs($techA)->get(route('repairs.show', $case))->assertSee('開始處理');
+        $this->actingAs($techA)->get(route('repairs.show', $case))->assertSee('填寫維修紀錄')->assertSee('退回報修單')->assertDontSee('開始處理');
         // 維修人員 B 連這張單的詳細頁都打不開，所以不會看到任何按鈕。
         $this->actingAs($techB)->get(route('repairs.show', $case))->assertForbidden();
     }

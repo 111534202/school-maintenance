@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 
 use App\Models\DeviceCategory;   // 設備類別資料表的模型
 use App\Services\AuditLogger;    // 共用的操作紀錄寫入工具
-use Illuminate\Http\Request;     // 這一次瀏覽器送來的請求
+use App\Support\StrokeOrder;
+use Illuminate\Http\Request;                    // 這一次瀏覽器送來的請求
+use Illuminate\Pagination\LengthAwarePaginator;  // 自己排序後手動分頁
 
 /**
  * 設備類別主檔（投影機、電腦、冷氣...）：列表／搜尋、新增、編輯、刪除。
@@ -21,15 +23,18 @@ class DeviceCategoryController extends Controller
     public function index(Request $request)
     {
         // withCount('devices')：順便算出每個類別底下有幾台設備，列表上顯示用。
-        $categories = DeviceCategory::withCount('devices')
+        // 依名稱筆畫排序（筆畫少的在前，見 App\Support\StrokeOrder）：資料庫不會依筆畫排，所以撈出來排好再自己分頁。
+        $sorted = StrokeOrder::sort(DeviceCategory::withCount('devices')
             // 有填關鍵字才套用：名稱包含關鍵字（like %字%）。
             ->when($request->filled('keyword'), fn ($query) => $query->where('name', 'like', '%' . $request->string('keyword') . '%'))
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();   // 換頁時保留搜尋條件
+            ->get());
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $categories = (new LengthAwarePaginator($sorted->forPage($page, 15)->values(), $sorted->count(), 15, $page, [
+            'path' => LengthAwarePaginator::resolveCurrentPath(),
+        ]))->withQueryString();   // 換頁時保留搜尋條件
 
         $chart = \App\Services\MasterCharts::deviceCategoryRepairRanking($request->user());   // 頁首「統計圖表」按鈕的圖表資料
-        $categoryNames = DeviceCategory::orderBy('name')->pluck('name');   // 篩選欄位的下拉選項（可以輸入，也可以直接選）
+        $categoryNames = StrokeOrder::sort(DeviceCategory::pluck('name'), fn ($name) => $name);   // 篩選欄位的下拉選項（可以輸入，也可以直接選）
         return view('device-categories.index', compact('categories', 'chart', 'categoryNames'));
     }
 

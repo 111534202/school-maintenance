@@ -161,7 +161,7 @@ class RepairDurationStatisticsServiceTest extends TestCase
 
         // 本月有紀錄，但報修單尚未結案，不納入。
         $openRequest = RepairRequest::factory()->create([
-            'status' => RepairRequestStatus::InProgress,
+            'status' => RepairRequestStatus::Assigned,
             'requester_id' => $user->id,
         ]);
 

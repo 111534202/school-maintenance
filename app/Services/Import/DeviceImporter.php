@@ -44,15 +44,14 @@ class DeviceImporter extends BulkImporter
             ['key' => 'serial_number', 'label' => '序號', 'required' => false, 'example' => 'SN123456', 'note' => '可不填。'],
             ['key' => 'warranty_end_date', 'label' => '保固到期日', 'required' => false, 'example' => '2027-12-31', 'note' => '格式 2027-12-31 或 2027/12/31，可不填。'],
             ['key' => 'classroom', 'label' => '教室', 'required' => true, 'example' => 'A101', 'note' => '填教室代碼（見「教室一覽」工作表）；停用的教室不能放新設備。'],
-            ['key' => 'status', 'label' => '狀態', 'required' => false, 'example' => '正常', 'note' => '正常、維修中、已淘汰、停用；不填就是「正常」。'],
-            ['key' => 'is_core', 'label' => '核心設備', 'required' => false, 'example' => '否', 'note' => '是／否；不填就是「否」。'],
+            ['key' => 'status', 'label' => '狀態', 'required' => false, 'example' => '正常', 'note' => '正常、已淘汰、停用；不填就是「正常」。（待維修由報修單自動判斷，不用填）'],
         ];
     }
 
     public function referenceTables(): array
     {
         return [
-            ['title' => '類別一覽', 'headings' => ['類別名稱'], 'rows' => DeviceCategory::orderBy('name')->pluck('name')->map(fn ($n) => [$n])->all()],
+            ['title' => '類別一覽', 'headings' => ['類別名稱'], 'rows' => \App\Support\StrokeOrder::sort(DeviceCategory::pluck('name'), fn ($n) => $n)->map(fn ($n) => [$n])->all()],
             ['title' => '教室一覽', 'headings' => ['教室代碼', '教室名稱', '是否啟用'], 'rows' => Classroom::orderBy('classroom_code')->get()->map(fn ($c) => [$c->classroom_code, $c->name, $c->is_active ? '是' : '否'])->all()],
         ];
     }
@@ -111,10 +110,7 @@ class DeviceImporter extends BulkImporter
         // 狀態：中文名稱或英文代碼都可以，不填＝正常。
         $statusText = $row['status'] ?? '';
         $status = $statusText === '' ? 'normal' : ($this->statuses()[mb_strtolower($statusText)] ?? null);
-        $status ? $data['status'] = $status : $errors[] = "狀態「{$statusText}」看不懂（可填：正常、維修中、已淘汰、停用）";
-
-        $core = $this->toBool($row['is_core'] ?? '', false);
-        $core === null ? $errors[] = '核心設備請填「是」或「否」' : $data['is_core'] = $core;
+        $status ? $data['status'] = $status : $errors[] = "狀態「{$statusText}」看不懂（可填：正常、已淘汰、停用；待維修由報修單自動判斷）";
 
         $date = $this->toDate($row['warranty_end_date'] ?? '');
         $date === false ? $errors[] = '保固到期日格式不對（請填 2027-12-31）' : $data['warranty_end_date'] = $date?->toDateString();
@@ -134,7 +130,6 @@ class DeviceImporter extends BulkImporter
     {
         $done = 0;
         $kept = 0;
-        $classrooms = [];
         foreach (Device::where('import_batch_id', $batch->id)->get() as $device) {
             // 已經有報修或保養紀錄的設備不收回（履歷要保留）。
             if ($device->repairRequests()->exists() || MaintenanceOrder::where('device_id', $device->id)->exists()) {
@@ -144,24 +139,11 @@ class DeviceImporter extends BulkImporter
             }
             // 做法和手動「停用設備」相同：狀態改停用、軟刪除（資料保留）。
             DeviceStatusService::updateStatus($device, 'disabled', '批量匯入復原');
-            $classrooms[$device->classroom_id] = $device->classroom;
             $device->delete();
             AuditLogger::log('deleted', $device, [], "批量匯入復原：停用設備「{$device->device_code}」");
             $done++;
         }
-        foreach ($classrooms as $classroom) {
-            DeviceStatusService::syncClassroom($classroom);
-        }
-
         return ['done' => $done, 'kept' => $kept];
-    }
-
-    protected function afterCommit(array $rows): void
-    {
-        // 匯入的設備可能一開始就是異常狀態：每間教室只重新計算一次異常標記。
-        foreach (array_unique(array_column($rows, 'classroom_id')) as $classroomId) {
-            DeviceStatusService::syncClassroom(Classroom::find($classroomId));
-        }
     }
 
     /** @return array<string, int> 類別名稱（小寫）=> 編號 */

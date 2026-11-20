@@ -23,10 +23,9 @@
                 <option value="">全部</option>
                 <option value="pending" @selected(request('status') === 'pending')>待處理</option>
                 <option value="in_progress" @selected(request('status') === 'in_progress')>進行中</option>
-                <option value="completed" @selected(request('status') === 'completed')>已完成</option>
-                {{-- 保養結果 NG 的工單：還沒轉成報修單＝待轉報修，已經轉成報修單＝已轉報修（跟列表的狀態標籤一樣）。 --}}
-                <option value="pending_conversion" @selected(request('status') === 'pending_conversion')>待轉報修</option>
+                {{-- 保養結果 NG：轉出的報修單還沒全部結案＝已轉報修；全部結案後＝已完成。 --}}
                 <option value="converted" @selected(request('status') === 'converted')>已轉報修</option>
+                <option value="completed" @selected(request('status') === 'completed')>已完成</option>
             </select>
         </div>
         <div>
@@ -104,12 +103,7 @@
                         <td>{{ $order->categoryName() ?? '—' }}</td>
                         <td><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                         <td>
-                            @if ($statusText === '待轉報修' && $order->result && auth()->user()->can('repairs.create'))
-                                {{-- 點「待轉報修」直接跳到新增報修畫面，設備、標題、故障描述都先填好。 --}}
-                                <a href="{{ route('repairs.create', ['from_result' => $order->result->id]) }}" title="建立報修單" class="text-decoration-none"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}<i class="bi bi-box-arrow-up-right ms-1"></i></span></a>
-                            @else
-                                <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
-                            @endif
+                            <span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span>
                         </td>
                         <td>{{ $order->assignee?->name ?? '—' }}</td>
                         <td>
@@ -120,20 +114,14 @@
                         <td>{{ $order->created_at?->format('Y-m-d H:i') }}</td>
                         <td class="text-end tb-col-fit">
                             {{-- 工單詳細：點這一列在對話框打開（不另外放「詳細」按鈕）。
-                                 還沒回報：「回報結果」在對話框填寫；已經回報：綠底、不能按的「已回報」，跟「回報結果」一樣寬（四個字）對齊。 --}}
+                                 待處理：「確認派工」打開工單詳細（在那裡選負責人）；進行中：負責人與保養管理者看到「回報結果」；
+                                 已經回報：綠底、不能按的「已回報」。三個按鈕一樣寬（四個字）對齊。 --}}
                             @if ($order->result)
                                 <span class="btn btn-sm btn-success mo-action disabled" aria-disabled="true">已回報</span>
-                            @else
-                                @if ($order->canBeStartedBy(auth()->user()))
-                                    <form method="POST" action="{{ route('maintenance-orders.start', $order) }}" class="d-inline">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="btn btn-sm btn-outline-primary mo-action">開始保養</button>
-                                    </form>
-                                @endif
-                                @if (auth()->user()->can('maintenance.report') && $order->canBeReportedBy(auth()->user()))
-                                    <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success mo-action" data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報結果</a>
-                                @endif
+                            @elseif ($order->canBeDispatchedBy(auth()->user()))
+                                <a href="{{ route('maintenance-orders.show', $order) }}" class="btn btn-sm btn-outline-primary mo-action" data-modal-frame data-modal-title="保養紀錄" data-modal-size="xl">確認派工</a>
+                            @elseif ($order->canBeReportedBy(auth()->user()))
+                                <a href="{{ route('maintenance-orders.results.create', $order) }}" class="btn btn-sm btn-outline-success mo-action" data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報結果</a>
                             @endif
                         </td>
                     </tr>

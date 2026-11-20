@@ -405,7 +405,7 @@ class UserManagementTest extends TestCase
         $classroom = Classroom::create([
             'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F',
             'classroom_code' => 'FD101', 'name' => 'FD101 教室', 'type' => '一般教室',
-            'is_active' => true, 'reservation_status' => 'normal',
+            'is_active' => true,
         ]);
         $this->makeReservation([
             'classroom_id' => $classroom->id,

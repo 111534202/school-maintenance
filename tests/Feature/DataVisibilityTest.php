@@ -67,7 +67,7 @@ class DataVisibilityTest extends TestCase
 
     public function test_reservation_list_shows_non_managers_only_their_own_requests(): void
     {
-        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
         $teacherA = $this->makeUserWithRole('teacher', '教師');
         $teacherB = User::factory()->create(['role_id' => $teacherA->role_id]);
         foreach ([[$teacherA, '甲班專用活動'], [$teacherB, '乙班專用活動']] as [$user, $class]) {

@@ -16,7 +16,7 @@ return [
         'pending_review' => '待驗收',
         'pending_reservations' => '空間預約待審核',
         'pending_repairs' => '待修數',
-        'in_progress' => '維修中',
+        'in_progress' => '已派工',
         'overdue' => '逾時工單',
         'devices' => '設備總數',
         'users' => '用戶數量',
@@ -48,7 +48,7 @@ return [
     // 設備狀態的顯示名稱（主控台圖表用）。
     'device_status' => [
         'normal' => '正常',
-        'repairing' => '維修中',
+        'repairing' => '待維修',
         'retired' => '已淘汰',
         'disabled' => '停用',
     ],

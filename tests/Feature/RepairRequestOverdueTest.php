@@ -27,7 +27,7 @@ class RepairRequestOverdueTest extends TestCase
     public function test_open_case_past_scheduled_time_is_overdue(): void
     {
         $repairRequest = RepairRequest::factory()->create([
-            'status' => 'in_progress',
+            'status' => 'assigned',
             'scheduled_at' => now()->subHours(3),
         ]);
 
@@ -74,12 +74,12 @@ class RepairRequestOverdueTest extends TestCase
     {
         $overdue = RepairRequest::factory()->create([
             'title' => '逾時案件',
-            'status' => 'in_progress',
+            'status' => 'assigned',
             'scheduled_at' => now()->subDay(),
         ]);
         RepairRequest::factory()->create([
             'title' => '正常案件',
-            'status' => 'in_progress',
+            'status' => 'assigned',
             'scheduled_at' => now()->addDay(),
         ]);
 
@@ -94,11 +94,11 @@ class RepairRequestOverdueTest extends TestCase
     public function test_dashboard_overdue_count_matches_overdue_cases(): void
     {
         RepairRequest::factory()->count(2)->create([
-            'status' => 'in_progress',
+            'status' => 'assigned',
             'scheduled_at' => now()->subHours(1),
         ]);
         RepairRequest::factory()->create([
-            'status' => 'in_progress',
+            'status' => 'assigned',
             'scheduled_at' => now()->addHours(1),
         ]);
 

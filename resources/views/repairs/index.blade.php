@@ -40,7 +40,7 @@
                     <label for="status" class="form-label small mb-1">{{ __('repair_requests.filter.status') }}</label>
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
                         <option value="">{{ __('repair_requests.filter.status_all') }}</option>
-                        {{-- 狀態下拉選單：列出所有案件狀態（新報修、已派工、處理中、待驗收、已結案）。 --}}
+                        {{-- 狀態下拉選單：列出所有案件狀態（新報修、已派工、已退回、待驗收、已結案）。 --}}
                         @foreach ($statuses as $statusOption)
                             {{-- 沒有驗收權限的人，看板的「待驗收」「已結案」選項整個隱藏。 --}}
                             @continue(in_array($statusOption->value, ['pending_review', 'completed'], true) && ! auth()->user()->can('repairs.accept'))
@@ -94,15 +94,6 @@
         </div>
     @endif
 
-    {{-- 從設備主檔連過來（?device_id=）時，提醒「目前只看這台設備」，並提供清除的連結。 --}}
-    @if ($filteredDevice)
-        {{-- 說明文字一律用灰字（不用藍色提示框）。 --}}
-        <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.filter.only_device', ['device' => $filteredDevice->device_code]) }}</span>
-            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['device_id', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
-        </div>
-    @endif
-
     {{-- 查不到任何案件時顯示提示；否則顯示表格。 --}}
     @if ($repairRequests->isEmpty())
         <div class="tb-card tb-empty">{{ __('repair_requests.empty_list') }}</div>
@@ -132,19 +123,20 @@
                             @endphp
                             {{-- 點這一列的任何地方都會在畫面中的對話框打開案件詳細（data-modal-frame-href，行為在共用版型）。 --}}
                             <tr data-modal-frame-href="{{ route('repairs.show', $repairRequest) }}" data-modal-title="報修案件" data-modal-size="xl" tabindex="0" role="link">
-                                <td class="fw-semibold">{{ $repairRequest->title }}</td>
-                                {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的設備地點，沒有就用設備所在教室）。 --}}
+                                <td class="fw-semibold">
+                                    {{ $repairRequest->title }}
+                                    {{-- 重複報修提醒：這台設備近 30 天報修達到門檻次數，標題下面紅色粗體字；點了用關鍵字（設備編號）篩選看板；只有文字本身能點（不是整格），點標題旁邊的空白不會誤跳。 --}}
+                                    @if ($repairRequest->device && ($repairRequest->device->recent_repairs_count ?? 0) >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
+                                        <div><a href="{{ route('repairs.index', ['keyword' => $repairRequest->device->device_code]) }}" class="small text-danger fw-bold text-decoration-none"
+                                            title="{{ __('devices.repeat_repair_hint') }}">{{ __('devices.repeat_repair_badge', ['count' => $repairRequest->device->recent_repairs_count]) }}</a></div>
+                                    @endif
+                                </td>
+                                {{-- 設備欄：有綁定設備就顯示設備編號，否則顯示手填的設備描述；下面一行是地點（報修單的發現地點，沒有就用設備所在教室）。 --}}
                                 @php($rowClassroom = $repairRequest->classroom ?? $repairRequest->device?->classroom)
                                 <td>
                                     {{ $repairRequest->device->device_code ?? $repairRequest->device_note ?? ($rowClassroom ? '' : __('repair_requests.not_filled')) }}
                                     @if ($rowClassroom)
                                         <div class="small text-muted">{{ $rowClassroom->classroom_code }} {{ $rowClassroom->name }}</div>
-                                    @endif
-                                    {{-- 重複報修提醒：這台設備近 30 天報修達到門檻次數，看板上就能直接看出來，不用再切去設備主檔查。 --}}
-                                    @if (($repairRequest->device->recent_repairs_count ?? 0) >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                        <div class="small text-danger" title="{{ __('devices.repeat_repair_hint') }}">
-                                            <i class="bi bi-arrow-repeat"></i> {{ __('devices.repeat_repair_badge', ['count' => $repairRequest->device->recent_repairs_count]) }}
-                                        </div>
                                     @endif
                                 </td>
                                 <td class="text-center">

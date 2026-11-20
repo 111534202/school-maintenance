@@ -18,7 +18,6 @@ return [
         'classroom' => '教室',
         'classroom_all' => '全部教室',
         // 從設備主檔連過來（?device_id=）時顯示的提醒；:device 會換成設備編號。
-        'only_device' => '目前只顯示設備「:device」的報修單',
         // 從主控台「逾時工單」卡片連過來（?overdue=1）時顯示的提醒。
         'only_overdue' => '目前只顯示已逾時（未結案且超過預計處理時間）的報修單',
     ],
@@ -26,7 +25,7 @@ return [
     // 報修看板表格欄位標題。
     'table' => [
         'title' => '標題',
-        'device_location' => '設備／地點',
+        'device_location' => '設備／發現地點',
         'impact_level' => '影響程度',
         'is_class_affected' => '影響上課',
         'status' => '狀態',
@@ -54,7 +53,7 @@ return [
     'status' => [
         'pending' => '新報修',
         'assigned' => '已派工',
-        'in_progress' => '處理中',
+        'returned' => '已退回',
         'pending_review' => '待驗收',
         'completed' => '已結案',
     ],
@@ -80,7 +79,7 @@ return [
         'device_display_label' => '掃描到的設備：',
         'device_note_label' => '設備位置／描述（沒有條碼時填寫）',
         'device_note_hint' => '已掃描設備的話，系統會自動記錄真正的設備資料，這兩欄可以留空。',
-        'location_label' => '設備地點（選填）',
+        'location_label' => '發現地點（選填）',
         'description_label' => '故障描述',
         'description_prefill' => "已依「:title」的排除步驟嘗試過，仍無法解決：\n",
         'impact_level_label' => '影響程度',
@@ -108,7 +107,6 @@ return [
         'assignee_field_placeholder' => '請選擇維修人員',
         'scheduled_field_label' => '建議處理時間（選填）',
         'confirm_dispatch' => '確認派工',
-        'start_processing' => '開始處理',
         'fill_repair_log' => '填寫維修紀錄',
 
         'reassign_summary' => '重新指派維修人員',
@@ -118,7 +116,7 @@ return [
         'acceptance_heading' => '驗收',
         'accept_pass' => '驗收通過，結案',
         'accept_fail_summary' => '驗收不通過，退回重新處理',
-        'rejection_reason_label' => '退回原因（維修人員會看到，請具體說明還有什麼問題）',
+        'rejection_reason_label' => '退回原因（維修員會查看，請具體說明遇到什麼問題）',
         'confirm_reject' => '確認退回',
 
         'repair_logs_heading' => '維修紀錄',
@@ -135,14 +133,14 @@ return [
         'submitted' => '報修案件已送出。',
         'dispatched' => '已派工。',
         'reassigned' => '已重新指派。',
-        'started' => '已標記為處理中。',
+        'returned' => '報修單已退回。',
         'completed' => '已驗收結案。',
-        'rejected' => '已退回重新處理。',
+        'rejected' => '驗收不通過，已退回維修人員重新處理。',
     ],
 
     // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'invalid_transition' => '無法把案件從「:from」轉成「:to」，不符合合法的狀態流程。',
-        'reassign_invalid_status' => '案件狀態是「:status」，不是「已派工」或「處理中」，不能重新指派。',
+        'reassign_invalid_status' => '案件狀態是「:status」，不是「已派工」，不能重新指派。',
     ],
 ];

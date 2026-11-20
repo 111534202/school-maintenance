@@ -6,7 +6,6 @@ use App\Models\Classroom;
 use App\Models\Device;
 use App\Models\DeviceCategory;
 use App\Models\RepairRequest;
-use App\Services\DeviceStatusService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
@@ -51,6 +50,15 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         return RepairRequest::factory()->create(array_merge(['device_id' => $device->id, 'status' => $status], $attrs));
     }
 
+    /** 「異常設備」＝有未結束報修單的設備：建一台設備並替它開一張報修單（預設新報修）。 */
+    private function broken(Classroom $room, string $code, string $repairStatus = 'pending'): Device
+    {
+        $device = $this->device($room, $code);
+        $this->repair($device, $repairStatus);
+
+        return $device;
+    }
+
     /** 輔助方法：把教室列表頁解析成「教室代碼 => [每一欄的文字]」，方便逐格檢查。 */
     private function classroomRows(array $query = []): array
     {
@@ -78,8 +86,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     {
         $a = $this->room('A101');
         $this->device($a, 'A-OK');
-        $broken = $this->device($a, 'A-BROKEN', 'repairing');
-        $this->repair($broken, 'in_progress');
+        $broken = $this->broken($a, 'A-BROKEN', 'assigned');
         $this->repair($broken, 'completed');                  // 已結案，不算進行中
         $b = $this->room('B202');
         $this->device($b, 'B-OK');
@@ -98,7 +105,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     // 有異常設備的教室整列標紅；沒有的不標。
     public function test_rooms_with_abnormal_devices_are_highlighted(): void
     {
-        $this->device($this->room('A101'), 'A-BROKEN', 'repairing');
+        $this->broken($this->room('A101'), 'A-BROKEN');
         $this->device($this->room('B202'), 'B-OK');
 
         $rows = $this->classroomRows();
@@ -107,27 +114,29 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->assertStringNotContainsString('table-danger', $rows['B202']['class']);
     }
 
-    // 「異常」就是維修中、已淘汰、停用三種；正常的不算。
-    public function test_abnormal_means_repairing_retired_or_disabled(): void
+    // 「異常」＝有未結束的報修單（新報修、已派工、待驗收都算）；已結案、已退回不算；已淘汰的設備也不算。
+    public function test_abnormal_means_the_device_has_an_open_repair_request(): void
     {
         $room = $this->room('A101');
-        $this->device($room, 'D-1', 'normal');
-        $this->device($room, 'D-2', 'repairing');
-        $this->device($room, 'D-3', 'retired');
-        $this->device($room, 'D-4', 'disabled');
+        $this->device($room, 'D-1');                               // 沒有報修單
+        $this->broken($room, 'D-2', 'pending');                    // 新報修：算
+        $this->broken($room, 'D-3', 'pending_review');             // 待驗收：算
+        $this->broken($room, 'D-4', 'completed');                  // 已結案：不算
+        $this->broken($room, 'D-5', 'returned');                   // 已退回：不算
+        $retired = $this->device($room, 'D-6', 'retired');         // 已淘汰：就算有報修單也不算
+        $this->repair($retired, 'pending');
 
         $rows = $this->classroomRows();
 
-        $this->assertSame('4', $rows['A101']['cells'][5]);
-        $this->assertSame('3', $rows['A101']['cells'][6]);
+        $this->assertSame('6', $rows['A101']['cells'][5]);
+        $this->assertSame('2', $rows['A101']['cells'][6]);
     }
 
     // 連結：設備數 → 設備主檔（只看這間教室）；異常設備 → 設備主檔（只看這間教室的異常設備）；進行中工單 → 報修看板（只看這間教室）。
     public function test_counts_link_to_the_device_master_and_the_repair_board(): void
     {
         $room = $this->room('A101');
-        $broken = $this->device($room, 'A-BROKEN', 'repairing');
-        $this->repair($broken, 'pending');
+        $this->broken($room, 'A-BROKEN');
 
         $html = $this->classroomRows()['A101']['html'];
 
@@ -136,25 +145,10 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['classroom_id' => $room->id])), $html);
     }
 
-    // 核心設備異常（教室被標成設備異常）時，另外顯示「核心」徽章；非核心設備異常不顯示。
-    public function test_core_badge_only_when_a_core_device_is_abnormal(): void
-    {
-        $core = $this->room('A101');
-        $this->device($core, 'A-CORE', 'repairing', ['is_core' => true]);
-        DeviceStatusService::syncClassroom($core);   // 重新計算教室的設備異常標記（正式流程是由設備主檔的新增／修改觸發）
-        $plain = $this->room('B202');
-        $this->device($plain, 'B-BROKEN', 'repairing');
-
-        $rows = $this->classroomRows();
-
-        $this->assertStringContainsString('核心', $rows['A101']['cells'][6]);
-        $this->assertStringNotContainsString('核心', $rows['B202']['cells'][6]);
-    }
-
     // 教室列表可以只看「有異常設備」的教室。
     public function test_classroom_list_can_filter_rooms_with_abnormal_devices(): void
     {
-        $this->device($this->room('A101'), 'A-BROKEN', 'repairing');
+        $this->broken($this->room('A101'), 'A-BROKEN');
         $this->device($this->room('B202'), 'B-OK');
         $this->room('C303');   // 完全沒有設備的教室
 
@@ -168,7 +162,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     public function test_soft_deleted_devices_are_not_counted(): void
     {
         $room = $this->room('A101');
-        $device = $this->device($room, 'A-1', 'repairing');
+        $device = $this->broken($room, 'A-1');
         $this->patch(route('devices.disable', $device));
 
         $rows = $this->classroomRows();
@@ -182,8 +176,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     {
         $room = $this->room('A101');
         $this->device($room, 'DEV-OK');
-        $broken = $this->device($room, 'DEV-BROKEN', 'repairing');
-        $this->repair($broken, 'assigned');
+        $broken = $this->broken($room, 'DEV-BROKEN', 'assigned');
         $this->repair($broken, 'completed');
 
         $this->get(route('devices.index', ['abnormal' => 1]))
@@ -191,8 +184,8 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $all = $this->get(route('devices.index'))->assertOk();
         $all->assertSee('DEV-OK')->assertSee('DEV-BROKEN');
-        $all->assertSee(htmlspecialchars(route('repairs.index', ['device_id' => $broken->id])), false);
-        $all->assertSee('text-bg-warning', false);   // 維修中 = 黃色徽章
+        $all->assertSee(htmlspecialchars(route('repairs.index', ['keyword' => 'DEV-BROKEN'])), false);   // 跳到看板用關鍵字篩選
+        $all->assertSee('text-bg-warning', false)->assertSee('待維修');   // 有已派工的報修單 = 待維修（黃色徽章）
         $all->assertSee('text-bg-success', false);   // 正常 = 綠色徽章
     }
 
@@ -209,7 +202,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
             ->assertOk()->assertSee('A教室的設備壞了')->assertDontSee('B教室的設備壞了')->assertDontSee('沒綁設備的報修');
     }
 
-    // 報修看板：可依設備篩選，並顯示「目前只顯示這台設備」的提醒；表格會在設備編號下面顯示所在教室。
+    // 報修看板：設備主檔連過來時用關鍵字（設備編號）篩選，關鍵字欄位直接帶入；表格會在設備編號下面顯示所在教室。
     public function test_repair_board_filters_by_device_and_shows_the_classroom(): void
     {
         $room = $this->room('A101');
@@ -218,10 +211,10 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->repair($one, 'pending', ['title' => '第一台壞了']);
         $this->repair($two, 'pending', ['title' => '第二台壞了']);
 
-        $page = $this->get(route('repairs.index', ['device_id' => $one->id]));
+        $page = $this->get(route('repairs.index', ['keyword' => 'DEV-ONE']));
 
         $page->assertOk()->assertSee('第一台壞了')->assertDontSee('第二台壞了');
-        $page->assertSee('目前只顯示設備「DEV-ONE」的報修單');
+        $page->assertSee('name="keyword" class="form-control form-control-sm" style="width: 15rem;"', false)->assertSee('value="DEV-ONE"', false)->assertDontSee('目前只顯示設備');
         $page->assertSee('A101 A101 教室');
     }
 
@@ -229,7 +222,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
     public function test_open_repair_counts_respect_case_visibility(): void
     {
         $room = $this->room('A101');
-        $device = $this->device($room, 'A-1', 'repairing');
+        $device = $this->device($room, 'A-1', 'normal');
         $this->repair($device, 'pending');
         $this->repair($device, 'pending');
 
@@ -244,12 +237,12 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->assertSame('3', $this->classroomRows()['A101']['cells'][7]);
     }
 
-    // 主控台的「設備異常教室 N 間」用同一個定義：有異常設備的教室數（不只是核心設備異常的教室）。
+    // 主控台的「設備異常教室 N 間」用同一個定義：有異常設備（未結束報修單）的教室數。
     public function test_dashboard_counts_rooms_with_abnormal_devices(): void
     {
-        $this->device($this->room('A101'), 'A-BROKEN', 'repairing');     // 非核心設備異常
-        $this->device($this->room('B202'), 'B-RETIRED', 'retired');
-        $this->device($this->room('C303'), 'C-OK');
+        $this->broken($this->room('A101'), 'A-BROKEN');
+        $this->broken($this->room('B202'), 'B-BROKEN', 'assigned');
+        $this->device($this->room('C303'), 'C-RETIRED', 'retired');   // 已淘汰、沒有報修單：不算
 
         $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室 2 間');
     }

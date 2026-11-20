@@ -24,15 +24,23 @@ class AiOrderLifecycleTest extends TestCase
         parent::setUp();
 
         $this->travelTo(Carbon::parse('2026-10-07 09:00:00'));
-        $this->actingAs($this->makeUser('admin'));
+        $this->actingAs($this->admin = $this->makeUser('admin'));
     }
 
-    private function approvedAiOrder(string $code = 'T-AI'): MaintenanceOrder
+    private \App\Models\User $admin;
+
+    /** AI 核准建立的工單（待處理）；$dispatch＝true 時再確認派工給目前的管理員（進行中），可以直接回報。 */
+    private function approvedAiOrder(string $code = 'T-AI', bool $dispatch = false): MaintenanceOrder
     {
         $this->addHistory($this->makeDevice($code), 'ononnn');
         app(PreventiveCandidateService::class)->scan();
 
-        return app(PreventiveCandidateService::class)->approve(PreventiveCandidate::firstOrFail());
+        $order = app(PreventiveCandidateService::class)->approve(PreventiveCandidate::firstOrFail());
+        if ($dispatch) {
+            $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $this->admin->id])->assertSessionHas('success');
+        }
+
+        return $order->fresh();
     }
 
     public function test_ai_order_pages_render_without_a_source_plan(): void
@@ -48,12 +56,13 @@ class AiOrderLifecycleTest extends TestCase
             ->assertOk()
             ->assertSee('AI 預防保養');
 
+        $this->patch(route('maintenance-orders.assign', $order), ['assigned_to' => $this->admin->id]);
         $this->get(route('maintenance-orders.results.create', $order))->assertOk();
     }
 
     public function test_ai_order_can_be_completed_with_ok(): void
     {
-        $order = $this->approvedAiOrder();
+        $order = $this->approvedAiOrder('T-AI', true);
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok',
@@ -66,21 +75,20 @@ class AiOrderLifecycleTest extends TestCase
 
     public function test_ai_order_reported_ng_is_handed_off_to_repair(): void
     {
-        $order = $this->approvedAiOrder();
+        $order = $this->approvedAiOrder('T-AI', true);
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
             'executed_at' => '2026-10-07 08:00:00',
-        ]);
+            'note' => '散熱異常',
+            'ng_device_ids' => [$order->device_id],
+        ])->assertSessionHasNoErrors();
 
-        // 報修模組（彭仕衡）已併入 → 真的轉成報修單；尚未併入 → 待轉報修。
+        // 每台 NG 的設備一張報修單，工單「已轉報修」。
         $result = MaintenanceResult::where('maintenance_order_id', $order->id)->firstOrFail();
-        $this->assertSame(
-            app(\App\Services\NgToRepairService::class)->repairModuleAvailable()
-                ? MaintenanceResult::NG_CONVERSION_CONVERTED
-                : MaintenanceResult::NG_CONVERSION_PENDING,
-            $result->ng_conversion_status
-        );
+        $this->assertSame(MaintenanceResult::NG_CONVERSION_CONVERTED, $result->ng_conversion_status);
+        $this->assertSame(1, $result->repairRequests()->count());
+        $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status);
     }
 
     public function test_every_order_on_the_device_profile_shows_its_source_exactly_once(): void

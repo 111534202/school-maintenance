@@ -24,13 +24,13 @@ class MaintenanceOrderExportColumns
         'result' => '保養結果',
         'executor' => '執行人',
         'executed_at' => '執行時間',
-        'note' => '備註',
+        'note' => '說明',
         'repair_request_id' => '轉報修單號',
         'created_at' => '建立時間',
     ];
 
     /** 靠右對齊的欄位（數字）。 */
-    public const NUMERIC = ['repair_request_id'];
+    public const NUMERIC = [];
 
     /**
      * @param  list<string>|null  $keys
@@ -72,7 +72,8 @@ class MaintenanceOrderExportColumns
             'executor' => $result?->executor?->name,
             'executed_at' => $result?->executed_at?->format('Y-m-d H:i'),
             'note' => $result?->note,
-            'repair_request_id' => $result?->repair_request_id,
+            // NG 每台設備各一張報修單：列出全部單號（#12、#13）。
+            'repair_request_id' => $result?->repairRequests->map(fn ($repair) => '#' . $repair->id)->implode('、') ?: null,
             'created_at' => $o->created_at?->format('Y-m-d H:i'),
         ];
     }

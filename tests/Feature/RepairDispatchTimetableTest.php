@@ -12,7 +12,7 @@ use Tests\Concerns\CreatesReservations;
 use Tests\TestCase;
 
 /**
- * 派工時的「建議處理時間」：可以打開設備地點那間教室的一週課表挑空堂。
+ * 派工時的「建議處理時間」：可以打開發現地點那間教室的一週課表挑空堂。
  */
 class RepairDispatchTimetableTest extends TestCase
 {
@@ -42,7 +42,7 @@ class RepairDispatchTimetableTest extends TestCase
     {
         Carbon::setTestNow('2026-11-02 08:00:00');   // 星期一
         $this->actingAs($this->makeUserWithRole('executive', '主管'));
-        $room = $this->classroom(['reservation_status' => 'abnormal']);   // 設備異常的教室也要查得到
+        $room = $this->classroom([]);   // 設備異常的教室也要查得到
         $this->makeReservation([
             'classroom_id' => $room->id, 'requester_id' => $this->makeUserWithRole('teacher', '教師')->id, 'class_name' => '資二忠',
             'reservation_date' => '2026-11-03', 'start_time' => '09:10', 'end_time' => '10:00', 'status' => 'approved',

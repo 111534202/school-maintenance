@@ -77,7 +77,6 @@ class AiDemoDataSeeder extends Seeder
                         'warranty_end_date' => $referenceDevice->warranty_end_date,
                         'classroom_id' => $classroomIds[$extraIndex % $classroomIds->count()],
                         'status' => Device::STATUSES[0], // normal
-                        'is_core' => false,
                     ]
                 );
                 $extraIndex++;
@@ -102,6 +101,7 @@ class AiDemoDataSeeder extends Seeder
             [
                 'device_id' => $device->id,
                 'device_category_id' => $device->device_category_id,
+                'description' => '每月例行檢查（AI 測試資料）',
                 'cycle_days' => 30,
                 'start_date' => Carbon::now()->subMonths(6)->startOfMonth(),
                 'next_due_date' => Carbon::now()->addMonth()->startOfMonth()->addDays(4),

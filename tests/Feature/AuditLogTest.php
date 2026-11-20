@@ -128,11 +128,9 @@ class AuditLogTest extends TestCase
         $this->assertSame('派工給「陳大成」，報修單「A101 投影機壞了」', $assigned->description);
         $this->assertSame(['pending', 'assigned'], [$assigned->changes['from'], $assigned->changes['to']]);
 
-        $this->post(route('repairs.start', $case));
-        $this->assertSame('報修單「A101 投影機壞了」狀態：已派工 → 處理中', $this->lastLog('status_changed')->description);
-
+        // 已派工後直接填維修紀錄（原本的「開始處理」已拿掉）。
         $this->post(route('repair-logs.store', $case), [
-            'cause' => '燈泡壞了', 'resolution' => '換新燈泡',
+            'device_id' => $this->anyDeviceId(), 'cause' => '燈泡壞了', 'resolution' => '換新燈泡',
             'started_at' => now()->subHours(2)->format('Y-m-d\TH:i'), 'ended_at' => now()->format('Y-m-d\TH:i'),
         ]);
         $repairLog = AuditLog::where('loggable_type', 'App\Models\RepairLog')->latest('id')->first();

@@ -68,4 +68,16 @@ trait InteractsWithRolesAndUsers
 
         return $user;
     }
+
+    /**
+     * 填維修紀錄用的設備：報修單沒有設備時，維修紀錄一定要補選設備（StoreRepairLogRequest 的 device_id）。
+     * 測試的報修單大多沒有綁設備，送維修紀錄時帶這台；報修單本來就有設備時這個欄位會被忽略。
+     */
+    protected function anyDeviceId(): int
+    {
+        $room = \App\Models\Classroom::firstOrCreate(['classroom_code' => 'LOG-ROOM'], ['campus' => '本校區', 'building' => 'L', 'floor' => '1', 'name' => '維修紀錄測試教室']);
+        $category = \App\Models\DeviceCategory::firstOrCreate(['name' => '維修紀錄測試類別']);
+
+        return \App\Models\Device::firstOrCreate(['device_code' => 'LOG-DEV'], ['device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal'])->id;
+    }
 }

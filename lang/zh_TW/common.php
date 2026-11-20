@@ -55,7 +55,7 @@ return [
         'edit' => '編輯',
         'delete' => '刪除',
         'back_to_list' => '返回列表',
-        'back' => '返回',
+        'back' => '上一步',   // 頂端列網站名稱旁邊的按鈕（回到上一個畫面）
         'filter' => '篩選',
         'clear_filter' => '清除篩選',
         'view' => '檢視',

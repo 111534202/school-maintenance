@@ -92,8 +92,7 @@ class PermissionEnforcementTest extends TestCase
 
         // 處理維修只限「指派給自己」的案件（歸屬規則見 SecurityHardeningTest）。
         $assigned = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id]);
-        $this->post(route('repairs.start', $assigned))->assertRedirect(route('repairs.show', $assigned));
-        $this->assertSame('in_progress', $assigned->fresh()->status->value);
+        // 已派工就能直接填維修紀錄（原本的「開始處理」已拿掉）。
         $this->get(route('repair-logs.create', $assigned))->assertOk();
     }
 
@@ -108,8 +107,8 @@ class PermissionEnforcementTest extends TestCase
         $this->post(route('repairs.complete', $review))->assertRedirect(route('repairs.show', $review));
         $this->assertSame('completed', $review->fresh()->status->value);
 
-        $this->post(route('repairs.start', $this->repair('assigned')))->assertForbidden();
-        $this->get(route('repair-logs.create', $this->repair('in_progress')))->assertForbidden();
+        $this->get(route('repair-logs.create', $this->repair('assigned')))->assertForbidden();
+        $this->post(route('repairs.return', $this->repair('pending')), ['return_reason' => 'x'])->assertForbidden();   // 不能派工也不是維修人員，不能退回
         $this->post(route('repairs.reassign', $this->repair('assigned')), ['assigned_to' => 1])->assertForbidden();
     }
 

@@ -106,17 +106,17 @@ class DeviceStatusGuardTest extends TestCase
 
     public function test_a_device_with_an_open_repair_cannot_be_switched_back_to_normal(): void
     {
-        $device = $this->device('repairing');
-        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'in_progress']);
+        $device = $this->device('disabled');
+        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
 
         $this->actingAs($this->makeItManager())->put(route('devices.update', $device), $this->updatePayload($device, 'normal'))
             ->assertSessionHasErrors('status');
-        $this->assertSame('repairing', $device->fresh()->status);
+        $this->assertSame('disabled', $device->fresh()->status);
     }
 
     public function test_a_device_can_be_switched_back_to_normal_when_all_repairs_are_closed(): void
     {
-        $device = $this->device('repairing');
+        $device = $this->device('disabled');
         RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'completed']);
 
         $this->actingAs($this->makeItManager())->put(route('devices.update', $device), $this->updatePayload($device, 'normal'))
@@ -137,12 +137,35 @@ class DeviceStatusGuardTest extends TestCase
 
     public function test_the_status_error_is_shown_on_the_edit_form(): void
     {
-        $device = $this->device('repairing');
+        $device = $this->device('disabled');
         RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
         $manager = $this->makeItManager();
 
         $this->actingAs($manager)->from(route('devices.edit', $device))->followingRedirects()
             ->put(route('devices.update', $device), $this->updatePayload($device, 'normal'))
             ->assertOk()->assertSee('還有沒結案的報修單');
+    }
+
+    // 待維修（有已派工、待驗收的報修單）的設備：修改表單的狀態只能選「待維修」（維持）、已淘汰、停用，沒有「正常」。
+    public function test_an_awaiting_repair_device_only_offers_keep_retired_or_disabled(): void
+    {
+        $device = $this->device('normal');
+        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
+
+        $html = $this->actingAs($this->makeItManager())->get(route('devices.edit', $device))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/<option value="normal"[^>]*>待維修<\/option>/u', $html);
+        $this->assertDoesNotMatchRegularExpression('/<option value="normal"[^>]*>正常<\/option>/u', $html);
+        $this->assertStringContainsString('>已淘汰</option>', $html);
+    }
+
+    // 只有「新報修」的報修單也算沒結案：停用的設備一樣不能改回正常。
+    public function test_even_a_new_repair_request_blocks_switching_back_to_normal(): void
+    {
+        $device = $this->device('disabled');
+        RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'pending']);
+
+        $this->actingAs($this->makeItManager())->put(route('devices.update', $device), $this->updatePayload($device, 'normal'))
+            ->assertSessionHasErrors('status');
+        $this->assertSame('disabled', $device->fresh()->status);
     }
 }

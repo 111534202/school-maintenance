@@ -28,7 +28,7 @@ class MaintenancePermissionTest extends TestCase
         $this->travelTo(Carbon::parse('2026-10-07 09:00:00'));
     }
 
-    /** 建立一張「還沒回報結果」的工單，回傳 [工單, 設備, 計畫]。 */
+    /** 建立一張「還沒回報結果」的工單，回傳 [工單, 設備, 計畫]。工單要先確認派工（進行中、指派給回報的人）才能回報，見 assignTo()。 */
     private function fixtures(): array
     {
         $device = $this->makeDevice('PERM-1');
@@ -43,6 +43,12 @@ class MaintenancePermissionTest extends TestCase
         ]);
 
         return [$order, $device, $plan];
+    }
+
+    /** 確認派工給這位用戶：進行中，負責人＝他（回報結果只有負責人與保養管理者可以）。 */
+    private function assignTo(MaintenanceOrder $order, User $user): void
+    {
+        $order->update(['status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'assigned_to' => $user->id]);
     }
 
     /**
@@ -65,7 +71,8 @@ class MaintenancePermissionTest extends TestCase
         string $slug, bool $view, bool $manage, bool $report, bool $ai
     ): void {
         [$order, $device, $plan] = $this->fixtures();
-        $this->actingAs($this->makeUser($slug));
+        $this->actingAs($user = $this->makeUser($slug));
+        $this->assignTo($order, $user);
 
         $expect = fn (bool $allowed) => $allowed ? 200 : 403;
 
@@ -115,7 +122,8 @@ class MaintenancePermissionTest extends TestCase
 
         // 只勾「回報結果」：能開回報頁，但看不到工單列表。
         $role = Role::create(['name' => '只回報', 'role_code' => 'report_only', 'is_system' => false, 'permissions' => ['maintenance.report']]);
-        $this->actingAs(User::factory()->create(['role_id' => $role->id]));
+        $this->actingAs($reporter = User::factory()->create(['role_id' => $role->id]));
+        $this->assignTo($order, $reporter);
         $this->get(route('maintenance-orders.results.create', $order))->assertOk();
         $this->get(route('maintenance-orders.index'))->assertForbidden();
 
@@ -129,7 +137,9 @@ class MaintenancePermissionTest extends TestCase
     public function test_navigation_links_follow_the_permissions(): void
     {
         $links = [
-            'maintenance-items.index' => ['admin' => true, 'it_manager' => true, 'technician' => true, 'executive' => true, 'teacher' => false],
+            // 保養項目：計畫改成直接輸入說明，選單不再列出保養項目（資料保留）。
+            'maintenance-items.index' => ['admin' => false, 'it_manager' => false, 'technician' => false, 'executive' => false, 'teacher' => false],
+            'maintenance-plans.index' => ['admin' => true, 'it_manager' => true, 'technician' => true, 'executive' => true, 'teacher' => false],
             'device-profile.index' => ['admin' => true, 'it_manager' => true, 'technician' => true, 'executive' => true, 'teacher' => false],
             'preventive-candidates.index' => ['admin' => true, 'it_manager' => true, 'technician' => false, 'executive' => false, 'teacher' => false],
         ];
@@ -153,8 +163,9 @@ class MaintenancePermissionTest extends TestCase
         $createOrderUrl = route('maintenance-plans.create-order', $plan);
         $reportUrl = route('maintenance-orders.results.create', $order);
 
-        // 維修人員：看得到「回報結果」，看不到計畫的「建立工單」與「新增保養項目」。
-        $this->actingAs($this->makeUser('technician'));
+        // 維修人員（工單派給他）：看得到「回報結果」，看不到計畫的「建立工單」與「新增保養項目」。
+        $this->actingAs($technician = $this->makeUser('technician'));
+        $this->assignTo($order, $technician);
         $this->get(route('maintenance-orders.index'))->assertSee($reportUrl, false);
         $this->get(route('maintenance-orders.show', $order))->assertSee($reportUrl, false);
         $this->get(route('maintenance-plans.index'))->assertDontSee($createOrderUrl, false);

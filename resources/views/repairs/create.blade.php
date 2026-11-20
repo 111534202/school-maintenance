@@ -52,11 +52,7 @@
                         <i class="bi bi-check-circle me-1"></i>{{ __('repair_requests.create.device_display_label') }}<strong id="device_display_text">{{ $device?->device_code }} {{ $device?->category?->name }} {{ $device?->brand }} {{ $device?->model }}（{{ $device?->classroom?->name ?? $device?->classroom?->classroom_code }}）</strong>
                     </div>
                     {{-- 隱藏欄位：真正送給後端的設備編號（JavaScript 查到設備後會填入）。 --}}
-                    @if ($ngResult)
-                        {{-- 從保養「待轉報修」帶過來：送出後這張報修單會記回那筆保養結果。 --}}
-                        <input type="hidden" name="maintenance_result_id" value="{{ $ngResult->id }}">
-                    @endif
-                    <input type="hidden" id="device_id" name="device_id" value="{{ $device->id ?? '' }}">
+                    <input type="hidden" id="device_id" name="device_id" autocomplete="off" value="{{ $device->id ?? '' }}">
 
                     <hr class="my-4">
 
@@ -65,31 +61,12 @@
                             <label for="device_note" class="form-label">{{ __('repair_requests.create.device_note_label') }}</label>
                             {{-- 沒有條碼的設備：手動描述設備與地點，當作後備資料。 --}}
                             <input type="text" class="form-control @error('device_note') is-invalid @enderror" id="device_note" name="device_note" value="{{ old('device_note') }}">
-                            {{-- 設備條碼、設備位置／描述、設備地點三項都沒填時的提醒（至少要填一項，才找得到是哪裡的設備）。 --}}
+                            {{-- 設備條碼、設備位置／描述、發現地點三項都沒填時的提醒（至少要填一項，才找得到是哪裡的設備）。 --}}
                             @error('device_note')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-5 position-relative">
-                            {{-- 設備地點：只能從現有教室選（可輸入關鍵字搜尋），掃描設備時會自動帶入設備所在的教室。 --}}
-                            @php
-                                $selectedClassroom = $classrooms->firstWhere('id', (int) old('classroom_id', $device?->classroom_id));
-                            @endphp
-                            <label for="classroom_search" class="form-label">{{ __('repair_requests.create.location_label') }}</label>
-                            <input type="text" id="classroom_search" class="form-control @error('classroom_id') is-invalid @enderror"
-                                placeholder="選擇或輸入教室名稱、代碼" autocomplete="off" role="combobox" aria-autocomplete="list"
-                                aria-controls="classroom_options" aria-expanded="false"
-                                value="{{ $selectedClassroom ? $selectedClassroom->name . '（' . $selectedClassroom->classroom_code . '）' : '' }}">
-                            <input type="hidden" id="classroom_id" name="classroom_id" value="{{ $selectedClassroom?->id }}">
-                            <div id="classroom_options" class="list-group position-absolute shadow-sm" role="listbox"
-                                style="display:none; z-index:1050; max-height:240px; overflow-y:auto; left:calc(var(--bs-gutter-x) * .5); right:calc(var(--bs-gutter-x) * .5);">
-                                @foreach ($classrooms as $classroom)
-                                    <button type="button" class="list-group-item list-group-item-action text-start" role="option"
-                                        data-id="{{ $classroom->id }}"
-                                        data-search="{{ mb_strtolower($classroom->name . ' ' . $classroom->classroom_code) }}"
-                                        data-label="{{ $classroom->name }}（{{ $classroom->classroom_code }}）">{{ $classroom->name }}（{{ $classroom->classroom_code }}）</button>
-                                @endforeach
-                                <div id="classroom_no_results" class="list-group-item text-muted" style="display:none;">找不到符合的教室</div>
-                            </div>
-                            @error('classroom_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            {{-- 發現地點：從現有教室選（可輸入關鍵字搜尋），掃描設備時會自動帶入設備所在的教室。 --}}
+                            @include('repairs._classroom-picker', ['selectedId' => old('classroom_id', $device?->classroom_id), 'label' => __('repair_requests.create.location_label')])
                         </div>
                     </div>
                     <div class="form-text mt-2">{{ __('repair_requests.create.device_note_hint') }}</div>
@@ -105,11 +82,11 @@
                             <label for="title" class="form-label">{{ __('repair_requests.create.title_label') }}</label>
                             {{-- 報修標題：預設值依序是 ① 驗證失敗帶回的內容 ② 知識庫文章標題 ③ 依設備自動建議的標題（教室 + 類別 + 故障）。 --}}
                             <input type="text" class="form-control" id="title" name="title"
-                                value="{{ old('title', $ngPrefill['title'] ?? $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
+                                value="{{ old('title', $fromKnowledgeBase?->title ?? ($device ? trim(($device->classroom->classroom_code ?? '') . ' ' . ($device->category->name ?? '') . '故障') : '')) }}" required>
                         </div>
                         <div class="col-12">
                             <label for="description" class="form-label">{{ __('repair_requests.create.description_label') }}</label>
-                            <textarea class="form-control" id="description" name="description" rows="5" required>{{ old('description', $ngPrefill['description'] ?? ($fromKnowledgeBase ? __('repair_requests.create.description_prefill', ['title' => $fromKnowledgeBase->title]) : '')) }}</textarea>
+                            <textarea class="form-control" id="description" name="description" rows="5" required>{{ old('description', ($fromKnowledgeBase ? __('repair_requests.create.description_prefill', ['title' => $fromKnowledgeBase->title]) : '')) }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label for="impact_level" class="form-label">{{ __('repair_requests.create.impact_level_label') }}</label>
@@ -153,58 +130,4 @@
     {{-- 引入「掃描設備條碼」的視窗與 JavaScript。 --}}
     @include('repairs._device-scan')
 
-    <script>
-    // 設備地點選擇器：輸入關鍵字篩選教室，或點開清單直接選；只能選清單裡的教室（和空間預約相同）。
-    document.addEventListener('DOMContentLoaded', function () {
-        const search = document.getElementById('classroom_search');
-        const hidden = document.getElementById('classroom_id');
-        const list = document.getElementById('classroom_options');
-        const noResults = document.getElementById('classroom_no_results');
-        const options = Array.from(list.querySelectorAll('button[data-id]'));
-
-        function closeList() { list.style.display = 'none'; search.setAttribute('aria-expanded', 'false'); }
-
-        function filter() {
-            const keyword = search.value.trim().toLowerCase();
-            let shown = 0;
-            options.forEach(function (option) {
-                const matched = !keyword || option.dataset.search.includes(keyword) || option.dataset.label.toLowerCase().includes(keyword);
-                option.style.display = matched ? '' : 'none';
-                if (matched) { shown++; }
-            });
-            noResults.style.display = shown === 0 ? '' : 'none';
-            list.style.display = '';
-            search.setAttribute('aria-expanded', 'true');
-        }
-
-        // 給條碼查詢用：查到設備後自動帶入它所在的教室。
-        window.setRepairClassroom = function (id, label) {
-            hidden.value = id;
-            search.value = label;
-            search.classList.remove('is-invalid');
-        };
-
-        search.addEventListener('focus', filter);
-        search.addEventListener('input', function () { hidden.value = ''; filter(); });
-        search.addEventListener('blur', function () {
-            closeList();
-            if (!hidden.value) { search.value = ''; }   // 沒有從清單選就清掉，避免看起來像選好了
-        });
-        search.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') { closeList(); }
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const first = options.find(function (o) { return o.style.display !== 'none'; });
-                if (first) { window.setRepairClassroom(first.dataset.id, first.dataset.label); closeList(); }
-            }
-        });
-        options.forEach(function (option) {
-            option.addEventListener('mousedown', function (event) {
-                event.preventDefault();
-                window.setRepairClassroom(option.dataset.id, option.dataset.label);
-                closeList();
-            });
-        });
-    });
-    </script>
 @endsection

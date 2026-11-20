@@ -27,11 +27,11 @@
             <label for="status" class="form-label small mb-1">案件狀態</label>
             <select id="status" name="status" class="form-select form-select-sm">
                 <option value="" @selected(($status ?? '') === '')>全部狀態</option>
-                <option value="pending" @selected(($status ?? '') === 'pending')>待處理</option>
-                <option value="assigned" @selected(($status ?? '') === 'assigned')>已指派</option>
-                <option value="in_progress" @selected(($status ?? '') === 'in_progress')>處理中</option>
+                <option value="pending" @selected(($status ?? '') === 'pending')>新報修</option>
+                <option value="assigned" @selected(($status ?? '') === 'assigned')>已派工</option>
+                <option value="returned" @selected(($status ?? '') === 'returned')>已退回</option>
                 <option value="pending_review" @selected(($status ?? '') === 'pending_review')>待驗收</option>
-                <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
+                <option value="completed" @selected(($status ?? '') === 'completed')>已結案</option>
             </select>
         </div>
         {{-- 報廢損失：零件沒用就壞掉、過期或遺失的損失（依報廢日期，不受案件狀態影響）。 --}}

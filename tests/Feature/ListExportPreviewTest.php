@@ -24,14 +24,14 @@ class ListExportPreviewTest extends TestCase
 
     private function classroom(): Classroom
     {
-        return Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        return Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
     }
 
     private function device(string $code): Device
     {
         $category = DeviceCategory::firstOrCreate(['name' => '投影機']);
 
-        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $this->classroom()->id, 'status' => 'normal', 'is_core' => false, 'brand' => 'Epson']);
+        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $this->classroom()->id, 'status' => 'normal', 'brand' => 'Epson']);
     }
 
     /** @return list<list<mixed>> 下載到的 xlsx 內容（含標題列） */

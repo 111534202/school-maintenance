@@ -30,14 +30,14 @@ class ClassroomController extends Controller
         $classrooms = Classroom::with(['department', 'manager'])
             // withCount：一次算出每間教室的三個數字，列表上顯示並連到對應的設備主檔／報修看板：
             //   devices_count          設備總數；
-            //   abnormal_devices_count 異常設備數（維修中、已淘汰、停用，定義見 DeviceStatusService::PROBLEM_STATUSES）；
+            //   abnormal_devices_count 異常設備數（有未結束報修單的設備，不含已淘汰；定義見 Device::scopeAbnormal）；
             //   open_repairs_count     進行中的報修單數（透過「設備」串到報修單，不含已結案，且只算這位用戶看得到的案件）。
             ->withCount([
                 'devices',
                 'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
                 'repairRequests as open_repairs_count' => fn ($repairs) => $repairs
                     ->visibleTo($user)
-                    ->where('repair_requests.status', '!=', RepairRequestStatus::Completed->value),
+                    ->open(),
             ])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');

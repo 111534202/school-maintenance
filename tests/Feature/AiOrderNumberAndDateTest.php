@@ -23,8 +23,8 @@ class AiOrderNumberAndDateTest extends TestCase
     private function pendingCandidate(): PreventiveCandidate
     {
         $category = DeviceCategory::create(['name' => '投影機']);
-        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
-        $device = Device::create(['device_code' => 'DEV-AI1', 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal', 'is_core' => false]);
+        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
+        $device = Device::create(['device_code' => 'DEV-AI1', 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
 
         return PreventiveCandidate::create([
             'device_id' => $device->id, 'risk_score' => 0.8, 'threshold' => 0.5, 'algorithm' => 'rule_based',

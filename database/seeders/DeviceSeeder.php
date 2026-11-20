@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Classroom;
 use App\Models\Device;
 use App\Models\DeviceCategory;
-use App\Services\DeviceStatusService;
 use Illuminate\Database\Seeder;
 
 // 建立七台示範設備，涵蓋各種狀態（正常、維修中、停用、已淘汰），並刻意讓 EE-201 教室有一台「核心設備維修中」，
@@ -45,7 +44,6 @@ class DeviceSeeder extends Seeder
                 'warranty_end_date' => '2028-06-30',
                 'classroom_id' => $room1->id,
                 'status' => 'normal',
-                'is_core' => false,
             ],
             [
                 // 第 2 台：投影機，正常、核心設備（故障時會讓教室被標示為異常）。
@@ -58,7 +56,6 @@ class DeviceSeeder extends Seeder
                 'warranty_end_date' => '2027-12-31',
                 'classroom_id' => $room1->id,
                 'status' => 'normal',
-                'is_core' => true,
             ],
             [
                 // 第 3 台：螢幕，維修中、非核心設備（不影響教室異常標記）。
@@ -70,12 +67,10 @@ class DeviceSeeder extends Seeder
                 'serial_number' => 'SN-BENQ-0001',
                 'warranty_end_date' => '2026-12-31',
                 'classroom_id' => $room2->id,
-                'status' => 'repairing',
-                'is_core' => false,
+                'status' => 'normal',   // 待維修由報修單推算（見 RepairRequestSeeder）
             ],
             [
-                // 核心設備故障示範：讓 EE-201 的 reservation_status 種子後即為 abnormal，
-                // 方便劉家芸的預約模組直接測試「核心設備異常時要顯示異常」的畫面。
+                // EE-201 的投影機：RepairRequestSeeder 會替它建一張報修單，預約頁就會出現「正在等待維修」的提醒。
                 'device_code' => 'DEV-0004',
                 'asset_code' => 'A-20260004',
                 'device_category_id' => $projector->id,
@@ -84,8 +79,7 @@ class DeviceSeeder extends Seeder
                 'serial_number' => 'SN-NEC-0001',
                 'warranty_end_date' => '2027-06-30',
                 'classroom_id' => $room3->id,
-                'status' => 'repairing',
-                'is_core' => true,
+                'status' => 'normal',   // 待維修由報修單推算（見 RepairRequestSeeder）
             ],
             [
                 // 第 5 台：筆電，正常、非核心設備。
@@ -98,7 +92,6 @@ class DeviceSeeder extends Seeder
                 'warranty_end_date' => '2029-01-31',
                 'classroom_id' => $room4->id,
                 'status' => 'normal',
-                'is_core' => false,
             ],
             [
                 // 第 6 台：印表機，已停用。
@@ -111,7 +104,6 @@ class DeviceSeeder extends Seeder
                 'warranty_end_date' => '2025-12-31',
                 'classroom_id' => $room4->id,
                 'status' => 'disabled',
-                'is_core' => false,
             ],
             [
                 // 第 7 台：桌上型電腦，已淘汰（保固已過期）。
@@ -124,7 +116,6 @@ class DeviceSeeder extends Seeder
                 'warranty_end_date' => '2024-06-30',
                 'classroom_id' => $room2->id,
                 'status' => 'retired',
-                'is_core' => false,
             ],
         ];
 
@@ -132,13 +123,6 @@ class DeviceSeeder extends Seeder
         foreach ($devices as $device) {
             // 用設備編號找，已存在就不動，不存在才建立，避免重複。
             Device::firstOrCreate(['device_code' => $device['device_code']], $device);
-        }
-
-        // 種子資料建立後統一重算每間教室的 reservation_status，確保跟核心設備狀態一致
-        // 設備都建好後，逐間教室重新計算「設備異常」旗標。
-        foreach ([$room1, $room2, $room3, $room4] as $room) {
-            // fresh() 重新從資料庫讀一次教室，再依核心設備狀態算出該教室是 normal 還是 abnormal。
-            DeviceStatusService::syncClassroom($room->fresh());
         }
     }
 }

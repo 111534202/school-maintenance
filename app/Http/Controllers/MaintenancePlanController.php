@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMaintenancePlanRequest;
 use App\Http\Requests\UpdateMaintenancePlanRequest;
+use App\Models\Device;
 use App\Models\DeviceCategory;
-use App\Models\MaintenanceItem;
 use App\Models\MaintenancePlan;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -24,14 +24,15 @@ class MaintenancePlanController extends Controller
     public function index(Request $request): View
     {
         $plans = MaintenancePlan::query()
-            ->with(['deviceCategory', 'device.category'])
-            ->withCount('maintenanceItems')
+            ->with(['deviceCategory', 'device.category', 'targets.device.category', 'targets.deviceCategory'])
             // 關鍵字搜尋：計畫名稱、設備（編號、資產編號、品牌、型號）、設備類別名稱。
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $like = '%' . trim($request->string('keyword')->toString()) . '%';
-                $query->where(fn ($q) => $q->where('name', 'like', $like)
+                $query->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('description', 'like', $like)
                     ->orWhereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
-                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
+                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like))
+                    ->orWhereHas('targets.device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like))
+                    ->orWhereHas('targets.deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
             })
             ->orderByDesc('is_active')
             ->orderBy('next_due_date')
@@ -43,21 +44,16 @@ class MaintenancePlanController extends Controller
 
     public function create(): View
     {
-        return view('maintenance_plans.create', [
-            'plan' => new MaintenancePlan(['is_active' => true]),
-            'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
-            'selectedItemIds' => [],
-            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
-        ]);
+        return view('maintenance_plans.create', ['plan' => new MaintenancePlan(['is_active' => true])] + $this->targetOptions());
     }
 
     public function store(StoreMaintenancePlanRequest $request): RedirectResponse
     {
-        $data = $request->safe()->except('item_ids');
+        $data = $request->planData();
         $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
 
         $plan = MaintenancePlan::create($data);
-        $plan->maintenanceItems()->sync($request->input('item_ids'));
+        $this->syncTargets($plan, $request->targets());
         AuditLogger::log('created', $plan, ['name' => $plan->name], '新增保養計畫「' . $plan->name . '」');
 
         return redirect()
@@ -67,21 +63,16 @@ class MaintenancePlanController extends Controller
 
     public function edit(MaintenancePlan $maintenancePlan): View
     {
-        return view('maintenance_plans.edit', [
-            'plan' => $maintenancePlan,
-            'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
-            'selectedItemIds' => $maintenancePlan->maintenanceItems()->pluck('maintenance_items.id')->all(),
-            'deviceCategories' => DeviceCategory::orderBy('name')->get(),
-        ]);
+        return view('maintenance_plans.edit', ['plan' => $maintenancePlan] + $this->targetOptions($maintenancePlan));
     }
 
     public function update(UpdateMaintenancePlanRequest $request, MaintenancePlan $maintenancePlan): RedirectResponse
     {
-        $data = $request->safe()->except('item_ids');
+        $data = $request->planData();
         $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
 
         $maintenancePlan->update($data);
-        $maintenancePlan->maintenanceItems()->sync($request->input('item_ids'));
+        $this->syncTargets($maintenancePlan, $request->targets());
         AuditLogger::log('updated', $maintenancePlan, ['name' => $maintenancePlan->name], '修改保養計畫「' . $maintenancePlan->name . '」');
 
         return redirect()
@@ -100,6 +91,44 @@ class MaintenancePlanController extends Controller
         return redirect()
             ->route('maintenance-plans.index')
             ->with('success', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
+    }
+
+    /**
+     * 「設備／設備類別」可搜尋下拉選單的選項：先列設備類別，再列設備（不含已淘汰；修改時目前選的那台就算已淘汰也照樣列出）。
+     * 每個選項的值是 category:編號 或 device:編號，存檔時由 StoreMaintenancePlanRequest 拆回兩個欄位（只會有一個有值）。
+     *
+     * @return array{targets: \Illuminate\Support\Collection<int, array{value: string, label: string, search: string, group: string}>}
+     */
+    private function targetOptions(?MaintenancePlan $plan = null): array
+    {
+        $categories = \App\Support\StrokeOrder::sort(DeviceCategory::query()->get())->map(fn (DeviceCategory $category) => [
+            'value' => 'category:' . $category->id,
+            'label' => $category->name,
+            'search' => mb_strtolower($category->name),
+            'group' => '設備類別',
+        ]);
+
+        $keptDeviceIds = $plan ? $plan->targets()->pluck('device_id')->filter()->push($plan->device_id)->filter()->all() : [];
+        $devices = Device::query()->with(['category', 'classroom'])
+            ->where(fn ($query) => $query->where('status', '<>', 'retired')->when($keptDeviceIds, fn ($q, $ids) => $q->orWhereIn('id', $ids)))
+            ->orderBy('device_code')->get()
+            ->map(function (Device $device) {
+                $detail = trim(($device->category?->name ?? '') . ' ' . ($device->classroom?->name ?? ''));
+                $label = $device->device_code . ($detail !== '' ? '（' . $detail . '）' : '');
+
+                return ['value' => 'device:' . $device->id, 'label' => $label, 'search' => mb_strtolower($label . ' ' . $device->brand . ' ' . $device->model), 'group' => '設備'];
+            });
+
+        return ['targets' => $categories->concat($devices)->values()];
+    }
+
+    /** 保養對象換成表單送來的清單（先刪掉舊的再依順序建立）。 */
+    private function syncTargets(MaintenancePlan $plan, array $targets): void
+    {
+        $plan->targets()->delete();
+        foreach ($targets as $target) {
+            $plan->targets()->create($target);
+        }
     }
 
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon

@@ -11,7 +11,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 新增報修：設備條碼（device_id）、設備位置／描述（device_note）、設備地點（classroom_id）三項至少要有一項。
+ * 新增報修：設備條碼（device_id）、設備位置／描述（device_note）、發現地點（classroom_id）三項至少要有一項。
  * 只填標題與故障描述不能送出，否則維修人員不知道是哪裡的哪個設備。
  */
 class RepairLocationRequiredTest extends TestCase
@@ -31,7 +31,7 @@ class RepairLocationRequiredTest extends TestCase
     {
         return Classroom::create([
             'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室',
-            'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal',
+            'type' => '一般教室', 'is_active' => true,
         ]);
     }
 

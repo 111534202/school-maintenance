@@ -32,7 +32,7 @@ class MajorManagementTest extends TestCase
     {
         return $this->classroomCache ??= Classroom::create([
             'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室',
-            'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal',
+            'type' => '一般教室', 'is_active' => true,
         ]);
     }
 

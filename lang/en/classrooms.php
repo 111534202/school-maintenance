@@ -42,9 +42,7 @@ return [
         'view_devices' => 'View the devices of this classroom',
         'view_abnormal_devices' => 'View the abnormal devices of this classroom',
         'view_repairs' => 'View the open repair requests of devices in this classroom',
-        'core_abnormal_hint' => 'A core device is abnormal: this classroom is flagged as having a device problem',
     ],
-    'core_abnormal' => 'Core',
 
     'actions' => [
         'activate' => 'Activate',

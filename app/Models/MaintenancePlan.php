@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * 保養計畫。
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  *
  * @property int $id
  * @property string $name
+ * @property string|null $description 保養說明（取代原本勾選的保養項目）
  * @property int|null $device_id
  * @property int $cycle_days
  * @property \Illuminate\Support\Carbon $start_date
@@ -25,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property int|null $device_category_id
  */
-#[Fillable(['name', 'device_id', 'device_category_id', 'cycle_days', 'start_date', 'next_due_date', 'is_active'])]
+#[Fillable(['name', 'description', 'device_id', 'device_category_id', 'cycle_days', 'start_date', 'next_due_date', 'is_active'])]
 class MaintenancePlan extends Model
 {
     /** @use HasFactory<MaintenancePlanFactory> */
@@ -107,6 +109,46 @@ class MaintenancePlan extends Model
         }
 
         $this->update(['next_due_date' => $next->toDateString()]);
+    }
+
+    /**
+     * 保養對象（好幾台設備或好幾個設備類別，每一列擇一）。計畫上的 device_id／device_category_id 存第一個對象，給舊的程式讀。
+     *
+     * @return HasMany<MaintenancePlanTarget, $this>
+     */
+    public function targets(): HasMany
+    {
+        return $this->hasMany(MaintenancePlanTarget::class)->orderBy('id');
+    }
+
+    /**
+     * 建立工單用的對象清單：每個對象一筆 [device_id, device_category_id]（一張工單一筆）。
+     * 還沒有設定對象清單的舊計畫（或測試直接建立的計畫）就用計畫本身的設備／類別。
+     *
+     * @return list<array{device_id: int|null, device_category_id: int|null}>
+     */
+    public function orderTargets(): array
+    {
+        $targets = $this->relationLoaded('targets') ? $this->targets : $this->targets()->get();
+        if ($targets->isEmpty()) {
+            return [['device_id' => $this->device_id, 'device_category_id' => $this->device_id ? null : $this->device_category_id]];
+        }
+
+        return $targets->map(fn (MaintenancePlanTarget $target) => ['device_id' => $target->device_id, 'device_category_id' => $target->device_category_id])->all();
+    }
+
+    /** 畫面顯示的保養對象（用「、」串起來）；沒有對象清單時用計畫本身的設備／類別。 */
+    public function targetsLabel(): string
+    {
+        $targets = $this->relationLoaded('targets') ? $this->targets : $this->targets()->with(['device.category', 'deviceCategory'])->get();
+        if ($targets->isNotEmpty()) {
+            return $targets->map(fn (MaintenancePlanTarget $target) => $target->label())->implode('、');
+        }
+        if ($this->device) {
+            return $this->device->device_code . '（' . ($this->categoryName() ?? '—') . '）';
+        }
+
+        return $this->deviceCategory ? $this->deviceCategory->name . '（整類）' : '—';
     }
 
     /** @return BelongsToMany<MaintenanceItem, $this> */

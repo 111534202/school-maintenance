@@ -19,12 +19,12 @@ class DeviceQrSheetTest extends TestCase
     {
         $category = DeviceCategory::firstOrCreate(['name' => '投影機']);
         $room ??= Classroom::firstOrCreate(['classroom_code' => 'A101'], [
-            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal',
+            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true,
         ]);
 
         return Device::create($attrs + [
             'device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $room->id,
-            'brand' => 'Epson', 'model' => 'EB-X', 'status' => 'normal', 'is_core' => false,
+            'brand' => 'Epson', 'model' => 'EB-X', 'status' => 'normal',
         ]);
     }
 
@@ -42,7 +42,7 @@ class DeviceQrSheetTest extends TestCase
     public function test_sheet_follows_the_same_filters_as_the_device_list(): void
     {
         $this->loginAsAnyUser();
-        $other = Classroom::create(['campus' => '本校區', 'building' => 'B棟', 'floor' => '2F', 'classroom_code' => 'B201', 'name' => 'B201 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $other = Classroom::create(['campus' => '本校區', 'building' => 'B棟', 'floor' => '2F', 'classroom_code' => 'B201', 'name' => 'B201 教室', 'type' => '一般教室', 'is_active' => true]);
         $this->device('DEV-A');
         $this->device('DEV-B', $other);
 
@@ -61,10 +61,10 @@ class DeviceQrSheetTest extends TestCase
     {
         $this->loginAsAnyUser();
         $category = DeviceCategory::create(['name' => '電腦']);
-        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
         $rows = [];
         for ($i = 1; $i <= 245; $i++) {
-            $rows[] = ['device_code' => sprintf('PC-%04d', $i), 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal', 'is_core' => false, 'created_at' => now(), 'updated_at' => now()];
+            $rows[] = ['device_code' => sprintf('PC-%04d', $i), 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal', 'created_at' => now(), 'updated_at' => now()];
         }
         Device::insert($rows);
 
@@ -77,7 +77,7 @@ class DeviceQrSheetTest extends TestCase
     {
         $this->loginAsAnyUser();
         $category = DeviceCategory::create(['name' => '投影機']);
-        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
         $device = Device::create(['device_code' => 'DEV-Q1', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
 
         $html = $this->get(route('devices.index', ['status' => 'normal']))->assertOk()
@@ -102,7 +102,7 @@ class DeviceQrSheetTest extends TestCase
     {
         $this->loginAsAnyUser();
         $category = DeviceCategory::create(['name' => '投影機']);
-        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $room = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
         $a = Device::create(['device_code' => 'DEV-SA', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
         Device::create(['device_code' => 'DEV-SB', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
 

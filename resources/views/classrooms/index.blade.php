@@ -51,7 +51,7 @@
                 </div>
                 <div>
                     <label for="abnormal" class="form-label small mb-1">{{ __('classrooms.filter.devices') }}</label>
-                    {{-- 設備狀況：選「有異常設備」只列出至少有一台異常設備的教室（定義見 DeviceStatusService::PROBLEM_STATUSES）。 --}}
+                    {{-- 設備狀況：選「有異常設備」只列出至少有一台異常設備（有未結束報修單）的教室（定義見 Device::scopeAbnormal）。 --}}
                     <select id="abnormal" name="abnormal" class="form-select form-select-sm" style="width: 9rem;">
                         <option value="">{{ __('classrooms.filter.devices_all') }}</option>
                         <option value="1" @selected(request('abnormal') === '1')>{{ __('classrooms.filter.devices_abnormal') }}</option>
@@ -96,15 +96,11 @@
                                 <a class="text-decoration-none" href="{{ route('devices.index', ['classroom_id' => $classroom->id]) }}"
                                     title="{{ __('classrooms.links.view_devices') }}">{{ $classroom->devices_count }}</a>
                             </td>
-                            {{-- 異常設備數：大於 0 顯示紅色徽章，點了跳到設備主檔，只看這間教室的異常設備；
-                                 如果其中有「核心設備」異常（教室被標成設備異常，會影響預約判斷），另外加一個「核心」徽章。 --}}
+                            {{-- 異常設備數（有未結束報修單的設備）：大於 0 顯示紅色徽章，點了跳到設備主檔，只看這間教室的異常設備。 --}}
                             <td class="text-center">
                                 @if ($classroom->abnormal_devices_count > 0)
                                     <a class="badge tb-pill tb-pill-danger text-decoration-none" href="{{ route('devices.index', ['classroom_id' => $classroom->id, 'abnormal' => 1]) }}"
                                         title="{{ __('classrooms.links.view_abnormal_devices') }}"><i class="bi bi-exclamation-triangle me-1"></i>{{ $classroom->abnormal_devices_count }}</a>
-                                    @if ($classroom->reservation_status === 'abnormal')
-                                        <span class="badge tb-pill tb-pill-muted" title="{{ __('classrooms.links.core_abnormal_hint') }}">{{ __('classrooms.core_abnormal') }}</span>
-                                    @endif
                                 @else
                                     <span class="text-muted">0</span>
                                 @endif

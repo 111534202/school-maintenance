@@ -24,17 +24,16 @@ class MaintenanceResultController extends Controller
      */
     public function create(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
-        // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
-        if ($maintenanceOrder->result()->exists()) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
+        if ($redirect = $this->guard($maintenanceOrder)) {
+            return $redirect;
         }
-        // 工單指派了負責人：只有負責人與保養管理者可以回報（沒指派時有回報權限的人都可以）。
-        abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以回報。');
 
         // 保養用料選單：列出全部零件（沒有庫存的顯示庫存 0、不能選），和維修紀錄的選法相同。
         $parts = Part::query()->orderBy('id')->get();
+        // NG 時可以選的設備：計畫是一台設備就是那台；計畫是設備類別就是那一類的設備（可複選）。
+        $ngDevices = app(NgToRepairService::class)->selectableDevices($maintenanceOrder);
 
-        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts]);
+        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts, 'ngDevices' => $ngDevices]);
     }
 
     /**
@@ -46,7 +45,7 @@ class MaintenanceResultController extends Controller
     {
         abort_unless($maintenanceOrder->result()->exists(), 404);
 
-        $maintenanceOrder->load(['result.partUsages.part', 'result.attachments', 'maintenancePlan']);
+        $maintenanceOrder->load(['result.partUsages.part', 'result.attachments', 'result.repairRequests', 'maintenancePlan']);
 
         return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result]);
     }
@@ -56,17 +55,27 @@ class MaintenanceResultController extends Controller
      */
     public function store(StoreMaintenanceResultRequest $request, MaintenanceOrder $maintenanceOrder, NgToRepairService $ngToRepairService, PartStockService $stock, AttachmentUploader $attachmentUploader): RedirectResponse
     {
-        if ($maintenanceOrder->result()->exists()) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
+        if ($redirect = $this->guard($maintenanceOrder)) {
+            return $redirect;
         }
-        abort_unless($maintenanceOrder->canBeReportedBy($request->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以回報。');
 
         $validated = $request->validated();
         $partUsages = $validated['part_usages'] ?? [];
-        unset($validated['part_usages'], $validated['attachments']);
+        $isNg = $validated['result'] === MaintenanceResult::RESULT_NG;
 
-        // 保養結果、用料扣庫存、工單完成放在同一個交易：任何一個零件庫存不足，整筆都不會寫入。
-        $result = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock, $attachmentUploader) {
+        // NG 的設備只能從這張工單可選的設備裡選；OK 不轉報修，忽略送來的設備。
+        $ngDeviceIds = [];
+        if ($isNg) {
+            $allowed = $ngToRepairService->selectableDevices($maintenanceOrder)->pluck('id')->all();
+            $ngDeviceIds = array_values(array_unique(array_map('intval', $validated['ng_device_ids'] ?? [])));
+            if ($ngDeviceIds === [] || array_diff($ngDeviceIds, $allowed) !== []) {
+                throw ValidationException::withMessages(['ng_device_ids' => '請從清單中選擇這張工單的異常設備。']);
+            }
+        }
+        unset($validated['part_usages'], $validated['attachments'], $validated['ng_device_ids']);
+
+        // 保養結果、用料扣庫存、NG 轉報修、工單狀態放在同一個交易：任何一個零件庫存不足，整筆都不會寫入。
+        [$result, $repairs] = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock, $attachmentUploader, $ngToRepairService, $ngDeviceIds, $isNg) {
             $result = MaintenanceResult::create([
                 ...$validated,
                 'executed_by' => $request->user()->id,   // 執行人 = 登入帳號（外鍵 users.id），不能自己亂填
@@ -104,28 +113,39 @@ class MaintenanceResultController extends Controller
                 $attachmentUploader->storeMany($result, $request->file('attachments'));
             }
 
-            $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_COMPLETED]);
+            // OK：整張工單完成。NG：每台 NG 的設備各建一張報修單，工單「已轉報修」，報修單全部結案後才完成。
+            $repairs = $ngToRepairService->convert($result, $ngDeviceIds);
+            $maintenanceOrder->update(['status' => $isNg ? MaintenanceOrder::STATUS_CONVERTED : MaintenanceOrder::STATUS_COMPLETED]);
 
-            return $result;
+            return [$result, $repairs];
         });
 
         // 做完的是計畫目前這一期：下次到期日往後推一個週期，排程才會每個週期自動產生下一張工單。
         $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
 
-        $ngToRepairService->convert($result);
-
-        $result->refresh();
-
         AuditLogger::log('created', $result, ['result' => $result->result, 'maintenance_order_id' => $maintenanceOrder->id], '回報保養結果：工單 ' . $maintenanceOrder->displayNumber() . '，結果 ' . ($result->isNg() ? 'NG' : 'OK'));
 
-        if (! $result->isNg()) {
-            $status = '保養結果已回報為 OK，工單已完成';
-        } elseif ($result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_CONVERTED) {
-            $status = '保養結果已回報為 NG，已自動建立報修單（編號 #'.$result->repair_request_id.'）' . (request()->user()->can('view', RepairRequest::find($result->repair_request_id)) ? '，請至報修看板追蹤' : '，由管理人員後續處理');
-        } else {
-            $status = '保養結果已回報為 NG，已標記待轉報修（報修模組併入後會自動建立報修單）';
-        }
+        $status = $isNg
+            ? '保養結果已回報為 NG，已建立 ' . $repairs->count() . ' 張報修單（' . $repairs->map(fn (RepairRequest $repair) => '#' . $repair->id)->implode('、') . '），工單改為已轉報修；報修單全部結案後工單會自動完成。'
+            : '保養結果已回報為 OK，工單已完成';
 
         return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('success', $status);
+    }
+
+    /**
+     * 回報前的檢查：已經回報過、還沒確認派工時導回工單頁並用中文說明；不是負責人（也不是保養管理者）就 403。
+     */
+    private function guard(MaintenanceOrder $maintenanceOrder): ?RedirectResponse
+    {
+        // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
+        if ($maintenanceOrder->result()->exists()) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
+        }
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_PENDING) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單還沒確認派工，請保養管理者先確認派工。');
+        }
+        abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已派工給別人，只有負責人與保養管理者可以回報。');
+
+        return null;
     }
 }

@@ -19,8 +19,8 @@ enum RepairRequestStatus: string
     case Pending = 'pending';
     /** 已派工：主管已經指定維修人員 */
     case Assigned = 'assigned';
-    /** 處理中：維修人員正在處理 */
-    case InProgress = 'in_progress';
+    /** 已退回：派工的人（新報修時）或被指派的維修人員（已派工時）退回，必填原因；流程結束，仍留在看板 */
+    case Returned = 'returned';
     /** 待驗收：維修人員填完維修紀錄，等報修人確認有沒有修好 */
     case PendingReview = 'pending_review';
     /** 已結案：報修人驗收通過，流程結束（不能再變動） */
@@ -31,6 +31,32 @@ enum RepairRequestStatus: string
      * 依目前語言而定）。翻譯文字放在 lang/{locale}/repair_requests.php 的 status 區塊，
      * i18n 新增語言時只需要在那邊補一份翻譯，這裡不用改。
      */
+    /**
+     * 已經結束、不再需要處理的狀態（已結案、已退回）：不算未結案、不算待維修、不算逾時。
+     *
+     * @return list<string>
+     */
+    public static function closedValues(): array
+    {
+        return [self::Completed->value, self::Returned->value];
+    }
+
+    /** 這個狀態是不是已經結束（已結案或已退回）。 */
+    public function isClosed(): bool
+    {
+        return in_array($this->value, self::closedValues(), true);
+    }
+
+    /**
+     * 設備顯示「待維修」的報修狀態：已派工、待驗收（新報修還沒派工，不算）。
+     *
+     * @return list<string>
+     */
+    public static function awaitingRepairValues(): array
+    {
+        return [self::Assigned->value, self::PendingReview->value];
+    }
+
     public function label(): string
     {
         // $this->value 是這個選項背後存的文字（例如 pending），接在翻譯鍵後面就能查到對應名稱。

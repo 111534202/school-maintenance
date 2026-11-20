@@ -18,7 +18,6 @@ return [
         'classroom' => 'Classroom',
         'classroom_all' => 'All classrooms',
         // Notice shown when arriving from the device list (?device_id=); :device is replaced with the device code.
-        'only_device' => 'Showing repair requests of device ":device" only',
         // Notice shown when arriving from the dashboard's "Overdue Repairs" card (?overdue=1).
         'only_overdue' => 'Showing overdue repair requests only (open and past the scheduled time)',
     ],
@@ -26,7 +25,7 @@ return [
     // 報修看板表格欄位標題。
     'table' => [
         'title' => 'Title',
-        'device_location' => 'Device / Location',
+        'device_location' => 'Device / Found location',
         'impact_level' => 'Impact Level',
         'is_class_affected' => 'Affects Class',
         'status' => 'Status',
@@ -54,7 +53,7 @@ return [
     'status' => [
         'pending' => 'New',
         'assigned' => 'Assigned',
-        'in_progress' => 'In Progress',
+        'returned' => 'Returned',
         'pending_review' => 'Pending Review',
         'completed' => 'Completed',
     ],
@@ -80,7 +79,7 @@ return [
         'device_display_label' => 'Scanned device: ',
         'device_note_label' => 'Device Location / Description (if no barcode)',
         'device_note_hint' => 'If you scanned a device, the real device record is used automatically — these two fields can stay empty.',
-        'location_label' => 'Device location (optional)',
+        'location_label' => 'Found location (optional)',
         'description_label' => 'Issue Description',
         'description_prefill' => "Already tried the steps from \":title\", still not resolved:\n",
         'impact_level_label' => 'Impact Level',
@@ -108,7 +107,6 @@ return [
         'assignee_field_placeholder' => 'Select a technician',
         'scheduled_field_label' => 'Suggested Time (optional)',
         'confirm_dispatch' => 'Confirm Dispatch',
-        'start_processing' => 'Start Processing',
         'fill_repair_log' => 'Fill In Repair Log',
 
         'reassign_summary' => 'Reassign Technician',
@@ -135,7 +133,7 @@ return [
         'submitted' => 'Repair request submitted.',
         'dispatched' => 'Dispatched.',
         'reassigned' => 'Reassigned.',
-        'started' => 'Marked as in progress.',
+        'returned' => 'Repair request returned.',
         'completed' => 'Accepted and closed.',
         'rejected' => 'Sent back for rework.',
     ],
@@ -143,6 +141,6 @@ return [
     // 操作被擋下時顯示的紅色錯誤訊息。
     'errors' => [
         'invalid_transition' => 'Cannot change the case from ":from" to ":to" — that is not an allowed status transition.',
-        'reassign_invalid_status' => 'The case status is ":status", not "Assigned" or "In Progress" — it cannot be reassigned.',
+        'reassign_invalid_status' => 'The case status is ":status", not "Assigned" — it cannot be reassigned.',
     ],
 ];

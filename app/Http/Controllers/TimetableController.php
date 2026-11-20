@@ -214,7 +214,7 @@ class TimetableController extends Controller
     }
 
     /**
-     * 派工用：回傳這張報修單「設備地點」那間教室一週（星期一至五）的課表，讓主管挑空堂當建議處理時間。
+     * 派工用：回傳這張報修單「發現地點」那間教室一週（星期一至五）的課表，讓主管挑空堂當建議處理時間。
      *
      * 和預約用的 week() 不同：
      * - 教室是報修單的地點（沒有就用設備所在的教室），不用另外選；
@@ -232,14 +232,14 @@ class TimetableController extends Controller
         $classroom = $repairRequest->classroom ?? $repairRequest->device?->classroom;
 
         if (! $classroom) {
-            return response()->json(['message' => '這張報修單沒有設備地點，無法查詢教室課表；請直接填寫建議處理時間。'], 422);
+            return response()->json(['message' => '這張報修單沒有發現地點，無法查詢教室課表；請直接填寫建議處理時間。'], 422);
         }
 
         // 同一間教室、同一天已經排定處理時間、還沒結案的其他報修單（每一節各自標出來）。
         $otherRepairsFor = fn (string $dateString) => RepairRequest::query()
             ->whereKeyNot($repairRequest->id)
             ->whereDate('scheduled_at', $dateString)
-            ->whereIn('status', [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress])
+            ->where('status', RepairRequestStatus::Assigned)
             ->where(fn ($q) => $q->where('classroom_id', $classroom->id)
                 ->orWhereHas('device', fn ($d) => $d->where('classroom_id', $classroom->id)))
             ->get(['id', 'title', 'scheduled_at']);

@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 
 // 建立四間示範教室，分屬不同部門。可以在「教室主檔」畫面新增或修改，不需要改這個檔案。
-// 注意：教室的 reservation_status（設備異常旗標）不是在這裡設定的，而是 DeviceSeeder 建好設備後自動重新計算。
 class ClassroomSeeder extends Seeder
 {
     // 執行這個 Seeder：建立四間示範教室（php artisan db:seed 時會被呼叫）。

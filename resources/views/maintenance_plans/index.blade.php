@@ -16,7 +16,7 @@
         @endcan
     </div>
 
-    @include('layouts.partials.keyword-search', ['action' => route('maintenance-plans.index'), 'placeholder' => '計畫名稱、設備、設備類別'])
+    @include('layouts.partials.keyword-search', ['action' => route('maintenance-plans.index'), 'placeholder' => '計畫名稱、說明、設備、設備類別'])
 
     @if ($plans->isEmpty())
         <div class="tb-card tb-empty">{{ request('keyword') ? '找不到符合搜尋條件的保養計畫' : '目前沒有保養計畫' }}</div>
@@ -27,9 +27,9 @@
             <thead>
                 <tr>
                     <th>計畫名稱</th>
-                    <th>設備類別</th>
+                    <th>設備／類別</th>
+                    <th>說明</th>
                     <th>週期（天）</th>
-                    <th>項目數</th>
                     <th>下次到期日</th>
                     <th>狀態</th>
                     <th class="text-end tb-col-fit">操作</th>
@@ -39,9 +39,10 @@
                 @foreach ($plans as $plan)
                     <tr @can('maintenance.manage') data-modal-frame-href="{{ route('maintenance-plans.edit', $plan) }}" data-modal-title="修改保養計畫" data-modal-size="lg" tabindex="0" role="link" @endcan>
                         <td>{{ $plan->name }}</td>
-                        <td>{{ $plan->categoryName() ?? '—' }}</td>
+                        {{-- 保養對象：設備顯示「設備編號（類別）」、類別顯示「類別名稱（整類）」，好幾個用「、」串起來。 --}}
+                        <td>{{ $plan->targetsLabel() }}</td>
+                        <td class="text-truncate" style="max-width: 18rem;" title="{{ $plan->description }}">{{ $plan->description ?? '—' }}</td>
                         <td>{{ $plan->cycle_days }}</td>
-                        <td>{{ $plan->maintenance_items_count }}</td>
                         <td>{{ $plan->next_due_date?->format('Y-m-d') ?? '—' }}</td>
                         <td>
                             @if ($plan->is_active)

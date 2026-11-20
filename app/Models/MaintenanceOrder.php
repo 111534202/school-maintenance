@@ -46,12 +46,23 @@ class MaintenanceOrder extends Model
 
     public const SOURCE_AI = 'ai';
 
-    // 基本狀態：待處理 / 進行中 / 已完成（完整狀態流程與保養結果的串接由第2週任務接手）
+    // 狀態（依《報修與保養流程修改說明》）：
+    // 待處理（還沒派工）→ 確認派工後「進行中」→ 回報 OK「已完成」；回報 NG「已轉報修」，轉出的報修單全部結案（已結案或已退回）後才「已完成」。
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_IN_PROGRESS = 'in_progress';
 
+    public const STATUS_CONVERTED = 'converted';
+
     public const STATUS_COMPLETED = 'completed';
+
+    /** 篩選與匯出用：狀態值 → 中文。 */
+    public const STATUS_LABELS = [
+        self::STATUS_PENDING => '待處理',
+        self::STATUS_IN_PROGRESS => '進行中',
+        self::STATUS_CONVERTED => '已轉報修',
+        self::STATUS_COMPLETED => '已完成',
+    ];
 
     // 第三正規化：已經指定了一台設備（device_id），類別由設備推得，不另存 device_category_id（儲存時自動清掉）。
     protected static function booted(): void
@@ -150,20 +161,23 @@ class MaintenanceOrder extends Model
             && $this->scheduled_date->toDateString() < now()->toDateString();
     }
 
-    /** 這張工單現在能不能按「開始保養」：還在待處理、還沒有回報結果，而且這位用戶是能回報的人。 */
-    public function canBeStartedBy(User $user): bool
+    /** 這張工單現在能不能「確認派工」：還在待處理（還沒派工），而且這位用戶有保養管理權限。 */
+    public function canBeDispatchedBy(User $user): bool
     {
-        return $this->status === self::STATUS_PENDING && $this->result === null && $this->canBeReportedBy($user);
+        return $this->status === self::STATUS_PENDING && $user->can('maintenance.manage');
     }
 
-    /** 這位用戶能不能回報這張工單的結果：沒指派負責人時有回報權限就行；指派了只有負責人與保養管理者。 */
+    /**
+     * 這位用戶能不能回報這張工單的結果：工單要已經派工（進行中）、還沒回報，
+     * 而且是負責人本人或保養管理者（都要有回報權限）。沒派工的工單要先「確認派工」才能回報。
+     */
     public function canBeReportedBy(User $user): bool
     {
-        if (! $user->can('maintenance.report')) {
+        if ($this->status !== self::STATUS_IN_PROGRESS || ! $user->can('maintenance.report')) {
             return false;
         }
 
-        return $this->assigned_to === null || $this->assigned_to === $user->id || $user->can('maintenance.manage');
+        return $this->assigned_to === $user->id || $user->can('maintenance.manage');
     }
 
     /**
@@ -205,15 +219,9 @@ class MaintenanceOrder extends Model
      */
     public function statusLabel(): array
     {
-        // 保養結果是 NG 的工單不顯示「已完成」，直接顯示去向：已轉成報修單（或還沒轉成）；後續維修由報修單追蹤。
-        if ($this->status === self::STATUS_COMPLETED && ($result = $this->result) && $result->isNg()) {
-            return $result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_CONVERTED
-                ? ['已轉報修', 'info']
-                : ['待轉報修', 'warning'];
-        }
-
         return match ($this->status) {
             self::STATUS_IN_PROGRESS => ['進行中', 'primary'],
+            self::STATUS_CONVERTED => ['已轉報修', 'info'],
             self::STATUS_COMPLETED => ['已完成', 'success'],
             default => ['待處理', 'warning'],
         };

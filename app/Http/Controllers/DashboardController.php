@@ -3,7 +3,7 @@
 // 命名空間：這個類別所在的位置，要跟資料夾路徑對得上。
 namespace App\Http\Controllers;
 
-use App\Enums\RepairRequestStatus;   // 報修單狀態的列舉（新報修、已派工、處理中、待驗收、已結案）
+use App\Enums\RepairRequestStatus;   // 報修單狀態的列舉（新報修、已派工、已退回、待驗收、已結案）
 use App\Models\Classroom;            // 教室資料表模型
 use App\Models\ClassroomReservation; // 空間預約申請資料表模型
 use App\Services\ReservationReviewService; // 空間預約審核（自動拒絕過期申請）
@@ -54,8 +54,8 @@ class DashboardController extends Controller
             ];
         }
 
-        // 「進行中工單」= 除了「已結案」以外全部加起來。
-        $openCount = collect($repairStatuses)->where('key', '!=', RepairRequestStatus::Completed->value)->sum('count');
+        // 「進行中工單」= 除了「已結案」「已退回」以外全部加起來。
+        $openCount = collect($repairStatuses)->whereNotIn('key', RepairRequestStatus::closedValues())->sum('count');
 
         // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
         $monthStart = now()->startOfMonth();
@@ -100,8 +100,9 @@ class DashboardController extends Controller
                 ($statusCounts[RepairRequestStatus::Pending->value] ?? 0)
                 + ($statusCounts[RepairRequestStatus::Assigned->value] ?? 0)
             ),
+            // 已派工（原本的「處理中」已拿掉，卡片改顯示已派工、等維修人員處理的案件數）。
             'inProgressCount' => (int) (
-                $statusCounts[RepairRequestStatus::InProgress->value] ?? 0
+                $statusCounts[RepairRequestStatus::Assigned->value] ?? 0
             ),
             // 待驗收：只算跟自己有關的（和看板、鈴鐺一致；管理員全部）。
             'pendingReviewCount' => RepairRequest::visibleOnBoard($user)->where('status', RepairRequestStatus::PendingReview->value)->count(),
@@ -135,7 +136,7 @@ class DashboardController extends Controller
         // ---- 教室（需要教室主檔權限）----
         if ($user->can('classrooms.manage')) {
             $data['classroomTotal'] = Classroom::count();
-            // 預約狀態為 abnormal 的教室，卡片上會用紅字提示「設備異常教室 N 間」。
+            // 有異常設備（有未結束報修單的設備）的教室，卡片上會用紅字提示「設備異常教室 N 間」。
             $data['classroomAbnormal'] = Classroom::withAbnormalDevices()->count();
         }
 

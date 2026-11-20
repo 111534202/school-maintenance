@@ -42,7 +42,8 @@ class MasterPagesI18nTest extends TestCase
         $this->loginAsAnyUser();
         $room = Classroom::create(['campus' => 'Main', 'building' => 'A', 'floor' => '1', 'classroom_code' => 'A1', 'name' => 'Room A1']);
         $category = DeviceCategory::create(['name' => 'Projector']);
-        $device = Device::create(['device_code' => 'D-1', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'repairing']);
+        $device = Device::create(['device_code' => 'D-1', 'device_category_id' => $category->id, 'classroom_id' => $room->id, 'status' => 'normal']);
+        \App\Models\RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
 
         $pages = [
             route('classrooms.index') => 'Classrooms', route('classrooms.create') => 'Add Classroom', route('classrooms.edit', $room) => 'Edit Classroom',
@@ -58,10 +59,10 @@ class MasterPagesI18nTest extends TestCase
             $this->assertDoesNotMatchRegularExpression('/\b(classrooms|devices|device_categories)\.[a-z_]+\.[a-z_]+\b/', strip_tags($html), "露出翻譯鍵名：$url");
         }
 
-        // 設備狀態也跟著語言變：英文顯示 Under repair，不會是中文的「維修中」。
+        // 設備狀態也跟著語言變：英文顯示 Awaiting repair，不會是中文的「待維修」。
         $html = $this->withSession(['locale' => 'en'])->get(route('devices.index'))->getContent();
-        $this->assertStringContainsString('Under repair', $html);
-        $this->assertStringNotContainsString('維修中', $html);
+        $this->assertStringContainsString('Awaiting repair', $html);
+        $this->assertStringNotContainsString('待維修', $html);
     }
 
     // 操作成功的訊息也走翻譯檔：英文環境下顯示英文。

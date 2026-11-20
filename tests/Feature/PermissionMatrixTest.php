@@ -59,8 +59,8 @@ class PermissionMatrixTest extends TestCase
     private function fixtures(User $owner): array
     {
         $category = DeviceCategory::create(['name' => '投影機']);
-        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
-        $device = Device::create(['device_code' => 'DEV-001', 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal', 'is_core' => false]);
+        $classroom = Classroom::create(['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'classroom_code' => 'A101', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
+        $device = Device::create(['device_code' => 'DEV-001', 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => 'normal']);
         $part = Part::create(['part_code' => 'P-001', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1]);
         $purchase = $part->purchases()->create(['purchase_date' => now()->toDateString(), 'vendor_name' => '甲廠商', 'quantity' => 5, 'unit_price' => 100, 'remaining_quantity' => 5]);
         $reservation = ClassroomReservation::create([

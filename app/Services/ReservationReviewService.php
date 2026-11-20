@@ -85,9 +85,9 @@ class ReservationReviewService
             }
 
             if ($approving->isNotEmpty()) {
-                // 教室必須仍然啟用、沒有暫停預約（設備異常或核心設備等待維修）。
+                // 教室必須仍然啟用（設備報修中只是提醒，不擋核准）。
                 $classroom = Classroom::query()->whereKey($locked->classroom_id)->lockForUpdate()->first();
-                if (! $classroom || ! $classroom->is_active || ClassroomRepairNotices::isSuspended($classroom->id)) {
+                if (! $classroom || ! $classroom->is_active) {
                     return ['type' => 'unavailable'];
                 }
 

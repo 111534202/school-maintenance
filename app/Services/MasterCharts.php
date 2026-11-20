@@ -24,7 +24,7 @@ class MasterCharts
     private const PALETTE = ['#0d6efd', '#6610f2', '#d63384', '#fd7e14', '#198754', '#20c997', '#0dcaf0', '#6c757d'];
 
     /** 各種設備狀態對應的圖表顏色。 */
-    private const DEVICE_COLORS = ['normal' => '#198754', 'repairing' => '#ffc107', 'retired' => '#6c757d', 'disabled' => '#dc3545'];
+    private const DEVICE_COLORS = ['normal' => '#198754', Device::AWAITING_REPAIR => '#ffc107', 'retired' => '#6c757d', 'disabled' => '#dc3545'];
 
     /** 用戶主檔：每個身分各有幾位用戶（長條圖），點哪一根就跳到篩好該身分的用戶主檔。 */
     public static function roleDistribution(): array
@@ -43,11 +43,11 @@ class MasterCharts
         ];
     }
 
-    /** 設備主檔：設備各狀態的數量（甜甜圈圖），點哪一塊就跳到篩好該狀態的設備主檔。 */
+    /** 設備主檔：設備各狀態的數量（甜甜圈圖，待維修由報修單推算），點哪一塊就跳到篩好該狀態的設備主檔。 */
     public static function deviceStatus(): array
     {
-        $counts = Device::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
-        $rows = collect(Device::STATUSES);
+        $rows = collect(Device::DISPLAY_STATUSES);
+        $counts = $rows->mapWithKeys(fn (string $s) => [$s => Device::query()->whereDisplayStatus($s)->count()]);
 
         return [
             'title' => __('dashboard.charts.device_status'),

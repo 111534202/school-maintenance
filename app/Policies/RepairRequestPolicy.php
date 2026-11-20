@@ -22,7 +22,7 @@ use App\Models\User;            // 用戶資料表模型
  * - 驗收通過或退回（accept）：只有「報修人本人」；系統轉入、沒有報修人的案件（例如保養 NG 轉報修），
  *   則由有驗收權限的人處理。
  *
- * 使用方式：Controller 裡寫 Gate::authorize('start', $repairRequest)；畫面裡寫
+ * 使用方式：Controller 裡寫 Gate::authorize('fillLog', $repairRequest)；畫面裡寫
  * $user->can('start', $repairRequest)；列表用 RepairRequest::visibleTo($user) 只撈看得到的。
  * 這個類別放在 app/Policies，Laravel 會依命名（模型名稱 + Policy）自動找到，不用另外註冊。
  */
@@ -53,17 +53,26 @@ class RepairRequestPolicy
             || $repairRequest->accepted_by === $user->id;
     }
 
-    /** 開始處理：必須有處理維修權限，而且（管理員或）這張單指派給自己。 */
-    public function start(User $user, RepairRequest $repairRequest): bool
+    /** 填寫維修紀錄：必須有處理維修權限，而且（管理員或）這張單指派給自己。 */
+    public function fillLog(User $user, RepairRequest $repairRequest): bool
     {
         return $user->can('repairs.process')
             && ($user->isAdmin() || $repairRequest->assigned_to === $user->id);
     }
 
-    /** 填寫維修紀錄：規則和「開始處理」一樣。 */
-    public function fillLog(User $user, RepairRequest $repairRequest): bool
+    /**
+     * 退回報修單（必填原因，退回後流程結束）：
+     * - 新報修：能派工的人（有派工權限、或管理員）可以退回；
+     * - 已派工：被指派的維修人員、能派工的人（或管理員）可以退回。
+     * 其他狀態都不能退回。
+     */
+    public function returnRequest(User $user, RepairRequest $repairRequest): bool
     {
-        return $this->start($user, $repairRequest);
+        return match ($repairRequest->status) {
+            RepairRequestStatus::Pending => $user->isAdmin() || $user->can('repairs.dispatch'),
+            RepairRequestStatus::Assigned => $user->isAdmin() || $user->can('repairs.dispatch') || $this->fillLog($user, $repairRequest),
+            default => false,
+        };
     }
 
     /** 驗收（通過結案或退回重修）：必須有驗收權限，而且（管理員、或是報修人本人、或這張單沒有報修人）。 */

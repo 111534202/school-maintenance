@@ -22,9 +22,9 @@ class MasterExportTest extends TestCase
     private function device(string $code, string $status = 'normal'): Device
     {
         $category = DeviceCategory::firstOrCreate(['name' => '投影機']);
-        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true, 'reservation_status' => 'normal']);
+        $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], ['campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'type' => '一般教室', 'is_active' => true]);
 
-        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => $status, 'is_core' => false, 'brand' => 'Epson']);
+        return Device::create(['device_code' => $code, 'device_category_id' => $category->id, 'classroom_id' => $classroom->id, 'status' => $status, 'brand' => 'Epson']);
     }
 
     /**
@@ -49,7 +49,7 @@ class MasterExportTest extends TestCase
     {
         $this->loginAsAnyUser();
         $this->device('DEV-001');
-        $this->device('DEV-002', 'repairing');
+        \App\Models\RepairRequest::factory()->create(['device_id' => $this->device('DEV-002')->id, 'status' => 'assigned']);   // 待維修由報修單推算
 
         [$name, $rows] = $this->downloadRows(route('devices.export', ['status' => 'repairing']));
 

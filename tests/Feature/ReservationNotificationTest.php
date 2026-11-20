@@ -21,7 +21,7 @@ class ReservationNotificationTest extends TestCase
     private function reservation(string $date, string $status = 'pending'): ClassroomReservation
     {
         $classroom = Classroom::firstOrCreate(['classroom_code' => 'A101'], [
-            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'is_active' => true, 'reservation_status' => 'normal',
+            'campus' => '本校區', 'building' => 'A棟', 'floor' => '1F', 'name' => 'A101 教室', 'is_active' => true,
         ]);
         $reservation = ClassroomReservation::create([
             'classroom_id' => $classroom->id, 'requester_id' => User::factory()->create()->id, 'class_name' => '資五孝',

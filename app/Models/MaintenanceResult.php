@@ -91,6 +91,16 @@ class MaintenanceResult extends Model
         return $this->hasMany(MaintenancePartUsage::class);
     }
 
+    /**
+     * NG 轉出的報修單（每台 NG 的設備一張，repair_requests.maintenance_result_id 指回這筆結果）。
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<RepairRequest, $this>
+     */
+    public function repairRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(RepairRequest::class, 'maintenance_result_id');
+    }
+
     public function isNg(): bool
     {
         return $this->result === self::RESULT_NG;

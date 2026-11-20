@@ -40,15 +40,17 @@ class DeviceController extends Controller
 
         // with(...)：順便查好類別與教室，畫面顯示名稱時不用每台設備再多查一次。
         $devices = Device::with(['category', 'classroom'])
-            // withCount：算出每台設備「進行中的報修單」數（不含已結案，且只算這位用戶看得到的案件），
+            ->withAwaitingRepair()   // 順便算好是不是「待維修」，列表的狀態徽章才不用每台再查
+            // withCount：算出每台設備「進行中的報修單」數（不含已結案、已退回，且只算這位用戶看得到的案件），
             // 列表上顯示並連到報修看板（?device_id=）。
             ->withCount(['repairRequests as open_repairs_count' => fn ($repairs) => $repairs
                 ->visibleTo($user)
-                ->where('status', '!=', RepairRequestStatus::Completed->value)])
+                ->open()])
             // 近 N 天報修次數（不分狀態、不分誰看得到，因為這是在看「這台設備本身」的故障頻率，
             // 不是在看「這個用戶能不能看」）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
             ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
-                ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))])
+                ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))
+                        ->where('status', '<>', \App\Enums\RepairRequestStatus::Returned->value)])   // 已退回的不算
             ->tap(fn ($query) => $this->applyFilters($query, $request))
             ->orderBy('device_code')   // 依設備編號排序
             ->paginate(15)
@@ -56,7 +58,7 @@ class DeviceController extends Controller
 
         // 篩選列的下拉選單：所有教室、所有設備類別。
         $classrooms = Classroom::orderBy('classroom_code')->get();
-        $categories = DeviceCategory::orderBy('name')->get();
+        $categories = \App\Support\StrokeOrder::sort(DeviceCategory::all());   // 依筆畫排序
 
         $chart = \App\Services\MasterCharts::deviceStatus();   // 頁首「統計圖表」按鈕的圖表資料
         // 「匯出 Excel」預覽視窗要列的設備（目前篩選條件下最多 500 台）。
@@ -87,15 +89,16 @@ class DeviceController extends Controller
             })
             ->when($request->filled('classroom_id'), fn ($query) => $query->where('classroom_id', $request->integer('classroom_id')))
             ->when($request->filled('device_category_id'), fn ($query) => $query->where('device_category_id', $request->integer('device_category_id')))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            // ?abnormal=1 只列出異常設備（維修中、已淘汰、停用）；教室主檔的「異常設備」數字會連到這裡。
+            // 狀態篩選照畫面上的狀態：待維修由報修單推算（見 Device::scopeWhereDisplayStatus）。
+            ->when($request->filled('status'), fn ($query) => $query->whereDisplayStatus($request->string('status')->toString()))
+            // ?abnormal=1 只列出異常設備（有未結束報修單、不含已淘汰）；教室主檔的「異常設備」數字會連到這裡。
             ->when($request->boolean('abnormal'), fn ($query) => $query->abnormal());
     }
 
     /** 顯示新增設備表單（GET /devices/create）。 */
     public function create()
     {
-        $categories = DeviceCategory::orderBy('name')->get();
+        $categories = \App\Support\StrokeOrder::sort(DeviceCategory::all());   // 依筆畫排序
         // 新增設備只能指到啟用中的教室，停用教室不該再被分配新設備
         $classrooms = Classroom::where('is_active', true)->orderBy('classroom_code')->get();
 
@@ -106,14 +109,10 @@ class DeviceController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        // 核取方塊沒勾的時候瀏覽器根本不會送這個欄位，所以用 boolean() 明確轉成 true / false。
-        $data['is_core'] = $request->boolean('is_core');
 
         $device = Device::create($data);
 
         AuditLogger::log('created', $device, $data);
-        // 新設備可能一開始就是異常狀態，所以要重新計算它所在教室的「設備異常」標記。
-        DeviceStatusService::syncClassroom($device->classroom);
 
         return redirect()->route('devices.index')->with('success', __('devices.flash.created'));
     }
@@ -130,7 +129,9 @@ class DeviceController extends Controller
     /** 顯示編輯表單（GET /devices/{device}/edit）。 */
     public function edit(Device $device)
     {
-        $categories = DeviceCategory::orderBy('name')->get();
+        // 狀態下拉選單要知道這台設備現在是不是「待維修」（有已派工、待驗收的報修單）。
+        $device = Device::query()->withAwaitingRepair()->findOrFail($device->id);
+        $categories = \App\Support\StrokeOrder::sort(DeviceCategory::all());   // 依筆畫排序
         // 編輯時仍要能看到設備目前所在的教室，就算那間教室後來被停用了，
         // 否則下拉選單選不到目前值，表單一儲存就會把設備搬到別間教室
         $classrooms = Classroom::where('is_active', true)
@@ -145,33 +146,21 @@ class DeviceController extends Controller
     public function update(Request $request, Device $device)
     {
         $data = $this->validated($request, $device->id);
-        // 先把「狀態」與「核心設備」從一般資料拿出來，因為它們要走專用的服務寫入（見下面）。
+        // 先把「狀態」從一般資料拿出來，因為它要走專用的服務寫入（見下面）。
         $newStatus = $data['status'];
-        $newIsCore = $request->boolean('is_core');
-        unset($data['status'], $data['is_core']);
+        unset($data['status']);
 
-        // 還有沒結案的報修單時，不能把狀態從「維修中／已淘汰／停用」直接改回「正常」（要先把報修單處理完）。
-        if ($newStatus === 'normal' && $device->status !== 'normal'
-            && $device->repairRequests()->where('status', '!=', RepairRequestStatus::Completed->value)->exists()) {
-            return back()->withInput()->withErrors(['status' => '這台設備還有沒結案的報修單，不能直接改成「正常」。請先完成報修單的驗收。']);
+        // 還有沒結束的報修單（新報修、已派工、待驗收都算）時，不能把狀態從「已淘汰／停用」改回「正常」（要先把報修單處理完）。
+        // 「待維修」的設備在表單上只能選「待維修（維持）」「已淘汰」「停用」，送來的 normal 代表維持原狀，不會被擋。
+        if ($newStatus === 'normal' && $device->status !== 'normal' && $device->repairRequests()->open()->exists()) {
+            return back()->withInput()->withErrors(['status' => '這台設備還有沒結案的報修單（新報修也算），不能改成「正常」。請先完成或退回報修單。']);
         }
-
-        // 記住修改前的教室：如果這次把設備搬到別間，舊教室也要重新計算異常標記。
-        $oldClassroom = $device->classroom;
 
         $device->update($data);   // 先更新一般欄位（編號、品牌、教室...）
         AuditLogger::log('updated', $device, $data);
 
-        // 狀態與核心旗標一律透過統一服務寫入，才會觸發 audit log 與教室異常旗標同步
+        // 狀態一律透過統一服務寫入，才會留下狀態變更的操作紀錄。
         DeviceStatusService::updateStatus($device, $newStatus);
-        DeviceStatusService::setCore($device, $newIsCore);
-
-        // 設備換了教室：舊教室少了一台設備，要重新檢查它是不是還有異常設備；
-        // 新教室多了一台設備（可能是壞掉的核心設備），也要重新檢查，不然新教室不會被標成異常。
-        if ($oldClassroom && $oldClassroom->id !== $device->classroom_id) {
-            DeviceStatusService::syncClassroom($oldClassroom);
-            DeviceStatusService::syncClassroom(Classroom::find($device->classroom_id));
-        }
 
         return redirect()->route('devices.index')->with('success', __('devices.flash.updated'));
     }
@@ -180,9 +169,7 @@ class DeviceController extends Controller
     public function disable(Device $device)
     {
         DeviceStatusService::updateStatus($device, 'disabled', '設備停用');
-        $classroom = $device->classroom;   // 先記住教室，因為刪除後還要用它重新計算異常標記
         $device->delete();
-        DeviceStatusService::syncClassroom($classroom);
 
         return redirect()->route('devices.index')->with('success', __('devices.flash.disabled'));
     }
@@ -199,7 +186,7 @@ class DeviceController extends Controller
     /** 匯出與預覽共用的查詢：目前的篩選條件，依設備編號排序。 */
     private function exportQuery(Request $request)
     {
-        $query = Device::with(['category', 'classroom'])->orderBy('device_code');
+        $query = Device::with(['category', 'classroom'])->withAwaitingRepair()->orderBy('device_code');
         $this->applyFilters($query, $request);
 
         return $query;
@@ -298,9 +285,8 @@ class DeviceController extends Controller
             'warranty_end_date' => ['nullable', 'date'],                                 // 保固到期日
             // 教室不能指到已被軟刪除的教室，exists 預設不看 deleted_at
             'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],
-            // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。
+            // 狀態只能是 Device::STATUSES 列出的幾種（normal / retired / disabled；待維修由報修單推算，不能手動設）。
             'status' => ['required', 'in:' . implode(',', Device::STATUSES)],
-            'is_core' => ['sometimes', 'boolean'],                                    // 是否為核心設備；sometimes = 有送才檢查
         ], [
             'device_code.max' => EquipmentCode::formatMessage('設備編號'),
             'device_code.regex' => EquipmentCode::formatMessage('設備編號'),

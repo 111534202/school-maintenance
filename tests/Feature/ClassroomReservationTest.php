@@ -36,8 +36,18 @@ class ClassroomReservationTest extends TestCase
             'name' => $code . ' 教室',
             'type' => '一般教室',
             'is_active' => true,
-            'reservation_status' => 'normal',
         ], $attrs));
+    }
+
+    /** 替教室放一台設備並開一張未結束的報修單（教室有設備在報修，只顯示提醒，不擋預約）。 */
+    private function breakDeviceIn(Classroom $classroom): void
+    {
+        $category = \App\Models\DeviceCategory::firstOrCreate(['name' => '投影機']);
+        $device = \App\Models\Device::create([
+            'device_code' => 'DEV-' . $classroom->classroom_code, 'device_category_id' => $category->id,
+            'classroom_id' => $classroom->id, 'status' => 'normal',
+        ]);
+        \App\Models\RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
     }
 
     private function payload(Classroom $classroom, array $overrides = []): array
@@ -97,9 +107,8 @@ class ClassroomReservationTest extends TestCase
     {
         $normal = $this->makeClassroom('A101');
 
-        $abnormal = $this->makeClassroom('A102', [
-            'reservation_status' => 'abnormal',
-        ]);
+        $withRepair = $this->makeClassroom('A102');
+        $this->breakDeviceIn($withRepair);
 
         $inactive = $this->makeClassroom('A103', [
             'is_active' => false,
@@ -109,7 +118,7 @@ class ClassroomReservationTest extends TestCase
             ->assertOk()
             ->assertSee($normal->name)
             ->assertSee('data-id="' . $normal->id . '"', false)
-            ->assertSee('data-id="' . $abnormal->id . '"', false)
+            ->assertSee('data-id="' . $withRepair->id . '"', false)
             ->assertDontSee($inactive->name);
     }
 
@@ -212,7 +221,7 @@ class ClassroomReservationTest extends TestCase
         $this->assertDatabaseCount('classroom_reservations', 1);
     }
 
-    public function test_inactive_or_abnormal_classroom_cannot_be_reserved(): void
+    public function test_inactive_classroom_cannot_be_reserved(): void
     {
         $inactive = $this->makeClassroom('A102', ['is_active' => false]);
 
@@ -220,13 +229,20 @@ class ClassroomReservationTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('error');
 
-        $abnormal = $this->makeClassroom('A103', ['reservation_status' => 'abnormal']);
-
-        $this->post(route('reservations.store'), $this->payload($abnormal))
-            ->assertRedirect()
-            ->assertSessionHas('error');
-
         $this->assertDatabaseCount('classroom_reservations', 0);
+    }
+
+    /** 教室有設備在報修：只顯示提醒，仍可以送出申請（教室不再因設備狀況暫停預約）。 */
+    public function test_classroom_with_a_device_under_repair_can_still_be_reserved(): void
+    {
+        $classroom = $this->makeClassroom('A103');
+        $this->breakDeviceIn($classroom);
+
+        $this->post(route('reservations.store'), $this->payload($classroom))
+            ->assertRedirect()
+            ->assertSessionMissing('error');
+
+        $this->assertDatabaseCount('classroom_reservations', 1);
     }
 
     public function test_end_time_must_be_later_than_start_time(): void
@@ -459,35 +475,26 @@ class ClassroomReservationTest extends TestCase
         $this->assertSame('pending', $pending->fresh()->status);
         $this->assertSame([null, 'rejected'], $pending->fresh('slots')->slots->pluck('status')->all());
     }
-    public function test_approval_is_rejected_when_classroom_becomes_abnormal(): void
+    /** 預約送出後教室才有設備報修：仍可以核准（只是提醒）。 */
+    public function test_approval_still_works_when_a_device_in_the_classroom_is_under_repair(): void
     {
         $classroom = $this->makeClassroom();
 
-        // 教室正常時，先建立待審核預約。
         $reservation = $this->makeReservation([
             ...$this->payload($classroom),
             'requester_id' => $this->applicant->id,
             'status' => 'pending',
         ]);
 
-        // 模擬預約建立後，教室因設備異常而暫停外借。
-        $classroom->update([
-            'reservation_status' => 'abnormal',
-        ]);
+        $this->breakDeviceIn($classroom);
 
-        // 管理人員嘗試核准，應該被拒絕。
         $this->loginAsAnyUser();
 
         $this->post(route('reservations.approve', $reservation))
             ->assertRedirect(route('reservations.index'))
-            ->assertSessionHas('error');
+            ->assertSessionHas('success');
 
-        // 預約仍須維持待審核，不得被核准。
-        $this->assertDatabaseHas('classroom_reservations', [
-            'id' => $reservation->id,
-            'status' => 'pending',
-            'reviewed_by' => null,
-        ]);
+        $this->assertSame('approved', $reservation->fresh()->status);
     }
 
     public function test_rejection_reason_is_optional(): void
@@ -575,16 +582,15 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonPath('periods.1.reservations.0.end_time', '08:40');
     }
 
-    /** 停用的教室查不到課表；暫停預約（設備異常）的教室仍可查詢課表。 */
-    public function test_timetable_endpoint_rejects_inactive_but_allows_abnormal_classrooms(): void
+    /** 停用的教室查不到課表；有設備在報修的教室照常可以查詢課表。 */
+    public function test_timetable_endpoint_rejects_inactive_but_allows_classrooms_with_repairs(): void
     {
         $inactive = $this->makeClassroom('A102', [
             'is_active' => false,
         ]);
 
-        $abnormal = $this->makeClassroom('A103', [
-            'reservation_status' => 'abnormal',
-        ]);
+        $abnormal = $this->makeClassroom('A103');
+        $this->breakDeviceIn($abnormal);
 
         $date = now()->addDays(3)->toDateString();
 
@@ -759,15 +765,14 @@ class ClassroomReservationTest extends TestCase
             ->assertJsonValidationErrors(['date']);
     }
 
-    public function test_timetable_week_endpoint_rejects_inactive_but_allows_abnormal_classrooms(): void
+    public function test_timetable_week_endpoint_rejects_inactive_but_allows_classrooms_with_repairs(): void
     {
         $inactive = $this->makeClassroom('W101', [
             'is_active' => false,
         ]);
 
-        $abnormal = $this->makeClassroom('W102', [
-            'reservation_status' => 'abnormal',
-        ]);
+        $abnormal = $this->makeClassroom('W102');
+        $this->breakDeviceIn($abnormal);
 
         $date = now()->addWeeks(2)->startOfWeek(\Carbon\Carbon::MONDAY)->toDateString();
 
