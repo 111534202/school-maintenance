@@ -10,7 +10,7 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 刪除（與取消報廢）一律先跳出二次確認視窗：表單帶 data-confirm，版面上有共用的 #confirmActionDialog。
+ * 刪除一律先跳出二次確認視窗：表單帶 data-confirm，版面上有共用的 #confirmActionDialog。
  */
 class DeleteConfirmTest extends TestCase
 {
@@ -41,15 +41,12 @@ class DeleteConfirmTest extends TestCase
     {
         $this->actingAs($this->makeUserWithPermissions(['parts.manage']));
         $part = Part::create(['part_code' => 'HDMI-2', 'name' => 'HDMI 線', 'specification' => '2公尺', 'unit' => '條', 'safety_stock' => 1]);
-        $purchase = $part->purchases()->create(['purchase_date' => now()->toDateString(), 'vendor_name' => '五金行', 'quantity' => 3, 'remaining_quantity' => 3, 'unit_price' => 10]);
-        $part->scraps()->create(['quantity' => 1, 'scrap_date' => now()->toDateString(), 'reason' => '損壞']);
+        // 沒有庫存、沒有任何紀錄的零件才有「刪除零件」（有庫存或紀錄時按鈕是灰的），刪除一樣先跳出確認視窗。
 
         $this->get(route('parts.show', $part))
             ->assertOk()
             ->assertSee('id="confirmActionDialog"', false)
             ->assertSee('請問確定要刪除零件「HDMI-2 HDMI 線」嗎？')
-            ->assertSee('data-confirm="請問確定要取消', false)
-            ->assertSee('確認取消報廢')
             ->assertDontSee('return confirm(', false);
     }
 }

@@ -39,6 +39,9 @@
         @if ($total > $limit)
             <div class="alert alert-warning">{{ __('devices.qr_sheet.too_many', ['total' => $total, 'limit' => $limit]) }}</div>
         @endif
+        @if (($excludedRetired ?? 0) > 0)
+            <div class="alert alert-secondary small">已淘汰的設備不再使用，已排除 {{ $excludedRetired }} 台，不印 QR 貼紙。</div>
+        @endif
         <div class="alert alert-info small mb-0">{{ __('devices.qr_sheet.tip') }}</div>
     </div>
 

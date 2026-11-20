@@ -9,7 +9,7 @@
     <div class="page-header mb-4">
         <h1 data-modal-hide class="tb-title mb-0">{{ __('devices.show.title') }}</h1>
         {{-- 在設備主檔的對話框裡打開（?modal=1）時不放「修改」按鈕（修改在列表的鉛筆按鈕）。 --}}
-        @unless (request()->boolean('modal'))
+        @unless (request()->boolean('modal') || $device->status === 'retired')
             <div class="d-inline-flex gap-1">
                 <a class="btn btn-outline-primary icon-btn" href="{{ route('devices.edit', $device) }}"
                     title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>

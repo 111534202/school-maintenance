@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 零件採購紀錄：新增（入庫並加庫存）、修改、刪除，可上傳發票或收據。
+ * 零件採購紀錄：新增（入庫並加庫存）、修改，可上傳發票或收據；採購紀錄是歷史紀錄，不提供刪除。
  * 權限與零件庫存相同（parts.manage，見 routes/web.php）。
  * 數量與庫存的連動都交給 PartStockService，這裡只負責表單與附件。
  */
@@ -48,64 +48,12 @@ class PartPurchaseController extends Controller
             ->with('success', "已新增採購紀錄，庫存增加 {$purchase->quantity}。");
     }
 
-    public function edit(Part $part, PartPurchase $purchase)
+    /** 查看一筆採購紀錄（唯讀）：送出後的採購紀錄不能修改或刪除，只能查看。 */
+    public function show(Part $part, PartPurchase $purchase): \Illuminate\Contracts\View\View
     {
         abort_unless($purchase->part_id === $part->id, 404);
 
-        return view('parts.purchases.form', compact('part', 'purchase'));
-    }
-
-    public function update(Request $request, Part $part, PartPurchase $purchase)
-    {
-        abort_unless($purchase->part_id === $part->id, 404);
-
-        $validated = $this->validated($request);
-
-        // 附件總數：原本的－勾選刪除的＋新上傳的，不能超過上限。
-        $removeIds = $request->boolean('remove_invoice')
-            ? $purchase->attachments()->pluck('id')->all()
-            : array_map('intval', (array) $request->input('remove_attachments', []));
-        $kept = $purchase->attachments()->whereNotIn('id', $removeIds);
-        $keep = (clone $kept)->count();
-        if ($keep + count($this->uploadedFiles($request)) > self::MAX_ATTACHMENTS) {
-            return back()->withInput()->withErrors(['invoices' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件；目前保留 ' . $keep . ' 個，請先勾選刪除一些再上傳。']);
-        }
-        // 大小總和：保留的附件＋新上傳的，加起來不能超過 5 MB。
-        $sizeCheck = validator(['invoices' => $this->uploadedFiles($request)], ['invoices' => [AttachmentLimit::totalSizeRule((int) (clone $kept)->sum('size_bytes'))]]);
-        if ($sizeCheck->fails()) {
-            return back()->withInput()->withErrors($sizeCheck->errors());
-        }
-
-        try {
-            DB::transaction(function () use ($request, $purchase, $validated, $removeIds) {
-                $this->stock->update($purchase, $this->purchaseData($validated));
-                $purchase->deleteAttachments($removeIds);   // 勾選「刪除」的附件
-                $this->storeInvoices($request, $purchase);  // 新上傳的附件加在後面
-            });
-        } catch (DomainException $exception) {
-            return back()->withInput()->with('error', $exception->getMessage());
-        }
-
-        AuditLogger::log('updated', $purchase, $this->purchaseData($validated), "修改零件採購：{$part->part_code} {$part->name}");
-
-        return redirect()->route('parts.show', $part)->with('success', '採購紀錄已更新。');
-    }
-
-    public function destroy(Part $part, PartPurchase $purchase)
-    {
-        abort_unless($purchase->part_id === $part->id, 404);
-
-        try {
-            $this->stock->delete($purchase);
-        } catch (DomainException $exception) {
-            return redirect()->route('parts.show', $part)->with('error', $exception->getMessage());
-        }
-
-        AuditLogger::log('deleted', $part, ['purchase_date' => $purchase->purchase_date->toDateString(), 'quantity' => $purchase->quantity],
-            "刪除零件採購：{$part->part_code} {$part->name} × {$purchase->quantity}");
-
-        return redirect()->route('parts.show', $part)
-            ->with('success', "已刪除採購紀錄，庫存減少 {$purchase->quantity}。");
+        return view('parts.purchases.show', ['part' => $part, 'purchase' => $purchase->load('attachments')]);
     }
 
     private function validated(Request $request): array

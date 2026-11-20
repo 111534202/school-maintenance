@@ -112,7 +112,7 @@ class DepartmentController extends Controller
 
         AuditLogger::log('deleted', $department, $department->only(['name', 'department_code']));
 
-        return redirect()->route('departments.index')->with('success', __('departments.flash.deleted'));
+        return $this->backToList('departments.index')->with('success', __('departments.flash.deleted'));
     }
 
     /**

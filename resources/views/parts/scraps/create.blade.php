@@ -13,7 +13,20 @@
             <div class="alert alert-warning mb-3">目前沒有庫存，不能登記報廢。</div>
         @endif
 
-        <form method="POST" action="{{ route('parts.scraps.store', $part) }}">
+        {{-- 兩步驟：按「登記報廢並扣除庫存」後先跳出確認視窗，核對零件與報廢資料，按「確認登記報廢」才真的送出；登記後這筆報廢紀錄就是定案，不能修改或取消。 --}}
+        <form method="POST" action="{{ route('parts.scraps.store', $part) }}"
+            data-confirm-title="確認登記報廢"
+            data-confirm="登記後庫存會立即扣除，這筆報廢紀錄就定案了，不能修改或取消。請核對下面的資料，沒問題再按「確認登記報廢」。"
+            data-confirm-ok="確認登記報廢"
+            data-confirm-detail="{{ json_encode([
+                ['零件', trim($part->part_code . ' ' . $part->name)],
+                ['目前庫存', $part->withUnit($part->current_stock)],
+                ['報廢日期', '@scrap_date'],
+                ['時間', '@scrap_time'],
+                ['報廢數量', '@quantity'],
+                ['原因', '@reason'],
+                ['備註', '@note'],
+            ], JSON_UNESCAPED_UNICODE) }}">
             @csrf
             <div class="card shadow-sm">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-trash3 me-2"></i>報廢資料</div>

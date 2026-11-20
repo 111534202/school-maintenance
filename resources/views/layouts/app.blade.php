@@ -85,7 +85,7 @@
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 {{-- 「返回」按鈕：每一頁（主控台除外）都有，最內層的清單頁（用戶主檔、空間預約…）也一樣能退回上一頁。
-                     點了回到瀏覽紀錄的上一頁；沒有上一頁（直接開網址、新分頁）就回父頁（清單頁或所屬的工單，規則見 App\Support\BackLink），再不行回主控台。
+                     點了一律回到「系統結構上的上一層」（例如 修改身分 → 身分主檔 → 主控台；規則見 App\Support\BackLink），不是瀏覽器剛剛的上一步操作。
                      各頁面不再自己放返回連結，返回只放在這裡（守門測試：BackLinkTest）。 --}}
                 @unless (request()->routeIs('dashboard'))
                     <a href="{{ \App\Support\BackLink::url(request()->route()) }}" class="btn btn-outline-light btn-sm tb-nav-btn flex-shrink-0" data-page-back aria-label="{{ __('common.buttons.back') }}">
@@ -501,11 +501,15 @@
     </script>
     {{-- 刪除前的二次確認（全站共用）：表單加上 data-confirm="請問確定要刪除…嗎？"，按下送出會先跳出這個視窗，
          按「確認」才真的送出，按「取消」什麼都不做。用 <dialog>，會蓋在所有東西上面（包含清單的詳細視窗）。
-         按鈕文字可用 data-confirm-ok 改（預設「確認刪除」）；不是危險動作（例如還原）可加 data-confirm-variant="primary"，按鈕改成主色。 --}}
+         按鈕文字可用 data-confirm-ok 改（預設「確認刪除」）；不是危險動作（例如還原）可加 data-confirm-variant="primary"，按鈕改成主色。
+         需要讓人認出是哪一筆時，加 data-confirm-title（視窗標題）與 data-confirm-detail='[["零件","P-001 螺絲"],["數量","5 個"]]'（逐行列出的資料）；
+         值寫成 "@欄位名稱"（例如 ["數量","@quantity"]）就是送出當下從表單欄位讀出來的內容（下拉選單讀選到的文字、檔案欄位讀檔名）；
+         值寫成 "@sum:欄位甲*欄位乙"（例如 ["總價","@sum:quantity*unit_price"]）是兩個數字欄位相乘的金額（顯示成 NT$ 1,234）。 --}}
     <dialog id="confirmActionDialog" class="tb-confirm-dialog" aria-labelledby="confirmActionTitle">
         <form method="dialog">
             <h2 class="tb-confirm-title" id="confirmActionTitle">請再確認一次</h2>
             <p class="tb-confirm-message" id="confirmActionMessage"></p>
+            <dl class="small border rounded p-2 mb-3 d-none" id="confirmActionDetail"></dl>
             <div class="tb-confirm-actions">
                 <button type="submit" value="cancel" class="btn btn-outline-secondary" autofocus>取消</button>
                 <button type="submit" value="ok" class="btn btn-danger" id="confirmActionOk">確認刪除</button>
@@ -518,6 +522,8 @@
         if (!dialog || typeof dialog.showModal !== 'function') return;   // 很舊的瀏覽器：退回不攔（後端照常處理）
         const message = document.getElementById('confirmActionMessage');
         const okButton = document.getElementById('confirmActionOk');
+        const titleEl = document.getElementById('confirmActionTitle');
+        const detailEl = document.getElementById('confirmActionDetail');
         let pending = null;
         document.addEventListener('submit', function (event) {
             const form = event.target;
@@ -527,6 +533,37 @@
             event.stopImmediatePropagation();
             pending = form;
             message.textContent = form.getAttribute('data-confirm');
+            titleEl.textContent = form.getAttribute('data-confirm-title') || '請再確認一次';
+            // 要辨認的資料（例如是哪一個零件、哪一筆）：一行一項「名稱：內容」，沒有就整塊隱藏。
+            detailEl.innerHTML = '';
+            let rows = [];
+            try { rows = JSON.parse(form.getAttribute('data-confirm-detail') || '[]'); } catch (e) { rows = []; }
+            rows.forEach(function (row) {
+                let shown = String(row[1]);
+                if (shown.indexOf('@sum:') === 0) {
+                    const names = shown.slice(5).split('*');
+                    const nums = names.map(function (n) { const f = form.querySelector('[name="' + n + '"]'); return f ? parseFloat(f.value) : NaN; });
+                    shown = nums.some(isNaN) ? '—' : 'NT$ ' + Math.round(nums.reduce(function (a, b) { return a * b; }, 1)).toLocaleString('en-US');
+                } else if (shown.charAt(0) === '@') {
+                    const field = form.querySelector('[name="' + shown.slice(1) + '"]');
+                    if (!field) { shown = '—'; }
+                    else if (field.type === 'file') { shown = Array.prototype.map.call(field.files, function (f) { return f.name; }).join('、') || '沒有附件'; }
+                    else if (field.tagName === 'SELECT') { shown = field.selectedIndex >= 0 ? field.options[field.selectedIndex].text : '—'; }
+                    else { shown = field.value.trim() || '—'; }
+                }
+                const line = document.createElement('div');
+                line.className = 'd-flex gap-2';
+                const label = document.createElement('dt');
+                label.className = 'fw-normal text-muted flex-shrink-0 mb-0';
+                label.textContent = row[0];
+                const value = document.createElement('dd');
+                value.className = 'mb-0';
+                value.textContent = shown;
+                line.appendChild(label);
+                line.appendChild(value);
+                detailEl.appendChild(line);
+            });
+            detailEl.classList.toggle('d-none', rows.length === 0);
             okButton.textContent = form.getAttribute('data-confirm-ok') || '確認刪除';
             okButton.className = 'btn ' + (form.getAttribute('data-confirm-variant') === 'primary' ? 'btn-primary' : 'btn-danger');
             dialog.returnValue = '';
@@ -563,6 +600,16 @@
     {{-- 暫時關掉整頁捲軸（洋蔥的詳細面板、篩選面板）：tbLockScroll(true) 關、tbLockScroll(false) 開回來。
          關掉時在 body 右邊補上原本捲軸的寬度，版面寬度不會跳一下（Bootstrap 對話框自己會做同樣的事）。手機、Mac 的捲軸寬度是 0，不受影響。 --}}
     <script>
+    // 數字欄位：輸入時前面多餘的 0 自動消失（0 後面接著打 5 變成 5，不是 05）；點進顯示 0 的欄位時整個選起來，直接打字就取代。
+    document.addEventListener('input', function (event) {
+        var el = event.target;
+        if (!el || el.tagName !== 'INPUT' || el.type !== 'number') return;
+        if (/^0\d/.test(el.value)) el.value = el.value.replace(/^0+(?=\d)/, '');
+    });
+    document.addEventListener('focusin', function (event) {
+        var el = event.target;
+        if (el && el.tagName === 'INPUT' && el.type === 'number' && el.value === '0') el.select();
+    });
     window.tbLockScroll = function (lock) {
         var html = document.documentElement;
         if (lock) {
@@ -652,21 +699,6 @@
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     @auth
-        <script>
-            // 「返回」：上一頁是本站的頁面才用瀏覽器的上一頁；否則維持連結本身（回主控台）。
-            (function () {
-                var back = document.querySelector('[data-page-back]');
-                if (!back) { return; }
-                back.addEventListener('click', function (event) {
-                    var sameSite = false;
-                    try { sameSite = document.referrer !== '' && new URL(document.referrer).origin === location.origin; } catch (e) {}
-                    if (sameSite && history.length > 1) {
-                        event.preventDefault();
-                        history.back();
-                    }
-                });
-            })();
-        </script>
     @endauth
     {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
     @include('layouts.partials.form-stepper')

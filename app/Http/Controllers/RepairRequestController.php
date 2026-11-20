@@ -20,6 +20,7 @@ use App\Services\RepairAssignmentNotifier;              // 派工後寄通知信
 use App\Services\RepairRequestWorkflow;                 // 報修單狀態轉換規則（誰能從哪個狀態變到哪個狀態）
 use DomainException;                                    // 「違反業務規則」的例外，狀態轉換不合法時由 Workflow 丟出
 use Illuminate\Http\Request;                            // 這一次瀏覽器送來的請求
+use Illuminate\Support\Carbon;                          // 日期處理（新增日期範圍篩選）
 use Illuminate\Support\Facades\Auth;                    // 取得目前登入的人
 use Maatwebsite\Excel\Facades\Excel;                 // Excel 匯出
 use Illuminate\Support\Facades\DB;                      // 資料庫交易：建立報修單與回寫保養結果要一起成功
@@ -78,7 +79,68 @@ class RepairRequestController extends Controller
         $classrooms = Classroom::orderBy('classroom_code')->get();
         $filteredDevice = $request->filled('device_id') ? Device::find($request->integer('device_id')) : null;
 
-        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice'));
+        $activeFilters = $this->describeActiveFilters($request, $statuses);
+
+        return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'filteredDevice', 'activeFilters'));
+    }
+
+    /**
+     * 網址上的 ?status= 拆成狀態清單（可用逗號帶多個），不認識的狀態會被丟掉（結果就是查不到，不會 500）。
+     *
+     * @return array<int, string>
+     */
+    private function statusList(Request $request): array
+    {
+        $valid = array_map(fn (RepairRequestStatus $status) => $status->value, RepairRequestStatus::cases());
+
+        return array_values(array_intersect(array_map('trim', explode(',', $request->string('status')->toString())), $valid)) ?: ['__none__'];
+    }
+
+    /**
+     * 目前套用的「進階篩選」說明（網址帶過來、篩選列沒有對應欄位的那幾個），畫面上每一項顯示成一行灰字，並附清除連結，
+     * 讓人一看就知道「現在只看什麼」。回傳 [['text' => 說明, 'clear' => 要移除的參數名稱們], ...]。
+     *
+     * @param  array<int, RepairRequestStatus>  $statuses
+     * @return array<int, array{text: string, clear: array<int, string>}>
+     */
+    private function describeActiveFilters(Request $request, array $statuses): array
+    {
+        $filters = [];
+
+        if ($request->boolean('open')) {
+            $filters[] = ['text' => '只顯示未結案（進行中）的報修單', 'clear' => ['open']];
+        }
+        if ($request->filled('status') && str_contains($request->string('status')->toString(), ',')) {
+            $labels = collect($statuses)->filter(fn (RepairRequestStatus $s) => in_array($s->value, $this->statusList($request), true))->map->label()->implode('、');
+            $filters[] = ['text' => '只顯示狀態為「' . $labels . '」的報修單', 'clear' => ['status']];
+        }
+        if ($request->filled('created_from') || $request->filled('created_to')) {
+            $from = $request->string('created_from')->toString();
+            $to = $request->string('created_to')->toString();
+            $range = $from !== '' && $from === $to ? $from : (($from ?: '最早') . ' 至 ' . ($to ?: '今天'));
+            $filters[] = ['text' => '只顯示 ' . $range . ' 新增的報修單', 'clear' => ['created_from', 'created_to']];
+        }
+        if ($request->filled('ended_from') || $request->filled('ended_to')) {
+            $from = $request->string('ended_from')->toString();
+            $to = $request->string('ended_to')->toString();
+            $filters[] = ['text' => '只顯示維修在 ' . ($from ?: '最早') . ' 至 ' . ($to ?: '今天') . ' 期間完成的報修單', 'clear' => ['ended_from', 'ended_to']];
+        }
+        if ($request->filled('device_classroom_id')) {
+            $room = Classroom::find($request->integer('device_classroom_id'));
+            $filters[] = ['text' => '只顯示放在「' . ($room ? $room->classroom_code . ' ' . $room->name : '這間教室') . '」的設備的報修單', 'clear' => ['device_classroom_id']];
+        }
+        if ($request->filled('device_category_id')) {
+            $category = \App\Models\DeviceCategory::find($request->integer('device_category_id'));
+            $filters[] = ['text' => '只顯示設備類別為「' . ($category ? $category->name : '這個類別') . '」的報修單', 'clear' => ['device_category_id']];
+        }
+        if ($request->boolean('assigned_to_me')) {
+            $filters[] = ['text' => '只顯示指派給我的報修單', 'clear' => ['assigned_to_me']];
+        }
+        if ($request->boolean('acceptable')) {
+            $filters[] = ['text' => '只顯示等你驗收的報修單', 'clear' => ['acceptable']];
+        }
+
+        return $filters;
     }
 
     /**
@@ -89,9 +151,13 @@ class RepairRequestController extends Controller
         // 網址上的篩選條件格式不對（例如被亂改成 status[]=x）時，回到上一頁並提示，不要整頁 500。
         $request->validate([
             'keyword' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'string', 'max:30'],
+            'status' => ['nullable', 'string', 'max:120'],
             'assignee' => ['nullable', 'string', 'max:100'],
-        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員']);
+            'created_from' => ['nullable', 'date_format:Y-m-d'],
+            'created_to' => ['nullable', 'date_format:Y-m-d'],
+            'ended_from' => ['nullable', 'date_format:Y-m-d'],
+            'ended_to' => ['nullable', 'date_format:Y-m-d'],
+        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員', 'created_from' => '新增日期（起）', 'created_to' => '新增日期（迄）', 'ended_from' => '完修日期（起）', 'ended_to' => '完修日期（迄）']);
 
         return RepairRequest::query()
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
@@ -131,8 +197,29 @@ class RepairRequestController extends Controller
             })
             // 我的報修：?mine=1 只看「我提出的」報修單（選單的「我的報修」連過來）；所有身分都能用，管理員與主管也能只看自己提的。
             ->when($request->boolean('mine'), fn ($query) => $query->where('requester_id', $request->user()->id))
-            // 狀態篩選：有帶 ?status= 才套用。
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 狀態篩選：有帶 ?status= 才套用；可以用逗號帶多個（?status=pending,assigned，主控台「待修數」卡片用）。
+            ->when($request->filled('status'), fn ($query) => $query->whereIn('status', $this->statusList($request)))
+            // 只看未結案（進行中）：?open=1，教室主檔、設備主檔、主控台的「進行中」數字連過來，數字和列表才會一致。
+            ->when($request->boolean('open'), fn ($query) => $query->where('status', '!=', RepairRequestStatus::Completed->value))
+            // 新增日期範圍：?created_from=2026-11-01&created_to=2026-11-30（含頭尾），主控台「本月新增」與每日趨勢圖連過來。
+            ->when($request->filled('created_from'), fn ($query) => $query->where('created_at', '>=', Carbon::parse($request->string('created_from')->toString())->startOfDay()))
+            ->when($request->filled('created_to'), fn ($query) => $query->where('created_at', '<=', Carbon::parse($request->string('created_to')->toString())->endOfDay()))
+            // 完修日期範圍：有維修紀錄在這段期間結束（?ended_from=&ended_to=），主控台「本月平均累計維修工時」卡片連過來，
+            // 列出來的就是納入平均的那些已結案報修單。
+            ->when($request->filled('ended_from') || $request->filled('ended_to'), fn ($query) => $query->whereHas('repairLogs', function ($logs) use ($request) {
+                $logs->whereNotNull('ended_at')
+                    ->when($request->filled('ended_from'), fn ($q) => $q->where('ended_at', '>=', Carbon::parse($request->string('ended_from')->toString())->startOfDay()))
+                    ->when($request->filled('ended_to'), fn ($q) => $q->where('ended_at', '<=', Carbon::parse($request->string('ended_to')->toString())->endOfDay()));
+            }))
+            // 只看「設備放在這間教室」的報修單（?device_classroom_id=，教室主檔的進行中數字與排行圖用，算法和數字一致；
+            // 看板上的「教室」下拉選單另外也會把「設備地點寫這間教室」的報修單算進來）。
+            ->when($request->filled('device_classroom_id'), fn ($query) => $query->whereHas('device', fn ($device) => $device->withoutTrashed()->where('classroom_id', $request->integer('device_classroom_id'))))
+            // 只看某個設備類別（?device_category_id=，設備類別排行圖連過來）。
+            ->when($request->filled('device_category_id'), fn ($query) => $query->whereHas('device', fn ($device) => $device->withoutTrashed()->where('device_category_id', $request->integer('device_category_id'))))
+            // 只看「等我驗收」的待驗收案件（?acceptable=1，通知鈴鐺「待驗收」連過來，和鈴鐺數字同一個定義）。
+            ->when($request->boolean('acceptable'), fn ($query) => $query->acceptableBy($request->user()))
+            // 只看指派給我的（?assigned_to_me=1，通知鈴鐺「指派給我」連過來；用帳號編號比對，不會被同名的人混淆）。
+            ->when($request->boolean('assigned_to_me'), fn ($query) => $query->where('assigned_to', $request->user()->id))
             // 逾時篩選：?overdue=1 只看已逾時（未結案且超過預計處理時間）的案件；主控台「逾時工單」卡片會連過來。
             ->when($request->boolean('overdue'), fn ($query) => $query->overdue())
             // 維修人員篩選：對「已指派的維修人員姓名」模糊比對（維修人員是 assigned_to 指向的真實帳號）。
@@ -551,9 +638,40 @@ class RepairRequestController extends Controller
 
         $this->logStatusChange($repairRequest, $from);
 
+        // 驗收通過：到詳細頁用彈出視窗顯示「結案資訊」（案件、設備、維修人員、維修紀錄與工時、用料、驗收人、結案時間）。
+        $repairRequest->load(['device.classroom', 'classroom', 'assignedTechnician', 'repairLogs.partUsages.part']);
+        $hours = 0.0;
+        $partTotals = [];
+        foreach ($repairRequest->repairLogs as $log) {
+            $hours += (float) $log->total_hours;
+            foreach ($log->partUsages as $usage) {
+                $name = $usage->part ? $usage->part->name : '（已刪除的零件）';
+                $partTotals[$name] = ($partTotals[$name] ?? 0) + $usage->quantity;
+            }
+        }
+        $partLines = [];
+        foreach ($partTotals as $name => $quantity) {
+            $partLines[] = $name . ' × ' . $quantity;
+        }
+        $device = $repairRequest->device;
+        $where = $device
+            ? trim($device->device_code . ' ' . ($device->classroom ? $device->classroom->name : ''))
+            : ($repairRequest->locationLabel() ?: ($repairRequest->device_note ?: '未填寫'));
+        $technician = $repairRequest->assignedTechnician;
+        $acceptor = Auth::user();
+
         return redirect()
             ->route('repairs.show', $repairRequest)
-            ->with('success', __('repair_requests.flash.completed'));
+            ->with('success', __('repair_requests.flash.completed'))
+            ->with('closing_info', [
+                ['案件', '#' . $repairRequest->id . ' ' . $repairRequest->title],
+                ['設備／地點', $where],
+                ['維修人員', $technician ? $technician->name : '—'],
+                ['維修紀錄', $repairRequest->repairLogs->count() . ' 筆，共 ' . number_format($hours, 2) . ' 小時'],
+                ['使用零件', $partLines ? implode('、', $partLines) : '沒有使用零件'],
+                ['驗收人', $acceptor ? $acceptor->name : '—'],
+                ['結案時間', now()->format('Y-m-d H:i')],
+            ]);
     }
 
     /**
@@ -563,6 +681,9 @@ class RepairRequestController extends Controller
      */
     public function reject(RejectRepairRequestRequest $request, RepairRequest $repairRequest, RepairRequestWorkflow $workflow)
     {
+        // 和「驗收通過」同一條規則：只有指定的驗收人（或報修人本人、系統管理員）能退回，其他有驗收權限的人 → 403。
+        Gate::authorize('accept', $repairRequest);
+
         try {
             // 退回原因是必填的（由 RejectRepairRequestRequest 驗證），會一起存進報修單。
             $workflow->reject($repairRequest, $request->validated('rejection_reason'));

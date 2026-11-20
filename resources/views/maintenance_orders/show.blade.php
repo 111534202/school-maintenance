@@ -141,7 +141,11 @@
                                     報修單 #{{ $maintenanceOrder->result->repair_request_id }}
                                 @endif
                             @else
-                                {{ $maintenanceOrder->result->ng_conversion_status ?? '—' }}
+                                @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE)
+                                    <span class="badge text-bg-secondary">不建立報修單</span> 設備已淘汰或停用，不能報修
+                                @else
+                                    {{ $maintenanceOrder->result->ng_conversion_status ?? '—' }}
+                                @endif
                             @endif
                         </dd>
                     @endif

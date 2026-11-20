@@ -163,6 +163,11 @@ class MaintenanceOrder extends Model
             return false;
         }
 
+        // 已完成的工單是定案，不能再回報結果。
+        if ($this->status === self::STATUS_COMPLETED) {
+            return false;
+        }
+
         return $this->assigned_to === null || $this->assigned_to === $user->id || $user->can('maintenance.manage');
     }
 

@@ -84,7 +84,7 @@ class DashboardController extends Controller
         $trend = [];
         for ($i = 0; $i < 14; $i++) {   // 一天一天走過這 14 天
             $date = $since->copy()->addDays($i);   // copy：避免改到原本的 $since
-            $trend[] = ['label' => $date->format('m/d'), 'count' => (int) ($perDay[$date->format('Y-m-d')] ?? 0)];
+            $trend[] = ['label' => $date->format('m/d'), 'date' => $date->format('Y-m-d'), 'count' => (int) ($perDay[$date->format('Y-m-d')] ?? 0)];
         }
 
         // 先放「大家都看得到」的報修資料；需要權限的欄位先設成 null，下面有權限才填。

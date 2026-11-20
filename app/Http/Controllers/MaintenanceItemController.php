@@ -83,8 +83,7 @@ class MaintenanceItemController extends Controller
         $maintenanceItem->update(['is_active' => ! $maintenanceItem->is_active]);
         AuditLogger::log('status_changed', $maintenanceItem, ['is_active' => $maintenanceItem->is_active], ($maintenanceItem->is_active ? '重新啟用' : '停用') . '保養項目「' . $maintenanceItem->name . '」');
 
-        return redirect()
-            ->route('maintenance-items.index')
+        return $this->backToList('maintenance-items.index')
             ->with('success', $maintenanceItem->is_active ? '已重新啟用' : '已停用');
     }
 }

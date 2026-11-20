@@ -264,7 +264,8 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSeeInOrder(['設備總數', '3']);
         $response->assertSeeInOrder(['用戶數量', '3']);  // admin + 2
         $response->assertSeeInOrder(['教室數量', '1']);
-        $response->assertSee('設備異常教室 1 間');
+        $response->assertSeeInOrder(['設備異常教室', '1']);
+        $response->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
         // 主控台只留兩張重要圖表；設備狀態、用戶身分等圖表搬進對應的主檔（統計圖表按鈕）。
         $response->assertSee('工單狀態分布');
         $response->assertSee('近 14 日新增報修');
@@ -397,7 +398,7 @@ class DashboardAndNotificationTest extends TestCase
 
         $response->assertSee('2 張指派給你的案件待處理');
         $response->assertDontSee('新報修待派工');
-        $response->assertSee(route('repairs.index', ['assignee' => $technician->name]), false);
+        $response->assertSee(htmlspecialchars(route('repairs.index', ['assigned_to_me' => 1, 'status' => 'assigned,in_progress'])), false);
     }
 
     // 沒有待辦時鈴鐺不顯示紅色數字，清單顯示「目前沒有待處理的事項」。

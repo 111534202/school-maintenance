@@ -46,6 +46,9 @@
         @if (in_array($currentStatus, ['pending', 'reviewed'], true))
             <input type="hidden" name="status" value="{{ $currentStatus }}">
         @endif
+        @if (request()->boolean('upcoming'))
+            <input type="hidden" name="upcoming" value="1">
+        @endif
         <label for="keyword" class="visually-hidden">搜尋（申請狀態／送出時間／教室／申請班級／申請人／申請時段）</label>
         <input type="text" name="keyword" id="keyword" class="tb-input tb-input-pill" style="flex: 1 1 0; min-width: 0"
             value="{{ request('keyword') }}" placeholder="搜尋申請狀態、送出時間、教室、申請班級、申請人或申請時段，例如 待審核、2026-11-06、第 6 節">
@@ -54,6 +57,14 @@
             <a href="{{ route('reservations.index', array_filter(['status' => in_array($currentStatus, ['pending', 'reviewed'], true) ? $currentStatus : null])) }}" class="tb-btn tb-btn-outline">清除</a>
         @endif
     </form>
+
+    {{-- 從通知鈴鐺連過來（?upcoming=1）時說明目前只看什麼，並提供清除的連結。 --}}
+    @if (request()->boolean('upcoming'))
+        <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span><i class="bi bi-funnel me-2"></i>只顯示還有沒開始節次的待審核申請（時段全部已過的不列）</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('reservations.index', request()->except(['upcoming', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endif
 
     {{-- 申請狀態篩選：三張統計卡同時是篩選按鈕（保留上面的搜尋條件）；主控台「空間預約待審核」卡片會連到「未審核」。 --}}
     <nav class="tb-stats" aria-label="申請狀態篩選">

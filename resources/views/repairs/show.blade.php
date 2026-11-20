@@ -116,7 +116,8 @@
                 </div>
             </div>
 
-            @if ($repairRequest->rejection_reason)
+            {{-- 已結案的案件是定案了，不再顯示「驗收退回」的紅色提醒（那是給維修人員補做用的，結案後沒有要做的事）。 --}}
+            @if ($repairRequest->rejection_reason && $repairRequest->status !== \App\Enums\RepairRequestStatus::Completed)
                 {{-- 這張案件曾經被驗收退回，把最新一次的退回原因秀出來，讓維修人員知道要補做什麼。 --}}
                 <div class="alert alert-danger d-flex gap-2">
                     <i class="bi bi-arrow-counterclockwise mt-1"></i>
@@ -376,6 +377,34 @@
             @endif
         </div>
     </div>
+    {{-- 驗收通過後的「結案資訊」彈出視窗：一進來就打開，點視窗外面（灰色背景）、按「知道了」或按 Esc 都會關閉。 --}}
+    @if (session('closing_info'))
+        <dialog id="closingInfoDialog" class="tb-confirm-dialog" aria-labelledby="closingInfoTitle">
+            <form method="dialog">
+                <h2 class="tb-confirm-title" id="closingInfoTitle"><i class="bi bi-check-circle-fill text-success me-2"></i>已結案</h2>
+                <p class="tb-confirm-message">驗收通過，這張報修單已結案，以下是結案資訊。</p>
+                <dl class="small border rounded p-2 mb-3">
+                    @foreach (session('closing_info') as [$label, $value])
+                        <div class="d-flex gap-2">
+                            <dt class="fw-normal text-muted flex-shrink-0 mb-0">{{ $label }}</dt>
+                            <dd class="mb-0">{{ $value }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+                <div class="tb-confirm-actions">
+                    <button type="submit" class="btn btn-primary" autofocus>知道了</button>
+                </div>
+            </form>
+        </dialog>
+        <script>
+            (function () {
+                var d = document.getElementById('closingInfoDialog');
+                if (!d || !d.showModal) return;
+                d.showModal();
+                d.addEventListener('click', function (event) { if (event.target === d) d.close(); });
+            })();
+        </script>
+    @endif
     {{-- 教室課表視窗（派工、重新指派共用）：顯示設備地點那間教室一週的課表，點空堂就把時間填進「建議處理時間」。 --}}
     @if ($timetableClassroom && ($showDispatch || $canReassign))
         @include('layouts.partials.classroom-timetable-modal', ['classroom' => $timetableClassroom, 'url' => route('repairs.timetable', $repairRequest), 'mode' => 'datetime', 'busyLabel' => '已排維修', 'busyHint' => '同一節已有別張報修單'])

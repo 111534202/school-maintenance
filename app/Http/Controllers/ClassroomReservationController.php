@@ -54,6 +54,10 @@ class ClassroomReservationController extends Controller
         } elseif ($status === 'reviewed') {
             $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
         }
+        // 只看還有沒開始節次的待審核申請（?upcoming=1，通知鈴鐺連過來；和鈴鐺數字同一個定義）。
+        if ($request->boolean('upcoming')) {
+            $query->awaitingReview();
+        }
 
         $reservations = $query->paginate(15)->withQueryString();
 
@@ -112,6 +116,9 @@ class ClassroomReservationController extends Controller
             $query->where('status', ClassroomReservation::STATUS_PENDING);
         } elseif ($request->query('status') === 'reviewed') {
             $query->where('status', '<>', ClassroomReservation::STATUS_PENDING);
+        }
+        if ($request->boolean('upcoming')) {
+            $query->awaitingReview();
         }
 
         return $query;

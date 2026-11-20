@@ -133,7 +133,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id])), $html);
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id, 'abnormal' => 1])), $html);
-        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['classroom_id' => $room->id])), $html);
+        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['device_classroom_id' => $room->id, 'open' => 1])), $html);
     }
 
     // 核心設備異常（教室被標成設備異常）時，另外顯示「核心」徽章；非核心設備異常不顯示。
@@ -251,6 +251,6 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->device($this->room('B202'), 'B-RETIRED', 'retired');
         $this->device($this->room('C303'), 'C-OK');
 
-        $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室 2 間');
+        $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室')->assertSeeInOrder(['設備異常教室', '2', '間'], false)->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
     }
 }

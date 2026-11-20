@@ -126,7 +126,7 @@ class RoleController extends Controller
 
         AuditLogger::log('deleted', $role, ['name' => $role->name]);
 
-        return redirect()->route('roles.index')->with('success', __('roles.flash.deleted'));
+        return $this->backToList('roles.index')->with('success', __('roles.flash.deleted'));
     }
 
     /** 新增／編輯共用的驗證規則。編輯時傳入 $role，名稱不可重複的檢查會排除自己。 */

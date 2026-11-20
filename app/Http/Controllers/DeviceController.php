@@ -40,12 +40,13 @@ class DeviceController extends Controller
             // withCount：算出每台設備「進行中的報修單」數（不含已結案，且只算這位用戶看得到的案件），
             // 列表上顯示並連到報修看板（?device_id=）。
             ->withCount(['repairRequests as open_repairs_count' => fn ($repairs) => $repairs
-                ->visibleTo($user)
+                ->visibleOnBoard($user)
                 ->where('status', '!=', RepairRequestStatus::Completed->value)])
-            // 近 N 天報修次數（不分狀態、不分誰看得到，因為這是在看「這台設備本身」的故障頻率，
-            // 不是在看「這個用戶能不能看」）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
+            // 近 N 天報修次數（不分狀態；日期從 N 天前的 00:00 起算，和徽章連到報修看板的「新增日期」篩選同一個定義；
+            // 只算這位用戶看得到的案件，點進去的列表筆數才會和徽章一致）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
             ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
-                ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS))])
+                ->visibleOnBoard($user)
+                ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS)->startOfDay())])
             ->tap(fn ($query) => $this->applyFilters($query, $request))
             ->orderBy('device_code')   // 依設備編號排序
             ->paginate(15)
@@ -121,6 +122,11 @@ class DeviceController extends Controller
     /** 顯示編輯表單（GET /devices/{device}/edit）。 */
     public function edit(Device $device)
     {
+        // 已淘汰是定案：設備資料整筆唯讀，不能編輯（只能查看）。
+        if ($device->status === 'retired') {
+            return redirect()->route('devices.show', $device)->with('error', '這台設備已淘汰，資料已定案，不能編輯。');
+        }
+
         $categories = DeviceCategory::orderBy('name')->get();
         // 編輯時仍要能看到設備目前所在的教室，就算那間教室後來被停用了，
         // 否則下拉選單選不到目前值，表單一儲存就會把設備搬到別間教室
@@ -135,11 +141,20 @@ class DeviceController extends Controller
     /** 接收編輯表單（PUT /devices/{device}）。 */
     public function update(Request $request, Device $device)
     {
+        if ($device->status === 'retired') {
+            return redirect()->route('devices.show', $device)->with('error', '這台設備已淘汰，資料已定案，不能編輯。');
+        }
+
         $data = $this->validated($request, $device->id);
         // 先把「狀態」與「核心設備」從一般資料拿出來，因為它們要走專用的服務寫入（見下面）。
         $newStatus = $data['status'];
         $newIsCore = $request->boolean('is_core');
         unset($data['status'], $data['is_core']);
+
+        // 已淘汰是定案：不能再改回「正常／維修中／停用」（畫面的狀態欄也是鎖住的）。
+        if ($device->status === 'retired' && $newStatus !== 'retired') {
+            return back()->withInput()->withErrors(['status' => '這台設備已淘汰，狀態不能再改回其他狀態。']);
+        }
 
         // 還有沒結案的報修單時，不能把狀態從「維修中／已淘汰／停用」直接改回「正常」（要先把報修單處理完）。
         if ($newStatus === 'normal' && $device->status !== 'normal'
@@ -170,12 +185,17 @@ class DeviceController extends Controller
     /** 停用設備（PATCH /devices/{device}/disable）：狀態改成 disabled 並軟刪除（資料保留，不再出現在列表）。 */
     public function disable(Device $device)
     {
+        // 已淘汰是定案：不能再停用（資料唯讀，狀態也不能改成停用）。
+        if ($device->status === 'retired') {
+            return $this->backToList('devices.index')->with('error', '這台設備已淘汰，資料已定案，不能停用。');
+        }
+
         DeviceStatusService::updateStatus($device, 'disabled', '設備停用');
         $classroom = $device->classroom;   // 先記住教室，因為刪除後還要用它重新計算異常標記
         $device->delete();
         DeviceStatusService::syncClassroom($classroom);
 
-        return redirect()->route('devices.index')->with('success', __('devices.flash.disabled'));
+        return $this->backToList('devices.index')->with('success', __('devices.flash.disabled'));
     }
 
     /**
@@ -209,6 +229,10 @@ class DeviceController extends Controller
         $query = Device::with(['category', 'classroom'])->orderBy('device_code');
         $this->applyFilters($query, $request);
 
+        // 已淘汰的設備不再使用，不印 QR 貼紙（記下排除了幾台，畫面上會說明）。
+        $excludedRetired = (clone $query)->where('status', 'retired')->count();
+        $query->where('status', '!=', 'retired');
+
         $total = (clone $query)->count();
         $labels = $query->limit(self::QR_SHEET_LIMIT)->get()->map(fn (Device $device) => [
             'device' => $device,
@@ -218,7 +242,7 @@ class DeviceController extends Controller
 
         AuditLogger::log('downloaded', null, ['type' => 'device_qr_sheet', 'count' => $labels->count()], '列印設備 QR 貼紙 ' . $labels->count() . ' 張');
 
-        return view('devices.qr-sheet', ['labels' => $labels, 'total' => $total, 'limit' => self::QR_SHEET_LIMIT]);
+        return view('devices.qr-sheet', ['labels' => $labels, 'total' => $total, 'limit' => self::QR_SHEET_LIMIT, 'excludedRetired' => $excludedRetired]);
     }
 
     /**

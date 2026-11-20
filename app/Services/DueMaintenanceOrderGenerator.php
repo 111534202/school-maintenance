@@ -43,6 +43,11 @@ class DueMaintenanceOrderGenerator
                     return;
                 }
 
+                // 設備已淘汰或停用：不再為它產生保養工單。
+                if (! \App\Models\Device::canBeMaintained($plan->device_id)) {
+                    return;
+                }
+
                 MaintenanceOrder::create([
                     'maintenance_plan_id' => $plan->id,
                     'device_id' => $plan->device_id,

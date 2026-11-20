@@ -78,6 +78,21 @@ class Device extends Model
         ][$status] ?? 'text-bg-light';
     }
 
+    /**
+     * 這台設備還能不能保養：已停用（軟刪除）或已淘汰的設備不再建立保養工單（排程、人工建單、AI 核准都用這個判斷）。
+     * 傳 null（計畫只綁設備類別、沒綁特定設備）視為可以。
+     */
+    public static function canBeMaintained(?int $deviceId): bool
+    {
+        if ($deviceId === null) {
+            return true;
+        }
+
+        $device = static::withTrashed()->find($deviceId);
+
+        return $device !== null && ! $device->trashed() && ! in_array($device->status, ['retired', 'disabled'], true);
+    }
+
     /** 這台設備是不是「異常設備」（狀態在 DeviceStatusService::PROBLEM_STATUSES 清單裡）。 */
     public function isAbnormal(): bool
     {

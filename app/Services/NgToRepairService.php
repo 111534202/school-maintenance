@@ -34,6 +34,16 @@ class NgToRepairService
             return;
         }
 
+        // 設備已淘汰（或已停用刪除）：不能再報修，NG 不轉報修單（標成「不需轉報修」，畫面會說明原因）。
+        $deviceId = $result->maintenanceOrder()->value('device_id');
+        $device = $deviceId ? \App\Models\Device::withTrashed()->find($deviceId) : null;
+        if ($device && ($device->trashed() || $device->status === 'retired')) {
+            $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE]);
+            AuditLogger::log('updated', $result, ['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE], '保養 NG 未轉報修：設備 ' . $device->device_code . ' 已淘汰或停用');
+
+            return;
+        }
+
         if (! $this->repairModuleAvailable()) {
             $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_PENDING]);
 

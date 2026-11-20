@@ -292,9 +292,9 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         // 零件履歷匯出（excel／pdf）：預覽視窗勾選的區塊與欄位
         Route::get('parts/{part}/history-export/{format}', [PartController::class, 'exportHistory'])->whereIn('format', ['excel', 'pdf'])->name('parts.history.export');
         Route::resource('parts', PartController::class);
-        Route::resource('parts.purchases', PartPurchaseController::class)->except(['index', 'show']);
-        // 報廢紀錄：登記報廢（扣庫存）與取消報廢（加回庫存）。
-        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store', 'destroy']);
+        // 採購紀錄與報廢紀錄送出後就定案（唯讀）：只能新增與查看，不能修改、刪除或取消。
+        Route::resource('parts.purchases', PartPurchaseController::class)->only(['create', 'store', 'show']);
+        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store']);
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。

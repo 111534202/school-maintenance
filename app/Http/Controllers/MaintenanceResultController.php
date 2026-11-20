@@ -25,7 +25,7 @@ class MaintenanceResultController extends Controller
     public function create(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
         // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
-        if ($maintenanceOrder->result()->exists()) {
+        if ($maintenanceOrder->result()->exists() || $maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
         }
         // 工單指派了負責人：只有負責人與保養管理者可以回報（沒指派時有回報權限的人都可以）。
@@ -56,7 +56,7 @@ class MaintenanceResultController extends Controller
      */
     public function store(StoreMaintenanceResultRequest $request, MaintenanceOrder $maintenanceOrder, NgToRepairService $ngToRepairService, PartStockService $stock, AttachmentUploader $attachmentUploader): RedirectResponse
     {
-        if ($maintenanceOrder->result()->exists()) {
+        if ($maintenanceOrder->result()->exists() || $maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
         }
         abort_unless($maintenanceOrder->canBeReportedBy($request->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以回報。');

@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 
 /**
  * 零件報廢：零件還沒用就壞掉、過期或遺失時登記報廢（零件履歷的「報廢紀錄」）。
- * 報廢會從庫存扣掉，扣哪一批跟用料一樣先進先出；登記錯了可以「取消報廢」，數量會加回原本的批次。
+ * 報廢會從庫存扣掉，扣哪一批跟用料一樣先進先出；登記後就定案（唯讀），不能修改或取消。加回原本的批次。
  * 庫存的增減都交給 PartStockService。
  */
 class PartScrapController extends Controller
@@ -56,18 +56,5 @@ class PartScrapController extends Controller
 
         return redirect()->route('parts.show', $part)
             ->with('success', "已登記報廢 {$part->withUnit($scrap->quantity)}，庫存已扣除。");
-    }
-
-    /** 取消報廢：登記錯了才用，數量會加回原本的批次與目前庫存。 */
-    public function destroy(Part $part, PartScrap $scrap)
-    {
-        abort_unless($scrap->part_id === $part->id, 404);
-
-        $this->stock->restoreScrap($scrap);
-
-        AuditLogger::log('deleted', $scrap, ['quantity' => $scrap->quantity, 'reason' => $scrap->reason], "取消零件報廢：{$part->part_code} {$part->name} × {$scrap->quantity}");
-
-        return redirect()->route('parts.show', $part)
-            ->with('success', "已取消報廢，庫存加回 {$part->withUnit($scrap->quantity)}。");
     }
 }

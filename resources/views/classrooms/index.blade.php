@@ -112,7 +112,7 @@
                             {{-- 進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這間教室設備的報修單。 --}}
                             <td class="text-center">
                                 @if ($classroom->open_repairs_count > 0)
-                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['classroom_id' => $classroom->id]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_classroom_id' => $classroom->id, 'open' => 1]) }}"
                                         title="{{ __('classrooms.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $classroom->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>

@@ -133,7 +133,7 @@ class PreventiveCandidateReviewTest extends TestCase
             'recent_window' => 8,
             'dedup_window_days' => 21,
             'require_approval' => 0,
-        ])->assertRedirect(route('ai-settings.edit'));
+        ])->assertRedirect(route('preventive-candidates.index'));
 
         $this->assertEqualsWithDelta(0.75, AiSetting::get(AiSetting::RISK_THRESHOLD), 0.0001);
         $this->assertSame(5, AiSetting::get(AiSetting::MIN_COMPLETED_ORDERS));

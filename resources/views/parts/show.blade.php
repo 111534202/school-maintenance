@@ -18,11 +18,19 @@
             <h2 class="tb-section-title">基本資料</h2>
             <div class="d-flex gap-2">
                 <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
-                <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？採購紀錄也會一起刪除。">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-danger">刪除零件</button>
-                </form>
+                {{-- 沒有庫存、也沒有任何維修、保養使用或報廢紀錄才能刪除；不能刪時按鈕灰掉，滑鼠停留說明原因。 --}}
+                @if ($deletionBlocker = $part->deletionBlocker())
+                    <span class="text-muted small align-self-center">不能刪除：{{ $deletionBlocker }}</span>
+                    <span title="{{ $deletionBlocker }}">
+                        <button type="button" class="btn btn-sm btn-danger" disabled aria-disabled="true">刪除零件</button>
+                    </span>
+                @else
+                    <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？刪除後無法還原。">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-danger">刪除零件</button>
+                    </form>
+                @endif
             </div>
         </div>
         <div class="card-body">
@@ -118,7 +126,7 @@
         @endif
     </div>
 
-    {{-- 採購紀錄：每一筆是一個進貨批次。新增會增加庫存；已被用過的批次不能改數量、單價，也不能刪除。 --}}
+    {{-- 採購紀錄：每一筆是一個進貨批次。新增會增加庫存；送出後就定案（唯讀），不能修改或刪除。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h2 class="tb-section-title">採購紀錄</h2>
@@ -144,8 +152,8 @@
                     </thead>
                     <tbody>
                         @foreach ($purchases as $purchase)
-                            {{-- 點一列在對話框打開「修改採購紀錄」（跟按鉛筆一樣）。 --}}
-                            <tr data-modal-frame-href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" data-modal-title="修改採購紀錄" tabindex="0" role="link">
+                            {{-- 點一列在對話框打開這筆採購紀錄的詳細（唯讀）。 --}}
+                            <tr data-modal-frame-href="{{ route('parts.purchases.show', [$part, $purchase]) }}" data-modal-title="採購紀錄" tabindex="0" role="link">
                                 <td class="text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
                                 {{-- 沒填廠商也顯示文字（不用「—」），清單的副標題才會固定是「廠商 · 數量」。 --}}
                                 <td>{{ filled($purchase->vendor_name) ? $purchase->vendor_name : '未填廠商' }}</td>
@@ -164,15 +172,6 @@
                                             <i class="bi bi-paperclip" aria-hidden="true"></i>
                                         </button>
                                     @endif
-                                    <a href="{{ route('parts.purchases.edit', [$part, $purchase]) }}" class="btn btn-outline-primary btn-sm icon-btn" title="修改" aria-label="修改" data-modal-frame data-modal-title="修改採購紀錄"><i class="bi bi-pencil" aria-hidden="true"></i></a>
-                                    @unless ($purchase->isUsed())
-                                        <form method="POST" action="{{ route('parts.purchases.destroy', [$part, $purchase]) }}" class="d-inline"
-                                            data-confirm="請問確定要刪除 {{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的採購紀錄（{{ $part->withUnit($purchase->quantity) }}）嗎？庫存會減少 {{ $part->withUnit($purchase->quantity) }}。">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-outline-danger btn-sm icon-btn" title="刪除" aria-label="刪除"><i class="bi bi-trash3" aria-hidden="true"></i></button>
-                                        </form>
-                                    @endunless
                                     </div>
                                 </td>
                             </tr>
@@ -187,7 +186,7 @@
     @include('parts._attachment-modal')
 
     {{-- 報廢紀錄：零件還沒用就壞掉、過期或遺失時登記，從庫存扣掉（先進先出，跟用料一樣）。
-         報廢損失＝扣到的各批數量×那一批的單價。登記錯了可以「取消報廢」，數量加回原本的批次。 --}}
+         報廢損失＝扣到的各批數量×那一批的單價。登記後就定案（唯讀），不能修改或取消。 --}}
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             {{-- 標題旁邊寫共報廢多少（損失金額在每一筆的詳細與匯出裡）；右邊是「登記報廢」。 --}}
@@ -208,7 +207,7 @@
                 <table class="tb-table align-middle mb-0" data-onion-panel-title="{{ $panelName }}報廢紀錄" data-onion-list-only>
                     <thead>
                         <tr>
-                            {{-- 欄位順序：報廢日期、登記人、數量、損失金額、扣用批次、原因、備註、操作。 --}}
+                            {{-- 欄位順序：報廢日期、登記人、數量、損失金額、扣用批次、原因、備註（登記後唯讀，沒有操作欄）。 --}}
                             <th class="text-nowrap">報廢日期</th>
                             <th>登記人</th>
                             <th class="text-end text-nowrap">數量</th>
@@ -216,7 +215,6 @@
                             <th class="text-nowrap">扣用批次</th>
                             <th>原因</th>
                             <th>備註</th>
-                            <th class="text-end tb-col-fit">操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -236,14 +234,6 @@
                                 </td>
                                 <td>{{ $scrap->reason }}</td>
                                 <td>{{ $scrap->note ?? '—' }}</td>
-                                <td class="text-end tb-col-fit">
-                                    <form method="POST" action="{{ route('parts.scraps.destroy', [$part, $scrap]) }}" class="d-inline"
-                                        data-confirm="請問確定要取消 {{ $scrap->scrap_date?->format('Y-m-d') }} 這筆報廢（{{ $part->withUnit($scrap->quantity) }}）嗎？庫存會加回 {{ $part->withUnit($scrap->quantity) }}。" data-confirm-ok="確認取消報廢">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger btn-sm icon-btn" title="取消報廢" aria-label="取消報廢"><i class="bi bi-trash3" aria-hidden="true"></i></button>
-                                    </form>
-                                </td>
                             </tr>
                         @endforeach
                     </tbody>

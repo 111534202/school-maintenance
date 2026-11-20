@@ -136,16 +136,13 @@ class AppServiceProvider extends ServiceProvider
         // 有驗收權限的人：提醒「有幾張工單等著驗收」。
         // 只算「這位用戶真的能驗收」的案件（報修人本人，或沒有報修人的案件；管理員全部），規則見 RepairRequestPolicy::accept。
         if ($user->can('repairs.accept')) {
-            $count = RepairRequest::where('status', RepairRequestStatus::PendingReview->value)
-                // 管理員全部；其他人：指定由我驗收的，或沒指定驗收人、而且是我報修的（規則見 RepairRequestPolicy::accept）。
-                ->when(! $user->isAdmin(), fn ($q) => $q->where(fn ($w) => $w->where('accepted_by', $user->id)->orWhere(fn ($own) => $own->whereNull('accepted_by')->where('requester_id', $user->id))))
-                ->count();
+            $count = RepairRequest::acceptableBy($user)->count();   // 管理員全部；其他人只算「等我驗收」的（和看板 ?acceptable=1 同一個定義）
             if ($count > 0) {
                 $items[] = [
                     'icon' => 'bi-clipboard-check',
                     'text' => __('notifications.pending_review', ['count' => $count]),
                     'count' => $count,
-                    'url' => route('repairs.index', ['status' => RepairRequestStatus::PendingReview->value]),
+                    'url' => route('repairs.index', ['status' => RepairRequestStatus::PendingReview->value, 'acceptable' => 1]),
                 ];
             }
         }
@@ -160,27 +157,23 @@ class AppServiceProvider extends ServiceProvider
                     'icon' => 'bi-wrench',
                     'text' => __('notifications.assigned_to_me', ['count' => $count]),
                     'count' => $count,
-                    'url' => route('repairs.index', ['assignee' => $user->name]),   // 用自己的姓名篩選報修看板
+                    // 只看「指派給我、還沒做完」的（和上面的數字同一個定義；用帳號編號比對，不會被同名的人混淆）。
+                    'url' => route('repairs.index', ['assigned_to_me' => 1, 'status' => RepairRequestStatus::Assigned->value . ',' . RepairRequestStatus::InProgress->value]),
                 ];
             }
         }
 
         // 有空間申請審核權限的人：提醒「有幾筆空間申請待審核」。
         // 只算還有「沒開始、還沒審核」節次的申請；時段全部已過的（仍可補審核，但不再提醒）不算。
+        // 點進去的列表帶 upcoming=1，用同一個定義（ClassroomReservation::scopeAwaitingReview），數字才一致。
         if ($user->can('reservations.manage')) {
-            $today = now()->toDateString();
-            $time = now()->format('H:i:s');
-            $count = ClassroomReservation::query()
-                ->where('status', ClassroomReservation::STATUS_PENDING)
-                ->whereHas('slots', fn ($q) => $q->whereNull('status')->where(fn ($q) => $q->whereDate('reservation_date', '>', $today)
-                    ->orWhere(fn ($q) => $q->whereDate('reservation_date', $today)->where('start_time', '>', $time))))
-                ->count();
+            $count = ClassroomReservation::query()->awaitingReview()->count();
             if ($count > 0) {
                 $items[] = [
                     'icon' => 'bi-door-open',
                     'text' => __('notifications.pending_reservations', ['count' => $count]),
                     'count' => $count,
-                    'url' => route('reservations.index', ['status' => 'pending']),   // 空間申請，只看未審核
+                    'url' => route('reservations.index', ['status' => 'pending', 'upcoming' => 1]),   // 空間申請，只看未審核且還沒開始的
                 ];
             }
         }
@@ -212,7 +205,7 @@ class AppServiceProvider extends ServiceProvider
                         'icon' => 'bi-person-exclamation',
                         'text' => __('notifications.maintenance_unassigned', ['count' => $unassigned]),
                         'count' => $unassigned,
-                        'url' => route('maintenance-orders.index', ['assignee' => 'none']),
+                        'url' => route('maintenance-orders.index', ['assignee' => 'none', 'unfinished' => 1]),
                     ];
                 }
             }

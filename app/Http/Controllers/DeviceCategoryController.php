@@ -88,13 +88,13 @@ class DeviceCategoryController extends Controller
     {
         // exists()：只問「有沒有」，不需要真的把設備全部撈出來。
         if ($deviceCategory->devices()->withTrashed()->exists()) {
-            return redirect()->route('device-categories.index')->with('error', __('device_categories.errors.in_use'));
+            return $this->backToList('device-categories.index')->with('error', __('device_categories.errors.in_use'));
         }
 
         $deviceCategory->delete();
 
         AuditLogger::log('deleted', $deviceCategory);
 
-        return redirect()->route('device-categories.index')->with('success', __('device_categories.flash.deleted'));
+        return $this->backToList('device-categories.index')->with('success', __('device_categories.flash.deleted'));
     }
 }

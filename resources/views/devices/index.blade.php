@@ -109,7 +109,7 @@
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a>
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                    <a href="{{ route('repairs.index', ['device_id' => $device->id]) }}" class="d-block small text-danger text-decoration-none"
+                                    <a href="{{ route('repairs.index', ['device_id' => $device->id, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString()]) }}" class="d-block small text-danger text-decoration-none"
                                         title="{{ __('devices.repeat_repair_hint') }}">
                                         <i class="bi bi-arrow-repeat"></i> {{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}
                                     </a>
@@ -129,7 +129,7 @@
                             {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這台設備的報修單。 --}}
                             <td class="text-center">
                                 @if ($device->open_repairs_count > 0)
-                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id, 'open' => 1]) }}"
                                         title="{{ __('devices.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $device->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>
@@ -137,8 +137,13 @@
                             </td>
                             <td class="text-end tb-col-fit">
                                 <div class="d-inline-flex gap-1">
+                                    {{-- 已淘汰的設備資料已定案，不放「修改」按鈕。 --}}
+                                    @if ($device->status !== 'retired')
                                     <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}" data-modal-frame data-modal-title="修改設備" data-modal-size="lg"
                                         title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
+                                    @endif
+                                    {{-- 已淘汰的設備資料已定案：不放「停用」按鈕。 --}}
+                                    @if ($device->status !== 'retired')
                                     {{-- 停用按鈕：送出前先跳出全站共用的確認視窗；停用 = 狀態改 disabled 並軟刪除。
                                          （詳細資料：點這一列在對話框打開，所以不另外放「查看」按鈕。） --}}
                                     <form method="POST" action="{{ route('devices.disable', $device) }}"
@@ -149,6 +154,7 @@
                                         <button class="btn btn-outline-danger btn-sm icon-btn" type="submit"
                                             title="{{ __('devices.actions.disable') }}" aria-label="{{ __('devices.actions.disable') }}"><i class="bi bi-slash-circle"></i></button>
                                     </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

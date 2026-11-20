@@ -44,7 +44,7 @@ class ReservationNotificationTest extends TestCase
 
         $this->get(route('reservations.create'))
             ->assertSee('2 筆空間申請待審核')
-            ->assertSee(e(route('reservations.index', ['status' => 'pending'])), false);
+            ->assertSee(e(route('reservations.index', ['status' => 'pending', 'upcoming' => 1])), false);
     }
 
     public function test_people_without_the_review_permission_do_not_see_it(): void

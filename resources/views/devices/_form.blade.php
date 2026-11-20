@@ -90,11 +90,18 @@
     <div class="col-md-4">
         <label for="status" class="form-label">{{ __('devices.form.status') }}</label>
         {{-- 狀態下拉選單：選項來自 Device::STATUSES，顯示名稱用 Device::statusLabel() 轉成中文。 --}}
-        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
+        @php($statusLocked = isset($device) && ($device->status ?? null) === 'retired')   {{-- 已淘汰是定案：狀態欄鎖住，不能改回其他狀態 --}}
+        @if ($statusLocked)
+            <input type="hidden" name="status" value="retired">
+        @endif
+        <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required @disabled($statusLocked)>
             @foreach (\App\Models\Device::STATUSES as $status)
                 <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ \App\Models\Device::statusLabel($status) }}</option>
             @endforeach
         </select>
+        @if ($statusLocked)
+            <div class="form-text">這台設備已淘汰，狀態不能再修改。</div>
+        @endif
         @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-md-4 d-flex align-items-end">
