@@ -24,6 +24,12 @@ return [
         'reassigned' => '重新指派',
         'rejected' => '驗收退回',
         'mail_tested' => '寄送測試信',
+        'ai_settings_updated' => 'AI 設定修改',
+        'ai_order_auto_created' => 'AI 自動建立保養工單',
+        'ai_candidate_created' => 'AI 產生預防保養候選',
+        'ai_candidate_approved' => 'AI 候選核准',
+        'ai_candidate_rejected' => 'AI 候選駁回',
+        'ai_candidate_duplicate' => 'AI 候選重複',
     ],
 
     // 對象類型名稱：鍵是 Model 的類別名稱（不含路徑），值是操作紀錄頁顯示的名稱。
@@ -40,6 +46,15 @@ return [
         'Part' => '零件',
         'PartPurchase' => '零件採購紀錄',
         'MailSetting' => '寄信設定',
+        'MaintenanceOrder' => '保養工單',
+        'MaintenanceResult' => '保養結果',
+        'MaintenancePlan' => '保養計畫',
+        'MaintenanceItem' => '保養項目',
+        'PreventiveCandidate' => 'AI 預防保養候選',
+        'Major' => '科系',
+        'ClassroomReservation' => '空間申請',
+        'AiSetting' => 'AI 設定',
+        'ImportBatch' => '批次匯入',
     ],
 
     // 操作紀錄頁篩選列的文字。

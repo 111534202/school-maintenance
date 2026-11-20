@@ -187,7 +187,8 @@ class RepairRequest extends Model
      */
     public function device(): BelongsTo
     {
-        return $this->belongsTo(Device::class);
+        // withTrashed：設備被停用（軟刪除）後，報修單仍要看得到是哪一台（和保養工單、保養計畫一致）。
+        return $this->belongsTo(Device::class)->withTrashed();
     }
 
     /**

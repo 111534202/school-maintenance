@@ -44,7 +44,7 @@ class UpdateRepairRequestRequest extends FormRequest
 
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
+            'description' => ['required', 'string', 'max:5000'],
             'impact_level' => ['required', 'string', 'in:low,medium,high'],
             'is_class_affected' => ['required', 'boolean'],
             'device_note' => ['nullable', 'string', 'max:255'],

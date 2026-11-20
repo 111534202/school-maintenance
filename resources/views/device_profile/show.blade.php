@@ -251,8 +251,7 @@
             <div class="card h-100">
                 <div class="card-header"><h2 class="tb-section-title">備品耗用成本</h2></div>
                 <div class="card-body text-muted small">
-                    目前以維修紀錄上的「使用備品」文字說明呈現（見上方）。
-                    庫存／成本模組（劉家芸主責）尚未併入 develop，備品金額待她的介面確認後再串接唯讀查詢，不會在這裡另外建表。
+                    備品的使用情形請見上方各張報修單的維修紀錄；金額只有零件庫存管理者能在零件頁查看。
                 </div>
             </div>
         </div>

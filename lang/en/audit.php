@@ -24,6 +24,12 @@ return [
         'reassigned' => 'Reassigned',
         'rejected' => 'Rejected',
         'mail_tested' => 'Test mail sent',
+        'ai_settings_updated' => 'AI settings updated',
+        'ai_order_auto_created' => 'AI order auto-created',
+        'ai_candidate_created' => 'AI candidate created',
+        'ai_candidate_approved' => 'AI candidate approved',
+        'ai_candidate_rejected' => 'AI candidate rejected',
+        'ai_candidate_duplicate' => 'AI candidate duplicate',
     ],
 
     // 對象類型名稱：鍵是 Model 的類別名稱（不含路徑），值是操作紀錄頁顯示的名稱。
@@ -40,6 +46,15 @@ return [
         'Part' => 'Part',
         'PartPurchase' => 'Part purchase',
         'MailSetting' => 'Mail settings',
+        'MaintenanceOrder' => 'Maintenance order',
+        'MaintenanceResult' => 'Maintenance result',
+        'MaintenancePlan' => 'Maintenance plan',
+        'MaintenanceItem' => 'Maintenance item',
+        'PreventiveCandidate' => 'AI preventive candidate',
+        'Major' => 'Major',
+        'ClassroomReservation' => 'Classroom reservation',
+        'AiSetting' => 'AI settings',
+        'ImportBatch' => 'Import batch',
     ],
 
     // 操作紀錄頁篩選列的文字。

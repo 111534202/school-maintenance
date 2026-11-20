@@ -71,6 +71,13 @@ class NgToRepairService
             'ng_conversion_status' => MaintenanceResult::NG_CONVERSION_CONVERTED,
             'repair_request_id' => $repairRequest->id,
         ]);
+
+        // 自動建的報修單也要留操作紀錄（和手動新增報修單一致）。
+        AuditLogger::log('created', $repairRequest, [
+            'title' => $repairRequest->title,
+            'device_id' => $repairRequest->device_id,
+            'source' => 'maintenance_result:' . $result->id,
+        ], '保養 NG 自動建立報修單「' . $repairRequest->title . '」');
     }
 
     /** 彭仕衡的報修模組是否已併入並完成 migration。 */

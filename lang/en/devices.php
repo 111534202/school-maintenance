@@ -108,6 +108,7 @@ return [
         'need_help' => 'Need help?',
         'go_repair' => 'Report a problem',
         'go_repair_unavailable' => 'Report a problem (not available yet)',
+        'go_repair_retired' => 'This device is retired and cannot be reported',
         'view_kb' => 'View the self-service troubleshooting guide',
         'tips_title' => 'Quick self-help tips:',
         'tip_power' => 'Check that the power and cables are connected',

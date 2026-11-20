@@ -171,7 +171,7 @@ class DeviceProfileTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_at' => '2026-10-07 10:00:00',
+            'executed_at' => '2026-10-07 08:30:00',
             'note' => '風扇異音',
         ])->assertRedirect();
 

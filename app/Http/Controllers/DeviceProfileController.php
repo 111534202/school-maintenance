@@ -81,7 +81,7 @@ class DeviceProfileController extends Controller
 
         // 第 5 週任務 3：報修／維修紀錄／附件（彭仕衡的模組，唯讀）。
         // visibleTo：只撈「這位使用者有權限檢視」的報修單（規則見 RepairRequestPolicy），其餘只顯示被隱藏的筆數。
-        $repairRequests = RepairRequest::visibleTo($request->user())
+        $repairRequests = RepairRequest::visibleOnBoard($request->user())   // 待驗收／已結案只給跟案件有關的人看，和看板一致
             ->where('device_id', $device->id)
             ->with(['repairLogs.attachments', 'attachments', 'requester', 'assignedTechnician'])
             ->orderByDesc('id')

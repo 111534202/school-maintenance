@@ -12,6 +12,7 @@ use App\Services\AuditLogger;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class MaintenanceOrderController extends Controller
@@ -40,6 +41,17 @@ class MaintenanceOrderController extends Controller
     /** 工單列表的查詢（列表與匯出共用）：套用網址上的搜尋與篩選條件，並依狀態、排定日排好順序。 */
     private function indexQuery(Request $request)
     {
+        // 網址上的篩選條件格式不對（日期不存在、被改成陣列）時回到上一頁並提示，不要整頁 500。
+        $request->validate([
+            'keyword' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', 'max:30'],
+            'source' => ['nullable', 'string', 'max:30'],
+            'due' => ['nullable', 'string', 'max:30'],
+            'assignee' => ['nullable', 'string', 'max:30'],
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'source' => '來源', 'due' => '期限', 'assignee' => '負責人', 'from' => '起始日期', 'to' => '結束日期']);
+
         return MaintenanceOrder::query()
             ->with(['maintenancePlan', 'result', 'device', 'assignee'])
             // 期限：overdue＝已逾期、week＝一週內到期（含已逾期）；只看自己負責的用 mine=1；assignee＝指定負責人（none＝還沒指派）。
@@ -132,16 +144,38 @@ class MaintenanceOrderController extends Controller
      */
     public function storeFromPlan(MaintenancePlan $maintenancePlan): RedirectResponse
     {
-        abort_unless($maintenancePlan->is_active, 422, '已停用的保養計畫不能建立工單');
+        if (! $maintenancePlan->is_active) {
+            return redirect()->route('maintenance-plans.index')->with('error', '已停用的保養計畫不能建立工單。');
+        }
 
-        MaintenanceOrder::create([
-            'maintenance_plan_id' => $maintenancePlan->id,
-            'device_id' => $maintenancePlan->device_id,
-            'device_category_id' => $maintenancePlan->device_category_id,
-            'source' => MaintenanceOrder::SOURCE_PERIODIC,
-            'status' => MaintenanceOrder::STATUS_PENDING,
-            'scheduled_date' => $maintenancePlan->next_due_date,
-        ]);
+        // 同一計畫、同一個排定日期已經有還沒完成的工單時不再重複建立（連按兩次或兩個分頁各按一次）。
+        $order = DB::transaction(function () use ($maintenancePlan) {
+            MaintenancePlan::query()->whereKey($maintenancePlan->id)->lockForUpdate()->first();   // 鎖住這個計畫，兩個請求不會同時通過下面的檢查
+
+            $duplicate = MaintenanceOrder::query()
+                ->where('maintenance_plan_id', $maintenancePlan->id)
+                ->whereDate('scheduled_date', $maintenancePlan->next_due_date)
+                ->where('status', '!=', MaintenanceOrder::STATUS_COMPLETED)
+                ->exists();
+            if ($duplicate) {
+                return null;
+            }
+
+            return MaintenanceOrder::create([
+                'maintenance_plan_id' => $maintenancePlan->id,
+                'device_id' => $maintenancePlan->device_id,
+                'device_category_id' => $maintenancePlan->device_category_id,
+                'source' => MaintenanceOrder::SOURCE_PERIODIC,
+                'status' => MaintenanceOrder::STATUS_PENDING,
+                'scheduled_date' => $maintenancePlan->next_due_date,
+            ]);
+        });
+
+        if ($order === null) {
+            return redirect()->route('maintenance-orders.index')->with('error', '這個計畫在 ' . $maintenancePlan->next_due_date?->toDateString() . ' 已經有還沒完成的保養工單，不重複建立。');
+        }
+
+        AuditLogger::log('created', $order, ['maintenance_plan_id' => $maintenancePlan->id], '依保養計畫「' . $maintenancePlan->name . '」建立保養工單 ' . $order->displayNumber());
 
         return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單');
     }

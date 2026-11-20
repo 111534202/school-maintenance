@@ -111,8 +111,8 @@ class PartController extends Controller
         $validated = $request->validate([
             'part_code' => $this->codeRules(null, required: false),
             ...$this->basicRules(),
-            'current_stock' => ['required', 'integer', 'min:0'],
-            'unit_price' => ['required_unless:current_stock,0', 'nullable', 'integer', 'min:0'],
+            'current_stock' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'unit_price' => ['required_unless:current_stock,0', 'nullable', 'integer', 'min:0', 'max:100000000'],
         ], [
             'unit_price.required_unless' => '有期初庫存時，請填寫期初單價。',
             ...$this->codeMessages(),
@@ -342,7 +342,7 @@ class PartController extends Controller
             'brand' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],
             'unit' => ['required', 'string', 'max:10'],
-            'safety_stock' => ['required', 'integer', 'min:0'],
+            'safety_stock' => ['required', 'integer', 'min:0', 'max:1000000'],
         ];
     }
 }

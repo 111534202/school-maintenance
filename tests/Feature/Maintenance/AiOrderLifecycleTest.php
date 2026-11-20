@@ -57,7 +57,7 @@ class AiOrderLifecycleTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok',
-            'executed_at' => '2026-10-08 10:00:00',
+            'executed_at' => '2026-10-07 08:00:00',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
@@ -70,7 +70,7 @@ class AiOrderLifecycleTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_at' => '2026-10-08 10:00:00',
+            'executed_at' => '2026-10-07 08:00:00',
         ]);
 
         // 報修模組（彭仕衡）已併入 → 真的轉成報修單；尚未併入 → 待轉報修。

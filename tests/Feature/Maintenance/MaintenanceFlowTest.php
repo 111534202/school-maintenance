@@ -62,7 +62,7 @@ class MaintenanceFlowTest extends TestCase
     {
         $plan = $this->makePlan($this->makeDevice(), ['is_active' => false]);
 
-        $this->post(route('maintenance-plans.create-order', $plan))->assertStatus(422);
+        $this->post(route('maintenance-plans.create-order', $plan))->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('error');
 
         $this->assertSame(0, MaintenanceOrder::count());
     }
@@ -86,7 +86,7 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ok',
-            'executed_at' => '2026-10-07 10:00:00',
+            'executed_at' => '2026-10-07 08:30:00',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
@@ -102,7 +102,7 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',
-            'executed_at' => '2026-10-07 10:00:00',
+            'executed_at' => '2026-10-07 08:30:00',
             'note' => '風扇異音',
         ])->assertRedirect(route('maintenance-orders.show', $order));
 
@@ -127,7 +127,7 @@ class MaintenanceFlowTest extends TestCase
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'maybe',
-            'executed_at' => '2026-10-07 10:00:00',
+            'executed_at' => '2026-10-07 08:30:00',
         ])->assertSessionHasErrors('result');
 
         $this->assertSame(0, MaintenanceResult::count());
@@ -137,10 +137,10 @@ class MaintenanceFlowTest extends TestCase
     public function test_an_order_cannot_be_reported_twice(): void
     {
         $order = $this->pendingOrder();
-        $payload = ['result' => 'ok', 'executed_at' => '2026-10-07 10:00:00'];
+        $payload = ['result' => 'ok', 'executed_at' => '2026-10-07 08:30:00'];
 
         $this->post(route('maintenance-orders.results.store', $order), $payload);
-        $this->post(route('maintenance-orders.results.store', $order), $payload)->assertStatus(422);
+        $this->post(route('maintenance-orders.results.store', $order), $payload)->assertRedirect(route('maintenance-orders.show', $order))->assertSessionHas('error');
 
         $this->assertSame(1, MaintenanceResult::count());
     }

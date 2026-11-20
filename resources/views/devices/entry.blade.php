@@ -50,7 +50,10 @@
                     <h2 class="h6 mb-3">{{ __('devices.entry.need_help') }}</h2>
 
                     {{-- 報修路由存在才顯示可點的「前往報修」按鈕（網址已帶好這台設備）；否則顯示停用的按鈕。 --}}
-                    @if ($repairUrl)
+                    @if ($device->status === 'retired')
+                        {{-- 已淘汰的設備不能報修：按鈕停用並說明原因。 --}}
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled><i class="bi bi-tools me-1"></i>{{ __('devices.entry.go_repair_retired') }}</button>
+                    @elseif ($repairUrl)
                         <a href="{{ $repairUrl }}" class="btn btn-danger w-100 mb-2"><i class="bi bi-tools me-1"></i>{{ __('devices.entry.go_repair') }}</a>
                     @else
                         <button class="btn btn-outline-secondary w-100 mb-2" disabled><i class="bi bi-tools me-1"></i>{{ __('devices.entry.go_repair_unavailable') }}</button>

@@ -60,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
         // 否則 Laravel 預設的 Tailwind 分頁在沒有 Tailwind CSS 時會破版（箭頭變超大）。
         Paginator::useBootstrapFive();
 
+        // 匯出 Excel 時，= + - @ 開頭的文字不當公式執行（防 Excel 公式注入）。
+        config(['excel.value_binder.default' => \App\Support\SafeExcelValueBinder::class]);
+
         // 用 HTTPS 通道分享網站（.env 的 TRUSTED_PROXIES，見 config/app.php）：採信通道的 X-Forwarded-Proto，
         // 讓 asset()、route() 產生 https 網址；否則瀏覽器會擋下 http 的樣式檔，畫面跑版。
         // 寫在這裡而不是 bootstrap/app.php，是因為那裡執行時 .env 還沒載入、讀不到設定。

@@ -171,7 +171,7 @@ class ClassroomReservationController extends Controller
             : [];
 
         // 教室目前在等待維修的設備（審核時參考）；暫停預約時不能核准。
-        $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id])[$reservation->classroom_id] ?? [];
+        $repairNotices = ClassroomRepairNotices::for([$reservation->classroom_id], withTitles: $request->user()->hasPermission('reservations.manage'))[$reservation->classroom_id] ?? [];
         $classroomSuspended = ClassroomRepairNotices::isSuspended((int) $reservation->classroom_id);
 
         return view('reservations.show', compact('reservation', 'canManage', 'repairNotices', 'classroomSuspended', 'willAutoReject'));
@@ -194,7 +194,7 @@ class ClassroomReservationController extends Controller
             ->get();
 
         // 每間教室目前在等待維修的設備，以及哪些教室暫停預約；選好教室後在畫面上提醒。
-        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'));
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: $request->user()->hasPermission('reservations.manage'));
         $suspendedIds = ClassroomRepairNotices::suspendedIds($classrooms->pluck('id'));
 
         $majors = $this->majorOptions();
@@ -465,12 +465,11 @@ class ClassroomReservationController extends Controller
                 ->withInput()
                 ->with(
                     'error',
-                    'The selected time on ' . $result['date'] .
-                    ' conflicts with an approved reservation for ' .
-                    $conflict->class_name . ' (' .
+                    $result['date'] . ' 的這個時段已經核准給「' .
+                    $conflict->class_name . '」（' .
                     substr((string) $conflict->start_time, 0, 5) . '-' .
                     substr((string) $conflict->end_time, 0, 5) .
-                    '). Please choose another time.'
+                    '），請改選其他時間。'
                 );
         }
 

@@ -36,7 +36,7 @@ class DashboardController extends Controller
         // 一次查詢算出「每種狀態各有幾張」：select status, count(*) ... group by status。
         // pluck('total', 'status') 把結果變成 ['pending' => 3, 'assigned' => 1, ...] 方便用狀態取數字。
         $statusCounts = RepairRequest::query()
-            ->visibleTo($user)   // 只統計這位用戶看得到的案件（能派工的人看全部，其他人只算自己的），數字才會和看板一致
+            ->visibleOnBoard($user)   // 只統計這位用戶看得到的案件（能派工的人看全部，其他人只算自己的），數字才會和看板一致
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -61,7 +61,7 @@ class DashboardController extends Controller
         $monthStart = now()->startOfMonth();
         $nextMonthStart = $monthStart->copy()->addMonth();
 
-        $monthlyRepairCount = RepairRequest::visibleTo($user)
+        $monthlyRepairCount = RepairRequest::visibleOnBoard($user)
             ->where('created_at', '>=', $monthStart)
             ->where('created_at', '<', $nextMonthStart)
             ->count();
@@ -73,11 +73,11 @@ class DashboardController extends Controller
             $monthStart->copy()->endOfMonth(),
         );
         // 「逾時工單」= 還沒結案、且已經超過預計處理時間的案件（見 RepairRequest::scopeOverdue）。
-        $overdueCount = RepairRequest::visibleTo($user)->overdue()->count();
+        $overdueCount = RepairRequest::visibleOnBoard($user)->overdue()->count();
 
         // 近 14 天每天新增幾張報修單（沒有的日子補 0，折線才不會斷）。
         $since = now()->subDays(13)->startOfDay();   // 13 天前的 00:00，加上今天剛好 14 天
-        $perDay = RepairRequest::visibleTo($user)->where('created_at', '>=', $since)->get()
+        $perDay = RepairRequest::visibleOnBoard($user)->where('created_at', '>=', $since)->get()
             // 依「建立日期」分組，再算每一組有幾張：['2026-10-03' => 7, ...]
             ->groupBy(fn (RepairRequest $request) => $request->created_at->format('Y-m-d'))
             ->map->count();

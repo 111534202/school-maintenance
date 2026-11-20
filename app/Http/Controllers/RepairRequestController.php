@@ -22,6 +22,7 @@ use App\Services\RepairRequestWorkflow;                 // 報修單狀態轉換
 use DomainException;                                    // 「違反業務規則」的例外，狀態轉換不合法時由 Workflow 丟出
 use Illuminate\Http\Request;                            // 這一次瀏覽器送來的請求
 use Illuminate\Support\Facades\Auth;                    // 取得目前登入的人
+use Illuminate\Support\Facades\DB;                      // 資料庫交易：建立報修單與回寫保養結果要一起成功
 use Illuminate\Support\Facades\Gate;                    // 權限判斷：Gate::authorize 不通過就直接回 403
 
 /**
@@ -90,6 +91,13 @@ class RepairRequestController extends Controller
      */
     private function indexQuery(Request $request)
     {
+        // 網址上的篩選條件格式不對（例如被亂改成 status[]=x）時，回到上一頁並提示，不要整頁 500。
+        $request->validate([
+            'keyword' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', 'max:30'],
+            'assignee' => ['nullable', 'string', 'max:100'],
+        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員']);
+
         return RepairRequest::query()
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。
             ->visibleOnBoard($request->user())
@@ -177,6 +185,11 @@ class RepairRequestController extends Controller
         // 網址有帶 ?device=設備編號 → 找出那台設備（連同類別、教室），表單會自動帶入設備資訊。
         if (request()->filled('device')) {
             $device = Device::with(['category', 'classroom'])->find(request()->integer('device'));
+            // 已淘汰的設備不能報修：不帶入設備，並在頁面上說明原因。
+            if ($device?->status === 'retired') {
+                session()->now('error', "設備 {$device->device_code} 已淘汰，無法報修。");
+                $device = null;
+            }
         }
 
         // 網址有帶 ?from_result=保養結果編號 → 從保養的「待轉報修」直接跳過來：設備、標題、故障描述都先填好。
@@ -240,6 +253,11 @@ class RepairRequestController extends Controller
         // 沒有任何設備符合 → 回 404，前端會顯示「找不到設備」。
         abort_if($device === null, 404);
 
+        // 已淘汰的設備不能報修：回 422 和原因，前端會顯示這句話，不會把設備帶進表單。
+        if ($device->status === 'retired') {
+            return response()->json(['message' => "設備 {$device->device_code} 已淘汰，無法報修。"], 422);
+        }
+
         // 回傳前端要的資料：設備編號、顯示用的一行描述，以及建議的報修標題。
         return response()->json([
             'id' => $device->id,
@@ -274,18 +292,37 @@ class RepairRequestController extends Controller
             $data['classroom_id'] = Device::query()->whereKey($data['device_id'])->value('classroom_id');
         }
 
-        $repairRequest = RepairRequest::create([
-            ...$data,
-            'requester_id' => Auth::id(),
-        ]);
-
         // 從保養的「待轉報修」帶過來的：把這張報修單記回保養結果，狀態改成「已轉報修」（同一筆結果不會重複建單）。
-        $ngResult = $this->pendingNgResult((int) $request->input('maintenance_result_id'));
-        if ($ngResult) {
-            $ngResult->update([
-                'ng_conversion_status' => \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED,
-                'repair_request_id' => $repairRequest->id,
+        // 建立報修單與回寫保養結果放在同一個交易，並鎖住該筆保養結果：兩個分頁同時送出時，第二個會被擋下。
+        $ngResultId = (int) $request->input('maintenance_result_id');
+        $repairRequest = DB::transaction(function () use ($data, $ngResultId) {
+            if ($ngResultId > 0) {
+                \App\Models\MaintenanceResult::query()->whereKey($ngResultId)->lockForUpdate()->first();
+                if ($this->pendingNgResult($ngResultId) === null && \App\Models\MaintenanceResult::query()->whereKey($ngResultId)->whereNotNull('repair_request_id')->exists()) {
+                    return null;   // 這筆保養結果已經轉過報修單了
+                }
+            }
+
+            $repairRequest = RepairRequest::create([
+                ...$data,
+                'requester_id' => Auth::id(),
             ]);
+
+            $ngResult = $this->pendingNgResult($ngResultId);
+            if ($ngResult) {
+                $ngResult->update([
+                    'ng_conversion_status' => \App\Models\MaintenanceResult::NG_CONVERSION_CONVERTED,
+                    'repair_request_id' => $repairRequest->id,
+                ]);
+            }
+
+            return $repairRequest;
+        });
+
+        if ($repairRequest === null) {
+            $existing = \App\Models\MaintenanceResult::query()->whereKey($ngResultId)->value('repair_request_id');
+
+            return redirect()->route('repairs.index')->with('error', '這筆保養 NG 已經轉成報修單' . ($existing ? "（編號 #{$existing}）" : '') . '，不會重複建立。');
         }
 
         // 有上傳附件才處理；storeMany 會把每個檔案存起來並在 attachments 資料表留一筆。
@@ -384,6 +421,7 @@ class RepairRequestController extends Controller
      */
     public function assign(AssignRepairRequestRequest $request, RepairRequest $repairRequest, RepairRequestWorkflow $workflow, RepairAssignmentNotifier $notifier)
     {
+        Gate::authorize('view', $repairRequest);   // 跟自己無關的「待驗收／已結案」案件，連派工動作都不行
         // 表單送來的是維修人員的編號，這裡找出完整的用戶資料（找不到會自動回 404）。
         $technician = User::findOrFail($request->validated('assigned_to'));
         $from = $repairRequest->status;   // 記住派工前的狀態，寫操作紀錄時要記「從哪個狀態到哪個狀態」
@@ -406,6 +444,7 @@ class RepairRequestController extends Controller
         // 派工成功才寫操作紀錄。?-> 是「如果預計時間沒填（null）就不要報錯」。
         AuditLogger::log('assigned', $repairRequest, [
             'technician' => $technician->name,
+            'acceptor' => $repairRequest->acceptor?->name,
             'scheduled_at' => $repairRequest->scheduled_at?->format('Y-m-d H:i'),
             'from' => $from->value,
             'to' => $repairRequest->status->value,
@@ -427,6 +466,7 @@ class RepairRequestController extends Controller
      */
     public function reassign(AssignRepairRequestRequest $request, RepairRequest $repairRequest, RepairRequestWorkflow $workflow, RepairAssignmentNotifier $notifier)
     {
+        Gate::authorize('view', $repairRequest);
         $technician = User::findOrFail($request->validated('assigned_to'));
 
         try {
@@ -447,6 +487,7 @@ class RepairRequestController extends Controller
 
         AuditLogger::log('reassigned', $repairRequest, [
             'technician' => $technician->name,
+            'acceptor' => $repairRequest->acceptor?->name,
             'scheduled_at' => $repairRequest->scheduled_at?->format('Y-m-d H:i'),
         ], __('audit.messages.repair_reassigned', ['technician' => $technician->name, 'title' => $repairRequest->title]));
 
@@ -558,6 +599,7 @@ class RepairRequestController extends Controller
      */
     public function edit(RepairRequest $repairRequest)
     {
+        Gate::authorize('view', $repairRequest);   // 跟自己無關的案件看不到，也不能開修改表單
         if ($repairRequest->status === RepairRequestStatus::Completed) {
             return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
         }
@@ -573,6 +615,7 @@ class RepairRequestController extends Controller
     /** 儲存修改（PUT /repairs/{id}）：只改上面這幾個欄位，狀態、報修人、維修人員不變；寫操作紀錄。 */
     public function update(UpdateRepairRequestRequest $request, RepairRequest $repairRequest)
     {
+        Gate::authorize('view', $repairRequest);
         if ($repairRequest->status === RepairRequestStatus::Completed) {
             return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
         }
@@ -598,6 +641,7 @@ class RepairRequestController extends Controller
      */
     public function destroy(RepairRequest $repairRequest)
     {
+        Gate::authorize('view', $repairRequest);
         if (in_array($repairRequest->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
             return redirect()->route('repairs.show', $repairRequest)
                 ->with('error', '已經填寫維修紀錄（待驗收、已結案）的報修單不能取消，因為維修紀錄與用料已經記入零件庫存與成本。');
