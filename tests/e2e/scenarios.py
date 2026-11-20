@@ -333,20 +333,32 @@ def maintenance_order_flow(browser, base, root):
         login(page, 'it_manager')
         goto(page, '/maintenance-orders')
         check('負責人' in body(page), '保養工單列表應有負責人欄')
-        goto(page, '/maintenance-orders/1')
+        # 挑「還沒完成」的第一張工單（不寫死工單編號）：這個情境會改資料，第一次跑到一半失敗後自動重跑時，
+        # 上一輪已經回報完的工單不能再用，改挑下一張待處理的，重跑才有機會過。
+        goto(page, '/maintenance-orders?status=pending')
+        href = page.locator('tr[data-modal-frame-href]').first.get_attribute('data-modal-frame-href')
+        check(href and '/maintenance-orders/' in href, '應有待處理的保養工單可以用：' + body(page)[:200])
+        order_path = '/maintenance-orders/' + href.split('/maintenance-orders/', 1)[1].split('?')[0].strip('/')
+        goto(page, order_path)
         page.select_option('select[name="assigned_to"]', label='維修人員')
         click_and_wait(page, 'button:has-text("指派")')
 
         login(page, 'repairer')
-        response = goto(page, '/maintenance-orders/1/result/create')
+        response = goto(page, order_path + '/result/create')
         check(response.status == 200, f'負責人應能開回報表單，實際 {response.status}')
         page.check('#result_ng')
         page.fill('#note', 'E2E 管線漏水')
-        click_and_wait(page, 'button:has-text("送出")', 2000)
+        page.click('button:has-text("送出")')
+        # 等到結果出現再檢查（最多 20 秒），不要只等固定幾秒：測試用的網站在 CI 上偶爾比較慢。
+        try:
+            page.wait_for_function("() => document.body.innerText.includes('已自動建立報修單') || document.body.innerText.includes('已轉報修')", timeout=20000)
+        except Exception:  # noqa: BLE001
+            pass
+        settle(page)
         check('已自動建立報修單' in body(page) or '已轉報修' in body(page), 'NG 回報後應轉成報修：' + body(page)[:200])
 
         login(page, 'it_manager')
-        goto(page, '/maintenance-orders/1')
+        goto(page, order_path)
         check('已轉報修' in body(page), '工單狀態應顯示已轉報修')
         no_js_errors(errors)
 
