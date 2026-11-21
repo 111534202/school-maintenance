@@ -33,7 +33,7 @@ class MaintenanceResultController extends Controller
         // NG 時可以選的設備：計畫是一台設備就是那台；計畫是設備類別就是那一類的設備（可複選）。
         $ngDevices = app(NgToRepairService::class)->selectableDevices($maintenanceOrder);
 
-        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts, 'ngDevices' => $ngDevices]);
+        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts, 'ngDevices' => $ngDevices, 'skippedDevices' => app(NgToRepairService::class)->skippedDevices($maintenanceOrder)]);
     }
 
     /**
@@ -47,7 +47,7 @@ class MaintenanceResultController extends Controller
 
         $maintenanceOrder->load(['result.partUsages.part', 'result.attachments', 'result.repairRequests', 'maintenancePlan']);
 
-        return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result]);
+        return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result, 'skippedDevices' => app(NgToRepairService::class)->skippedDevices($maintenanceOrder)]);
     }
 
     /**
@@ -136,7 +136,8 @@ class MaintenanceResultController extends Controller
     private function guard(MaintenanceOrder $maintenanceOrder): ?RedirectResponse
     {
         // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
-        if ($maintenanceOrder->result()->exists()) {
+        // 已完成、已轉報修的工單是定案（就算舊資料沒有結果那一筆）：不能再回報。
+        if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
         }
         if ($maintenanceOrder->status === MaintenanceOrder::STATUS_PENDING) {

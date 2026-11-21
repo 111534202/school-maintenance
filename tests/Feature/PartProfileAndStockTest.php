@@ -286,7 +286,7 @@ class PartProfileAndStockTest extends TestCase
         $this->actingAs($this->makeUserWithPermissions(['maintenance.view']));
         $this->get(route('parts.show', $part))->assertForbidden();
         $this->get(route('parts.purchases.create', $part))->assertForbidden();
-        $this->delete(route('parts.purchases.destroy', [$part, $purchase]))->assertForbidden();
+        $this->delete("/parts/{$part->part_code}/purchases/{$purchase->id}")->assertStatus(405);
 
         $this->actingAs($this->makeUserWithPermissions(['parts.manage']));
         $this->get(route('parts.show', $part))->assertOk();
@@ -313,7 +313,7 @@ class PartProfileAndStockTest extends TestCase
         $this->get(route('attachments.show', $purchase->attachments->first()))->assertOk();
     }
 
-    public function test_the_attachment_shows_as_a_button_and_can_be_removed_without_uploading_a_new_one(): void
+    public function test_the_attachment_shows_as_a_button_and_cannot_be_removed_after_submitting(): void
     {
         Storage::fake('local');
         $this->loginAsAnyUser();
@@ -334,16 +334,13 @@ class PartProfileAndStockTest extends TestCase
             ->assertSee('&quot;filename&quot;:&quot;receipt-2026.jpg&quot;', false)
             ->assertDontSeeText('receipt-2026.jpg');
 
-        $this->put(route('parts.purchases.update', [$part, $purchase]), [
-            'purchase_date' => '2026-10-10', 'vendor_name' => '光華資訊', 'quantity' => 1, 'unit_price' => 20, 'remove_invoice' => '1',
-        ])->assertSessionHasNoErrors();
-
-        $this->assertCount(0, $purchase->fresh()->attachments);
-        Storage::disk('local')->assertMissing($path);
-        $this->get(route('parts.show', $part))->assertDontSee('data-bs-target="#attachmentModal"', false);
+        // 送出後的採購紀錄是定案：附件也不能刪除（沒有修改的網址）。
+        $this->put("/parts/{$part->part_code}/purchases/{$purchase->id}", ['remove_invoice' => '1'])->assertStatus(405);
+        $this->assertCount(1, $purchase->fresh()->attachments);
+        Storage::disk('local')->assertExists($path);
     }
 
-    /** 一筆採購最多 5 個附件、加起來 5 MB 以內（單檔不另外限制）；修改時可以只刪其中幾個、再加新的。 */
+    /** 一筆採購最多 5 個附件、加起來 5 MB 以內（單檔不另外限制）；送出後就定案，不能再改附件。 */
     public function test_a_purchase_keeps_up_to_five_attachments_of_two_megabytes_each(): void
     {
         Storage::fake('local');
@@ -357,72 +354,57 @@ class PartProfileAndStockTest extends TestCase
         $purchase = PartPurchase::firstOrFail();
         $this->assertCount(2, $purchase->attachments);
 
-        // 保留的附件（約 100 KB）＋新的檔案（5050 KB）加起來超過 5 MB 不收；只看新檔案的話還沒超過。
-        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
-            'invoices' => [UploadedFile::fake()->create('big.pdf', 5050, 'application/pdf')],
+        // 一次最多 5 個附件、加起來 5 MB 以內。
+        $this->post(route('parts.purchases.store', $part), $base + [
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 6)),
         ])->assertSessionHasErrors('invoices');
-        $this->assertCount(2, $purchase->fresh()->attachments);
-
-        // 已有 2 個，再加 4 個會超過 5 個。
-        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
-            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 4)),
+        $this->post(route('parts.purchases.store', $part), $base + [
+            'invoices' => [UploadedFile::fake()->create('big.pdf', 5200, 'application/pdf')],
         ])->assertSessionHasErrors('invoices');
-        $this->assertCount(2, $purchase->fresh()->attachments);
+        $this->assertSame(1, PartPurchase::count());
 
-        // 勾選刪除第一個，再加 3 個：剛好 4 個。
-        $first = $purchase->attachments->first();
-        $this->put(route('parts.purchases.update', [$part, $purchase]), $base + [
-            'remove_attachments' => [$first->id],
-            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("n{$i}.jpg"), range(1, 3)),
+        $this->post(route('parts.purchases.store', $part), $base + [
+            'invoices' => array_map(fn ($i) => UploadedFile::fake()->image("m{$i}.jpg"), range(1, 4)),
         ])->assertSessionHasNoErrors();
-        $this->assertCount(4, $purchase->fresh()->attachments);
-        $this->assertNull($purchase->fresh()->attachments->firstWhere('id', $first->id));
 
         // 履歷頁只有一顆「附件」按鈕，4 個附件都在按鈕的資料裡（在預覽視窗左右切換）。
         $html = $this->get(route('parts.show', $part))->getContent();
-        $this->assertSame(1, substr_count($html, 'data-bs-target="#attachmentModal"'));
-        $this->assertSame(4, substr_count($html, '&quot;url&quot;'));
+        $this->assertSame(2, substr_count($html, 'data-bs-target="#attachmentModal"'));   // 兩筆採購各一顆「附件」按鈕
+        $this->assertSame(6, substr_count($html, '&quot;url&quot;'));                       // 2 + 4 個附件
         $this->assertStringNotContainsString('附件 2', $html);
     }
 
-    public function test_an_unused_purchase_can_be_changed_or_deleted_and_stock_follows(): void
+    public function test_a_submitted_purchase_is_read_only_it_can_only_be_viewed(): void
     {
         $this->loginAsAnyUser();
         $part = $this->makePart();
         $purchase = $this->buy($part, '2026-10-10', 3, 20);
+        $url = "/parts/{$part->part_code}/purchases/{$purchase->id}";
 
-        $this->put(route('parts.purchases.update', [$part, $purchase]), [
-            'purchase_date' => '2026-10-11', 'vendor_name' => '原價屋', 'quantity' => 5, 'unit_price' => 22,
-        ])->assertRedirect(route('parts.show', $part));
-        $this->assertSame(5, $part->fresh()->current_stock);
-        $this->assertSame(5, $purchase->fresh()->remaining_quantity);
-
-        $this->delete(route('parts.purchases.destroy', [$part, $purchase]))->assertRedirect(route('parts.show', $part));
-        $this->assertSame(0, $part->fresh()->current_stock);
-        $this->assertDatabaseCount('part_purchases', 0);
+        // 可以查看（唯讀的詳細）。
+        $this->get(route('parts.purchases.show', [$part, $purchase]))->assertOk()->assertSee('採購紀錄送出後就定案');
+        // 沒有修改、刪除的畫面或網址；庫存與紀錄都不變。
+        $this->get($url . '/edit')->assertNotFound();
+        $this->put($url, ['purchase_date' => '2026-10-11', 'vendor_name' => '原價屋', 'quantity' => 5, 'unit_price' => 22])->assertStatus(405);
+        $this->delete($url)->assertStatus(405);
+        $this->assertSame(3, $part->fresh()->current_stock);
+        $this->assertSame(3, $purchase->fresh()->quantity);
+        // 履歷頁的採購列沒有「修改」「刪除」按鈕。
+        $this->get(route('parts.show', $part))->assertOk()->assertDontSee('title="修改"', false)->assertDontSee('title="刪除"', false);
     }
 
-    public function test_a_used_purchase_keeps_its_quantity_and_price_and_cannot_be_deleted(): void
+    public function test_the_purchase_form_asks_for_a_second_confirmation_before_submitting(): void
     {
         $this->loginAsAnyUser();
         $part = $this->makePart();
-        $purchase = $this->buy($part, '2026-10-10', 3, 20);
-        // 用掉 1 個（報廢 1 個；依日期重新計算時要有真正的紀錄）。
-        app(PartStockService::class)->scrap($part, ['scrap_date' => '2026-10-11', 'quantity' => 1, 'reason' => '損壞'], null);
 
-        $this->put(route('parts.purchases.update', [$part, $purchase]), [
-            'purchase_date' => '2026-10-10', 'vendor_name' => '測試廠商', 'quantity' => 9, 'unit_price' => 20,
-        ])->assertSessionHas('error');
-        $this->assertSame(3, $purchase->fresh()->quantity);
+        $html = $this->get(route('parts.purchases.create', $part))->assertOk()->getContent();
 
-        // 廠商、備註仍然可以修改。
-        $this->put(route('parts.purchases.update', [$part, $purchase]), [
-            'purchase_date' => '2026-10-10', 'vendor_name' => '新廠商', 'quantity' => 3, 'unit_price' => 20, 'note' => '補登',
-        ])->assertSessionHasNoErrors();
-        $this->assertSame('新廠商', $purchase->fresh()->vendor_name);
-
-        $this->delete(route('parts.purchases.destroy', [$part, $purchase]))->assertSessionHas('error');
-        $this->assertDatabaseCount('part_purchases', 1);
+        $this->assertStringContainsString('data-confirm-title="確認新增採購"', $html);
+        $this->assertStringContainsString('data-confirm-ok="確認新增採購"', $html);
+        $this->assertStringContainsString('@vendor_name', $html);
+        $this->assertStringContainsString('@sum:quantity*unit_price', $html);   // 確認視窗在單價下面顯示總價
+        $this->assertStringContainsString('不能修改或刪除', $html);
     }
 
     // ---------- 先進先出 ----------
@@ -531,15 +513,52 @@ class PartProfileAndStockTest extends TestCase
         $this->assertNotNull($part->fresh());
     }
 
-    public function test_an_unused_part_is_deleted_with_its_purchases(): void
+    public function test_a_part_can_only_be_deleted_with_no_stock_and_no_usage_or_scrap_records(): void
     {
         $this->loginAsAnyUser();
-        $part = $this->makePart();
-        $this->buy($part, '2026-10-10', 2, 20);
+
+        // 還有庫存：不能刪，按鈕灰掉並說明原因。
+        $withStock = $this->makePart();
+        $this->buy($withStock, '2026-10-10', 2, 20);
+        $this->assertStringContainsString('目前還有庫存', (string) $withStock->fresh()->deletionBlocker());
+        $this->get(route('parts.show', $withStock))->assertOk()->assertSee('不能刪除：目前還有庫存')->assertDontSee('action="' . route('parts.destroy', $withStock) . '"', false);
+        $this->delete(route('parts.destroy', $withStock))->assertSessionHas('error');
+        $this->assertNotNull($withStock->fresh());
+
+        // 庫存是 0 但有報廢紀錄：不能刪。
+        $scrapped = Part::create(['part_code' => 'SCR-1', 'name' => '報廢過的', 'unit' => '個', 'safety_stock' => 0]);
+        $this->buy($scrapped, '2026-10-10', 1, 20);
+        app(PartStockService::class)->scrap($scrapped, ['scrap_date' => '2026-10-11', 'quantity' => 1, 'reason' => '損壞'], null);
+        $this->assertSame(0, $scrapped->fresh()->current_stock);
+        $this->assertStringContainsString('報廢紀錄', (string) $scrapped->fresh()->deletionBlocker());
+        $this->delete(route('parts.destroy', $scrapped))->assertSessionHas('error');
+        $this->assertNotNull($scrapped->fresh());
+
+        // 沒有庫存、沒有任何紀錄：可以刪，畫面上有刪除表單。
+        $empty = Part::create(['part_code' => 'EMP-1', 'name' => '空的', 'unit' => '個', 'safety_stock' => 0]);
+        $this->assertNull($empty->deletionBlocker());
+        $this->get(route('parts.show', $empty))->assertOk()->assertSee('action="' . route('parts.destroy', $empty) . '"', false);
+        $this->delete(route('parts.destroy', $empty))->assertRedirect(route('parts.index'));
+        $this->assertNull(Part::find($empty->id));
+    }
+
+    public function test_number_inputs_drop_leading_zeros_while_typing(): void
+    {
+        $this->loginAsAnyUser();
+
+        $html = $this->get(route('parts.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString("/^0\d/.test(el.value)", $html);   // 全站數字欄位：前面的 0 自動消失
+        $this->assertStringContainsString('el.select()', $html);              // 點進顯示 0 的欄位整個選起來
+    }
+
+    public function test_a_part_with_no_stock_and_no_records_is_deleted(): void
+    {
+        $this->loginAsAnyUser();
+        $part = $this->makePart();   // 沒有庫存、沒有任何紀錄
 
         $this->delete(route('parts.destroy', $part))->assertRedirect(route('parts.index'));
         $this->assertDatabaseCount('parts', 0);
-        $this->assertDatabaseCount('part_purchases', 0);
     }
 
     // 零件履歷網址用零件編號；舊的流水號網址仍然打得開；和固定網址重複的名稱不能當編號。

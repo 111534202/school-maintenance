@@ -167,9 +167,13 @@ class MaintenanceOrder extends Model
      * 依保養計畫建立這一期的工單（待處理、排定日期＝計畫的下次到期日）：計畫的所有保養對象都放進這張工單的對象清單，
      * 工單本身的 device_id／device_category_id 存第一個對象。
      */
-    public static function createFromPlan(MaintenancePlan $plan): self
+    public static function createFromPlan(MaintenancePlan $plan): ?self
     {
-        $targets = $plan->orderTargets();
+        // 已淘汰或停用的設備不再保養：略過；全部對象都不能保養就不建立（回傳 null）。
+        $targets = $plan->maintainableTargets();
+        if ($targets === []) {
+            return null;
+        }
         $order = self::create([
             'maintenance_plan_id' => $plan->id,
             ...($targets[0] ?? ['device_id' => null, 'device_category_id' => null]),

@@ -9,12 +9,20 @@
     <div class="page-header mb-4">
         <h1 data-modal-hide class="tb-title mb-0">{{ __('devices.show.title') }}</h1>
         {{-- 在設備主檔的對話框裡打開（?modal=1）時不放「修改」按鈕（修改在列表的鉛筆按鈕）。 --}}
-        @unless (request()->boolean('modal'))
+        @unless (request()->boolean('modal') || $device->status === 'retired')
             <div class="d-inline-flex gap-1">
                 <a class="btn btn-outline-primary icon-btn" href="{{ route('devices.edit', $device) }}"
                     title="{{ __('common.buttons.edit') }}" aria-label="{{ __('common.buttons.edit') }}"><i class="bi bi-pencil"></i></a>
             </div>
         @endunless
+        {{-- 已淘汰的設備資料鎖住；不小心淘汰時，系統管理員可以「取消淘汰」改回正常。 --}}
+        @if ($device->status === 'retired' && auth()->user()->isAdmin())
+            <form method="POST" action="{{ route('devices.unretire', $device) }}" data-confirm="確定要取消淘汰，把 {{ $device->device_code }} 改回「正常」嗎？" data-confirm-ok="取消淘汰" data-confirm-variant="primary">
+                @csrf
+                @method('PATCH')
+                <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i>取消淘汰</button>
+            </form>
+        @endif
     </div>
 
     <div class="row g-3">

@@ -42,6 +42,7 @@ class AiSettingController extends Controller
 
         AuditLogger::log('ai_settings_updated', null, ['from' => $before, 'to' => AiSetting::current()], '調整 AI 預防保養參數');
 
-        return redirect()->route('ai-settings.edit')->with('success', 'AI 預防保養設定已更新。');
+        // 設定在「AI 預防保養」頁的彈出視窗裡改：儲存後回到那一頁（視窗跟著關閉），不要停在設定的全頁。
+        return redirect()->route('preventive-candidates.index')->with('success', 'AI 預防保養設定已更新。');
     }
 }

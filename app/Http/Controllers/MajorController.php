@@ -98,7 +98,7 @@ class MajorController extends Controller
 
         AuditLogger::log('deleted', $major, $major->only(['name', 'abbreviation']));
 
-        return redirect()->route('majors.index')->with('success', __('majors.flash.deleted'));
+        return $this->backToList('majors.index')->with('success', __('majors.flash.deleted'));
     }
 
     /**

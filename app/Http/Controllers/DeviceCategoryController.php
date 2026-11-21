@@ -96,18 +96,18 @@ class DeviceCategoryController extends Controller
 
         // exists()：只問「有沒有」，不需要真的把設備全部撈出來。
         if ($deviceCategory->devices()->exists()) {
-            return redirect()->route('device-categories.index', $back)->with('error', __('device_categories.errors.in_use'));
+            return $this->backToList('device-categories.index', $back)->with('error', __('device_categories.errors.in_use'));
         }
         // 已停用的設備（軟刪除）不算「使用中」，但資料仍指向這個類別，刪掉會違反外鍵，所以也擋下並說明。
         if ($deviceCategory->devices()->onlyTrashed()->exists()) {
-            return redirect()->route('device-categories.index', $back)->with('error', __('device_categories.errors.has_disabled_devices'));
+            return $this->backToList('device-categories.index', $back)->with('error', __('device_categories.errors.has_disabled_devices'));
         }
 
         $deviceCategory->delete();
 
         AuditLogger::log('deleted', $deviceCategory);
 
-        return redirect()->route('device-categories.index', $back)->with('success', __('device_categories.flash.deleted'));
+        return $this->backToList('device-categories.index', $back)->with('success', __('device_categories.flash.deleted'));
     }
 
     /** 在對話框裡操作（?modal=1）時，回列表也帶著 modal=1，結果留在對話框裡顯示。 */

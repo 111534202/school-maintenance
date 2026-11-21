@@ -117,7 +117,6 @@ class RepairLogController extends Controller
                     'resolution' => $validated['resolution'],
 
                     // 保留舊欄位，讓既有資料與舊功能繼續相容。
-                    'parts_used_note' => $validated['parts_used_note'] ?? null,
 
                     'started_at' => $startedAt,
                     'ended_at' => $endedAt,

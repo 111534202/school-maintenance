@@ -84,8 +84,14 @@ class DueMaintenanceOrderGenerator
             ->exists();
 
         $order = $exists ? null : MaintenanceOrder::createFromPlan($plan);
+        // 指定的設備已淘汰或停用：這一期略過那些設備（全部都不能保養就不產生工單），寫在操作紀錄。
+        $skipped = collect($plan->orderTargets())->pluck('device_id')->filter()
+            ->reject(fn (int $deviceId) => \App\Models\Device::canBeMaintained($deviceId));
+        $skippedText = $skipped->isEmpty() ? '' : '；略過已淘汰或停用的設備 ' . \App\Models\Device::withTrashed()->whereKey($skipped->all())->orderBy('device_code')->pluck('device_code')->implode('、');
         if ($order) {
-            AuditLogger::log('created', $order, ['maintenance_plan_id' => $plan->id], '依保養計畫「' . $plan->name . '」產生保養工單 ' . $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）');
+            AuditLogger::log('created', $order, ['maintenance_plan_id' => $plan->id, 'skipped_device_ids' => $skipped->values()->all()], '依保養計畫「' . $plan->name . '」產生保養工單 ' . $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）' . $skippedText);
+        } elseif (! $exists) {
+            AuditLogger::log('updated', $plan, ['skipped_device_ids' => $skipped->values()->all()], '保養計畫「' . $plan->name . '」' . $plan->next_due_date->toDateString() . ' 這一期沒有產生工單：設備都已淘汰或停用');
         }
 
         $plan->update(['next_due_date' => $plan->next_due_date->copy()->addDays($plan->cycle_days)->toDateString()]);

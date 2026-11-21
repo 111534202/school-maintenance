@@ -109,6 +109,17 @@ class MaintenancePlan extends Model
         return $targets->map(fn (MaintenancePlanTarget $target) => ['device_id' => $target->device_id, 'device_category_id' => $target->device_category_id])->all();
     }
 
+    /**
+     * 還能保養的對象：指定的設備已淘汰或停用（Device::canBeMaintained）就略過；設備類別照常（NG 時只能選還在用的設備）。
+     *
+     * @return list<array{device_id: int|null, device_category_id: int|null}>
+     */
+    public function maintainableTargets(): array
+    {
+        return array_values(array_filter($this->orderTargets(), fn (array $target) => $target['device_id'] === null
+            || Device::canBeMaintained($target['device_id'])));
+    }
+
     /** 畫面顯示的保養對象（用「、」串起來）；沒有對象清單時用計畫本身的設備／類別。 */
     public function targetsLabel(): string
     {

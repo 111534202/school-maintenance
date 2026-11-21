@@ -57,6 +57,8 @@ class MaintenanceOrderController extends Controller
             ->when($request->string('due')->toString() === 'overdue', fn ($query) => $query->overdue())
             ->when($request->string('due')->toString() === 'week', fn ($query) => $query->dueWithin(7))
             ->when($request->boolean('mine'), fn ($query) => $query->where('assigned_to', $request->user()->id))
+            // 只看還沒完成的（待處理、進行中）：?unfinished=1，通知鈴鐺「還沒指定負責人」連過來，數字和列表才會一致。
+            ->when($request->boolean('unfinished'), fn ($query) => $query->unfinished())
             ->when($request->filled('assignee'), fn ($query) => $request->string('assignee')->toString() === 'none' ? $query->whereNull('assigned_to') : $query->where('assigned_to', $request->integer('assignee')))
             // 關鍵字搜尋：設備（編號、資產編號、品牌、型號）、來源計畫名稱、設備類別名稱、負責人姓名；輸入 12 或 #12 找工單編號。
             ->when($request->filled('keyword'), function ($query) use ($request) {
@@ -132,6 +134,10 @@ class MaintenanceOrderController extends Controller
     {
         if (! $maintenancePlan->is_active) {
             return redirect()->route('maintenance-plans.index')->with('error', '已停用的保養計畫不能建立工單。');
+        }
+
+        if ($maintenancePlan->maintainableTargets() === []) {
+            return redirect()->route('maintenance-plans.index')->with('error', '這個計畫的設備都已淘汰或停用，不能再建立保養工單。');
         }
 
         $orders = DB::transaction(function () use ($maintenancePlan, $generator) {
@@ -215,7 +221,7 @@ class MaintenanceOrderController extends Controller
 
         AuditLogger::log('deleted', $maintenanceOrder, ['status' => $maintenanceOrder->status], '取消（刪除）保養工單 #' . $id);
 
-        return redirect()->route('maintenance-orders.index')->with('success', '保養工單 #' . $id . ' 已取消。');
+        return $this->backToList('maintenance-orders.index')->with('success', '保養工單 #' . $id . ' 已取消。');
     }
 
     /**

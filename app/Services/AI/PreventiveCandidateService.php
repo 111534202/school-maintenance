@@ -124,6 +124,11 @@ class PreventiveCandidateService
 
             $device = Device::withTrashed()->findOrFail($candidate->device_id);
 
+            // 候選產生後設備才被淘汰或停用：不能再為它建保養工單（這筆候選只能駁回）。
+            if (! Device::canBeMaintained($device->id)) {
+                throw new DomainException('這台設備已淘汰或停用，不能再建立保養工單，請改按「駁回」。');
+            }
+
             if ($reason = $this->deduplicator->findDuplicateReason($device, $candidate)) {
                 $candidate->update([
                     'status' => PreventiveCandidate::STATUS_DUPLICATE,

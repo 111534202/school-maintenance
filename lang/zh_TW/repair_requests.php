@@ -18,6 +18,7 @@ return [
         'classroom' => '教室',
         'classroom_all' => '全部教室',
         // 從設備主檔連過來（?device_id=）時顯示的提醒；:device 會換成設備編號。
+        'only_device' => '目前只顯示設備「:device」的報修單',
         // 從主控台「逾時工單」卡片連過來（?overdue=1）時顯示的提醒。
         'only_overdue' => '目前只顯示已逾時（未結案且超過預計處理時間）的報修單',
     ],

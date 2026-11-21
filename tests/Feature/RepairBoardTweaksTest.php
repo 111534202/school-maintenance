@@ -162,7 +162,7 @@ class RepairBoardTweaksTest extends TestCase
         $this->getJson(route('devices.timetable', $device->id))->assertOk();
     }
 
-    // 設備履歷的「備品耗用成本」：列出維修紀錄登記的零件（同零件合併數量，金額只給零件庫存管理者看），文字寫的使用備品說明列在其他備註。
+    // 設備履歷的「零件使用成本」：列出維修紀錄登記的零件（同零件合併數量，金額只給零件庫存管理者看）；舊資料的文字使用備品說明不再顯示。
     public function test_device_profile_lists_parts_used_on_the_device(): void
     {
         $device = $this->device('DEV-PART');
@@ -173,11 +173,19 @@ class RepairBoardTweaksTest extends TestCase
 
         $this->actingAs($this->makeUserWithRole('admin', '系統管理員'));
         $this->get(route('device-profile.show', $device))->assertOk()
-            ->assertSee('散熱風扇')->assertSee('2 個')->assertSee('合計 300 元')->assertSee('束線帶兩條')->assertSee('報修單 #' . $repair->id);
+            ->assertSee('散熱風扇')->assertSee('2 個')->assertSee('零件使用成本')->assertSee('合計 300 元')->assertDontSee('束線帶兩條')->assertDontSee('備品耗用成本')->assertSee('報修單 #' . $repair->id);
+
+        // 點維修紀錄那一列＝按「詳細」（對話框打開報修案件）；點零件那一列跳出它用在哪幾筆紀錄（可再點開那張報修單）。
+        $html = $this->get(route('device-profile.show', $device))->getContent();
+        $this->assertStringContainsString('<tr data-modal-frame-href="' . route('repairs.show', $repair) . '" data-modal-title="報修案件"', $html);
+        $this->assertStringContainsString('class="part-usage-row"', $html);
+        $this->assertStringContainsString(e(json_encode(route('repairs.show', $repair), JSON_UNESCAPED_SLASHES)), str_replace('\\/', '/', $html));
+        $this->assertStringContainsString('300 元', $html);
 
         $viewer = $this->makeUserWithPermissions(['devices.view', 'maintenance.view', 'repairs.view']);
         $repair->update(['requester_id' => $viewer->id]);   // 報修人看得到自己的報修單
         $this->actingAs($viewer);
-        $this->get(route('device-profile.show', $device))->assertOk()->assertSee('散熱風扇')->assertDontSee('合計 300 元');
+        $this->get(route('device-profile.show', $device))->assertOk()->assertSee('散熱風扇')->assertSee('使用零件')->assertSee('2 個')->assertSee('報修單 #' . $repair->id)
+            ->assertDontSee('零件使用成本')->assertDontSee('合計 300 元')->assertDontSee('300 元');
     }
 }

@@ -22,6 +22,7 @@ return [
         'users' => 'Total Users',
         'classrooms' => 'Total Classrooms',
         'classrooms_abnormal' => ':count classroom(s) with device issues',
+        'classrooms_abnormal_label' => 'Classrooms with device issues',
         'average_repair_hours' => 'Average Hours per Case This Month',
         'repair_hours_missing' => ':count completed repair request(s) have missing hours',
         'unit_hours' => 'hours',

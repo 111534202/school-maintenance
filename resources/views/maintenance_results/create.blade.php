@@ -61,6 +61,13 @@
                     @endforeach
                 </div>
             @endif
+            {{-- 工單指定的設備已經淘汰或停用：不能再報修，列出來說明不轉報修。 --}}
+            @foreach ($skippedDevices ?? [] as $skipped)
+                <div class="form-check text-muted">
+                    <input type="checkbox" class="form-check-input" disabled>
+                    <label class="form-check-label">{{ $skipped->device_code }}（{{ $skipped->category?->name ?? '—' }}）<span class="badge text-bg-secondary ms-1">已淘汰或停用，不轉報修</span></label>
+                </div>
+            @endforeach
             @error('ng_device_ids')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
             @error('ng_device_ids.*')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
         </div>

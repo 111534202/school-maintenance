@@ -4,6 +4,7 @@
 
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\FlagDiscardedUploads;                 // 有附件的表單驗證失敗時，提醒附件要重新選
+use App\Http\Middleware\CompressResponse;                    // 網頁回應 gzip 壓縮（避免大頁面在 php 內建伺服器上被截斷）
 use App\Http\Middleware\EmbeddedModal;                        // 「在畫面中」開啟的表單送出成功後，通知外面的頁面                            // 舊的「依角色限制」中介層（目前沒有路由在用，見該檔說明）
 use App\Http\Middleware\EnsureUserIsActive;                   // 檢查帳號是否啟用中的中介層
 use App\Http\Middleware\IgnoreMalformedQuery;                  // 網址篩選條件被亂改成陣列時忽略它（避免 500）
@@ -27,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // i18n：每個網頁請求都套用使用者目前選的語言（存在 session 裡）。
         // append 代表「加在既有關卡的最後面」。
-        $middleware->web(append: [SetLocale::class, FlagDiscardedUploads::class, EmbeddedModal::class, SecurityHeaders::class, IgnoreMalformedQuery::class]);
+        $middleware->web(append: [SetLocale::class, FlagDiscardedUploads::class, EmbeddedModal::class, SecurityHeaders::class, IgnoreMalformedQuery::class, CompressResponse::class]);
 
         // 替中介層取短名字：路由裡寫 'role:admin' 就等於使用 CheckRole（目前沒有路由用到）；
         // 'active' 是「帳號必須啟用中」的檢查，套用在 routes/web.php 登入後的路由群組。

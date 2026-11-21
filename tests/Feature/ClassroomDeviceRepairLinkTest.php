@@ -142,7 +142,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id])), $html);
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id, 'abnormal' => 1])), $html);
-        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['classroom_id' => $room->id])), $html);
+        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['device_classroom_id' => $room->id, 'open' => 1])), $html);
     }
 
     // 教室列表可以只看「有異常設備」的教室。
@@ -184,7 +184,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $all = $this->get(route('devices.index'))->assertOk();
         $all->assertSee('DEV-OK')->assertSee('DEV-BROKEN');
-        $all->assertSee(htmlspecialchars(route('repairs.index', ['keyword' => 'DEV-BROKEN'])), false);   // 跳到看板用關鍵字篩選
+        $all->assertSee(htmlspecialchars(route('repairs.index', ['device_id' => $broken->id, 'open' => 1])), false);   // 跳到看板：這台設備、未結案
         $all->assertSee('text-bg-warning', false)->assertSee('待維修');   // 有已派工的報修單 = 待維修（黃色徽章）
         $all->assertSee('text-bg-success', false);   // 正常 = 綠色徽章
     }
@@ -244,6 +244,6 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->broken($this->room('B202'), 'B-BROKEN', 'assigned');
         $this->device($this->room('C303'), 'C-RETIRED', 'retired');   // 已淘汰、沒有報修單：不算
 
-        $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室 2 間');
+        $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室')->assertSeeInOrder(['設備異常教室', '2', '間'], false)->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
     }
 }

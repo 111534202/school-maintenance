@@ -1,4 +1,4 @@
-{{-- 維修填單頁（對應 RepairLogController::create / store）：維修人員處理完填故障原因、處置方式、起訖時間、使用備品與照片。 --}}
+{{-- 維修填單頁（對應 RepairLogController::create / store）：維修人員處理完填故障原因、處置方式、起訖時間、使用的零件與照片。 --}}
 {{-- 送出後案件狀態自動從「已派工」變成「待驗收」。（Blade 的基本觀念見 layouts/app.blade.php 檔頭。） --}}
 {{-- 套用主版面。 --}}
 {{-- 維修填單頁：維修原因、處置方式、起訖時間、備品明細與附件。 --}}
@@ -173,31 +173,10 @@
                 </div>
             </div>
 
-            {{-- 保留舊的備品文字備註，不作為正式扣庫存依據 --}}
+            {{-- 附件（維修前後照片／影片）。用了哪些零件填在上面的零件明細（自由填寫的「使用備品說明」已拿掉）。 --}}
             <div class="card shadow-sm mb-3">
-                <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>備註與附件</div>
+                <div class="card-header bg-white form-section-title"><i class="bi bi-paperclip me-2"></i>附件</div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label for="parts_used_note" class="form-label">
-                            {{ __('repair_logs.form.parts_used_note') }}
-                        </label>
-
-                        <input
-                            type="text"
-                            class="form-control @error('parts_used_note') is-invalid @enderror"
-                            id="parts_used_note"
-                            name="parts_used_note"
-                            value="{{ old('parts_used_note') }}">
-
-                        <div class="form-text">
-                            可填寫其他備註；正式零件庫存請使用上方明細。
-                        </div>
-
-                        @error('parts_used_note')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-
                     <div>
                         <label for="attachments" class="form-label">
                             {{ __('repair_logs.form.attachments') }}

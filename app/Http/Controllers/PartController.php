@@ -257,9 +257,10 @@ class PartController extends Controller
     /** 刪除零件：已經被維修、保養用過或有報廢紀錄的零件不能刪除（紀錄要留著）。 */
     public function destroy(Part $part)
     {
-        if ($part->repairPartUsages()->exists() || $part->maintenancePartUsages()->exists() || $part->scraps()->exists()) {
+        // 要沒有庫存、也沒有任何維修、保養使用或報廢紀錄才能刪除。
+        if ($blocker = $part->deletionBlocker()) {
             return redirect()->route('parts.show', $part)
-                ->with('error', "零件 {$part->part_code} 已經有維修、保養使用或報廢紀錄，不能刪除。");
+                ->with('error', "零件 {$part->part_code} 不能刪除：{$blocker}");
         }
 
         DB::transaction(function () use ($part) {

@@ -33,13 +33,13 @@ class FormPagesSmokeTest extends TestCase
         $this->get(route('parts.edit', $part))->assertOk()->assertSee('HDMI 線');
     }
 
-    public function test_purchase_edit_page_renders(): void
+    public function test_purchase_show_page_renders(): void
     {
         $this->loginAsAnyUser();
         $part = Part::create(['part_code' => 'HDMI-3', 'name' => 'HDMI 線', 'unit' => '條', 'safety_stock' => 1]);
         $purchase = $part->purchases()->create(['purchase_date' => now()->toDateString(), 'vendor_name' => '甲廠商', 'quantity' => 5, 'unit_price' => 100, 'remaining_quantity' => 5]);
 
-        $this->get(route('parts.purchases.edit', [$part, $purchase]))->assertOk()->assertSee('甲廠商');
+        $this->get(route('parts.purchases.show', [$part, $purchase]))->assertOk()->assertSee('甲廠商');
     }
 
     public function test_reservation_export_and_locale_switch(): void

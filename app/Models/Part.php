@@ -193,6 +193,25 @@ class Part extends Model
     }
 
     /**
+     * 這個零件為什麼不能刪除（可以刪除就回傳 null）：必須「沒有庫存」，而且「沒有任何維修、保養使用或報廢紀錄」。
+     * 刪除按鈕、刪除動作與畫面上的提示都用這一個判斷。
+     */
+    public function deletionBlocker(): ?string
+    {
+        if ($this->current_stock > 0) {
+            return "目前還有庫存 {$this->withUnit($this->current_stock)}，沒有庫存才能刪除。";
+        }
+        if ($this->repairPartUsages()->exists() || $this->maintenancePartUsages()->exists()) {
+            return '已經有維修或保養使用紀錄，不能刪除。';
+        }
+        if ($this->scraps()->exists()) {
+            return '已經有報廢紀錄，不能刪除。';
+        }
+
+        return null;
+    }
+
+    /**
      * 採購紀錄（進貨批次）。
      *
      * @return HasMany<PartPurchase, $this>

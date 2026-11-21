@@ -85,6 +85,21 @@ class Device extends Model
     }
 
     /**
+     * 這台設備還能不能保養：已停用（軟刪除）或已淘汰的設備不再建立保養工單（排程、人工建單、AI 核准都用這個判斷）。
+     * 傳 null（計畫只綁設備類別、沒綁特定設備）視為可以。
+     */
+    public static function canBeMaintained(?int $deviceId): bool
+    {
+        if ($deviceId === null) {
+            return true;
+        }
+
+        $device = static::withTrashed()->find($deviceId);
+
+        return $device !== null && ! $device->trashed() && ! in_array($device->status, ['retired', 'disabled'], true);
+    }
+
+    /**
      * 畫面上要顯示的狀態：正常的設備如果有「已派工／待驗收」的報修單，就顯示「待維修」（AWAITING_REPAIR）；
      * 其他照資料庫的狀態。列表請先用 withAwaitingRepair() 一次查好，避免每台設備各查一次。
      */

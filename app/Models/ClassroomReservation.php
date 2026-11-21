@@ -32,6 +32,23 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ClassroomReservation extends Model
 {
+    /**
+     * 「等著審核」的申請：還沒審核，而且至少有一節還沒開始（時段全部已過的仍可補審核，但不再提醒）。
+     * 通知鈴鐺的數字與空間申請列表的 ?upcoming=1 都用它，兩邊的數字才會一致。
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ClassroomReservation>  $query
+     * @return \Illuminate\Database\Eloquent\Builder<ClassroomReservation>
+     */
+    public function scopeAwaitingReview($query)
+    {
+        $today = now()->toDateString();
+        $time = now()->format('H:i:s');
+
+        return $query->where('status', self::STATUS_PENDING)
+            ->whereHas('slots', fn ($q) => $q->whereNull('status')->where(fn ($q) => $q->whereDate('reservation_date', '>', $today)
+                ->orWhere(fn ($q) => $q->whereDate('reservation_date', $today)->where('start_time', '>', $time))));
+    }
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_APPROVED = 'approved';

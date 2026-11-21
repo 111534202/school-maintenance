@@ -9,8 +9,21 @@
     <p class="text-muted mb-3">{{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
 
     <div>
-        <form method="POST" enctype="multipart/form-data"
-            action="{{ $editing ? route('parts.purchases.update', [$part, $purchase]) : route('parts.purchases.store', $part) }}">
+        {{-- 兩步驟：按「新增採購並加入庫存」後先跳出確認視窗，核對零件與採購資料，按「確認新增採購」才真的送出；送出後採購紀錄就是定案，不能修改或刪除。 --}}
+        <form method="POST" enctype="multipart/form-data" action="{{ route('parts.purchases.store', $part) }}"
+            data-confirm-title="確認新增採購"
+            data-confirm="送出後庫存會立即增加，這筆採購紀錄就定案了，不能修改或刪除。請核對下面的資料，沒問題再按「確認新增採購」。"
+            data-confirm-ok="確認新增採購"
+            data-confirm-detail="{{ json_encode([
+                ['零件', trim($part->part_code . ' ' . $part->name)],
+                ['採購日期', '@purchase_date'],
+                ['廠商', '@vendor_name'],
+                ['數量', '@quantity'],
+                ['單價', '@unit_price'],
+                ['總價', '@sum:quantity*unit_price'],
+                ['備註', '@note'],
+                ['附件', '@invoices[]'],
+            ], JSON_UNESCAPED_UNICODE) }}">
             @csrf
             <div class="card shadow-sm">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-cart me-2"></i>採購資料</div>

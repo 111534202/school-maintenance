@@ -18,6 +18,7 @@ return [
         'classroom' => 'Classroom',
         'classroom_all' => 'All classrooms',
         // Notice shown when arriving from the device list (?device_id=); :device is replaced with the device code.
+        'only_device' => 'Showing repair requests for device ":device" only',
         // Notice shown when arriving from the dashboard's "Overdue Repairs" card (?overdue=1).
         'only_overdue' => 'Showing overdue repair requests only (open and past the scheduled time)',
     ],

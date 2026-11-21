@@ -46,7 +46,7 @@ class PreventiveCandidateController extends Controller
             $summary['skipped_duplicate'],
         );
 
-        return redirect()->route('preventive-candidates.index')->with('success', $message);
+        return $this->backToList('preventive-candidates.index')->with('success', $message);
     }
 
     public function approve(Request $request, PreventiveCandidate $preventiveCandidate, PreventiveCandidateService $service): RedirectResponse
@@ -61,15 +61,15 @@ class PreventiveCandidateController extends Controller
         try {
             $order = $service->approve($preventiveCandidate, $request->user(), $data['decision_note'] ?? null, $scheduledDate);
         } catch (DomainException $e) {
-            return redirect()->route('preventive-candidates.index')->with('error', $e->getMessage());
+            return $this->backToList('preventive-candidates.index')->with('error', $e->getMessage());
         }
 
         if ($order === null) {
-            return redirect()->route('preventive-candidates.index')
+            return $this->backToList('preventive-candidates.index')
                 ->with('error', '這台設備已有即將到期或近期建立的保養工單，為避免重複，未建立新工單。');
         }
 
-        return redirect()->route('preventive-candidates.index')
+        return $this->backToList('preventive-candidates.index')
             ->with('success', "已核准，並建立 AI 保養工單 {$order->displayNumber()}，排定 {$order->scheduled_date->format('Y-m-d')} 保養。");
     }
 
@@ -80,9 +80,9 @@ class PreventiveCandidateController extends Controller
         try {
             $service->reject($preventiveCandidate, $request->user(), $data['decision_note'] ?? null);
         } catch (DomainException $e) {
-            return redirect()->route('preventive-candidates.index')->with('error', $e->getMessage());
+            return $this->backToList('preventive-candidates.index')->with('error', $e->getMessage());
         }
 
-        return redirect()->route('preventive-candidates.index')->with('success', '已駁回這筆候選。');
+        return $this->backToList('preventive-candidates.index')->with('success', '已駁回這筆候選。');
     }
 }

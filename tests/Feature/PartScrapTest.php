@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 /**
  * 零件報廢：沒用就壞掉、過期或遺失的零件登記報廢，從庫存扣掉（先進先出），報廢損失依當時批次單價；
- * 登記錯了可以取消報廢，數量加回原本的批次。
+ * 登記後就定案（唯讀），不能修改或取消。
  */
 class PartScrapTest extends TestCase
 {
@@ -81,23 +81,26 @@ class PartScrapTest extends TestCase
         $this->assertSame(0, PartScrap::count());
     }
 
-    public function test_cancelling_a_scrap_puts_the_quantity_back_into_the_same_batches(): void
+    public function test_a_registered_scrap_is_final_it_cannot_be_cancelled_and_the_form_asks_twice(): void
     {
         $this->loginAsAnyUser();
         $part = $this->makePart();
-        $old = $this->buy($part, '2026-10-01', 2, 20);
-        $new = $this->buy($part, '2026-10-10', 3, 30);
+        $this->buy($part, '2026-10-01', 5, 20);
+
+        // 登記前的第二步：確認視窗要列出零件與要登記的資料。
+        $html = $this->get(route('parts.scraps.create', $part))->assertOk()->getContent();
+        $this->assertStringContainsString('data-confirm-title="確認登記報廢"', $html);
+        $this->assertStringContainsString('@quantity', $html);
+        $this->assertStringContainsString('不能修改或取消', $html);
+
         $this->post(route('parts.scraps.store', $part), ['scrap_date' => '2026-11-01', 'quantity' => 3, 'reason' => '過期']);
         $scrap = PartScrap::sole();
 
-        $this->delete(route('parts.scraps.destroy', [$part, $scrap]))
-            ->assertRedirect(route('parts.show', $part))->assertSessionHas('success');
-
-        $this->assertSame(5, $part->fresh()->current_stock);
-        $this->assertSame(2, $old->fresh()->remaining_quantity);
-        $this->assertSame(3, $new->fresh()->remaining_quantity);
-        $this->assertSame(0, PartScrap::count());
-        $this->assertDatabaseCount('part_scrap_batches', 0);
+        // 登記後定案：沒有取消的網址或按鈕，庫存不會加回。
+        $this->delete("/parts/{$part->part_code}/scraps/{$scrap->id}")->assertNotFound();
+        $this->assertSame(2, $part->fresh()->current_stock);
+        $this->assertSame(1, PartScrap::count());
+        $this->get(route('parts.show', $part))->assertOk()->assertDontSee('取消報廢')->assertDontSee('parts/' . $part->part_code . '/scraps/' . $scrap->id, false);
     }
 
     public function test_a_part_with_scraps_cannot_be_deleted_and_a_scrap_of_another_part_is_not_found(): void
@@ -112,8 +115,8 @@ class PartScrapTest extends TestCase
         $this->delete(route('parts.destroy', $part))->assertSessionHas('error');
         $this->assertNotNull($part->fresh());
 
-        $this->delete(route('parts.scraps.destroy', [$other, $scrap]))->assertNotFound();
         $this->assertSame(1, PartScrap::count());
+        $this->assertNotNull($other->fresh());
     }
 
     /** 成本分析報表：預設一起顯示報廢損失（依報廢日期篩選），也可以選「不顯示」。 */

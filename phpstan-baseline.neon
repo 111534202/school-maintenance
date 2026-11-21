@@ -781,18 +781,6 @@ parameters:
 			path: app/Http/Controllers/PartPurchaseController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:destroy\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PartPurchaseController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:edit\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PartPurchaseController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:purchaseData\(\) has parameter \$validated with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -811,12 +799,6 @@ parameters:
 			path: app/Http/Controllers/PartPurchaseController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:update\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PartPurchaseController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\PartPurchaseController\:\:uploadedFiles\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -830,12 +812,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Http\\Controllers\\PartScrapController\:\:create\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/PartScrapController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\PartScrapController\:\:destroy\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
 			path: app/Http/Controllers/PartScrapController.php
@@ -1502,24 +1478,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Services\\MasterCharts\:\:deviceStatus\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MasterCharts.php
-
-		-
-			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) has parameter \$counts with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MasterCharts.php
-
-		-
-			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) has parameter \$labels with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/MasterCharts.php
-
-		-
-			message: '#^Method App\\Services\\MasterCharts\:\:ranking\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/MasterCharts.php

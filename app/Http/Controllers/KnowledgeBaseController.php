@@ -116,8 +116,7 @@ class KnowledgeBaseController extends Controller
 
         AuditLogger::log('deleted', $knowledgeBase);
 
-        return redirect()
-            ->route('knowledge-base.index')
+        return $this->backToList('knowledge-base.index')
             ->with('success', __('knowledge_base.flash.deleted'));
     }
 

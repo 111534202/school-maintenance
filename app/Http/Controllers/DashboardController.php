@@ -54,8 +54,8 @@ class DashboardController extends Controller
             ];
         }
 
-        // 「進行中工單」= 已派工＋待驗收（已經有人在處理的；新報修還沒派工不算）。點卡片到看板，篩選同樣這兩個狀態，筆數一致。
-        $openCount = collect($repairStatuses)->whereIn('key', RepairRequestStatus::awaitingRepairValues())->sum('count');
+        // 「進行中工單」= 未結案：新報修、已派工、待驗收（已結案、已退回都算結束）。點卡片到看板，篩選同樣這三個狀態，筆數一致。
+        $openCount = collect($repairStatuses)->whereNotIn('key', RepairRequestStatus::closedValues())->sum('count');
 
         // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
         $monthStart = now()->startOfMonth();
@@ -84,7 +84,7 @@ class DashboardController extends Controller
         $trend = [];
         for ($i = 0; $i < 14; $i++) {   // 一天一天走過這 14 天
             $date = $since->copy()->addDays($i);   // copy：避免改到原本的 $since
-            $trend[] = ['label' => $date->format('m/d'), 'count' => (int) ($perDay[$date->format('Y-m-d')] ?? 0)];
+            $trend[] = ['label' => $date->format('m/d'), 'date' => $date->format('Y-m-d'), 'count' => (int) ($perDay[$date->format('Y-m-d')] ?? 0)];
         }
 
         // 先放「大家都看得到」的報修資料；需要權限的欄位先設成 null，下面有權限才填。

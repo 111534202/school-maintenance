@@ -145,7 +145,12 @@
                             @endif
                         </td>
                         <td class="text-end tb-col-fit">
+                            @if ($candidate->status === 'pending' && ! \App\Models\Device::canBeMaintained($candidate->device_id))
+                                {{-- 設備已淘汰或停用：不能再核准建單，只能駁回。 --}}
+                                <span class="text-muted small d-block mb-1">設備已淘汰或停用，不能建立保養工單</span>
+                            @endif
                             @if ($candidate->status === 'pending')
+                                @if (\App\Models\Device::canBeMaintained($candidate->device_id))
                                 <form method="POST" action="{{ route('preventive-candidates.approve', $candidate) }}" class="d-inline-flex flex-wrap gap-1 align-items-center justify-content-end">
                                     @csrf
                                     {{-- 排定保養日期：由主管選（預設是今天加上 AI 設定的預設天數，不能選過去的日子）。 --}}
@@ -162,6 +167,7 @@
                                     @endif
                                     <button type="submit" class="btn btn-sm btn-success">核准建單</button>
                                 </form>
+                                @endif
                                 <form method="POST" action="{{ route('preventive-candidates.reject', $candidate) }}" class="d-inline">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-danger">駁回</button>

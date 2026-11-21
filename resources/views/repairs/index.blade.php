@@ -45,9 +45,13 @@
                     @endphp
                     <select id="status" name="status" class="form-select form-select-sm" style="width: 9rem;">
                         <option value="">{{ __('repair_requests.filter.status_all') }}</option>
-                        {{-- 主控台卡片帶來的好幾個狀態：多一個選項顯示「已派工、待驗收」並選起來，篩選列看得出目前的範圍。 --}}
+                        {{-- 主控台卡片帶來的好幾個狀態：多一個選項顯示「新報修、已派工、待驗收」並選起來，篩選列看得出目前的範圍。 --}}
                         @if (count($statusFilter) > 1)
                             <option value="{{ $statusValue }}" selected>{{ collect($statusFilter)->map(fn ($s) => \App\Enums\RepairRequestStatus::from($s)->label())->implode('、') }}</option>
+                        @endif
+                        {{-- 沒有驗收權限的人下拉選單沒有「已結案」，但從主控台工時卡片連過來時狀態就是已結案：補一個選項，按篩選才不會被洗掉。 --}}
+                        @if ($statusValue === 'completed' && ! auth()->user()->can('repairs.accept'))
+                            <option value="completed" selected>{{ \App\Enums\RepairRequestStatus::Completed->label() }}</option>
                         @endif
                         {{-- 狀態下拉選單：列出所有案件狀態（新報修、已派工、已退回、待驗收、已結案）。 --}}
                         @foreach ($statuses as $statusOption)
@@ -87,11 +91,35 @@
                 @if (request('device_id'))
                     <input type="hidden" name="device_id" value="{{ request('device_id') }}">
                 @endif
-                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue', 'mine']])
+                {{-- 其他從主控台、教室主檔、通知鈴鐺連過來的進階篩選（新增日期範圍、完修日期、設備所在教室、設備類別、指派給我、等我驗收），
+                     按「篩選」時同樣要帶著，不然一篩選就被洗掉。（?open=1 已經換成狀態欄的「新報修、已派工、待驗收」，不另外帶。） --}}
+                @foreach (['created_from', 'created_to', 'device_classroom_id', 'device_category_id', 'assigned_to_me', 'acceptable', 'ended_from', 'ended_to'] as $carry)
+                    @if (request()->filled($carry))
+                        <input type="hidden" name="{{ $carry }}" value="{{ request($carry) }}">
+                    @endif
+                @endforeach
+                @include('layouts.partials.filter-actions', ['reset' => route('repairs.index'), 'fields' => ['keyword', 'status', 'assignee', 'classroom_id', 'device_id', 'overdue', 'mine', 'open', 'created_from', 'created_to', 'device_classroom_id', 'device_category_id', 'assigned_to_me', 'acceptable', 'ended_from', 'ended_to']])
             </form>
         </div>
     </div>
     @endunless
+
+    {{-- 進階篩選的說明（篩選列沒有對應欄位的那幾個：新增日期、完修日期、設備所在教室、設備類別、指派給我、等我驗收）：
+         一行灰字一項，附清除連結。狀態（含逾時、好幾個狀態）直接顯示在篩選列的狀態欄，不另外說明。 --}}
+    @foreach ($activeFilters as $activeFilter)
+        <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <span><i class="bi bi-funnel me-2"></i>{{ $activeFilter['text'] }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(array_merge($activeFilter['clear'], ['page']))) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endforeach
+
+    {{-- 從設備主檔連過來（?device_id=）時，提醒「目前只看這台設備」，並提供清除的連結。 --}}
+    @if ($filteredDevice)
+        <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <span><i class="bi bi-pc-display me-2"></i>{{ __('repair_requests.filter.only_device', ['device' => $filteredDevice->device_code]) }}</span>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ route('repairs.index', request()->except(['device_id', 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+        </div>
+    @endif
 
     {{-- 查不到任何案件時顯示提示；否則顯示表格。 --}}
     @if ($repairRequests->isEmpty())

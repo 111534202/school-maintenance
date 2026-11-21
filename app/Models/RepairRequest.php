@@ -142,7 +142,7 @@ class RepairRequest extends Model
 
         // 括號包起來：「自己報修」或「指派給自己」二選一，不會影響外面其他篩選條件。
         return $query->where(function (Builder $q) use ($user) {
-            $q->where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->orWhere('accepted_by', $user->id);
+            $q->where('repair_requests.requester_id', $user->id)->orWhere('repair_requests.assigned_to', $user->id)->orWhere('repair_requests.accepted_by', $user->id);
         });
     }
 
@@ -163,8 +163,8 @@ class RepairRequest extends Model
         }
 
         return $query->where(function (Builder $q) use ($user) {
-            $q->whereNotIn('status', [RepairRequestStatus::PendingReview->value, RepairRequestStatus::Completed->value])
-                ->orWhere(fn (Builder $related) => $related->where('requester_id', $user->id)->orWhere('assigned_to', $user->id)->orWhere('accepted_by', $user->id));
+            $q->whereNotIn('repair_requests.status', [RepairRequestStatus::PendingReview->value, RepairRequestStatus::Completed->value])
+                ->orWhere(fn (Builder $related) => $related->where('repair_requests.requester_id', $user->id)->orWhere('repair_requests.assigned_to', $user->id)->orWhere('repair_requests.accepted_by', $user->id));
         });
     }
 
@@ -177,6 +177,26 @@ class RepairRequest extends Model
     public function scopeOpen(Builder $query): Builder
     {
         return $query->whereNotIn($query->qualifyColumn('status'), RepairRequestStatus::closedValues());
+    }
+
+    /**
+     * 「等這位用戶驗收」的待驗收案件：系統管理員是全部待驗收；其他人是「指定由我驗收」，
+     * 或「沒指定驗收人、而且是我報修的」（規則和 RepairRequestPolicy::accept 一致）。
+     * 通知鈴鐺的數字與看板的 ?acceptable=1 都用它，兩邊的數字才會一致。
+     *
+     * @param  Builder<RepairRequest>  $query
+     * @return Builder<RepairRequest>
+     */
+    public function scopeAcceptableBy(Builder $query, User $user): Builder
+    {
+        $query->where('repair_requests.status', RepairRequestStatus::PendingReview->value);
+
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(fn (Builder $q) => $q->where('repair_requests.accepted_by', $user->id)
+            ->orWhere(fn (Builder $own) => $own->whereNull('repair_requests.accepted_by')->where('repair_requests.requester_id', $user->id)));
     }
 
     /**

@@ -40,12 +40,31 @@ class NgToRepairService
             return collect();
         }
 
+        // 已淘汰、已停用（軟刪除）的設備不能再報修，不列出來；指定的設備被淘汰或停用的，回報畫面另外列出「不轉報修」（skippedDevices）。
         return Device::query()->with(['category', 'classroom'])
+            ->where('status', '<>', 'retired')->where('status', '<>', 'disabled')
             ->where(fn ($query) => $query
                 ->whereIn('id', $deviceIds)
-                ->orWhere(fn ($q) => $q->whereIn('device_category_id', $categoryIds)->where('status', '<>', 'retired')))
+                ->orWhereIn('device_category_id', $categoryIds))
             ->orderBy('device_code')
             ->get();
+    }
+
+    /**
+     * 工單裡指定的設備中，已經淘汰或停用、不能轉報修的（回報 NG 與保養結果畫面標示「已淘汰或停用，不轉報修」）。
+     *
+     * @return Collection<int, Device>
+     */
+    public function skippedDevices(MaintenanceOrder $order): Collection
+    {
+        $deviceIds = $order->targets()->pluck('device_id')->filter()->values()->all();
+        if ($deviceIds === [] && $order->device_id) {
+            $deviceIds = [$order->device_id];
+        }
+
+        return Device::withTrashed()->with('category')->whereKey($deviceIds)->orderBy('device_code')->get()
+            ->filter(fn (Device $device) => $device->trashed() || in_array($device->status, ['retired', 'disabled'], true))
+            ->values();
     }
 
     /**
@@ -68,7 +87,18 @@ class NgToRepairService
         }
 
         $order = $result->maintenanceOrder()->first();
-        $devices = Device::query()->with('classroom')->whereKey($deviceIds)->orderBy('device_code')->get();
+        // 已淘汰或停用的設備不能再報修：略過，記在操作紀錄（回報畫面也不讓勾，這裡是保險）。
+        $all = Device::withTrashed()->with('classroom')->whereKey($deviceIds)->orderBy('device_code')->get();
+        $skipped = $all->filter(fn (Device $device) => ! Device::canBeMaintained($device->id));
+        $devices = $all->diff($skipped);
+        if ($skipped->isNotEmpty()) {
+            AuditLogger::log('updated', $result, ['skipped_device_ids' => $skipped->pluck('id')->all()], '保養 NG 未轉報修：設備 ' . $skipped->pluck('device_code')->implode('、') . ' 已淘汰或停用');
+        }
+        if ($devices->isEmpty()) {
+            $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE]);
+
+            return collect();
+        }
 
         $repairs = $devices->map(function (Device $device) use ($result, $order) {
             $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(

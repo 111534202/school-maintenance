@@ -248,17 +248,21 @@ class UserController extends Controller
         AuditLogger::log('deleted', $user);
         $this->revokeSessions($user);   // 被刪的人立刻被踢下線
 
-        return redirect()->route('users.index')->with('success', __('users.flash.deleted'));
+        return $this->backToList('users.index')->with('success', __('users.flash.deleted'));
     }
 
     /** 還原被刪除（軟刪除）的帳號。路由有加 withTrashed()，才找得到已刪除的帳號。 */
     public function restore(User $user): RedirectResponse
     {
+        if (! $user->trashed()) {
+            return $this->backToList('users.index')->with('error', '這個帳號沒有被刪除，不需要還原。');
+        }
+
         $user->restore();   // 清掉 deleted_at，帳號回到列表
 
         AuditLogger::log('restored', $user);
 
-        return redirect()->route('users.index')->with('success', __('users.flash.restored'));
+        return $this->backToList('users.index')->with('success', __('users.flash.restored'));
     }
 
     /**
@@ -299,7 +303,7 @@ class UserController extends Controller
         // 所以這裡還是能正常記錄「永久刪除了誰」。
         AuditLogger::log('force_deleted', $user);
 
-        return redirect()->route('users.index')->with('success', __('users.flash.force_deleted'));
+        return $this->backToList('users.index')->with('success', __('users.flash.force_deleted'));
     }
 
     /**

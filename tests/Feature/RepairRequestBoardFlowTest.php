@@ -333,8 +333,8 @@ class RepairRequestBoardFlowTest extends TestCase
         $this->assertSame($originalTechnician->id, $repairRequest->fresh()->assigned_to);
     }
 
-    // 維修紀錄可以附影片，並填寫使用備品說明。
-    public function test_repair_log_accepts_a_video_attachment_and_parts_used_note(): void
+    // 維修紀錄可以附影片；自由填寫的「使用備品說明」已拿掉（用了哪些零件改用零件明細登記），送來也不會存。
+    public function test_repair_log_accepts_a_video_attachment_and_ignores_the_old_parts_used_note(): void
     {
         // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
         Storage::fake('local');
@@ -351,7 +351,8 @@ class RepairRequestBoardFlowTest extends TestCase
 
         $response->assertRedirect(route('repairs.show', $repairRequest));
         $log = $repairRequest->fresh()->repairLogs->first();
-        $this->assertSame('投影機散熱風扇 x1', $log->parts_used_note);
+        $this->assertNull($log->parts_used_note);
+        $this->get(route('repair-logs.create', RepairRequest::factory()->create(['status' => 'assigned'])))->assertOk()->assertDontSee('name="parts_used_note"', false);
         $this->assertCount(1, $log->attachments);
     }
 

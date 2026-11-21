@@ -66,7 +66,7 @@
                                         <i class="bi {{ $plan->is_active ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
                                     </button>
                                 </form>
-                                @if ($plan->is_active)
+                                @if ($plan->is_active && $plan->maintainableTargets() !== [])
                                     <form action="{{ route('maintenance-plans.create-order', $plan) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-outline-success icon-btn" title="建立工單" aria-label="建立工單"><i class="bi bi-clipboard-plus"></i></button>

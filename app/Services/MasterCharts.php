@@ -64,7 +64,7 @@ class MasterCharts
     {
         [$from, $to] = self::thisMonth();
         $rows = RepairRequest::query()
-            ->visibleTo($user)
+            ->visibleOnBoard($user)   // 和報修看板同一個範圍，點進去的列表筆數才會和排行數字一致
             ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
             ->join('classrooms', 'devices.classroom_id', '=', 'classrooms.id')
             ->whereNull('devices.deleted_at')
@@ -81,7 +81,9 @@ class MasterCharts
 
         return self::ranking(__('dashboard.charts.classroom_repair_ranking'), '#dc3545',
             $rows->map(fn ($r) => trim($r->classroom_code . ' ' . $r->name))->all(),
-            $rows->map(fn ($r) => (int) $r->total)->all());
+            $rows->map(fn ($r) => (int) $r->total)->all(),
+            // 點某間教室的長條：只看「放在這間教室的設備」、本月新增的報修單。
+            $rows->map(fn ($r) => route('repairs.index', ['device_classroom_id' => $r->id] + self::monthRange()))->all());
     }
 
     /** 設備類別主檔：本月設備類別報修排行（前 5 名，只統計可見、已綁定實際設備的報修單）。 */
@@ -89,7 +91,7 @@ class MasterCharts
     {
         [$from, $to] = self::thisMonth();
         $rows = RepairRequest::query()
-            ->visibleTo($user)
+            ->visibleOnBoard($user)   // 和報修看板同一個範圍，點進去的列表筆數才會和排行數字一致
             ->join('devices', 'repair_requests.device_id', '=', 'devices.id')
             ->join('device_categories', 'devices.device_category_id', '=', 'device_categories.id')
             ->whereNull('devices.deleted_at')
@@ -105,11 +107,20 @@ class MasterCharts
 
         return self::ranking(__('dashboard.charts.device_category_repair_ranking'), '#0d6efd',
             $rows->map(fn ($r) => $r->name)->all(),
-            $rows->map(fn ($r) => (int) $r->total)->all());
+            $rows->map(fn ($r) => (int) $r->total)->all(),
+            // 點某個類別的長條：只看這個設備類別、本月新增的報修單。
+            $rows->map(fn ($r) => route('repairs.index', ['device_category_id' => $r->id] + self::monthRange()))->all());
     }
 
-    /** 排行圖共用格式：長條圖，點擊後前往報修看板。 */
-    private static function ranking(string $title, string $color, array $labels, array $counts): array
+    /**
+     * 排行圖共用格式：長條圖，點擊後前往報修看板。
+     *
+     * @param  array<int, string>  $labels
+     * @param  array<int, int>  $counts
+     * @param  array<int, string>  $urls
+     * @return array<string, mixed>
+     */
+    private static function ranking(string $title, string $color, array $labels, array $counts, array $urls): array
     {
         return [
             'title' => $title,
@@ -117,9 +128,19 @@ class MasterCharts
             'labels' => $labels,
             'counts' => $counts,
             'colors' => array_fill(0, count($labels), $color),
-            'urls' => array_fill(0, count($labels), route('repairs.index')),
+            'urls' => $urls,
             'series' => __('dashboard.charts.repair_trend_series'),
         ];
+    }
+
+    /**
+     * 報修看板「新增日期」篩選用的本月範圍（含頭尾）。
+     *
+     * @return array{created_from: string, created_to: string}
+     */
+    private static function monthRange(): array
+    {
+        return ['created_from' => now()->startOfMonth()->toDateString(), 'created_to' => now()->endOfMonth()->toDateString()];
     }
 
     /** @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon} 本月第一天與下個月第一天 */

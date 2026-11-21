@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
  *   - 報修、維修紀錄、附件：彭仕衡主責的模組（已併入），唯讀查詢他的 RepairRequest / RepairLog / Attachment，
  *     並沿用他的歸屬權限規則（RepairRequest::visibleTo）：使用者只看得到自己有權限檢視的報修單，
  *     設備履歷不會變成繞過報修單權限的後門。不另外建表、不複製資料。
- *   - 備品耗用成本：劉家芸主責的模組尚未併入，先以維修紀錄上的「使用備品說明」文字呈現，成本欄位待她的介面確認。
+ *   - 零件使用成本：維修紀錄、保養結果登記的零件（數量合併；金額只給零件庫存管理者看）。
  *   - AI 預測（第 4 週）：即時呼叫 PredictionServiceInterface 取得風險分數與評分明細，並列出預防保養候選。
  */
 class DeviceProfileController extends Controller
@@ -115,19 +115,20 @@ class DeviceProfileController extends Controller
             return $own->concat($fromLogs);
         })->values();
 
-        // 備品耗用：這台設備的維修紀錄、保養結果正式登記的零件（同一個零件合併數量；金額只給零件庫存管理者看），
-        // 再加上維修紀錄裡只用文字寫的「使用備品說明」（沒有登記成正式零件，所以沒有金額）。
+        // 零件使用成本：這台設備的維修紀錄、保養結果登記的零件（同一個零件合併數量；金額只給零件庫存管理者看）。
         $partRows = collect();
         foreach ($repairRequests as $r) {
             foreach ($r->repairLogs as $log) {
                 foreach ($log->partUsages as $usage) {
-                    $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '報修單 #' . $r->id]);
+                    $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '報修單 #' . $r->id,
+                        'date' => ($log->ended_at ?? $log->started_at ?? $log->created_at)?->format('Y-m-d'), 'url' => route('repairs.show', $r), 'title' => '報修案件']);
                 }
             }
         }
         foreach ($maintenanceOrders as $order) {
             foreach ($order->result?->partUsages ?? [] as $usage) {
-                $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '保養工單 ' . $order->displayNumber()]);
+                $partRows->push(['part' => $usage->part, 'quantity' => $usage->quantity, 'amount' => $usage->quantity * (int) $usage->unit_price, 'source' => '保養工單 ' . $order->displayNumber(),
+                    'date' => ($order->result->executed_at ?? $order->result->created_at)?->format('Y-m-d'), 'url' => route('maintenance-orders.show', $order), 'title' => '保養紀錄']);
             }
         }
         $partUsage = $partRows->groupBy(fn ($row) => $row['part']?->id ?? 0)->map(fn ($rows) => [
@@ -135,13 +136,17 @@ class DeviceProfileController extends Controller
             'quantity' => $rows->sum('quantity'),
             'amount' => $rows->sum('amount'),
             'sources' => $rows->pluck('source')->unique()->values(),
+            // 每一筆使用（點零件時跳出的視窗列這些；金額只給零件庫存管理者，見畫面）。
+            'uses' => $rows->sortByDesc('date')->map(fn ($row) => [
+                'date' => $row['date'], 'source' => $row['source'], 'url' => $row['url'], 'title' => $row['title'],
+                'quantity' => $row['quantity'] . ' ' . ($row['part']?->unit ?? ''),
+                'amount' => $request->user()->can('parts.manage') ? number_format($row['amount']) . ' 元' : null,
+            ])->values()->all(),
         ])->values();
-        $partNotes = $repairRequests->flatMap(fn ($r) => $r->repairLogs->filter(fn ($log) => filled($log->parts_used_note))
-            ->map(fn ($log) => ['note' => $log->parts_used_note, 'source' => '報修單 #' . $r->id]))->values();
         $canSeePartCost = $request->user()->can('parts.manage');
 
         return view('device_profile.show', compact(
-            'partUsage', 'partNotes', 'canSeePartCost',
+            'partUsage', 'canSeePartCost',
             'device', 'maintenanceOrders', 'maintenanceStats', 'prediction', 'candidates',
             'repairRequests', 'hiddenRepairCount', 'ngSources', 'repairStats', 'attachments'
         ));

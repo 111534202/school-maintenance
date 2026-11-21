@@ -103,11 +103,30 @@
                 <option value="{{ $status }}" @selected(old('status', $device->status ?? 'normal') == $status)>{{ $awaitingRepair && $status === 'normal' ? \App\Models\Device::statusLabel('repairing') : \App\Models\Device::statusLabel($status) }}</option>
             @endforeach
         </select>
+        <div class="form-text">已淘汰是定案：存檔後設備資料鎖住，不能再修改、停用（不小心淘汰時，請系統管理員在設備詳細按「取消淘汰」）。</div>
         @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
 </div>
 </div>
+
+{{-- 改成「已淘汰」時，存檔前再確認一次（淘汰後資料就鎖住）；用全站共用的確認視窗（data-confirm）。 --}}
+<script>
+(function () {
+    var select = document.getElementById('status');
+    var form = select && select.form;
+    if (!form) return;
+    var original = select.value;
+    form.addEventListener('submit', function () {
+        if (select.value === 'retired' && original !== 'retired') {
+            form.setAttribute('data-confirm', '確定要把這台設備改成「已淘汰」嗎？淘汰後設備資料會鎖住，不能再修改、停用，也不會再排保養、不能報修。');
+            form.setAttribute('data-confirm-ok', '確認淘汰');
+        } else {
+            form.removeAttribute('data-confirm');
+        }
+    }, true);
+})();
+</script>
 
 {{-- 表單底部的「取消／儲存」按鈕（和用戶、部門主檔的表單一致）：在外框下面、靠右。 --}}
 <div class="d-flex justify-content-end gap-2 mt-3">

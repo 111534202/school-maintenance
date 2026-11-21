@@ -85,7 +85,8 @@
                 <tbody>
                     @forelse ($maintenanceOrders as $order)
                         @php [$statusText, $statusColor] = $order->statusLabel(); @endphp
-                        <tr>
+                        {{-- 點這一列＝按「詳細」：在對話框打開保養紀錄。 --}}
+                        <tr data-modal-frame-href="{{ route('maintenance-orders.show', $order) }}" data-modal-title="保養紀錄" data-modal-size="xl" tabindex="0" role="link">
                             <td class="text-center tb-col-fit"><span class="badge text-bg-{{ $order->sourceColor() }}">{{ $order->sourceLabel() }}</span></td>
                             <td>{{ $order->maintenancePlan?->name ?? ($order->source === 'ai' ? 'AI 預防保養（無計畫）' : '—') }}</td>
                             <td class="text-center"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
@@ -200,7 +201,8 @@
                             $ngSource = $ngSources->get($repair->id);
                             $hours = (float) $repair->repairLogs->sum('total_hours');
                         @endphp
-                        <tr>
+                        {{-- 點這一列＝按「詳細」：在對話框打開報修案件。 --}}
+                        <tr data-modal-frame-href="{{ route('repairs.show', $repair) }}" data-modal-title="報修案件" data-modal-size="xl" tabindex="0" role="link">
                             <td>
                                 <span class="fw-semibold">#{{ $repair->id }} {{ $repair->title }}</span>
                                 {{-- 保養 NG 轉入的報修單：標籤可以點，在對話框打開來源的保養結果。 --}}
@@ -237,48 +239,40 @@
         <div class="col">
             <div class="card h-100">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h2 class="tb-section-title">備品耗用成本</h2>
+                    {{-- 有零件庫存權限：「零件使用成本」（有金額）；沒有：「使用零件」（只看數量、來源，跟報修案件的「材料費明細／使用零件」一樣）。 --}}
+                    <h2 class="tb-section-title">{{ $canSeePartCost ? '零件使用成本' : '使用零件' }}</h2>
                     @if ($canSeePartCost && $partUsage->isNotEmpty())
                         <span class="text-muted small">合計 {{ number_format($partUsage->sum('amount')) }} 元</span>
                     @endif
                 </div>
-                {{-- 這台設備的維修紀錄、保養結果正式登記的零件（同一個零件合併數量）；金額只給零件庫存管理者看。
-                     維修紀錄裡只用文字寫的「使用備品說明」沒有登記成正式零件，列在下面「其他備註」，沒有金額。 --}}
-                @if ($partUsage->isEmpty() && $partNotes->isEmpty())
-                    <div class="card-body text-muted small">這台設備目前沒有備品耗用紀錄。</div>
+                {{-- 這台設備的維修紀錄、保養結果登記的零件（同一個零件合併數量）；金額只給零件庫存管理者看。 --}}
+                @if ($partUsage->isEmpty())
+                    <div class="card-body text-muted small">這台設備目前沒有零件使用紀錄。</div>
                 @else
-                    @if ($partUsage->isNotEmpty())
-                        <div class="table-responsive" data-no-fit data-no-onion>
-                            <table class="tb-table tb-table-sm mb-0 align-middle" data-no-onion>
-                                <thead>
-                                    <tr>
-                                        <th>零件</th>
-                                        <th class="text-end">數量</th>
-                                        @if ($canSeePartCost)<th class="text-end">金額</th>@endif
-                                        <th>來源</th>
+                    <div class="table-responsive" data-no-fit data-no-onion>
+                        <table class="tb-table tb-table-sm mb-0 align-middle" data-no-onion>
+                            <thead>
+                                <tr>
+                                    <th>零件</th>
+                                    <th class="text-end">數量</th>
+                                    @if ($canSeePartCost)<th class="text-end">金額</th>@endif
+                                    <th>來源</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($partUsage as $row)
+                                    {{-- 點這一列：跳出視窗列出這個零件用在哪幾筆紀錄（日期、數量、金額），點紀錄再打開那張報修單／保養紀錄。 --}}
+                                    <tr class="part-usage-row" role="button" tabindex="0" style="cursor: pointer;"
+                                        data-part-name="{{ $row['part']?->name ?? '（已刪除的零件）' }}" data-part-uses="{{ json_encode($row['uses'], JSON_UNESCAPED_UNICODE) }}">
+                                        <td>{{ $row['part']?->name ?? '（已刪除的零件）' }}</td>
+                                        <td class="text-end">{{ $row['quantity'] }} {{ $row['part']?->unit }}</td>
+                                        @if ($canSeePartCost)<td class="text-end">{{ number_format($row['amount']) }}</td>@endif
+                                        <td class="small text-muted">{{ $row['sources']->implode('、') }}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($partUsage as $row)
-                                        <tr>
-                                            <td>{{ $row['part']?->name ?? '（已刪除的零件）' }}</td>
-                                            <td class="text-end">{{ $row['quantity'] }} {{ $row['part']?->unit }}</td>
-                                            @if ($canSeePartCost)<td class="text-end">{{ number_format($row['amount']) }}</td>@endif
-                                            <td class="small text-muted">{{ $row['sources']->implode('、') }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                    @if ($partNotes->isNotEmpty())
-                        <div class="card-body small {{ $partUsage->isNotEmpty() ? 'border-top' : '' }}">
-                            <div class="text-muted mb-1">其他備註（維修紀錄的使用備品說明，沒有登記成正式零件）</div>
-                            @foreach ($partNotes as $note)
-                                <div>{{ $note['note'] }}<span class="text-muted">（{{ $note['source'] }}）</span></div>
-                            @endforeach
-                        </div>
-                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
             </div>
         </div>
@@ -303,4 +297,54 @@
     </div>
     @include('parts._attachment-modal')
     @endif
+{{-- 零件使用成本：點某個零件，列出它用在這台設備的哪幾筆紀錄。 --}}
+<div class="modal fade" id="partUsageModal" tabindex="-1" aria-labelledby="partUsageModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="partUsageModalTitle">使用紀錄</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="tb-table tb-table-hover mb-0 align-middle" data-no-onion>
+                    <thead><tr><th>日期</th><th>紀錄</th><th class="text-end">數量</th>@if ($canSeePartCost)<th class="text-end">金額</th>@endif</tr></thead>
+                    <tbody id="partUsageModalBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var modalEl = document.getElementById('partUsageModal');
+    if (!modalEl) return;   // Bootstrap 的 JS 在版面最後才載入，所以按下去時才用 window.bootstrap
+    var body = document.getElementById('partUsageModalBody');
+    var showCost = {{ $canSeePartCost ? 'true' : 'false' }};
+    function open(tr) {
+        var uses = [];
+        try { uses = JSON.parse(tr.getAttribute('data-part-uses') || '[]'); } catch (e) {}
+        document.getElementById('partUsageModalTitle').textContent = tr.getAttribute('data-part-name') + ' 的使用紀錄';
+        body.innerHTML = '';
+        uses.forEach(function (u) {
+            var row = document.createElement('tr');
+            // 點一筆：在對話框打開那張報修單／保養紀錄（跟按「詳細」一樣）。
+            row.setAttribute('data-modal-frame-href', u.url);
+            row.setAttribute('data-modal-title', u.title);
+            row.setAttribute('data-modal-size', 'xl');
+            row.tabIndex = 0;
+            row.setAttribute('role', 'link');
+            [u.date || '—', u.source, u.quantity].concat(showCost ? [u.amount] : []).forEach(function (text, i) {
+                var td = document.createElement('td');
+                td.textContent = text;
+                if (i >= 2) td.className = 'text-end';
+                row.appendChild(td);
+            });
+            body.appendChild(row);
+        });
+        window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+    document.addEventListener('click', function (e) { var tr = e.target.closest && e.target.closest('tr.part-usage-row'); if (tr) open(tr); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.matches && e.target.matches('tr.part-usage-row')) { e.preventDefault(); open(e.target); } });
+})();
+</script>
 @endsection

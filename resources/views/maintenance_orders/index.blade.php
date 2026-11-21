@@ -62,9 +62,25 @@
             <label for="to" class="form-label small mb-1">排定日期（迄）</label>
             <input type="date" name="to" id="to" class="form-control form-control-sm" value="{{ request('to') }}">
         </div>
-        @include('layouts.partials.filter-actions', ['reset' => route('maintenance-orders.index'), 'fields' => ['keyword', 'status', 'due', 'assignee', 'mine', 'source', 'from', 'to']])
+        {{-- 從通知鈴鐺連過來的「只看我負責的」「只看還沒完成的」，按「篩選」時要一併帶著，不然一篩選就被洗掉。 --}}
+        @foreach (['mine', 'unfinished'] as $carry)
+            @if (request()->boolean($carry))
+                <input type="hidden" name="{{ $carry }}" value="1">
+            @endif
+        @endforeach
+        @include('layouts.partials.filter-actions', ['reset' => route('maintenance-orders.index'), 'fields' => ['keyword', 'status', 'due', 'assignee', 'mine', 'unfinished', 'source', 'from', 'to']])
     </form>
     </div>
+
+    {{-- 目前套用的進階篩選說明（一行一項，附清除連結）。 --}}
+    @foreach (['mine' => '只顯示指派給我的保養工單', 'unfinished' => '只顯示還沒完成（待處理、進行中）的保養工單'] as $param => $text)
+        @if (request()->boolean($param))
+            <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <span><i class="bi bi-funnel me-2"></i>{{ $text }}</span>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ route('maintenance-orders.index', request()->except([$param, 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>
+            </div>
+        @endif
+    @endforeach
 
     @if ($orders->isEmpty())
         <div class="tb-card tb-empty">目前沒有保養工單，請到「保養計畫」頁面點選「建立工單」</div>

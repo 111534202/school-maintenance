@@ -94,8 +94,7 @@ class MaintenancePlanController extends Controller
         $maintenancePlan->update(['is_active' => ! $maintenancePlan->is_active]);
         AuditLogger::log('status_changed', $maintenancePlan, ['is_active' => $maintenancePlan->is_active], ($maintenancePlan->is_active ? '重新啟用' : '停用') . '保養計畫「' . $maintenancePlan->name . '」');
 
-        return redirect()
-            ->route('maintenance-plans.index')
+        return $this->backToList('maintenance-plans.index')
             ->with('success', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
     }
 

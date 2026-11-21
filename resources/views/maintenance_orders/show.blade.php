@@ -129,18 +129,23 @@
                     @if ($maintenanceOrder->result->isNg())
                         <dt class="col-sm-3">轉出的報修單</dt>
                         <dd class="col-sm-9">
+                            @php $orderSkipped = app(\App\Services\NgToRepairService::class)->skippedDevices($maintenanceOrder); @endphp
                             @forelse ($maintenanceOrder->result->repairRequests as $ngRepair)
                                 <div>
                                     @can('view', $ngRepair)
-                                        <a href="{{ route('repairs.show', $ngRepair) }}">#{{ $ngRepair->id }} {{ $ngRepair->title }}</a>
+                                        <a href="{{ route('repairs.show', $ngRepair) }}" data-modal-frame data-modal-title="報修案件" data-modal-size="xl">#{{ $ngRepair->id }} {{ $ngRepair->title }}</a>
                                     @else
                                         #{{ $ngRepair->id }} {{ $ngRepair->title }}
                                     @endcan
                                     @include('repairs._status-badge', ['status' => $ngRepair->status])
                                 </div>
                             @empty
-                                —
+                                @if ($orderSkipped->isEmpty())—@endif
                             @endforelse
+                            {{-- 工單指定的設備已經淘汰或停用：不能報修，沒有轉報修單。 --}}
+                            @foreach ($orderSkipped as $skipped)
+                                <div class="text-muted">{{ $skipped->device_code }} <span class="badge text-bg-secondary">已淘汰或停用，不轉報修</span></div>
+                            @endforeach
                         </dd>
                     @endif
                 </dl>
