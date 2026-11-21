@@ -38,9 +38,17 @@ php artisan migrate:fresh --seed
 
 4. 啟動網站，開啟 <http://127.0.0.1:8000>：
 
+**Windows（展示、驗收請用這個）**：
+
 ```bash
-php artisan serve --host=127.0.0.1 --port=8000
+python tools/stable-server.py
 ```
+
+Windows 上 PHP 內建伺服器（`php artisan serve`）會隨機把較大的回應截斷（樣式檔、圖表程式、頁面只送一半），造成跑版、按鈕沒反應、對話框空白，這不是網站程式的問題。
+`tools/stable-server.py` 靜態檔直接從磁碟整份送出、頁面交給 php-cgi 處理後算好長度再回應，不會被截斷；只需要 Python 3，不用另外安裝東西。
+要讓同網路的其他電腦連進來展示，加 `--host 0.0.0.0`；換埠用 `--port 8080`。
+
+Linux／macOS 或正式環境用 Apache、nginx（PHP-FPM），開發時也可以用 `php artisan serve --host=127.0.0.1 --port=8000`。
 
 `migrate:fresh` 會**清空整個資料庫**再重建，只在本機開發使用。已經有資料、只想套用新的資料表變更時，用 `php artisan migrate`。
 

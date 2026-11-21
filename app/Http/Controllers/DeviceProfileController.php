@@ -98,7 +98,7 @@ class DeviceProfileController extends Controller
 
         $repairStats = [
             'total' => $repairRequests->count(),
-            'open' => $repairRequests->filter(fn (RepairRequest $r) => $r->status !== \App\Enums\RepairRequestStatus::Completed)->count(),
+            'open' => $repairRequests->filter(fn (RepairRequest $r) => ! $r->status->isFinal())->count(),
             'hours' => (float) $repairRequests->flatMap->repairLogs->sum('total_hours'),
         ];
 

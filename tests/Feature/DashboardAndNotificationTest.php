@@ -264,7 +264,8 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSeeInOrder(['設備總數', '3']);
         $response->assertSeeInOrder(['用戶數量', '3']);  // admin + 2
         $response->assertSeeInOrder(['教室數量', '1']);
-        $response->assertSeeInOrder(['設備異常教室', '1']);
+        $response->assertViewHas('classroomAbnormal', 1);
+        $response->assertSee('設備異常教室');
         $response->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
         // 主控台只留兩張重要圖表；設備狀態、用戶身分等圖表搬進對應的主檔（統計圖表按鈕）。
         $response->assertSee('工單狀態分布');

@@ -25,6 +25,25 @@ enum RepairRequestStatus: string
     case PendingReview = 'pending_review';
     /** 已結案：報修人驗收通過，流程結束（不能再變動） */
     case Completed = 'completed';
+    /** 已中止：設備已淘汰，進行中的報修單自動中止（終點，不能再變動） */
+    case Aborted = 'aborted';
+
+    /**
+     * 還在進行中的狀態（新報修、已派工、處理中、待驗收）。
+     * 「進行中」「未結案」的數字與篩選一律用這份清單，已結案與已中止都不算。
+     *
+     * @return list<string>
+     */
+    public static function openValues(): array
+    {
+        return [self::Pending->value, self::Assigned->value, self::InProgress->value, self::PendingReview->value];
+    }
+
+    /** 已定案、不能再變動的狀態（已結案、已中止）。 */
+    public function isFinal(): bool
+    {
+        return in_array($this, [self::Completed, self::Aborted], true);
+    }
 
     /**
      * 把狀態代碼轉成畫面上要顯示的文字，例如 'pending' -> '新報修'（或英文 'New'，

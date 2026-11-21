@@ -54,10 +54,10 @@
              取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
         @can('repairs.dispatch')
             <div class="d-inline-flex gap-2 flex-shrink-0">
-                @if ($status !== \App\Enums\RepairRequestStatus::Completed)
+                @if (! $status->isFinal())
                     <a class="btn btn-outline-primary btn-sm" href="{{ route('repairs.edit', $repairRequest) }}"><i class="bi bi-pencil me-1"></i>修改</a>
                 @endif
-                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed], true))
+                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed, \App\Enums\RepairRequestStatus::Aborted], true))
                     <form method="POST" action="{{ route('repairs.destroy', $repairRequest) }}"
                         data-confirm="請問確定要取消報修單「{{ $repairRequest->title }}」嗎？取消後會從看板與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf
@@ -68,6 +68,13 @@
             </div>
         @endcan
     </div>
+
+    @if ($status === \App\Enums\RepairRequestStatus::Aborted)
+        <div class="alert alert-dark d-flex gap-2" role="status">
+            <i class="bi bi-slash-circle mt-1"></i>
+            <div>這張報修單已中止：設備已淘汰，進行中的案件一併中止。資料已定案，只能查看，不能再修改、派工或驗收。</div>
+        </div>
+    @endif
 
     {{-- 版面：寬螢幕（992px 以上）左欄是設備資料與故障描述，右欄是派工與處理；
          窄螢幕改成直式，依序是設備資料 → 故障描述 → 派工與處理。維修紀錄與材料費明細放在最下面、佔滿整列。 --}}
@@ -117,7 +124,7 @@
             </div>
 
             {{-- 已結案的案件是定案了，不再顯示「驗收退回」的紅色提醒（那是給維修人員補做用的，結案後沒有要做的事）。 --}}
-            @if ($repairRequest->rejection_reason && $repairRequest->status !== \App\Enums\RepairRequestStatus::Completed)
+            @if ($repairRequest->rejection_reason && ! $repairRequest->status->isFinal())
                 {{-- 這張案件曾經被驗收退回，把最新一次的退回原因秀出來，讓維修人員知道要補做什麼。 --}}
                 <div class="alert alert-danger d-flex gap-2">
                     <i class="bi bi-arrow-counterclockwise mt-1"></i>

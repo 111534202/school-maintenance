@@ -55,7 +55,7 @@ class DashboardController extends Controller
         }
 
         // 「進行中工單」= 除了「已結案」以外全部加起來。
-        $openCount = collect($repairStatuses)->where('key', '!=', RepairRequestStatus::Completed->value)->sum('count');
+        $openCount = collect($repairStatuses)->whereIn('key', RepairRequestStatus::openValues())->sum('count');
 
         // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
         $monthStart = now()->startOfMonth();
@@ -104,18 +104,18 @@ class DashboardController extends Controller
                 $statusCounts[RepairRequestStatus::InProgress->value] ?? 0
             ),
             // 待驗收：只算跟自己有關的（和看板、鈴鐺一致；管理員全部）。
-            'pendingReviewCount' => RepairRequest::visibleOnBoard($user)->where('status', RepairRequestStatus::PendingReview->value)->count(),
+            // 待驗收：算「等我驗收」的（管理員全部），和通知鈴鐺、點進去的看板（?acceptable=1）同一個定義。
+            'pendingReviewCount' => RepairRequest::acceptableBy($user)->count(),
             'monthlyRepairCount' => $monthlyRepairCount,
             'averageRepairHours' => $repairDurationStats['average_hours'],
             'repairDurationMissingCount' => $repairDurationStats['missing_hours_request_count'],
             'overdueCount' => $overdueCount,
             'trend' => $trend,
             // 空間預約待審核：有預約管理權限的人算全部，其他人只算自己提出的（和預約列表看到的一致）。
-            // 時間已到還沒審核的申請在上面已先自動拒絕，數字才不會把過期的算進去。
-            'pendingReservationCount' => ClassroomReservation::query()
-                ->where('status', ClassroomReservation::STATUS_PENDING)
-                ->when(! $user->hasPermission('reservations.manage'), fn ($q) => $q->where('requester_id', $user->id))
-                ->count(),
+            // 有審核權限的人算「還有沒開始節次」的待審核申請（和通知鈴鐺、點進去的列表 ?upcoming=1 同一個定義）。
+            'pendingReservationCount' => $user->hasPermission('reservations.manage')
+                ? ClassroomReservation::query()->awaitingReview()->count()
+                : ClassroomReservation::query()->where('status', ClassroomReservation::STATUS_PENDING)->where('requester_id', $user->id)->count(),
             'deviceTotal' => null,
             'userTotal' => null,
             'classroomTotal' => null,

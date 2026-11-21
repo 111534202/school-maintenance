@@ -40,7 +40,7 @@ class ClassroomRepairNotices
 
         // 1. 尚未結案的報修：設備在這些教室，或沒有設備但報修單填了這些教室。
         $repairs = RepairRequest::query()
-            ->where('status', '!=', RepairRequestStatus::Completed->value)
+            ->whereIn('status', RepairRequestStatus::openValues())
             ->where(fn ($q) => $q
                 ->whereHas('device', fn ($d) => $d->whereIn('classroom_id', $ids))
                 ->orWhere(fn ($q) => $q->whereNull('device_id')->whereIn('classroom_id', $ids)))

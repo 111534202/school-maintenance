@@ -65,8 +65,12 @@ class MaintenancePlanController extends Controller
             ->with('success', '保養計畫新增成功');
     }
 
-    public function edit(MaintenancePlan $maintenancePlan): View
+    public function edit(MaintenancePlan $maintenancePlan): View|RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         return view('maintenance_plans.edit', [
             'plan' => $maintenancePlan,
             'items' => MaintenanceItem::query()->where('is_active', true)->orderBy('name')->get(),
@@ -77,6 +81,10 @@ class MaintenancePlanController extends Controller
 
     public function update(UpdateMaintenancePlanRequest $request, MaintenancePlan $maintenancePlan): RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         $data = $request->safe()->except('item_ids');
         $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
 
@@ -94,11 +102,21 @@ class MaintenancePlanController extends Controller
      */
     public function toggleStatus(MaintenancePlan $maintenancePlan): RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         $maintenancePlan->update(['is_active' => ! $maintenancePlan->is_active]);
         AuditLogger::log('status_changed', $maintenancePlan, ['is_active' => $maintenancePlan->is_active], ($maintenancePlan->is_active ? '重新啟用' : '停用') . '保養計畫「' . $maintenancePlan->name . '」');
 
         return $this->backToList('maintenance-plans.index')
             ->with('success', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
+    }
+
+    /** 計畫的設備已淘汰：資料已定案，不能修改、停用或重新啟用。 */
+    private function lockedRedirect(): RedirectResponse
+    {
+        return redirect()->route('maintenance-plans.index')->with('error', '這份計畫的設備已淘汰，計畫已停用且資料已定案，不能修改。');
     }
 
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon

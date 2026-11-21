@@ -53,6 +53,9 @@ class MaintenanceOrder extends Model
 
     public const STATUS_COMPLETED = 'completed';
 
+    // 已中止：設備淘汰時，還沒做完的工單自動中止（終點，和已完成一樣唯讀，不再列入完成率分母）。
+    public const STATUS_ABORTED = 'aborted';
+
     // 第三正規化：已經指定了一台設備（device_id），類別由設備推得，不另存 device_category_id（儲存時自動清掉）。
     protected static function booted(): void
     {
@@ -130,6 +133,12 @@ class MaintenanceOrder extends Model
         return $query->whereIn('status', [self::STATUS_PENDING, self::STATUS_IN_PROGRESS]);
     }
 
+    /** 已定案、不能再變動的工單：已完成，或因設備淘汰而中止。 */
+    public function isFinal(): bool
+    {
+        return in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_ABORTED], true);
+    }
+
     /** 逾期：還沒做完，而且排定保養日期早於今天。 */
     public function scopeOverdue(Builder $query): Builder
     {
@@ -163,8 +172,8 @@ class MaintenanceOrder extends Model
             return false;
         }
 
-        // 已完成的工單是定案，不能再回報結果。
-        if ($this->status === self::STATUS_COMPLETED) {
+        // 已完成、已中止的工單是定案，不能再回報結果。
+        if ($this->isFinal()) {
             return false;
         }
 
@@ -220,6 +229,7 @@ class MaintenanceOrder extends Model
         return match ($this->status) {
             self::STATUS_IN_PROGRESS => ['進行中', 'primary'],
             self::STATUS_COMPLETED => ['已完成', 'success'],
+            self::STATUS_ABORTED => ['已中止', 'dark'],
             default => ['待處理', 'warning'],
         };
     }

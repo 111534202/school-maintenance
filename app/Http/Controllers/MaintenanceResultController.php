@@ -25,6 +25,9 @@ class MaintenanceResultController extends Controller
     public function create(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
         // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張保養工單已因設備淘汰中止，不能回報保養結果。');
+        }
         if ($maintenanceOrder->result()->exists() || $maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
         }
@@ -56,6 +59,9 @@ class MaintenanceResultController extends Controller
      */
     public function store(StoreMaintenanceResultRequest $request, MaintenanceOrder $maintenanceOrder, NgToRepairService $ngToRepairService, PartStockService $stock, AttachmentUploader $attachmentUploader): RedirectResponse
     {
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張保養工單已因設備淘汰中止，不能回報保養結果。');
+        }
         if ($maintenanceOrder->result()->exists() || $maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');
         }

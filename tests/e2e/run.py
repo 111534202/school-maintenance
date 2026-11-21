@@ -88,10 +88,15 @@ def main():
         run(['php', 'artisan', 'migrate:fresh', '--seed', '--force'], env=env, quiet=True)
 
         print(f'3. 啟動測試網站 {BASE}')
-        router = ROOT / 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php'
-        # PHP 內建網站一次只處理一個請求；在 Linux／macOS 用 PHP_CLI_SERVER_WORKERS 開多個工作程序（上面的 env），Windows 不支援所以會比較慢。
-        server = subprocess.Popen(['php', '-S', f'127.0.0.1:{PORT}', str(router)], cwd=ROOT / 'public', env=env,
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if platform.system() == 'Windows':
+            # Windows 的 PHP 內建網站會隨機把回應截斷（樣式檔、頁面只送一半），測試會時好時壞；改用專案的穩定伺服器（tools/stable-server.py）。
+            server = subprocess.Popen([sys.executable, str(ROOT / 'tools/stable-server.py'), '--port', str(PORT)], cwd=ROOT, env=env,
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            router = ROOT / 'vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php'
+            # PHP 內建網站一次只處理一個請求；在 Linux／macOS 用 PHP_CLI_SERVER_WORKERS 開多個工作程序（上面的 env）。
+            server = subprocess.Popen(['php', '-S', f'127.0.0.1:{PORT}', str(router)], cwd=ROOT / 'public', env=env,
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         wait_for_server()
 
         print('4. 開始執行情境\n')

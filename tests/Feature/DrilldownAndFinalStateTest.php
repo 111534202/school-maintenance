@@ -438,4 +438,28 @@ class DrilldownAndFinalStateTest extends TestCase
         $this->flushHeaders();
         $this->assertNull($this->actingAs($admin)->get(route('classrooms.index'))->headers->get('Content-Encoding'));
     }
+
+    public function test_dashboard_cards_and_the_bell_show_the_same_numbers_for_the_same_things(): void
+    {
+        $this->travelTo('2026-11-09 08:00:00');
+        $reviewer = $this->makeUserWithPermissions(['reservations.manage', 'repairs.accept', 'repairs.create']);
+        $this->reservation('未來班', '2026-11-12');
+        $this->reservation('過期班', '2026-11-05');   // 時段已過：兩邊都不算
+        $this->repair('案件-MINE', 'pending_review', ['requester_id' => $reviewer->id, 'accepted_by' => null]);
+        $this->repair('案件-OTHER', 'pending_review', ['requester_id' => $reviewer->id, 'accepted_by' => $this->makeTechnician()->id]);   // 指定別人驗收：不算
+
+        $response = $this->actingAs($reviewer)->get(route('dashboard'))->assertOk();
+
+        $response->assertViewHas('pendingReservationCount', 1)->assertViewHas('pendingReviewCount', 1);
+        $response->assertSee('1 筆空間申請待審核')->assertSee('1 張工單待驗收');   // 鈴鐺
+    }
+
+    public function test_starting_a_completed_maintenance_order_gives_a_friendly_message_not_a_403(): void
+    {
+        $admin = $this->makeUserWithRole('admin', '系統管理員');
+        $order = MaintenanceOrder::factory()->create(['device_id' => $this->device('DEV-START')->id, 'status' => MaintenanceOrder::STATUS_COMPLETED]);
+
+        $this->actingAs($admin)->from(route('maintenance-orders.show', $order))->patch(route('maintenance-orders.start', $order))
+            ->assertRedirect(route('maintenance-orders.show', $order))->assertSessionHas('error');
+    }
 }

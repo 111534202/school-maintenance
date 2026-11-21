@@ -17,10 +17,10 @@
             {{-- 修改（排定日期）與取消（刪除）：需要 maintenance.manage；已完成或已回報結果的工單不能改、不能取消。
                  取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
             @can('maintenance.manage')
-                @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED)
+                @if (! $maintenanceOrder->isFinal())
                     <a href="{{ route('maintenance-orders.edit', $maintenanceOrder) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil me-1"></i>修改日期</a>
                 @endif
-                @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && ! $maintenanceOrder->result)
+                @if (! $maintenanceOrder->isFinal() && ! $maintenanceOrder->result)
                     <form method="POST" action="{{ route('maintenance-orders.destroy', $maintenanceOrder) }}"
                         data-confirm="請問確定要取消保養工單 {{ $maintenanceOrder->displayNumber() }} 嗎？取消後會從列表與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf
@@ -31,6 +31,13 @@
             @endcan
         </div>
     </div>
+
+    @if ($maintenanceOrder->status === \App\Models\MaintenanceOrder::STATUS_ABORTED)
+        <div class="alert alert-dark d-flex gap-2" role="status">
+            <i class="bi bi-slash-circle mt-1"></i>
+            <div>這張保養工單已中止：設備已淘汰，沒做完的工單一併中止。資料已定案，只能查看，不能再修改、指派或回報結果。</div>
+        </div>
+    @endif
 
     <div class="card">
         <div class="card-body">
@@ -81,7 +88,7 @@
                 <dt class="col-sm-3">負責人</dt>
                 <dd class="col-sm-9">
                     {{-- 保養管理者可以指派負責人（只能指派給有保養回報權限的人）；指派之後只有負責人與保養管理者能回報，通知鈴鐺也只提醒負責人。留空＝沒指派。 --}}
-                    @if ($maintenanceOrder->status !== \App\Models\MaintenanceOrder::STATUS_COMPLETED && auth()->user()->can('maintenance.manage'))
+                    @if (! $maintenanceOrder->isFinal() && auth()->user()->can('maintenance.manage'))
                         <form method="POST" action="{{ route('maintenance-orders.assign', $maintenanceOrder) }}" class="d-flex flex-wrap gap-2 align-items-center">
                             @csrf
                             @method('PATCH')

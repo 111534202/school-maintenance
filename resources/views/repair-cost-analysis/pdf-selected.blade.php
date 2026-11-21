@@ -147,7 +147,7 @@
     <p>匯出時間：{{ now()->format('Y-m-d H:i:s') }}</p>
     <p>統計期間：{{ $startDate ?: '不限' }} 至 {{ $endDate ?: '不限' }}</p>
     @php
-        $statusLabels = ['pending' => '待處理', 'assigned' => '已指派', 'in_progress' => '處理中', 'pending_review' => '待驗收', 'completed' => '已完成'];
+        $statusLabels = ['pending' => '待處理', 'assigned' => '已指派', 'in_progress' => '處理中', 'pending_review' => '待驗收', 'completed' => '已完成', 'aborted' => '已中止'];
         $numbers = ['一', '二', '三', '四', '五'];
     @endphp
     <p>案件狀態：{{ $status ? ($statusLabels[$status] ?? $status) : '全部狀態' }}</p>

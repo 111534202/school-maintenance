@@ -8,6 +8,8 @@ use App\Exports\TableExport;
 use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
+use App\Models\MaintenanceOrder;
+use App\Models\MaintenancePlan;
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
@@ -41,7 +43,7 @@ class DeviceController extends Controller
             // 列表上顯示並連到報修看板（?device_id=）。
             ->withCount(['repairRequests as open_repairs_count' => fn ($repairs) => $repairs
                 ->visibleOnBoard($user)
-                ->where('status', '!=', RepairRequestStatus::Completed->value)])
+                ->whereIn('status', RepairRequestStatus::openValues())])
             // 近 N 天報修次數（不分狀態；日期從 N 天前的 00:00 起算，和徽章連到報修看板的「新增日期」篩選同一個定義；
             // 只算這位用戶看得到的案件，點進去的列表筆數才會和徽章一致）：達到 Device::REPEAT_REPAIR_THRESHOLD 就是「重複報修」。
             ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
@@ -135,7 +137,14 @@ class DeviceController extends Controller
             ->orderBy('classroom_code')
             ->get();
 
-        return view('devices.edit', compact('device', 'categories', 'classrooms'));
+        // 選「已淘汰」時要先確認：告訴使用者這台設備名下有多少進行中的東西會一併中止。
+        $retireImpact = [
+            'repairs' => $device->repairRequests()->whereIn('status', RepairRequestStatus::openValues())->count(),
+            'orders' => MaintenanceOrder::query()->where('device_id', $device->id)->unfinished()->count(),
+            'plans' => MaintenancePlan::query()->where('device_id', $device->id)->where('is_active', true)->count(),
+        ];
+
+        return view('devices.edit', compact('device', 'categories', 'classrooms', 'retireImpact'));
     }
 
     /** 接收編輯表單（PUT /devices/{device}）。 */
@@ -151,14 +160,9 @@ class DeviceController extends Controller
         $newIsCore = $request->boolean('is_core');
         unset($data['status'], $data['is_core']);
 
-        // 已淘汰是定案：不能再改回「正常／維修中／停用」（畫面的狀態欄也是鎖住的）。
-        if ($device->status === 'retired' && $newStatus !== 'retired') {
-            return back()->withInput()->withErrors(['status' => '這台設備已淘汰，狀態不能再改回其他狀態。']);
-        }
-
         // 還有沒結案的報修單時，不能把狀態從「維修中／已淘汰／停用」直接改回「正常」（要先把報修單處理完）。
         if ($newStatus === 'normal' && $device->status !== 'normal'
-            && $device->repairRequests()->where('status', '!=', RepairRequestStatus::Completed->value)->exists()) {
+            && $device->repairRequests()->whereIn('status', RepairRequestStatus::openValues())->exists()) {
             return back()->withInput()->withErrors(['status' => '這台設備還有沒結案的報修單，不能直接改成「正常」。請先完成報修單的驗收。']);
         }
 

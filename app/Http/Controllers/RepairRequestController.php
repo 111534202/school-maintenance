@@ -70,7 +70,7 @@ class RepairRequestController extends Controller
         $activeCaseCountsByAssignee = RepairRequest::query()
             ->visibleTo($request->user())                                        // 同樣只算這位用戶看得到的案件
             ->whereNotNull('assigned_to')                                        // 只算有指派人的
-            ->where('status', '!=', RepairRequestStatus::Completed->value)       // 已結案的不算「手上還在做」
+            ->whereIn('status', RepairRequestStatus::openValues())               // 已結案、已中止的不算「手上還在做」
             ->selectRaw('assigned_to, count(*) as active_count')                 // 每個人各幾張
             ->groupBy('assigned_to')
             ->pluck('active_count', 'assigned_to');                              // 結果：[用戶編號 => 張數]
@@ -200,7 +200,7 @@ class RepairRequestController extends Controller
             // 狀態篩選：有帶 ?status= 才套用；可以用逗號帶多個（?status=pending,assigned，主控台「待修數」卡片用）。
             ->when($request->filled('status'), fn ($query) => $query->whereIn('status', $this->statusList($request)))
             // 只看未結案（進行中）：?open=1，教室主檔、設備主檔、主控台的「進行中」數字連過來，數字和列表才會一致。
-            ->when($request->boolean('open'), fn ($query) => $query->where('status', '!=', RepairRequestStatus::Completed->value))
+            ->when($request->boolean('open'), fn ($query) => $query->whereIn('status', RepairRequestStatus::openValues()))
             // 新增日期範圍：?created_from=2026-11-01&created_to=2026-11-30（含頭尾），主控台「本月新增」與每日趨勢圖連過來。
             ->when($request->filled('created_from'), fn ($query) => $query->where('created_at', '>=', Carbon::parse($request->string('created_from')->toString())->startOfDay()))
             ->when($request->filled('created_to'), fn ($query) => $query->where('created_at', '<=', Carbon::parse($request->string('created_to')->toString())->endOfDay()))
@@ -731,8 +731,8 @@ class RepairRequestController extends Controller
     public function edit(RepairRequest $repairRequest)
     {
         Gate::authorize('view', $repairRequest);   // 跟自己無關的案件看不到，也不能開修改表單
-        if ($repairRequest->status === RepairRequestStatus::Completed) {
-            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
+        if ($repairRequest->status->isFinal()) {
+            return redirect()->route('repairs.show', $repairRequest)->with('error', $this->finalEditMessage($repairRequest));
         }
 
         $classrooms = Classroom::query()
@@ -743,12 +743,20 @@ class RepairRequestController extends Controller
         return view('repairs.edit', compact('repairRequest', 'classrooms'));
     }
 
+    /** 已結案或已中止的報修單不能修改時，顯示給使用者的說明。 */
+    private function finalEditMessage(RepairRequest $repairRequest): string
+    {
+        return $repairRequest->status === RepairRequestStatus::Aborted
+            ? '這張報修單已因設備淘汰中止，資料已定案，不能修改。'
+            : '已結案的報修單不能修改。';
+    }
+
     /** 儲存修改（PUT /repairs/{id}）：只改上面這幾個欄位，狀態、報修人、維修人員不變；寫操作紀錄。 */
     public function update(UpdateRepairRequestRequest $request, RepairRequest $repairRequest)
     {
         Gate::authorize('view', $repairRequest);
-        if ($repairRequest->status === RepairRequestStatus::Completed) {
-            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案的報修單不能修改。');
+        if ($repairRequest->status->isFinal()) {
+            return redirect()->route('repairs.show', $repairRequest)->with('error', $this->finalEditMessage($repairRequest));
         }
 
         $repairRequest->fill($request->validated());
@@ -773,6 +781,9 @@ class RepairRequestController extends Controller
     public function destroy(RepairRequest $repairRequest)
     {
         Gate::authorize('view', $repairRequest);
+        if ($repairRequest->status === RepairRequestStatus::Aborted) {
+            return redirect()->route('repairs.show', $repairRequest)->with('error', '這張報修單已因設備淘汰中止，資料已定案，不能取消。');
+        }
         if (in_array($repairRequest->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
             return redirect()->route('repairs.show', $repairRequest)
                 ->with('error', '已經填寫維修紀錄（待驗收、已結案）的報修單不能取消，因為維修紀錄與用料已經記入零件庫存與成本。');

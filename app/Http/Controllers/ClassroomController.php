@@ -37,7 +37,7 @@ class ClassroomController extends Controller
                 'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
                 'repairRequests as open_repairs_count' => fn ($repairs) => $repairs
                     ->visibleOnBoard($user)   // 和報修看板同一個範圍（含待驗收、已結案的可見規則），點進去的列表筆數才會一致
-                    ->where('repair_requests.status', '!=', RepairRequestStatus::Completed->value),
+                    ->whereIn('repair_requests.status', RepairRequestStatus::openValues()),
             ])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');

@@ -32,6 +32,7 @@
                 <option value="in_progress" @selected(($status ?? '') === 'in_progress')>處理中</option>
                 <option value="pending_review" @selected(($status ?? '') === 'pending_review')>待驗收</option>
                 <option value="completed" @selected(($status ?? '') === 'completed')>已完成</option>
+                <option value="aborted" @selected(($status ?? '') === 'aborted')>已中止</option>
             </select>
         </div>
         {{-- 報廢損失：零件沒用就壞掉、過期或遺失的損失（依報廢日期，不受案件狀態影響）。 --}}

@@ -26,6 +26,7 @@
                 <option value="pending" @selected(request('status') === 'pending')>待處理</option>
                 <option value="in_progress" @selected(request('status') === 'in_progress')>進行中</option>
                 <option value="completed" @selected(request('status') === 'completed')>已完成</option>
+                <option value="aborted" @selected(request('status') === 'aborted')>已中止</option>
             </select>
         </div>
         <div>

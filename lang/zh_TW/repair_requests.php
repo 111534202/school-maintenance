@@ -57,6 +57,7 @@ return [
         'in_progress' => '處理中',
         'pending_review' => '待驗收',
         'completed' => '已結案',
+        'aborted' => '已中止',
     ],
 
     // 新增頁的文字。

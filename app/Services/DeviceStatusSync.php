@@ -90,7 +90,7 @@ class DeviceStatusSync
             $hasOtherOpenRepairs = RepairRequest::query()
                 ->where('device_id', $device->id)
                 ->whereKeyNot($repairRequest->id)
-                ->where('status', '!=', RepairRequestStatus::Completed->value)
+                ->whereIn('status', RepairRequestStatus::openValues())
                 ->exists();
 
             if ($hasOtherOpenRepairs) {

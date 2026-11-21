@@ -185,7 +185,7 @@ class RepairRequestWorkflowTest extends TestCase
 
     /**
      * 依《第四週個人工作計畫》第 3 項「完整檢查...禁止無效跳轉」：
-     * 這裡不是只挑幾個例子測，而是窮舉「5 個狀態 x 5 個狀態」共 25 種組合，
+     * 這裡不是只挑幾個例子測，而是窮舉「6 個狀態 x 6 個狀態」共 36 種組合，
      * 一一驗證合法/不合法的判斷跟規格文件寫的完全一致，不會漏掉任何一種跳法。
      */
     // 把所有「從 A 狀態到 B 狀態」的組合都試一遍，結果必須和轉換規則表完全一致。
@@ -201,6 +201,7 @@ class RepairRequestWorkflowTest extends TestCase
             'in_progress' => ['pending_review'],
             'pending_review' => ['completed', 'in_progress'],
             'completed' => [],
+            'aborted' => [],   // 設備淘汰而中止：只有 abort() 一條路進來，人工流程不能轉進也不能轉出
         ];
 
         $workflow = $this->workflow();

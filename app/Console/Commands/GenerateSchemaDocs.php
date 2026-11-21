@@ -153,7 +153,7 @@ class GenerateSchemaDocs extends Command
      * @var array<string, array<string, string>>
      */
     private array $codes = [
-        'repair_requests.status' => ['pending' => '新報修', 'assigned' => '已派工', 'in_progress' => '處理中', 'pending_review' => '待驗收', 'completed' => '已結案'],
+        'repair_requests.status' => ['pending' => '新報修', 'assigned' => '已派工', 'in_progress' => '處理中', 'pending_review' => '待驗收', 'completed' => '已結案', 'aborted' => '已中止'],
         'repair_requests.impact_level' => ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'],
         'devices.status' => ['normal' => '正常', 'repairing' => '維修中', 'retired' => '已淘汰', 'disabled' => '停用'],
         'classrooms.reservation_status' => ['normal' => '正常（可預約）', 'abnormal' => '有核心設備異常（不開放預約）'],

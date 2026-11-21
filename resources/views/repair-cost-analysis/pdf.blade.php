@@ -161,6 +161,7 @@
                 'in_progress' => '處理中',
                 'pending_review' => '待驗收',
                 'completed' => '已完成',
+                'aborted' => '已中止',
             ];
         @endphp
         {{ $status ? ($statusLabels[$status] ?? $status) : '全部狀態' }}

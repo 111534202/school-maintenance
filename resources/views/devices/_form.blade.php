@@ -122,3 +122,32 @@
     <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>{{ __('common.buttons.save') }}</button>
 </div>
 
+{{-- 把設備改成「已淘汰」是定案、無法復原：送出前先跳出確認視窗，列出會一併中止的進行中項目。 --}}
+@if (isset($device) && $device->exists && $device->status !== 'retired')
+    <script>
+        (function () {
+            var select = document.getElementById('status');
+            var form = select && select.form;
+            if (!form) return;
+            var impact = @json($retireImpact ?? ['repairs' => 0, 'orders' => 0, 'plans' => 0]);
+            var attrs = ['data-confirm', 'data-confirm-title', 'data-confirm-ok', 'data-confirm-detail'];
+            function sync() {
+                if (select.value === 'retired') {
+                    form.setAttribute('data-confirm', '設備淘汰後資料全部唯讀，不能再編輯、報修或建立保養工單，也無法改回其他狀態。這台設備進行中的項目會一併中止。');
+                    form.setAttribute('data-confirm-title', '確認淘汰設備');
+                    form.setAttribute('data-confirm-ok', '確認淘汰');
+                    form.setAttribute('data-confirm-detail', JSON.stringify([
+                        ['設備', @json($device->device_code)],
+                        ['進行中的報修單', impact.repairs + ' 張（中止）'],
+                        ['未完成的保養工單', impact.orders + ' 張（中止）'],
+                        ['啟用中的保養計畫', impact.plans + ' 份（停用）']
+                    ]));
+                } else {
+                    attrs.forEach(function (a) { form.removeAttribute(a); });
+                }
+            }
+            select.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+@endif

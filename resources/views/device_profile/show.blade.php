@@ -192,6 +192,7 @@
                         'in_progress' => 'primary',
                         'pending_review' => 'warning',
                         'completed' => 'success',
+                        'aborted' => 'dark',
                         default => 'light',
                     };
                     $impactText = ['low' => '輕微', 'medium' => '中等', 'high' => '嚴重'][$repair->impact_level] ?? $repair->impact_level;

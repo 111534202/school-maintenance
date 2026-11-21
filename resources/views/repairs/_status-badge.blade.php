@@ -7,6 +7,7 @@
         'in_progress' => 'text-bg-warning',
         'pending_review' => 'text-bg-primary',
         'completed' => 'text-bg-success',
+        'aborted' => 'text-bg-dark',
     // 用目前狀態的代碼查出顏色；查不到（未知狀態）就用淺灰色。
     ][$status->value] ?? 'text-bg-light';
 @endphp

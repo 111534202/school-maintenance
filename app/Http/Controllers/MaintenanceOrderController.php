@@ -79,10 +79,10 @@ class MaintenanceOrderController extends Controller
             // 3. 已完成的：排定日期遠的（最新的）在上 → 同一天建立得晚的在上（早的在下）→ 再依來源計畫名稱 A→Z。
             // 最後用工單編號，讓完全相同的幾筆每次順序都一樣。
             ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END', [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS])
-            ->orderByRaw('CASE WHEN status <> ? THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status = ? THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status <> ? THEN created_at END ASC', [MaintenanceOrder::STATUS_COMPLETED])
-            ->orderByRaw('CASE WHEN status = ? THEN created_at END DESC', [MaintenanceOrder::STATUS_COMPLETED])
+            ->orderByRaw('CASE WHEN status NOT IN (?, ?) THEN scheduled_date END ASC', [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_ABORTED])
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN scheduled_date END DESC', [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_ABORTED])
+            ->orderByRaw('CASE WHEN status NOT IN (?, ?) THEN created_at END ASC', [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_ABORTED])
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN created_at END DESC', [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_ABORTED])
             ->orderBy(MaintenancePlan::select('name')->whereColumn('maintenance_plans.id', 'maintenance_orders.maintenance_plan_id'))
             ->orderBy('maintenance_orders.id');
     }
@@ -157,7 +157,7 @@ class MaintenanceOrderController extends Controller
             $duplicate = MaintenanceOrder::query()
                 ->where('maintenance_plan_id', $maintenancePlan->id)
                 ->whereDate('scheduled_date', $maintenancePlan->next_due_date)
-                ->where('status', '!=', MaintenanceOrder::STATUS_COMPLETED)
+                ->unfinished()
                 ->exists();
             if ($duplicate) {
                 return null;
@@ -188,8 +188,8 @@ class MaintenanceOrderController extends Controller
      */
     public function edit(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成的保養工單不能修改。');
+        if ($maintenanceOrder->isFinal()) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $this->finalMessage($maintenanceOrder, '修改'));
         }
 
         return view('maintenance_orders.edit', compact('maintenanceOrder'));
@@ -198,8 +198,8 @@ class MaintenanceOrderController extends Controller
     /** 儲存修改（PUT /maintenance-orders/{id}）：更新排定日期並寫操作紀錄。 */
     public function update(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成的保養工單不能修改。');
+        if ($maintenanceOrder->isFinal()) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $this->finalMessage($maintenanceOrder, '修改'));
         }
 
         $validated = $request->validate([
@@ -227,8 +227,8 @@ class MaintenanceOrderController extends Controller
      */
     public function destroy(MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED || $maintenanceOrder->result()->exists()) {
-            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成或已回報保養結果的工單不能取消。');
+        if ($maintenanceOrder->isFinal() || $maintenanceOrder->result()->exists()) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED ? $this->finalMessage($maintenanceOrder, '取消') : '已完成或已回報保養結果的工單不能取消。');
         }
 
         $id = $maintenanceOrder->id;
@@ -248,6 +248,11 @@ class MaintenanceOrderController extends Controller
      */
     public function start(MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
+        // 已完成或已回報的工單是定案：重複按（兩個分頁、按上一頁）給友善提示，不要回「已指派給別人」的 403。
+        if ($maintenanceOrder->isFinal() || $maintenanceOrder->result()->exists()) {
+            return back()->with('error', $maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED ? $this->finalMessage($maintenanceOrder, '開始保養') : '這張工單已經開始或已回報結果，不能再按「開始保養」。');
+        }
+
         abort_unless($maintenanceOrder->canBeReportedBy(request()->user()), 403, '這張工單已指派給別人，只有負責人與保養管理者可以開始保養。');
 
         if (! $maintenanceOrder->canBeStartedBy(request()->user())) {
@@ -267,8 +272,8 @@ class MaintenanceOrderController extends Controller
      */
     public function assign(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
-        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_COMPLETED) {
-            return back()->with('error', '已完成的保養工單不能再指派負責人。');
+        if ($maintenanceOrder->isFinal()) {
+            return back()->with('error', $this->finalMessage($maintenanceOrder, '指派負責人'));
         }
 
         $validated = $request->validate([
@@ -286,6 +291,14 @@ class MaintenanceOrderController extends Controller
         }
 
         return back()->with('success', $maintenanceOrder->assigned_to ? '已指派負責人。' : '已取消指派。');
+    }
+
+    /** 已完成或已中止的工單不能再做某個動作時，顯示給使用者的說明。 */
+    private function finalMessage(MaintenanceOrder $order, string $action): string
+    {
+        return $order->status === MaintenanceOrder::STATUS_ABORTED
+            ? "這張保養工單已因設備淘汰中止，資料已定案，不能{$action}。"
+            : "已完成的保養工單不能{$action}。";
     }
 
     /**

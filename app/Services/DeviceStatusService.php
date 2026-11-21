@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Classroom;                // 教室資料表模型
 use App\Models\Device;                   // 設備資料表模型
+use Illuminate\Support\Facades\DB;     // 資料庫交易
 use InvalidArgumentException;            // 「傳入了不合理的參數」例外
 
 /**
@@ -44,9 +45,17 @@ class DeviceStatusService
 
         // 狀態真的有變才動作。
         if ($from !== $status) {
-            $device->update(['status' => $status]);
+            // 狀態與「淘汰收尾」放在同一個交易：中途失敗就整個退回，不會有「已淘汰、但還有進行中的工單」的半成品。
+            DB::transaction(function () use ($device, $status, $from, $reason): void {
+                $device->update(['status' => $status]);
 
-            AuditLogger::log('status_changed', $device, ['from' => $from, 'to' => $status], $reason);
+                AuditLogger::log('status_changed', $device, ['from' => $from, 'to' => $status], $reason);
+
+                // 設備淘汰：它所有進行中的報修、保養工單、計畫、AI 候選一併中止（之後全部唯讀）。
+                if ($status === 'retired') {
+                    app(RetiredDeviceCleanup::class)->run($device);
+                }
+            });
 
             // 設備狀態變了，所在教室的異常標記可能要跟著變。
             self::syncClassroomReservationStatus($device);
