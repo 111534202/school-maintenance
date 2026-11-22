@@ -58,7 +58,7 @@ class DashboardPendingReservationTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('空間預約待審核')
-            ->assertSee('href="' . route('reservations.index', ['status' => 'pending']) . '"', false)
+            ->assertSee('href="' . htmlspecialchars(route('reservations.index', ['status' => 'pending', 'upcoming' => 1])) . '"', false)
             ->assertViewHas('pendingReservationCount', 2);
 
         // 一般使用者：只算自己提出的。

@@ -22,6 +22,7 @@ class BackLink
         'maintenance-orders.results.show' => ['maintenance-orders.show', ['maintenanceOrder']],
         'parts.purchases.create' => ['parts.show', ['part']],
         'parts.purchases.show' => ['parts.show', ['part']],
+        'parts.scraps.create' => ['parts.show', ['part']],
         'repair-logs.create' => ['repairs.show', ['repair_request']],
     ];
 

@@ -58,13 +58,21 @@ class MaintenancePlanController extends Controller
             ->with('success', '保養計畫新增成功' . $this->generateNow($plan));
     }
 
-    public function edit(MaintenancePlan $maintenancePlan): View
+    public function edit(MaintenancePlan $maintenancePlan): View|RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         return view('maintenance_plans.edit', ['plan' => $maintenancePlan] + $this->targetOptions($maintenancePlan));
     }
 
     public function update(UpdateMaintenancePlanRequest $request, MaintenancePlan $maintenancePlan): RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         $data = $request->planData();
         // 改了起始日或週期才重算下次到期日（起始日＋週期）；只改名稱、說明、對象時保持原本的下次到期日，
         // 不然已經產生過的工單又會被重新排一次。
@@ -87,6 +95,10 @@ class MaintenancePlanController extends Controller
      */
     public function toggleStatus(MaintenancePlan $maintenancePlan): RedirectResponse
     {
+        if ($maintenancePlan->isLocked()) {
+            return $this->lockedRedirect();
+        }
+
         $maintenancePlan->update(['is_active' => ! $maintenancePlan->is_active]);
         AuditLogger::log('status_changed', $maintenancePlan, ['is_active' => $maintenancePlan->is_active], ($maintenancePlan->is_active ? '重新啟用' : '停用') . '保養計畫「' . $maintenancePlan->name . '」');
 
@@ -137,6 +149,12 @@ class MaintenancePlanController extends Controller
         }
 
         return '；已產生保養工單 ' . $orders->map(fn ($order) => $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）')->implode('、');
+    }
+
+    /** 計畫的設備已淘汰：資料已定案，不能修改、停用或重新啟用。 */
+    private function lockedRedirect(): RedirectResponse
+    {
+        return redirect()->route('maintenance-plans.index')->with('error', '這份計畫的設備已淘汰，計畫已停用且資料已定案，不能修改。');
     }
 
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon

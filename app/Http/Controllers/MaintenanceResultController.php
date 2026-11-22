@@ -132,6 +132,9 @@ class MaintenanceResultController extends Controller
     private function guard(MaintenanceOrder $maintenanceOrder): ?RedirectResponse
     {
         // 已經回報過（例如按上一頁又重按、開了兩個分頁）：導回工單頁並用中文說明，不要出現英文錯誤頁。
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張保養工單已因設備淘汰中止，不能回報保養結果。');
+        }
         // 已完成、已轉報修的工單是定案（就算舊資料沒有結果那一筆）：不能再回報。
         if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '這張工單已經回報過保養結果了。');

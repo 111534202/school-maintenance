@@ -26,6 +26,7 @@
                 {{-- 保養結果 NG：轉出的報修單還沒全部結案＝已轉報修；全部結案後＝已完成。 --}}
                 <option value="converted" @selected(request('status') === 'converted')>已轉報修</option>
                 <option value="completed" @selected(request('status') === 'completed')>已完成</option>
+                <option value="aborted" @selected(request('status') === 'aborted')>已中止</option>
             </select>
         </div>
         <div>

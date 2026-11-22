@@ -78,8 +78,11 @@ class ReviewFixesTest extends TestCase
     {
         $admin = $this->makeUserWithRole('admin', '系統管理員');
 
-        // 日期格式不對：回到上一頁並提示。
-        $this->actingAs($admin)->from(route('dashboard'))->get(route('maintenance-orders.index', ['from' => '2026-13-45', 'to' => 'abc']))->assertRedirect(route('dashboard'));
+        // 日期格式不對：回到「沒有篩選條件的同一頁」並提示（不是回上一頁：重新整理時上一頁就是它自己，會無限轉址）。
+        $this->actingAs($admin)->from(route('dashboard'))->get(route('maintenance-orders.index', ['from' => '2026-13-45', 'to' => 'abc']))
+            ->assertRedirect(route('maintenance-orders.index'))->assertSessionHasErrors('from');
+        $this->actingAs($admin)->from(route('repairs.index', ['created_from' => '2026-02-31']))->get(route('repairs.index', ['created_from' => '2026-02-31']))
+            ->assertRedirect(route('repairs.index'));
         // 被改成陣列的篩選條件：當作沒帶，頁面照常顯示。
         foreach ([route('repairs.index', ['status' => ['x']]), route('repairs.index', ['keyword' => ['x']]), route('knowledge-base.index', ['keyword' => ['x']])] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();

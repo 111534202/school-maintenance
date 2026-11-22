@@ -28,7 +28,7 @@ class RepairCostSummarySheet implements FromArray, WithHeadings, WithTitle
             [
                 '已知材料費小計',
                 (float) $this->data['knownSubtotal'],
-                '只計算有歷史單價的用料明細',
+                '維修用料＋保養用料；只計算有歷史單價的用料明細（維修 ' . number_format((float) ($this->data['repairSubtotal'] ?? $this->data['knownSubtotal'])) . '、保養 ' . number_format((float) ($this->data['maintenanceSubtotal'] ?? 0)) . '）',
             ],
             [
                 '缺少單價的明細數',
@@ -68,6 +68,12 @@ class RepairCostSummarySheet implements FromArray, WithHeadings, WithTitle
                     '已知材料費小計加上報廢損失',
                 ],
             ] : []),
+            // 進貨成本放在最後（前面幾列的位置不變）；進貨是買進來、材料費是用掉了，兩者不相加。
+            [
+                '進貨成本',
+                (float) ($this->data['purchaseTotal'] ?? 0),
+                '依進貨日期篩選，共 ' . ($this->data['purchaseCount'] ?? 0) . ' 批，其中期初庫存 NT$ ' . number_format((float) ($this->data['purchaseOpeningTotal'] ?? 0)) . '；不併入上面的材料費合計',
+            ],
         ];
     }
 }

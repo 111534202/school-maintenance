@@ -129,6 +129,7 @@ class RepairRequestWorkflowTest extends TestCase
             'pending_review' => ['completed', 'assigned'],
             'returned' => [],
             'completed' => [],
+            'aborted' => [],   // 設備淘汰而中止：只有 abort() 一條路進來，人工流程不能轉進也不能轉出
         ];
         $workflow = $this->workflow();
 
@@ -147,7 +148,7 @@ class RepairRequestWorkflowTest extends TestCase
     // 已結案、已退回是終點；只有這兩個算「已結束」。
     public function test_completed_and_returned_are_the_closed_states(): void
     {
-        $this->assertEqualsCanonicalizing(['completed', 'returned'], RepairRequestStatus::closedValues());
+        $this->assertEqualsCanonicalizing(['completed', 'returned', 'aborted'], RepairRequestStatus::closedValues());
         $this->assertTrue(RepairRequestStatus::Returned->isClosed());
         $this->assertFalse(RepairRequestStatus::Assigned->isClosed());
         $this->assertSame(['assigned', 'pending_review'], RepairRequestStatus::awaitingRepairValues());

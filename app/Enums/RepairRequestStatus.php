@@ -25,23 +25,37 @@ enum RepairRequestStatus: string
     case PendingReview = 'pending_review';
     /** 已結案：報修人驗收通過，流程結束（不能再變動） */
     case Completed = 'completed';
+    /** 已中止：設備已淘汰，進行中的報修單自動中止（終點，不能再變動） */
+    case Aborted = 'aborted';
 
     /**
-     * 把狀態代碼轉成畫面上要顯示的文字，例如 'pending' -> '新報修'（或英文 'New'，
-     * 依目前語言而定）。翻譯文字放在 lang/{locale}/repair_requests.php 的 status 區塊，
-     * i18n 新增語言時只需要在那邊補一份翻譯，這裡不用改。
+     * 還在進行中的狀態（新報修、已派工、待驗收）＝沒有結束的（closedValues 以外）。
+     * 「進行中」「未結案」的數字與篩選一律用這份清單；已結案、已退回、已中止都不算。
+     *
+     * @return list<string>
      */
+    public static function openValues(): array
+    {
+        return array_values(array_diff(array_map(fn (self $status) => $status->value, self::cases()), self::closedValues()));
+    }
+
+    /** 已定案、不能再變動的狀態（已結案、已中止）。 */
+    public function isFinal(): bool
+    {
+        return in_array($this, [self::Completed, self::Aborted], true);
+    }
+
     /**
-     * 已經結束、不再需要處理的狀態（已結案、已退回）：不算未結案、不算待維修、不算逾時。
+     * 已經結束、不再需要處理的狀態（已結案、已退回、已中止）：不算未結案、不算待維修、不算逾時。
      *
      * @return list<string>
      */
     public static function closedValues(): array
     {
-        return [self::Completed->value, self::Returned->value];
+        return [self::Completed->value, self::Returned->value, self::Aborted->value];
     }
 
-    /** 這個狀態是不是已經結束（已結案或已退回）。 */
+    /** 這個狀態是不是已經結束（已結案、已退回或已中止）。 */
     public function isClosed(): bool
     {
         return in_array($this->value, self::closedValues(), true);
@@ -57,6 +71,10 @@ enum RepairRequestStatus: string
         return [self::Assigned->value, self::PendingReview->value];
     }
 
+    /**
+     * 把狀態代碼轉成畫面上要顯示的文字，例如 'pending' -> '新報修'（或英文 'New'，依目前語言而定）。
+     * 翻譯文字放在 lang/{locale}/repair_requests.php 的 status 區塊。
+     */
     public function label(): string
     {
         // $this->value 是這個選項背後存的文字（例如 pending），接在翻譯鍵後面就能查到對應名稱。

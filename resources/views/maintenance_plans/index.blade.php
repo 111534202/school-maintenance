@@ -38,7 +38,8 @@
             </thead>
             <tbody>
                 @foreach ($plans as $plan)
-                    <tr @can('maintenance.manage') data-modal-frame-href="{{ route('maintenance-plans.edit', $plan) }}" data-modal-title="修改保養計畫" data-modal-size="lg" tabindex="0" role="link" @endcan>
+                    @php $locked = $plan->isLocked(); @endphp
+                    <tr @if (! $locked) @can('maintenance.manage') data-modal-frame-href="{{ route('maintenance-plans.edit', $plan) }}" data-modal-title="修改保養計畫" data-modal-size="lg" tabindex="0" role="link" @endcan @endif>
                         <td>{{ $plan->name }}</td>
                         {{-- 保養對象：設備顯示「設備編號（類別）」、類別顯示「類別名稱（整類）」，好幾個用「、」串起來。 --}}
                         <td>{{ $plan->targetsLabel() }}</td>
@@ -48,11 +49,16 @@
                         <td>
                             @if ($plan->is_active)
                                 <span class="badge tb-pill tb-pill-ok">啟用中</span>
+                            @elseif ($locked)
+                                <span class="badge tb-pill tb-pill-muted" title="綁定的設備已淘汰，計畫已停用且唯讀">已停用（設備已淘汰）</span>
                             @else
                                 <span class="badge tb-pill tb-pill-muted">已停用</span>
                             @endif
                         </td>
                         <td class="text-end tb-col-fit">
+                            @if ($locked)
+                                <span class="text-muted" title="設備已淘汰，計畫唯讀">—</span>
+                            @else
                             @can('maintenance.manage')
                                 {{-- 操作改成圓形圖示按鈕（跟用戶、部門等主檔一樣）：鉛筆＝修改、開關＝停用／重新啟用。 --}}
                                 <div class="d-inline-flex gap-1">
@@ -76,6 +82,7 @@
                             @else
                                 <span class="text-muted">—</span>
                             @endcan
+                            @endif
                         </td>
                     </tr>
                 @endforeach

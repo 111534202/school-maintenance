@@ -40,5 +40,13 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     // 例外（錯誤）處理設定：目前使用 Laravel 預設行為，所以是空的。
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // 網址上的篩選條件格式不對（例如被手改成不存在的日期）：回到「沒有篩選條件的同一頁」並提示。
+        // 不用「回上一頁」：重新整理時上一頁就是這個網址本身，會變成無限轉址（ERR_TOO_MANY_REDIRECTS）。
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, \Illuminate\Http\Request $request) {
+            if ($request->isMethod('GET') && ! $request->expectsJson() && $e->redirectTo === null) {
+                return redirect($request->url())->withErrors($e->errors());
+            }
+
+            return null;
+        });
     })->create();

@@ -56,6 +56,7 @@ class RepairRequestWorkflow
         'pending_review' => ['completed', 'assigned'],
         'returned' => [],  // 已退回是終點（使用者需要時重新報修）
         'completed' => [], // 已結案是終點，不能再轉去任何狀態
+        'aborted' => [],   // 已中止（設備淘汰）也是終點；進入這個狀態只有 abort() 一條路，不開放人工操作
     ];
 
     /**
@@ -66,8 +67,7 @@ class RepairRequestWorkflow
     {
         // status 欄位在 Model 裡有 enum cast，讀出來已經是 RepairRequestStatus 實例，
         // 這裡要用 ->value 當純量字串去查表，不能直接拿 enum 物件當 array key。
-        // ?? [] 是「查不到這個狀態時，當成『沒有任何可轉去的狀態』」。
-        $allowed = self::TRANSITIONS[$repairRequest->status->value] ?? [];
+        $allowed = self::TRANSITIONS[$repairRequest->status->value];
 
         // in_array 的最後一個 true 代表嚴格比對（型別也必須一樣）。
         return in_array($to->value, $allowed, true);
@@ -114,6 +114,22 @@ class RepairRequestWorkflow
 
             return $repairRequest;
         });
+    }
+
+    /**
+     * 設備淘汰時中止還在進行中的報修單：新報修／已派工／處理中／待驗收 -> 已中止（終點）。
+     * 這不是人工按鈕的流程（不在上面的轉換表裡），只給「淘汰設備的收尾」呼叫；已結案、已中止的案件原樣保留。
+     */
+    public function abort(RepairRequest $repairRequest): RepairRequest
+    {
+        if (! in_array($repairRequest->status->value, RepairRequestStatus::openValues(), true)) {
+            return $repairRequest;
+        }
+
+        $repairRequest->status = RepairRequestStatus::Aborted;
+        $repairRequest->save();
+
+        return $repairRequest;
     }
 
     /**

@@ -443,6 +443,21 @@ class DrilldownAndFinalStateTest extends TestCase
         $this->assertNull($this->actingAs($admin)->get(route('classrooms.index'))->headers->get('Content-Encoding'));
     }
 
+    public function test_dashboard_cards_and_the_bell_show_the_same_numbers_for_the_same_things(): void
+    {
+        $this->travelTo('2026-11-09 08:00:00');
+        $reviewer = $this->makeUserWithPermissions(['reservations.manage', 'repairs.accept', 'repairs.create']);
+        $this->reservation('未來班', '2026-11-12');
+        $this->reservation('過期班', '2026-11-05');   // 時段已過：兩邊都不算
+        $this->repair('案件-MINE', 'pending_review', ['requester_id' => $reviewer->id, 'accepted_by' => null]);
+        $this->repair('案件-OTHER', 'pending_review', ['requester_id' => $reviewer->id, 'accepted_by' => $this->makeTechnician()->id]);   // 指定別人驗收：不算
+
+        $response = $this->actingAs($reviewer)->get(route('dashboard'))->assertOk();
+
+        $response->assertViewHas('pendingReservationCount', 1)->assertViewHas('pendingReviewCount', 1);
+        $response->assertSee('1 筆空間申請待審核')->assertSee('1 張工單待驗收');   // 鈴鐺
+    }
+
     // ---------- 合併到本分支後補的：淘汰的設備不產生工單並記錄、取消淘汰 ----------
 
     // 計畫的設備已淘汰：到期也不產生工單，操作紀錄寫出原因；「建立工單」按鈕不顯示、硬送也擋下。

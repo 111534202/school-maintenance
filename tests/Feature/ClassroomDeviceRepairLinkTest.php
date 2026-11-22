@@ -244,6 +244,6 @@ class ClassroomDeviceRepairLinkTest extends TestCase
         $this->broken($this->room('B202'), 'B-BROKEN', 'assigned');
         $this->device($this->room('C303'), 'C-RETIRED', 'retired');   // 已淘汰、沒有報修單：不算
 
-        $this->get(route('dashboard'))->assertOk()->assertSee('設備異常教室')->assertSeeInOrder(['設備異常教室', '2', '間'], false)->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
+        $this->get(route('dashboard'))->assertOk()->assertViewHas('classroomAbnormal', 2)->assertSee('設備異常教室')->assertSee(htmlspecialchars(route('classrooms.index', ['abnormal' => 1])), false);
     }
 }

@@ -65,6 +65,14 @@ class MaintenancePlan extends Model
     }
 
     /**
+     * 這份計畫是不是已被鎖定（唯讀）：綁定的設備已淘汰。淘汰時計畫會一併停用，之後不能修改、不能重新啟用。
+     */
+    public function isLocked(): bool
+    {
+        return $this->device_id !== null && $this->device?->status === 'retired';
+    }
+
+    /**
      * 畫面顯示用的設備類別名稱：有設備就用設備本身的類別，沒有設備（只針對一類設備）才用自己的設備類別。
      */
     public function categoryName(): ?string

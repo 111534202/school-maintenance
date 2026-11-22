@@ -154,6 +154,9 @@ class RepairRequestController extends Controller
      */
     private function indexQuery(Request $request)
     {
+        $closed = RepairRequestStatus::closedValues();
+        $closedMarks = implode(', ', array_fill(0, count($closed), '?'));
+
         // 網址上的篩選條件格式不對（例如被亂改成 status[]=x）時，回到上一頁並提示，不要整頁 500。
         $request->validate([
             'keyword' => ['nullable', 'string', 'max:100'],
@@ -240,18 +243,19 @@ class RepairRequestController extends Controller
             //    是否影響上課相同時，逾時越久（預計處理時間越早）越上面；
             // 2. 其他的先排還在處理的（新報修、已派工、待驗收），再排已結束的（已結案、已退回）；
             // 3. 同一組裡依送出時間，近的在上；最後用編號，讓完全相同的幾筆每次順序都一樣。
+            // 已結束的狀態有幾個（已結案、已退回、已中止），NOT IN 的問號就放幾個。
             ->orderByRaw(
-                'CASE WHEN repair_requests.status NOT IN (?, ?) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN 0 '
-                . 'WHEN repair_requests.status NOT IN (?, ?) THEN 1 ELSE 2 END',
-                [...RepairRequestStatus::closedValues(), now()->toDateTimeString(), ...RepairRequestStatus::closedValues()]
+                "CASE WHEN repair_requests.status NOT IN ({$closedMarks}) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN 0 "
+                . "WHEN repair_requests.status NOT IN ({$closedMarks}) THEN 1 ELSE 2 END",
+                [...$closed, now()->toDateTimeString(), ...$closed]
             )
             ->orderByRaw(
-                'CASE WHEN repair_requests.status NOT IN (?, ?) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN repair_requests.is_class_affected END DESC',
-                [...RepairRequestStatus::closedValues(), now()->toDateTimeString()]
+                "CASE WHEN repair_requests.status NOT IN ({$closedMarks}) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN repair_requests.is_class_affected END DESC",
+                [...$closed, now()->toDateTimeString()]
             )
             ->orderByRaw(
-                'CASE WHEN repair_requests.status NOT IN (?, ?) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN repair_requests.scheduled_at END ASC',
-                [...RepairRequestStatus::closedValues(), now()->toDateTimeString()]
+                "CASE WHEN repair_requests.status NOT IN ({$closedMarks}) AND repair_requests.scheduled_at IS NOT NULL AND repair_requests.scheduled_at < ? THEN repair_requests.scheduled_at END ASC",
+                [...$closed, now()->toDateTimeString()]
             )
             ->orderByDesc('repair_requests.created_at')
             ->orderByDesc('repair_requests.id');
@@ -661,7 +665,7 @@ class RepairRequestController extends Controller
     {
         Gate::authorize('view', $repairRequest);   // 跟自己無關的案件看不到，也不能開修改表單
         if ($repairRequest->status->isClosed()) {
-            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案或已退回的報修單不能修改。');
+            return redirect()->route('repairs.show', $repairRequest)->with('error', $repairRequest->status === RepairRequestStatus::Aborted ? $this->finalEditMessage($repairRequest) : '已結案或已退回的報修單不能修改。');
         }
 
         $classrooms = Classroom::query()
@@ -672,12 +676,20 @@ class RepairRequestController extends Controller
         return view('repairs.edit', compact('repairRequest', 'classrooms'));
     }
 
+    /** 已結案或已中止的報修單不能修改時，顯示給使用者的說明。 */
+    private function finalEditMessage(RepairRequest $repairRequest): string
+    {
+        return $repairRequest->status === RepairRequestStatus::Aborted
+            ? '這張報修單已因設備淘汰中止，資料已定案，不能修改。'
+            : '已結案的報修單不能修改。';
+    }
+
     /** 儲存修改（PUT /repairs/{id}）：只改上面這幾個欄位，狀態、報修人、維修人員不變；寫操作紀錄。 */
     public function update(UpdateRepairRequestRequest $request, RepairRequest $repairRequest)
     {
         Gate::authorize('view', $repairRequest);   // 跟自己無關的案件看不到，也不能開修改表單
         if ($repairRequest->status->isClosed()) {
-            return redirect()->route('repairs.show', $repairRequest)->with('error', '已結案或已退回的報修單不能修改。');
+            return redirect()->route('repairs.show', $repairRequest)->with('error', $repairRequest->status === RepairRequestStatus::Aborted ? $this->finalEditMessage($repairRequest) : '已結案或已退回的報修單不能修改。');
         }
 
         $repairRequest->fill($request->validated());

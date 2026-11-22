@@ -199,7 +199,7 @@ class Part extends Model
     public function deletionBlocker(): ?string
     {
         if ($this->current_stock > 0) {
-            return "目前還有庫存 {$this->withUnit($this->current_stock)}，沒有庫存才能刪除。";
+            return "目前還有庫存 {$this->withUnit($this->current_stock)}，要沒有庫存才能刪除（進貨的採購紀錄不能刪除，所以只有從未進貨、沒有任何紀錄的零件可以刪除）。";
         }
         if ($this->repairPartUsages()->exists() || $this->maintenancePartUsages()->exists()) {
             return '已經有維修或保養使用紀錄，不能刪除。';

@@ -156,6 +156,9 @@ class MaintenanceOrderController extends Controller
      */
     public function edit(MaintenanceOrder $maintenanceOrder): View|RedirectResponse
     {
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $this->finalMessage($maintenanceOrder, '修改'));
+        }
         if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已回報結果的保養工單不能修改。');
         }
@@ -166,6 +169,9 @@ class MaintenanceOrderController extends Controller
     /** 儲存修改（PUT /maintenance-orders/{id}）：更新排定日期並寫操作紀錄。 */
     public function update(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $this->finalMessage($maintenanceOrder, '修改'));
+        }
         if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已回報結果的保養工單不能修改。');
         }
@@ -195,6 +201,9 @@ class MaintenanceOrderController extends Controller
      */
     public function destroy(MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', $this->finalMessage($maintenanceOrder, '取消'));
+        }
         if ($maintenanceOrder->result()->exists() || in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_COMPLETED, MaintenanceOrder::STATUS_CONVERTED], true)) {
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成或已回報保養結果的工單不能取消。');
         }
@@ -218,11 +227,14 @@ class MaintenanceOrderController extends Controller
      * 確認派工／改負責人（PATCH /maintenance-orders/{id}/assign）：需要 maintenance.manage。
      * - 待處理：選好負責人按「確認派工」，狀態改成進行中（負責人才能回報結果）。
      * - 進行中：可以改派給別人（負責人必填，不能取消派工）。
-     * - 已轉報修、已完成：已經回報過，不能再改。
+     * - 已轉報修、已完成、已中止：不能再改。
      * 負責人必須是「有保養回報權限、帳號啟用中」的人。
      */
     public function assign(Request $request, MaintenanceOrder $maintenanceOrder): RedirectResponse
     {
+        if ($maintenanceOrder->status === MaintenanceOrder::STATUS_ABORTED) {
+            return back()->with('error', $this->finalMessage($maintenanceOrder, '派工'));
+        }
         if (! in_array($maintenanceOrder->status, [MaintenanceOrder::STATUS_PENDING, MaintenanceOrder::STATUS_IN_PROGRESS], true)) {
             return back()->with('error', '已回報結果的保養工單不能再派工。');
         }
@@ -248,6 +260,14 @@ class MaintenanceOrderController extends Controller
         }
 
         return back()->with('success', $dispatched ? '已確認派工，狀態改為進行中。' : '已改派負責人。');
+    }
+
+    /** 已完成或已中止的工單不能再做某個動作時，顯示給使用者的說明。 */
+    private function finalMessage(MaintenanceOrder $order, string $action): string
+    {
+        return $order->status === MaintenanceOrder::STATUS_ABORTED
+            ? "這張保養工單已因設備淘汰中止，資料已定案，不能{$action}。"
+            : "已完成的保養工單不能{$action}。";
     }
 
     /**

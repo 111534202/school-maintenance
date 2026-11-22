@@ -149,7 +149,7 @@ class RepairRequest extends Model
     /**
      * 看板、匯出、待驗收提醒用的範圍：在 visibleTo 的基礎上，「待驗收」與「已結案」這兩個驗收階段再收緊——
      * 除了系統管理員，只看得到跟自己有關的（自己報修的、指派給自己維修的、指定由自己驗收的）。
-     * 其他狀態不受影響。統計與報表（成本分析、維修工時）仍用 visibleTo，數字才不會因為這條規則變少。
+     * 其他狀態不受影響。成本分析仍用 visibleTo（金額不因這條規則變少；有零件管理權限的人在成本分析看得到無關的待驗收／已結案案件標題，是已知的取捨）；主控台統計與維修工時用這個範圍。
      *
      * @param  Builder<RepairRequest>  $query
      * @return Builder<RepairRequest>

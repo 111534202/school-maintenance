@@ -10,6 +10,8 @@ use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
 use App\Support\EquipmentCode;                    // 設備編號、零件編號共用的格式與不重複規則
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
+use App\Models\MaintenanceOrder;
+use App\Models\MaintenancePlan;
 use App\Services\AuditLogger;                     // 共用的操作紀錄寫入工具
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
@@ -145,7 +147,14 @@ class DeviceController extends Controller
             ->orderBy('classroom_code')
             ->get();
 
-        return view('devices.edit', compact('device', 'categories', 'classrooms'));
+        // 選「已淘汰」時要先確認：告訴使用者這台設備名下有多少進行中的東西會一併中止。
+        $retireImpact = [
+            'repairs' => $device->repairRequests()->whereIn('status', RepairRequestStatus::openValues())->count(),
+            'orders' => MaintenanceOrder::query()->where('device_id', $device->id)->unfinished()->count(),
+            'plans' => MaintenancePlan::query()->where('device_id', $device->id)->where('is_active', true)->count(),
+        ];
+
+        return view('devices.edit', compact('device', 'categories', 'classrooms', 'retireImpact'));
     }
 
     /** 接收編輯表單（PUT /devices/{device}）。 */
@@ -165,6 +174,9 @@ class DeviceController extends Controller
         if ($newStatus === 'normal' && $device->status !== 'normal' && $device->repairRequests()->open()->exists()) {
             return back()->withInput()->withErrors(['status' => '這台設備還有沒結案的報修單（新報修也算），不能改成「正常」。請先完成或退回報修單。']);
         }
+
+        // 記住修改前的教室：如果這次把設備搬到別間，舊教室也要重新計算異常標記。
+        $oldClassroom = $device->classroom;
 
         $device->update($data);   // 先更新一般欄位（編號、品牌、教室...）
         AuditLogger::log('updated', $device, $data);

@@ -1597,12 +1597,6 @@ parameters:
 			path: app/Services/RepairCostAnalysisService.php
 
 		-
-			message: '#^Offset ''assigned''\|''completed''\|''in_progress''\|''pending''\|''pending_review'' on array\{pending\: array\{''assigned''\}, assigned\: array\{''in_progress''\}, in_progress\: array\{''pending_review''\}, pending_review\: array\{''completed'', ''in_progress''\}, completed\: array\{\}\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/RepairRequestWorkflow.php
-
-		-
 			message: '#^Property App\\Models\\RepairRequest\:\:\$scheduled_at \(Illuminate\\Support\\Carbon\|null\) does not accept string\|null\.$#'
 			identifier: assign.propertyType
 			count: 2

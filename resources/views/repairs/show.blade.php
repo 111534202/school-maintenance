@@ -58,6 +58,13 @@
         @endcan
     </div>
 
+    @if ($status === \App\Enums\RepairRequestStatus::Aborted)
+        <div class="alert alert-dark d-flex gap-2" role="status">
+            <i class="bi bi-slash-circle mt-1"></i>
+            <div>這張報修單已中止：設備已淘汰，進行中的案件一併中止。資料已定案，只能查看，不能再修改、派工或驗收。</div>
+        </div>
+    @endif
+
     {{-- 版面：寬螢幕（992px 以上）左欄是設備資料與故障描述，右欄是派工與處理；
          窄螢幕改成直式，依序是設備資料 → 故障描述 → 派工與處理。維修紀錄與材料費明細放在最下面、佔滿整列。 --}}
     <div class="row g-3 mb-3 align-items-start">
@@ -117,7 +124,7 @@
             @endif
 
             {{-- 已結案的案件是定案了，不再顯示「驗收退回」的紅色提醒（那是給維修人員補做用的，結案後沒有要做的事）。 --}}
-            @if ($repairRequest->rejection_reason && $repairRequest->status !== \App\Enums\RepairRequestStatus::Completed)
+            @if ($repairRequest->rejection_reason && ! $repairRequest->status->isFinal())
                 {{-- 這張案件曾經被驗收退回，把最新一次的退回原因秀出來，讓維修人員知道要補做什麼。 --}}
                 <div class="alert alert-danger d-flex gap-2">
                     <i class="bi bi-arrow-counterclockwise mt-1"></i>
