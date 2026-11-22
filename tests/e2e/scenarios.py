@@ -202,8 +202,9 @@ def repair_lifecycle(browser, base, root):
         now = datetime.datetime.now()
         page.fill('textarea[name="cause"]', '燈泡燒壞')
         page.fill('textarea[name="resolution"]', '更換燈泡')
-        page.fill('input[name="started_at"]', (now - datetime.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M'))
-        page.fill('input[name="ended_at"]', (now - datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M'))
+        # 維修開始時間不能早於報修送出的時間：報修剛送出，所以從現在這一分鐘開始，2 分鐘後結束（結束時間可比現在晚不超過 5 分鐘）。
+        page.fill('input[name="started_at"]', now.strftime('%Y-%m-%dT%H:%M'))
+        page.fill('input[name="ended_at"]', (now + datetime.timedelta(minutes=2)).strftime('%Y-%m-%dT%H:%M'))
         click_and_wait(page, 'button:has-text("送出維修紀錄")', 2000)
         check('待驗收' in body(page), '送出維修紀錄後應進入待驗收：' + body(page)[:200])
 
@@ -291,6 +292,8 @@ def reservation_flow(browser, base, root):
         page.fill('#classroom_search', 'IT-301')
         page.wait_for_timeout(500)
         page.click('#classroom_options button[data-label*="IT-301"]')
+        # 選好教室後系統會先用預設日期查一次課表；要等那次查完再改日期，否則查詢中的按鈕不能按，新日期就不會重新查詢。
+        page.wait_for_selector('td.table-success, td.table-secondary', timeout=20000)
         page.fill('#reservation_date', day.isoformat())
         page.wait_for_timeout(3000)                 # 選好教室與日期會自動顯示課表
         slots = page.locator('td.table-success')
