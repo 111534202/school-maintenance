@@ -90,8 +90,9 @@ class MaintenancePlanController extends Controller
         $maintenancePlan->update(['is_active' => ! $maintenancePlan->is_active]);
         AuditLogger::log('status_changed', $maintenancePlan, ['is_active' => $maintenancePlan->is_active], ($maintenancePlan->is_active ? '重新啟用' : '停用') . '保養計畫「' . $maintenancePlan->name . '」');
 
+        // 重新啟用時跟存檔一樣馬上檢查：到期日在 3 天內（或已經過了）就產生工單，不用等半夜排程。
         return $this->backToList('maintenance-plans.index')
-            ->with('success', $maintenancePlan->is_active ? '已重新啟用' : '已停用');
+            ->with('success', $maintenancePlan->is_active ? '已重新啟用' . $this->generateNow($maintenancePlan) : '已停用');
     }
 
     /**
@@ -124,8 +125,8 @@ class MaintenancePlanController extends Controller
     }
 
     /**
-     * 存檔後馬上檢查這個計畫要不要產生工單（不用等半夜的排程）：下次到期日就是今天、而且勾選啟用，
-     * 就產生排定今天的工單（規則見 DueMaintenanceOrderGenerator；下次到期日要等工單做完或取消才往後推）。
+     * 存檔、重新啟用後馬上檢查這個計畫要不要產生工單（不用等半夜的排程）：啟用中、下次到期日在 3 天內，
+     * 就產生排定在下次到期日的工單（規則見 DueMaintenanceOrderGenerator；下次到期日要等工單做完或取消才往後推）。
      * 回傳要接在成功訊息後面的說明。
      */
     private function generateNow(MaintenancePlan $plan): string

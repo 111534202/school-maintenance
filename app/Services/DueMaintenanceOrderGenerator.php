@@ -10,17 +10,21 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * 保養計畫自動產生工單（排程每天 00:00 跑；保養計畫存檔時、下次到期日就是今天的話也會馬上跑一次那個計畫）。
+ * 保養計畫自動產生工單（排程每天 00:00 跑；保養計畫存檔、重新啟用時也會馬上檢查那個計畫）。
  *
- * 規則（原本的做法，劉家芸確認改回）：
- * - 到了計畫的「下次到期日」當天（或已經過了），產生一張排定在下次到期日的工單。
+ * 規則（劉家芸確認）：
+ * - 下次到期日前 LEAD_DAYS（3）天產生一張排定在下次到期日的工單，讓負責人有幾天時間派工、安排；
+ *   已經在 3 天內或過了到期日的（例如剛建立的計畫、停用後重新啟用）也會馬上產生。
  * - 下次到期日要等這張工單做完（回報結果）或取消後，才往後推一個週期（MaintenancePlan::advanceDueDateAfter），
- *   之後到了新的到期日再產生下一張。
+ *   推完如果新的到期日已經在 3 天內，馬上產生下一張（不用等半夜排程）；不然到了新的到期日前 3 天再產生。
  * - 同一個計畫、同一個排定日只會有一張工單（取消掉的也算），重複執行不會疊加。停用的計畫不產生。
  * - 計畫的設備已淘汰或停用：不產生（寫在操作紀錄）。
  */
 class DueMaintenanceOrderGenerator
 {
+    /** 提前幾天產生工單：排定日（下次到期日）前 3 天。 */
+    public const LEAD_DAYS = 3;
+
     /**
      * 所有到期、啟用中的計畫都檢查一次。
      *
@@ -33,7 +37,7 @@ class DueMaintenanceOrderGenerator
         MaintenancePlan::query()
             ->where('is_active', true)
             ->whereNotNull('next_due_date')
-            ->whereDate('next_due_date', '<=', ($asOf ?? Carbon::now())->toDateString())
+            ->whereDate('next_due_date', '<=', ($asOf ?? Carbon::now())->copy()->addDays(self::LEAD_DAYS)->toDateString())
             ->orderBy('id')
             ->each(function (MaintenancePlan $plan) use (&$created, $asOf) {
                 $created += $this->generateForPlan($plan, $asOf)->count();
@@ -43,7 +47,7 @@ class DueMaintenanceOrderGenerator
     }
 
     /**
-     * 一個計畫：下次到期日到了（≤ 今天）而且這一期還沒產生過，就產生排定在下次到期日的工單。不改下次到期日。
+     * 一個計畫：離下次到期日 3 天內（或已經過了）而且這一期還沒產生過，就產生排定在下次到期日的工單。不改下次到期日。
      *
      * @return Collection<int, MaintenanceOrder> 這次產生的工單（沒有就是空的）
      */
@@ -51,7 +55,7 @@ class DueMaintenanceOrderGenerator
     {
         $today = ($asOf ?? Carbon::now())->copy()->startOfDay();
         $plan->refresh();
-        if (! $plan->is_active || $plan->next_due_date === null || $plan->next_due_date->gt($today)) {
+        if (! $plan->is_active || $plan->next_due_date === null || $plan->next_due_date->gt($today->copy()->addDays(self::LEAD_DAYS))) {
             return collect();
         }
 

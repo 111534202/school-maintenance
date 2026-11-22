@@ -203,7 +203,11 @@ class MaintenanceOrderController extends Controller
         $maintenanceOrder->delete();
 
         // 取消的是計畫目前這一期的工單：到期日往後推一個週期，不然這個計畫會因為「這一期已經產生過」而永遠停住。
-        $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
+        // 新的到期日已經在 3 天內就馬上產生下一張（跟回報結果一樣）。
+        if ($plan = $maintenanceOrder->maintenancePlan) {
+            $plan->advanceDueDateAfter($maintenanceOrder);
+            app(\App\Services\DueMaintenanceOrderGenerator::class)->generateForPlan($plan);
+        }
 
         AuditLogger::log('deleted', $maintenanceOrder, ['status' => $maintenanceOrder->status], '取消（刪除）保養工單 #' . $id);
 

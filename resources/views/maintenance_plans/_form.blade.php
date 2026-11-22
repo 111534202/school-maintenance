@@ -77,7 +77,7 @@
         <input type="date" name="start_date" id="start_date"
             class="form-control @error('start_date') is-invalid @enderror"
             value="{{ old('start_date', $plan->start_date?->format('Y-m-d')) }}" required>
-        <div class="form-text">下次到期日＝起始日 + 週期天數；到了下次到期日會自動產生保養工單，工單完成或取消後，下次到期日再往後推一個週期。</div>
+        <div class="form-text">下次到期日＝起始日 + 週期天數；到期日前 3 天會自動產生保養工單（排定在到期日），工單完成或取消後，下次到期日再往後推一個週期。</div>
         @error('start_date')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror

@@ -105,35 +105,60 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(now()->subDay()->toDateString(), $plan->fresh()->next_due_date->toDateString());
     }
 
-    // 原本的做法（劉家芸確認改回）：到期日當天才產生排定在那天的工單；工單做完後下次到期日才往後推一個週期。
-    public function test_orders_are_generated_on_the_due_date_and_the_next_one_after_finishing(): void
+    // 劉家芸確認：到期日前 3 天產生排定在到期日的工單；工單做完後下次到期日才往後推一個週期，再到新的到期日前 3 天產生下一張。
+    public function test_orders_are_generated_three_days_before_the_due_date_and_the_next_one_after_finishing(): void
     {
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-01 09:00'));
         $device = $this->makeDevice();
         $this->post(route('maintenance-plans.store'), [
             'name' => '十天一次', 'targets' => ['device:' . $device->id], 'description' => '清潔', 'cycle_days' => 10, 'start_date' => '2026-11-01', 'is_active' => 1,
-        ])->assertSessionHasNoErrors()->assertSessionHas('success', '保養計畫新增成功');
+        ])->assertSessionHasNoErrors()->assertSessionHas('success', '保養計畫新增成功');   // 11/11 還在 3 天以外，先不產生
 
         $plan = \App\Models\MaintenancePlan::where('name', '十天一次')->sole();
         $this->assertSame('2026-11-11', $plan->next_due_date->toDateString());
         $generator = app(DueMaintenanceOrderGenerator::class);
 
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-10 00:00'));
-        $this->assertSame(0, $generator->generate());   // 還沒到期
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-07 00:00'));
+        $this->assertSame(0, $generator->generate());   // 離到期還有 4 天
 
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 09:00'));
-        $this->assertSame(1, $generator->generate());
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-08 09:00'));
+        $this->assertSame(1, $generator->generate());   // 到期日前 3 天
         $order = MaintenanceOrder::where('maintenance_plan_id', $plan->id)->sole();
         $this->assertSame('2026-11-11', $order->scheduled_date->toDateString());
+        $this->assertFalse($order->isOverdue());
         $this->assertSame('2026-11-11', $plan->fresh()->next_due_date->toDateString(), '還沒做完，下次到期日不動');
 
-        // 派工、回報 OK → 下次到期日推到 11/21；到了 11/21 才產生下一張。
+        // 11/09 提前做完 → 下次到期日推到 11/21；到了 11/18（前 3 天）才產生下一張。
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-09 10:00'));
         $order->update(['status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'assigned_to' => $this->admin->id]);
-        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-11-11 08:00:00'])->assertSessionHasNoErrors();
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-11-09 09:00:00'])->assertSessionHasNoErrors();
         $this->assertSame('2026-11-21', $plan->fresh()->next_due_date->toDateString());
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-17 00:00'));
         $this->assertSame(0, $generator->generate());
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-21 00:00'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-18 00:00'));
         $this->assertSame(1, $generator->generate());
+    }
+
+    // 新增／修改計畫時，下次到期日已經在 3 天內：存檔就馬上產生工單（排定在到期日），不用等半夜排程。
+    public function test_saving_a_plan_due_within_three_days_creates_the_order_right_away(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-22 16:00'));
+        $device = $this->makeDevice();
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '三天內到期', 'targets' => ['device:' . $device->id], 'description' => '清潔', 'cycle_days' => 5, 'start_date' => '2026-11-20', 'is_active' => 1,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success', '保養計畫新增成功；已產生保養工單 MO-00001（排定 2026-11-25）');
+
+        $plan = \App\Models\MaintenancePlan::where('name', '三天內到期')->sole();
+        $this->assertSame('2026-11-25', $plan->next_due_date->toDateString());
+        $this->assertSame(['2026-11-25'], MaintenanceOrder::where('maintenance_plan_id', $plan->id)->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all());
+
+        // 停用的計畫存檔不產生；重新啟用時才產生。
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '停用的', 'targets' => ['device:' . $device->id], 'description' => '清潔', 'cycle_days' => 5, 'start_date' => '2026-11-20', 'is_active' => 0,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success', '保養計畫新增成功');
+        $off = \App\Models\MaintenancePlan::where('name', '停用的')->sole();
+        $this->assertSame(0, MaintenanceOrder::where('maintenance_plan_id', $off->id)->count());
+        $this->patch(route('maintenance-plans.toggle-status', $off))->assertSessionHas('success', '已重新啟用；已產生保養工單 MO-00002（排定 2026-11-25）');
     }
 
     // ---- OK / NG 回報 ----

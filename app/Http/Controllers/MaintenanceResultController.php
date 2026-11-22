@@ -109,8 +109,11 @@ class MaintenanceResultController extends Controller
             return [$result, $repairs];
         });
 
-        // 做完的是計畫目前這一期：下次到期日往後推一個週期，排程到了新的到期日才會產生下一張工單。
-        $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
+        // 做完的是計畫目前這一期：下次到期日往後推一個週期；新的到期日已經在 3 天內（週期很短）就馬上產生下一張，不然等排程。
+        if ($plan = $maintenanceOrder->maintenancePlan) {
+            $plan->advanceDueDateAfter($maintenanceOrder);
+            app(\App\Services\DueMaintenanceOrderGenerator::class)->generateForPlan($plan);
+        }
 
         AuditLogger::log('created', $result, ['result' => $result->result, 'maintenance_order_id' => $maintenanceOrder->id], '回報保養結果：工單 ' . $maintenanceOrder->displayNumber() . '，結果 ' . ($result->isNg() ? 'NG' : 'OK'));
 
