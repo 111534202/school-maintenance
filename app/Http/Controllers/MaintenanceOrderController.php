@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\TableExport;
+use App\Support\TableExportResponse;
 use App\Models\MaintenanceOrder;
 use App\Models\MaintenancePlan;
 use App\Models\User;
@@ -12,7 +12,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Facades\Excel;
 
 class MaintenanceOrderController extends Controller
 {
@@ -117,9 +116,9 @@ class MaintenanceOrderController extends Controller
         })->all();
 
         $file = '保養工單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出保養工單 {$file}（" . count($rows) . ' 筆）');
 
-        return Excel::download(new TableExport('保養工單', ['工單編號', '設備編號', '設備（類別 品牌 型號）', '設備類別', '來源計畫', '來源', '狀態', '負責人', '排定保養日期', '逾期', '保養結果', '執行人', '執行時間', '備註', '轉報修單號', '建立時間'], $rows), $file);
+        // 先預覽（?preview=1），確認後才下載並寫入操作紀錄。
+        return TableExportResponse::respond($request, '保養工單', ['工單編號', '設備編號', '設備（類別 品牌 型號）', '設備類別', '來源計畫', '來源', '狀態', '負責人', '排定保養日期', '逾期', '保養結果', '執行人', '執行時間', '備註', '轉報修單號', '建立時間'], $rows, $file, '保養工單');
     }
 
     /**

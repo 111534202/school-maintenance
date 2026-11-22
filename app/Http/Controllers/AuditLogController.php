@@ -74,8 +74,8 @@ class AuditLogController extends Controller
         ])->all();
 
         $file = '操作紀錄-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出操作紀錄 {$file}（" . count($rows) . ' 筆）');
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('操作紀錄', ['時間', '操作者', '事件', '對象類型', '對象編號', '說明'], $rows), $file);
+        // 先預覽（?preview=1），確認後才下載並寫入操作紀錄。
+        return \App\Support\TableExportResponse::respond($request, '操作紀錄', ['時間', '操作者', '事件', '對象類型', '對象編號', '說明'], $rows, $file, '操作紀錄');
     }
 }

@@ -256,7 +256,7 @@ protected function setUp(): void
     public function test_only_the_assigned_technician_can_fill_the_repair_log(): void
     {
         [$techA, $techB] = $this->twoTechniciansAndTwoTeachers();
-        $case = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $techA->id]);
+        $case = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $techA->id, 'created_at' => now()->subDay()]);
         $payload = [
             'cause' => '原因', 'resolution' => '處置',
             'started_at' => now()->subHour()->format('Y-m-d\TH:i'), 'ended_at' => now()->format('Y-m-d\TH:i'),

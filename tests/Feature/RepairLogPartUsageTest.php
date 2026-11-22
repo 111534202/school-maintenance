@@ -34,6 +34,7 @@ class RepairLogPartUsageTest extends TestCase
     {
         $repairRequest = RepairRequest::factory()->create([
             'status' => 'assigned',
+            'created_at' => '2026-10-01 08:00:00',   // 維修時間（2026-10-12）要晚於報修送出的時間
         ]);
 
         app(RepairRequestWorkflow::class)->start($repairRequest);

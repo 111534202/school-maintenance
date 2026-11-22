@@ -117,9 +117,9 @@ class UserController extends Controller
         ])->all();
 
         $file = '用戶名單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出用戶名單 {$file}（" . count($rows) . ' 筆）');
 
-        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\TableExport('用戶', ['帳號', '姓名', 'Email', '電話', '身分', '部門', '狀態', '最後登入', '建立時間'], $rows), $file);
+        // 先預覽（?preview=1），確認後才下載並寫入操作紀錄。
+        return \App\Support\TableExportResponse::respond($request, '用戶', ['帳號', '姓名', 'Email', '電話', '身分', '部門', '狀態', '最後登入', '建立時間'], $rows, $file, '用戶名單');
     }
 
     /** 顯示「新增用戶」表單（GET /users/create）。下拉選單的資料由 formData() 提供。 */

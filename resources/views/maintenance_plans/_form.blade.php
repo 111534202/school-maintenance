@@ -14,9 +14,9 @@
 </div>
 
 <div class="mb-3">
-    <label for="device_category_id" class="form-label">設備類別</label>
-    <select name="device_category_id" id="device_category_id" class="form-select @error('device_category_id') is-invalid @enderror">
-        <option value="">— 不指定 —</option>
+    <label for="device_category_id" class="form-label">設備類別 @if ($plan->device_id === null)<span class="text-danger">*</span>@endif</label>
+    <select name="device_category_id" id="device_category_id" class="form-select @error('device_category_id') is-invalid @enderror" @required($plan->device_id === null)>
+        <option value="">— 請選擇設備類別 —</option>
         @foreach ($deviceCategories as $deviceCategory)
             <option value="{{ $deviceCategory->id }}" @selected((string) old('device_category_id', $plan->device_category_id) === (string) $deviceCategory->id)>{{ $deviceCategory->name }}</option>
         @endforeach

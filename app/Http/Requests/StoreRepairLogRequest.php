@@ -24,11 +24,15 @@ class StoreRepairLogRequest extends FormRequest
      */
     public function rules(): array
     {
+        // 維修不可能早於報修：開始時間不能早於這張報修單送出的時間（精確到分鐘，因為輸入欄位只有到分鐘）。
+        $repairRequest = $this->route('repair_request');
+        $submittedAt = $repairRequest?->created_at?->format('Y-m-d H:i') ?? '1971-01-01';
+
         return [
             'cause' => ['required', 'string', 'max:5000'],
             'resolution' => ['required', 'string', 'max:5000'],
             // 維修時間不能是未來（容許 5 分鐘的電腦時間誤差）；也避免填到 2038 年之後造成資料庫寫入失敗。
-            'started_at' => ['required', 'date', 'after:1971-01-01', 'before_or_equal:+5 minutes'],
+            'started_at' => ['required', 'date', 'after:1971-01-01', 'after_or_equal:' . $submittedAt, 'before_or_equal:+5 minutes'],
             'ended_at' => [
                 'required',
                 'date',
@@ -74,6 +78,7 @@ class StoreRepairLogRequest extends FormRequest
         return [
             'started_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
             'ended_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
+            'started_at.after_or_equal' => ':attribute 不能早於報修申請的時間（:date）。',
             'started_at.after' => ':attribute 不是合理的日期，請重新選擇。',
             'ended_at.after' => ':attribute 不是合理的日期，請重新選擇。',
         ];

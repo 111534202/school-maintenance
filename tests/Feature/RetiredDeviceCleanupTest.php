@@ -42,7 +42,7 @@ class RetiredDeviceCleanupTest extends TestCase
 
     private function repair(Device $device, string $status): RepairRequest
     {
-        return RepairRequest::factory()->create(['device_id' => $device->id, 'status' => $status, 'title' => '報修-' . $status . '-' . $device->device_code]);
+        return RepairRequest::factory()->create(['device_id' => $device->id, 'status' => $status, 'created_at' => now()->subDay(), 'title' => '報修-' . $status . '-' . $device->device_code]);
     }
 
     public function test_retiring_a_device_aborts_everything_in_progress_and_keeps_the_history(): void

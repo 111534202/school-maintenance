@@ -73,7 +73,8 @@ class RepairRequestBoardFlowTest extends TestCase
             ->assertRedirect(route('repairs.show', $repairRequest));
         $this->assertSame('in_progress', $repairRequest->fresh()->status->value);
 
-        // 填寫維修紀錄
+        // 填寫維修紀錄（時間往後推一小時：維修時間不能早於報修送出的時間）
+        $this->travelTo(now()->addHour());
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'cause' => '燈泡使用超過壽命',
             'resolution' => '更換新燈泡並測試投影正常',
@@ -133,7 +134,7 @@ class RepairRequestBoardFlowTest extends TestCase
         // 迴歸測試：曾經的 bug 是先建立 repair_log（可能還帶附件）才檢查狀態，
         // 若案件已經是 pending_review（例如重複送出同一份表單），會留下一筆孤兒
         // repair_log，案件狀態卻沒有改變。現在應該完全不寫入任何東西。
-        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review', 'created_at' => now()->subDay()]);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'cause' => '重複送出測試',
@@ -345,7 +346,7 @@ class RepairRequestBoardFlowTest extends TestCase
     {
         // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
         Storage::fake('local');
-        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'in_progress', 'created_at' => now()->subDay()]);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'cause' => '風扇葉片變形產生異音',

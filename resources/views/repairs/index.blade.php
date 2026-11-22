@@ -14,7 +14,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2 justify-content-end">
             {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部報修單（不分頁；只含你看得到的案件）。 --}}
-            <a class="tb-btn tb-btn-outline" href="{{ route('repairs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
+            <a class="tb-btn tb-btn-outline" data-excel-preview href="{{ route('repairs.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
         {{-- 有「提出報修」權限才顯示「新增報修」按鈕。 --}}
         @can('repairs.create')
             <a class="tb-btn tb-btn-primary" href="{{ route('repairs.create') }}" data-modal-frame data-modal-title="{{ __('repair_requests.add_request') }}" data-modal-size="xl">
@@ -210,4 +210,6 @@
         </div>
     @endif
 </div>
+{{-- 匯出 Excel 預覽視窗：先預覽，確認後才下載。 --}}
+@include('exports._excel-preview')
 @endsection

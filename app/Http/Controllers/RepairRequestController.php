@@ -9,7 +9,7 @@ use App\Models\Device;                                  // 設備資料表的模
 use App\Models\KnowledgeBase;                           // 知識庫文章的模型
 use App\Models\RepairRequest;                           // 報修單資料表的模型
 use App\Models\User;                                    // 用戶資料表的模型
-use App\Exports\TableExport;                          // 列表匯出 Excel 用的共用匯出類別
+use App\Support\TableExportResponse;                  // 列表匯出 Excel（先預覽再下載）的共用回應
 use App\Http\Requests\AssignRepairRequestRequest;       // 「派工」表單的驗證規則
 use App\Http\Requests\RejectRepairRequestRequest;       // 「驗收退回」表單的驗證規則
 use App\Http\Requests\StoreRepairRequestRequest;        // 「新增報修」表單的驗證規則
@@ -22,7 +22,6 @@ use DomainException;                                    // 「違反業務規則
 use Illuminate\Http\Request;                            // 這一次瀏覽器送來的請求
 use Illuminate\Support\Carbon;                          // 日期處理（新增日期範圍篩選）
 use Illuminate\Support\Facades\Auth;                    // 取得目前登入的人
-use Maatwebsite\Excel\Facades\Excel;                 // Excel 匯出
 use Illuminate\Support\Facades\DB;                      // 資料庫交易：建立報修單與回寫保養結果要一起成功
 use Illuminate\Support\Facades\Gate;                    // 權限判斷：Gate::authorize 不通過就直接回 403
 
@@ -255,9 +254,9 @@ class RepairRequestController extends Controller
         ])->all();
 
         $file = '報修單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出報修單 {$file}（" . count($rows) . ' 筆）');
 
-        return Excel::download(new TableExport('報修單', ['編號', '報修標題', '狀態', '影響程度', '影響上課', '設備編號', '設備（類別 品牌 型號）', '設備位置／描述', '設備地點', '報修人', '維修人員', '預計處理時間', '送出時間', '故障描述'], $rows), $file);
+        // 先預覽（?preview=1），確認後才下載並寫入操作紀錄。
+        return TableExportResponse::respond($request, '報修單', ['編號', '報修標題', '狀態', '影響程度', '影響上課', '設備編號', '設備（類別 品牌 型號）', '設備位置／描述', '設備地點', '報修人', '維修人員', '預計處理時間', '送出時間', '故障描述'], $rows, $file, '報修單');
     }
 
     /**

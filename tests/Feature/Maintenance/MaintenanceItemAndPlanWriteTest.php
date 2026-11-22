@@ -175,6 +175,19 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $this->assertDatabaseCount('maintenance_plan_items', 0);
     }
 
+    public function test_storing_a_plan_requires_a_device_category(): void
+    {
+        $item = $this->item();
+
+        // 沒選設備類別（空白）也不能新增計畫。
+        $this->from(route('maintenance-plans.create'))
+            ->post(route('maintenance-plans.store'), ['name' => '沒選類別', 'device_category_id' => '', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'item_ids' => [$item->id]])
+            ->assertRedirect(route('maintenance-plans.create'))
+            ->assertSessionHasErrors('device_category_id');
+
+        $this->assertDatabaseCount('maintenance_plans', 0);
+    }
+
     #[DataProvider('usersWithoutManagePermission')]
     public function test_storing_a_plan_needs_the_manage_permission(array $permissions): void
     {
@@ -193,6 +206,7 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
     {
         $plan = MaintenancePlan::create([
             'name' => '舊計畫',
+            'device_category_id' => DeviceCategory::firstOrCreate(['name' => '電腦'])->id,
             'cycle_days' => 30,
             'start_date' => '2026-01-01',
             'next_due_date' => '2026-01-31',
@@ -212,6 +226,7 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
 
         $this->put(route('maintenance-plans.update', $plan), [
             'name' => '新計畫',
+            'device_category_id' => $plan->device_category_id,
             'cycle_days' => 90,
             'start_date' => '2026-10-07',
             'is_active' => 1,
@@ -232,10 +247,27 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $plan = $this->planWith([$item]);
 
         // 編輯畫面的啟用開關關掉時送出 is_active = 0，計畫就變成停用。
-        $this->put(route('maintenance-plans.update', $plan), ['name' => '同名', 'cycle_days' => 30, 'start_date' => '2026-01-01', 'is_active' => 0, 'item_ids' => [$item->id]])
+        $this->put(route('maintenance-plans.update', $plan), ['name' => '同名', 'device_category_id' => $plan->device_category_id, 'cycle_days' => 30, 'start_date' => '2026-01-01', 'is_active' => 0, 'item_ids' => [$item->id]])
             ->assertRedirect(route('maintenance-plans.index'));
 
         $this->assertDatabaseHas('maintenance_plans', ['id' => $plan->id, 'is_active' => false]);
+    }
+
+    public function test_updating_a_plan_cannot_clear_its_device_category(): void
+    {
+        $item = $this->item();
+        $plan = $this->planWith([$item]);
+
+        $this->from(route('maintenance-plans.edit', $plan))
+            ->put(route('maintenance-plans.update', $plan), ['name' => '清掉類別', 'device_category_id' => '', 'cycle_days' => 30, 'start_date' => '2026-01-01', 'item_ids' => [$item->id]])
+            ->assertSessionHasErrors('device_category_id');
+
+        $this->assertNotNull($plan->fresh()->device_category_id);
+    }
+
+    public function test_the_plan_form_marks_the_device_category_as_required(): void
+    {
+        $this->get(route('maintenance-plans.create'))->assertOk()->assertSee('請選擇設備類別')->assertDontSee('不指定');
     }
 
     public function test_updating_a_plan_with_invalid_data_changes_nothing(): void

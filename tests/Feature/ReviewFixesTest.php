@@ -100,7 +100,7 @@ class ReviewFixesTest extends TestCase
             ->assertSessionHasErrors('description');
 
         $technician = $this->makeTechnician();
-        $repair = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id]);
+        $repair = RepairRequest::factory()->create(['status' => 'in_progress', 'assigned_to' => $technician->id, 'created_at' => now()->subDay()]);
         $base = ['cause' => '壞了', 'resolution' => '修好', 'started_at' => now()->subHour()->format('Y-m-d H:i'), 'ended_at' => now()->format('Y-m-d H:i')];
         $this->actingAs($technician)->post(route('repair-logs.store', $repair), ['cause' => str_repeat('字', 5001)] + $base)->assertSessionHasErrors('cause');
         $this->actingAs($technician)->post(route('repair-logs.store', $repair), ['started_at' => '2099-01-01 08:00', 'ended_at' => '2099-01-01 09:00'] + $base)

@@ -18,7 +18,8 @@ class StoreMaintenancePlanRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:200'],
-            'device_category_id' => ['nullable', 'integer', 'exists:device_categories,id'],
+            // 設備類別必選：計畫要知道針對哪一類設備產生工單。
+            'device_category_id' => ['required', 'integer', 'exists:device_categories,id'],
             'cycle_days' => ['required', 'integer', 'min:1', 'max:3650'],
             'start_date' => ['required', 'date', 'after_or_equal:2020-01-01', 'before:2038-01-01'],
             'is_active' => ['sometimes', 'boolean'],

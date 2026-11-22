@@ -18,7 +18,7 @@
         <div class="d-flex gap-2 tb-actions-wrap">
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
             <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'users') }}"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
-            <a class="tb-btn tb-btn-outline" href="{{ route('users.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
+            <a class="tb-btn tb-btn-outline" data-excel-preview href="{{ route('users.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
             <a class="tb-btn tb-btn-primary" href="{{ route('users.create') }}" data-modal-frame data-modal-title="{{ __('users.add_user') }}" data-modal-size="lg">
                 <i class="bi bi-plus-lg"></i>{{ __('users.add_user') }}
             </a>
@@ -189,4 +189,6 @@
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
 </div>
+{{-- 匯出 Excel 預覽視窗：先預覽，確認後才下載。 --}}
+@include('exports._excel-preview')
 @endsection

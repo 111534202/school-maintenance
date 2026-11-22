@@ -16,7 +16,7 @@
             @include('charts._button', ['buttonClass' => 'tb-btn tb-btn-outline'])
             @can('devices.manage')
                 <a class="tb-btn tb-btn-outline" href="{{ route('imports.index', 'devices') }}"><i class="bi bi-file-earmark-arrow-up"></i>{{ __('imports.button') }}</a>
-                <a class="tb-btn tb-btn-outline" href="{{ route('devices.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
+                <a class="tb-btn tb-btn-outline" data-excel-preview href="{{ route('devices.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>{{ __('common.export_excel') }}</a>
             @endcan
             {{-- 依目前的篩選條件批次列印 QR 貼紙（新分頁開啟，可直接列印）。 --}}
             <a class="tb-btn tb-btn-outline" href="{{ route('devices.qr-sheet', request()->query()) }}" target="_blank" rel="noopener">
@@ -172,4 +172,6 @@
     {{-- 統計圖表視窗（資料來自 App\Services\MasterCharts）。 --}}
     @include('charts._modal')
 </div>
+{{-- 匯出 Excel 預覽視窗：先預覽，確認後才下載。 --}}
+@include('exports._excel-preview')
 @endsection

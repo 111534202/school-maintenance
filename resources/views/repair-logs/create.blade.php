@@ -71,6 +71,7 @@
                                 class="form-control @error('started_at') is-invalid @enderror"
                                 id="started_at"
                                 name="started_at"
+                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 value="{{ old('started_at') }}"
                                 required>
                             @error('started_at')
@@ -87,6 +88,7 @@
                                 class="form-control @error('ended_at') is-invalid @enderror"
                                 id="ended_at"
                                 name="ended_at"
+                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 value="{{ old('ended_at') }}"
                                 required>
                             @error('ended_at')

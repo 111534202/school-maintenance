@@ -4,7 +4,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RepairRequestStatus;                // 報修單狀態列舉（算「進行中的報修單」時要排除已結案）
-use App\Exports\TableExport;
+use App\Support\TableExportResponse;               // 列表匯出 Excel（先預覽再下載）的共用回應
 use App\Models\Classroom;                         // 教室資料表的模型
 use App\Models\Device;                            // 設備資料表的模型
 use App\Models\DeviceCategory;                    // 設備類別資料表的模型
@@ -14,7 +14,6 @@ use App\Services\AuditLogger;                     // 共用的操作紀錄寫入
 use App\Services\DeviceStatusService;             // 統一處理「設備狀態變更」的服務（會同步教室異常旗標與操作紀錄）
 use Illuminate\Http\Request;                      // 這一次瀏覽器送來的請求
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Facades\Excel;                   // 自訂 exists 規則（排除軟刪除資料）用
 use SimpleSoftwareIO\QrCode\Facades\QrCode;       // 產生 QR Code 圖片的套件
 
 /**
@@ -218,9 +217,9 @@ class DeviceController extends Controller
         ])->all();
 
         $file = '設備清單-' . now()->format('Ymd-His') . '.xlsx';
-        AuditLogger::log('downloaded', null, ['file' => $file, 'rows' => count($rows)], "匯出設備清單 {$file}（" . count($rows) . ' 筆）');
 
-        return Excel::download(new TableExport('設備', ['設備編號', '資產編號', '類別', '品牌', '型號', '序號', '教室代碼', '教室', '狀態', '核心設備', '保固到期日', '建立時間'], $rows), $file);
+        // 先預覽（?preview=1），確認後才下載並寫入操作紀錄。
+        return TableExportResponse::respond($request, '設備', ['設備編號', '資產編號', '類別', '品牌', '型號', '序號', '教室代碼', '教室', '狀態', '核心設備', '保固到期日', '建立時間'], $rows, $file, '設備清單');
     }
 
     /**

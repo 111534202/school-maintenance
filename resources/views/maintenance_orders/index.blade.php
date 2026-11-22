@@ -10,7 +10,7 @@
             <h1 class="tb-title">保養工單</h1>
         </div>
         {{-- 匯出 Excel：匯出目前搜尋與篩選條件下的全部保養工單（不分頁，含保養結果）。 --}}
-        <a class="tb-btn tb-btn-outline" href="{{ route('maintenance-orders.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
+        <a class="tb-btn tb-btn-outline" data-excel-preview href="{{ route('maintenance-orders.export', request()->query()) }}"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i>匯出 Excel</a>
     </div>
 
     <div class="tb-card tb-card-pad">
@@ -167,4 +167,6 @@
     .mo-action { min-width: calc(4em + 1.5rem); text-align: center; }
     .mo-action.disabled { opacity: 1; }
 </style>
+{{-- 匯出 Excel 預覽視窗：先預覽，確認後才下載。 --}}
+@include('exports._excel-preview')
 @endsection
