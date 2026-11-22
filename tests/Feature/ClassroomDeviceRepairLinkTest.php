@@ -142,7 +142,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id])), $html);
         $this->assertStringContainsString(htmlspecialchars(route('devices.index', ['classroom_id' => $room->id, 'abnormal' => 1])), $html);
-        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['device_classroom_id' => $room->id, 'open' => 1])), $html);
+        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['classroom_id' => $room->id, 'open' => 1])), $html);
     }
 
     // 教室列表可以只看「有異常設備」的教室。

@@ -31,13 +31,20 @@ class ClassroomController extends Controller
             // withCount：一次算出每間教室的三個數字，列表上顯示並連到對應的設備主檔／報修看板：
             //   devices_count          設備總數；
             //   abnormal_devices_count 異常設備數（有未結束報修單的設備，不含已淘汰；定義見 Device::scopeAbnormal）；
-            //   open_repairs_count     進行中的報修單數（透過「設備」串到報修單，不含已結案，且只算這位用戶看得到的案件）。
+            //   （進行中的報修單數 open_repairs_count 在下面另外算）
             ->withCount([
                 'devices',
                 'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
-                'repairRequests as open_repairs_count' => fn ($repairs) => $repairs
-                    ->visibleOnBoard($user)   // 和報修看板同一個範圍，點進去的列表筆數才會一致
-                    ->open(),             // 未結案（已結案、已退回都不算）
+            ])
+            // 進行中的報修單數：算法和報修看板的「教室」篩選一樣（報修時填的發現地點是這間教室，或報修的設備現在放在這間教室），
+            // 只算這位用戶在看板上看得到、未結案（已結案、已退回、已中止都不算）的案件，點進去的列表筆數才會一致。
+            ->addSelect(['open_repairs_count' => \App\Models\RepairRequest::query()
+                ->selectRaw('count(*)')
+                ->visibleOnBoard($user)
+                ->open()
+                ->where(fn ($q) => $q
+                    ->whereColumn('repair_requests.classroom_id', 'classrooms.id')
+                    ->orWhereHas('device', fn ($device) => $device->whereColumn('devices.classroom_id', 'classrooms.id'))),
             ])
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');

@@ -112,12 +112,14 @@ class DrilldownAndFinalStateTest extends TestCase
         $this->repair('案件-A2', 'pending', ['device_id' => $this->device('DEV-A2', 'normal', $a)->id]);
         $this->repair('案件-A3', 'completed', ['device_id' => $this->device('DEV-A3', 'normal', $a)->id]);   // 已結案：不算
         $this->repair('案件-B1', 'pending', ['device_id' => $this->device('DEV-B1', 'normal', $b)->id]);
+        $this->repair('案件-A4', 'pending', ['device_id' => null, 'classroom_id' => $a->id]);   // 沒綁設備、發現地點填 A101：教室篩選也算
 
         $html = $this->actingAs($admin)->get(route('classrooms.index'))->assertOk()->getContent();
-        $link = htmlspecialchars(route('repairs.index', ['device_classroom_id' => $a->id, 'open' => 1]));
+        $link = htmlspecialchars(route('repairs.index', ['classroom_id' => $a->id, 'open' => 1]));
         $this->assertStringContainsString($link, $html);
 
-        $this->assertEqualsCanonicalizing(['案件-A1', '案件-A2'], $this->boardTitles($admin, ['device_classroom_id' => $a->id, 'open' => 1]));
+        $this->assertEqualsCanonicalizing(['案件-A1', '案件-A2', '案件-A4'], $this->boardTitles($admin, ['classroom_id' => $a->id, 'open' => 1]));
+        $this->assertMatchesRegularExpression('/bi-tools me-1"><\/i>3</', $html);   // 徽章數字和看板筆數一樣
     }
 
     public function test_device_category_filter_only_lists_that_category(): void
