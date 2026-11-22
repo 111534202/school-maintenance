@@ -199,7 +199,8 @@ def repair_lifecycle(browser, base, root):
         page.wait_for_timeout(300)
         page.click('#part_options_0 button:has-text("PART-1")')
         page.fill('#part_qty_0', '2')
-        now = datetime.datetime.now()
+        # 系統用台北時間（UTC+8）；測試機器（例如 CI）可能是 UTC，所以明確用台北時間，不能用機器的現在時間。
+        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
         page.fill('textarea[name="cause"]', '燈泡燒壞')
         page.fill('textarea[name="resolution"]', '更換燈泡')
         # 維修開始時間不能早於報修送出的時間：報修剛送出，所以從現在這一分鐘開始，2 分鐘後結束（結束時間可比現在晚不超過 5 分鐘）。
