@@ -11,6 +11,7 @@ use App\Models\RepairRequest;
 use App\Services\RepairCostAnalysisService;
 use App\Support\CostReportSections;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
@@ -19,8 +20,8 @@ use Tests\TestCase;
  */
 class RepairCostPurchaseAndMaintenanceTest extends TestCase
 {
-    use RefreshDatabase;
     use InteractsWithRolesAndUsers;
+    use RefreshDatabase;
 
     private function makePart(string $name = '測試零件'): Part
     {
@@ -113,7 +114,7 @@ class RepairCostPurchaseAndMaintenanceTest extends TestCase
 
     public function test_period_filter_offers_all_month_and_week_and_hides_the_date_pickers(): void
     {
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-18 10:00:00'));   // 週三
+        $this->travelTo(Carbon::parse('2026-11-18 10:00:00'));   // 週三
         $user = $this->makeUserWithPermissions(['parts.manage']);
         $part = $this->makePart();
         $this->buy($part, '2026-11-16', 1, 100);   // 當周（11/16 週一 ~ 11/22 週日）
