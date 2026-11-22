@@ -30,10 +30,8 @@ class MaintenanceResultController extends Controller
 
         // 保養用料選單：列出全部零件（沒有庫存的顯示庫存 0、不能選），和維修紀錄的選法相同。
         $parts = Part::query()->orderBy('id')->get();
-        // NG 時可以選的設備：計畫是一台設備就是那台；計畫是設備類別就是那一類的設備（可複選）。
-        $ngDevices = app(NgToRepairService::class)->selectableDevices($maintenanceOrder);
 
-        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts, 'ngDevices' => $ngDevices, 'skippedDevices' => app(NgToRepairService::class)->skippedDevices($maintenanceOrder)]);
+        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts]);
     }
 
     /**
@@ -47,7 +45,7 @@ class MaintenanceResultController extends Controller
 
         $maintenanceOrder->load(['result.partUsages.part', 'result.attachments', 'result.repairRequests', 'maintenancePlan']);
 
-        return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result, 'skippedDevices' => app(NgToRepairService::class)->skippedDevices($maintenanceOrder)]);
+        return view('maintenance_results.show', ['order' => $maintenanceOrder, 'result' => $maintenanceOrder->result]);
     }
 
     /**
@@ -63,19 +61,10 @@ class MaintenanceResultController extends Controller
         $partUsages = $validated['part_usages'] ?? [];
         $isNg = $validated['result'] === MaintenanceResult::RESULT_NG;
 
-        // NG 的設備只能從這張工單可選的設備裡選；OK 不轉報修，忽略送來的設備。
-        $ngDeviceIds = [];
-        if ($isNg) {
-            $allowed = $ngToRepairService->selectableDevices($maintenanceOrder)->pluck('id')->all();
-            $ngDeviceIds = array_values(array_unique(array_map('intval', $validated['ng_device_ids'] ?? [])));
-            if ($ngDeviceIds === [] || array_diff($ngDeviceIds, $allowed) !== []) {
-                throw ValidationException::withMessages(['ng_device_ids' => '請從清單中選擇這張工單的異常設備。']);
-            }
-        }
-        unset($validated['part_usages'], $validated['attachments'], $validated['ng_device_ids']);
+        unset($validated['part_usages'], $validated['attachments']);
 
         // 保養結果、用料扣庫存、NG 轉報修、工單狀態放在同一個交易：任何一個零件庫存不足，整筆都不會寫入。
-        [$result, $repairs] = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock, $attachmentUploader, $ngToRepairService, $ngDeviceIds, $isNg) {
+        [$result, $repairs] = DB::transaction(function () use ($validated, $partUsages, $request, $maintenanceOrder, $stock, $attachmentUploader, $ngToRepairService, $isNg) {
             $result = MaintenanceResult::create([
                 ...$validated,
                 'executed_by' => $request->user()->id,   // 執行人 = 登入帳號（外鍵 users.id），不能自己亂填
@@ -113,18 +102,22 @@ class MaintenanceResultController extends Controller
                 $attachmentUploader->storeMany($result, $request->file('attachments'));
             }
 
-            // OK：整張工單完成。NG：每台 NG 的設備各建一張報修單，工單「已轉報修」，報修單全部結案後才完成。
-            $repairs = $ngToRepairService->convert($result, $ngDeviceIds);
+            // OK：整張工單完成。NG：整張工單建一張報修單，工單「已轉報修」，報修單結案後才完成。
+            $repairs = $ngToRepairService->convert($result);
             $maintenanceOrder->update(['status' => $isNg ? MaintenanceOrder::STATUS_CONVERTED : MaintenanceOrder::STATUS_COMPLETED]);
 
             return [$result, $repairs];
         });
 
+        // 做完的是計畫目前這一期：下次到期日往後推一個週期，排程到了新的到期日才會產生下一張工單。
+        $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
 
         AuditLogger::log('created', $result, ['result' => $result->result, 'maintenance_order_id' => $maintenanceOrder->id], '回報保養結果：工單 ' . $maintenanceOrder->displayNumber() . '，結果 ' . ($result->isNg() ? 'NG' : 'OK'));
 
         $status = $isNg
-            ? '保養結果已回報為 NG，已建立 ' . $repairs->count() . ' 張報修單（' . $repairs->map(fn (RepairRequest $repair) => '#' . $repair->id)->implode('、') . '），工單改為已轉報修；報修單全部結案後工單會自動完成。'
+            ? ($repairs->isNotEmpty()
+                ? '保養結果已回報為 NG，已建立報修單 #' . $repairs->first()->id . '，工單改為已轉報修；報修單結案後工單會自動完成。'
+                : '保養結果已回報為 NG；設備已淘汰或停用，不建立報修單。')
             : '保養結果已回報為 OK，工單已完成';
 
         return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('success', $status);

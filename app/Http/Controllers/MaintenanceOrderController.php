@@ -52,7 +52,7 @@ class MaintenanceOrderController extends Controller
         ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'source' => '來源', 'due' => '期限', 'assignee' => '負責人', 'from' => '起始日期', 'to' => '結束日期']);
 
         return MaintenanceOrder::query()
-            ->with(['maintenancePlan', 'result', 'device', 'assignee', 'targets.device.category', 'targets.deviceCategory'])
+            ->with(['maintenancePlan', 'result', 'device', 'assignee', 'deviceCategory'])
             // 期限：overdue＝已逾期、week＝一週內到期（含已逾期）；只看自己負責的用 mine=1；assignee＝指定負責人（none＝還沒指派）。
             ->when($request->string('due')->toString() === 'overdue', fn ($query) => $query->overdue())
             ->when($request->string('due')->toString() === 'week', fn ($query) => $query->dueWithin(7))
@@ -68,9 +68,6 @@ class MaintenanceOrderController extends Controller
                     $q->whereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
                         ->orWhereHas('maintenancePlan', fn ($plan) => $plan->where('name', 'like', $like))
                         ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like))
-                        // 一張工單有好幾個保養對象時，對象清單裡的設備、類別也搜得到。
-                        ->orWhereHas('targets.device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like))
-                        ->orWhereHas('targets.deviceCategory', fn ($category) => $category->where('name', 'like', $like))
                         ->orWhereHas('assignee', fn ($user) => $user->where('name', 'like', $like));
                     if (ctype_digit(ltrim($keyword, '#'))) {
                         $q->orWhere('maintenance_orders.id', (int) ltrim($keyword, '#'));
@@ -109,7 +106,7 @@ class MaintenanceOrderController extends Controller
     /** 匯出與預覽共用的查詢：列表的查詢，再一併載入匯出欄位要用的關聯。 */
     private function exportQuery(Request $request)
     {
-        return $this->indexQuery($request)->with(['result.executor', 'result.repairRequests', 'deviceCategory', 'device.category', 'targets.device.category', 'targets.deviceCategory']);
+        return $this->indexQuery($request)->with(['result.executor', 'result.repairRequests', 'deviceCategory', 'device.category']);
     }
 
     /**
@@ -126,9 +123,8 @@ class MaintenanceOrderController extends Controller
     }
 
     /**
-     * 保養計畫的「建立工單」按鈕：馬上產生排定在下次到期日的工單（不用等到上一張的排定日），下次到期日往後推一個週期。
-     * 這個計畫已經有還沒到期（排定日在今天以後）、還沒做完的工單時不再建立，避免連按好幾次一直往後產生。
-     * 計畫有好幾個保養對象（設備或類別）時，全部放在同一張工單裡。產生規則見 DueMaintenanceOrderGenerator。
+     * 保養計畫的「建立工單」按鈕：馬上產生排定在下次到期日的工單（不用等到到期日）；這一期已經有工單就不重複建立。
+     * 下次到期日要等工單做完或取消才往後推。產生規則見 DueMaintenanceOrderGenerator。
      */
     public function storeFromPlan(MaintenancePlan $maintenancePlan, \App\Services\DueMaintenanceOrderGenerator $generator): RedirectResponse
     {
@@ -136,33 +132,22 @@ class MaintenanceOrderController extends Controller
             return redirect()->route('maintenance-plans.index')->with('error', '已停用的保養計畫不能建立工單。');
         }
 
-        if ($maintenancePlan->maintainableTargets() === []) {
-            return redirect()->route('maintenance-plans.index')->with('error', '這個計畫的設備都已淘汰或停用，不能再建立保養工單。');
+        if (! $maintenancePlan->canGenerateOrders()) {
+            return redirect()->route('maintenance-plans.index')->with('error', '這個計畫的設備已淘汰或停用，不能再建立保養工單。');
         }
 
-        $orders = DB::transaction(function () use ($maintenancePlan, $generator) {
+        // 建立計畫目前這一期（排定日＝下次到期日）的工單；這一期已經有工單（連按兩次、兩個分頁各按一次）就不重複建立。
+        $order = DB::transaction(function () use ($maintenancePlan, $generator) {
             $plan = MaintenancePlan::query()->whereKey($maintenancePlan->id)->lockForUpdate()->first();   // 鎖住這個計畫，兩個請求不會同時通過下面的檢查
 
-            $upcoming = MaintenanceOrder::query()
-                ->where('maintenance_plan_id', $plan->id)
-                ->whereDate('scheduled_date', '>=', today())
-                ->unfinished()
-                ->exists();
-            if ($upcoming) {
-                return null;
-            }
-
-            return $generator->createNext($plan);
+            return $generator->createForCurrentCycle($plan);
         });
 
-        if ($orders === null) {
-            return redirect()->route('maintenance-orders.index')->with('error', '這個計畫已經有還沒到期的保養工單，不重複建立。');
-        }
-        if ($orders->isEmpty()) {
-            return redirect()->route('maintenance-orders.index')->with('error', '這個計畫在 ' . $maintenancePlan->next_due_date?->toDateString() . ' 的工單已經產生過（可能已取消），已改成下一期。');
+        if ($order === null) {
+            return redirect()->route('maintenance-orders.index')->with('error', '這個計畫在 ' . $maintenancePlan->next_due_date?->toDateString() . ' 已經有保養工單，不重複建立。');
         }
 
-        return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單 ' . $orders->first()->displayNumber());
+        return redirect()->route('maintenance-orders.index')->with('success', '已依保養計畫「'.$maintenancePlan->name.'」建立保養工單 ' . $order->displayNumber());
     }
 
     /**
@@ -217,7 +202,8 @@ class MaintenanceOrderController extends Controller
         $id = $maintenanceOrder->id;
         $maintenanceOrder->delete();
 
-        // 取消工單不影響計畫的下次到期日：產生工單時下次到期日就已經往後推了，下一期照常產生（取消掉的這一期不會被重新產生）。
+        // 取消的是計畫目前這一期的工單：到期日往後推一個週期，不然這個計畫會因為「這一期已經產生過」而永遠停住。
+        $maintenanceOrder->maintenancePlan?->advanceDueDateAfter($maintenanceOrder);
 
         AuditLogger::log('deleted', $maintenanceOrder, ['status' => $maintenanceOrder->status], '取消（刪除）保養工單 #' . $id);
 

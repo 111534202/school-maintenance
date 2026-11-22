@@ -92,50 +92,48 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(0, MaintenanceOrder::count());
     }
 
-    // 工單提早一個週期產生：下次到期日是昨天（那一期早該產生）→ 補產生昨天那一期，而且昨天就到了下一期的產生日，
-    // 所以下一期（昨天＋30 天）也一起產生；重跑不會疊加。
+    // 到了下次到期日（昨天）就產生排定在那天的工單；不改下次到期日；重跑不會疊加。
     public function test_due_order_generator_creates_one_order_per_due_date_only(): void
     {
         $plan = $this->makePlan($this->makeDevice(), ['next_due_date' => now()->subDay()->toDateString()]);
         $generator = app(DueMaintenanceOrderGenerator::class);
 
-        $this->assertSame(2, $generator->generate());
+        $this->assertSame(1, $generator->generate());
         $this->assertSame(0, $generator->generate()); // 重跑不會疊加
 
-        $this->assertSame(
-            [now()->subDay()->toDateString(), now()->addDays(29)->toDateString()],
-            MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all()
-        );
-        $this->assertSame(now()->addDays(59)->toDateString(), $plan->fresh()->next_due_date->toDateString());
+        $this->assertSame(1, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
+        $this->assertSame(now()->subDay()->toDateString(), $plan->fresh()->next_due_date->toDateString());
     }
 
-    // 劉家芸確認的例子：11/01 新增計畫，起始日 11/01、週期 10 天 → 存檔馬上產生排定 11/11 的工單，下次到期日 11/21；
-    // 11/10 之前都不會再產生；到了 11/11 產生排定 11/21 的工單，下次到期日 12/01。工單有沒有做完都不影響。
-    public function test_orders_are_generated_one_cycle_ahead(): void
+    // 原本的做法（劉家芸確認改回）：到期日當天才產生排定在那天的工單；工單做完後下次到期日才往後推一個週期。
+    public function test_orders_are_generated_on_the_due_date_and_the_next_one_after_finishing(): void
     {
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-01 09:00'));
         $device = $this->makeDevice();
         $this->post(route('maintenance-plans.store'), [
             'name' => '十天一次', 'targets' => ['device:' . $device->id], 'description' => '清潔', 'cycle_days' => 10, 'start_date' => '2026-11-01', 'is_active' => 1,
-        ])->assertSessionHasNoErrors()->assertSessionHas('success', fn ($m) => str_contains($m, '排定 2026-11-11'));
+        ])->assertSessionHasNoErrors()->assertSessionHas('success', '保養計畫新增成功');
 
         $plan = \App\Models\MaintenancePlan::where('name', '十天一次')->sole();
-        $dates = fn () => MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all();
-        $this->assertSame(['2026-11-11'], $dates());
-        $this->assertSame('2026-11-21', $plan->fresh()->next_due_date->toDateString());
-
+        $this->assertSame('2026-11-11', $plan->next_due_date->toDateString());
         $generator = app(DueMaintenanceOrderGenerator::class);
+
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-10 00:00'));
-        $this->assertSame(0, $generator->generate());
+        $this->assertSame(0, $generator->generate());   // 還沒到期
 
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 00:00'));
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 09:00'));
         $this->assertSame(1, $generator->generate());
-        $this->assertSame(['2026-11-11', '2026-11-21'], $dates());
-        $this->assertSame('2026-12-01', $plan->fresh()->next_due_date->toDateString());
+        $order = MaintenanceOrder::where('maintenance_plan_id', $plan->id)->sole();
+        $this->assertSame('2026-11-11', $order->scheduled_date->toDateString());
+        $this->assertSame('2026-11-11', $plan->fresh()->next_due_date->toDateString(), '還沒做完，下次到期日不動');
 
-        // 第一張到了 11/12 還沒做完：逾期，但下一張照常（不會因為沒做完而停住）。
-        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-12 09:00'));
-        $this->assertTrue(MaintenanceOrder::where('maintenance_plan_id', $plan->id)->orderBy('scheduled_date')->first()->isOverdue());
+        // 派工、回報 OK → 下次到期日推到 11/21；到了 11/21 才產生下一張。
+        $order->update(['status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'assigned_to' => $this->admin->id]);
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-11-11 08:00:00'])->assertSessionHasNoErrors();
+        $this->assertSame('2026-11-21', $plan->fresh()->next_due_date->toDateString());
+        $this->assertSame(0, $generator->generate());
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-21 00:00'));
+        $this->assertSame(1, $generator->generate());
     }
 
     // ---- OK / NG 回報 ----
@@ -202,43 +200,38 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
     }
 
-    // NG（計畫是設備類別）：從這一類的設備複選，每台各一張報修單；全部結束（已退回也算）才完成。
-    public function test_category_ng_creates_one_repair_per_selected_device(): void
+    // 工單是設備類別：NG 只建一張報修單（不帶設備，維修人員填維修紀錄時再選是哪一台）；報修單結案後工單才完成。
+    public function test_category_ng_creates_one_repair_without_a_device(): void
     {
-        [$order, $devices] = $this->categoryOrder(['CAT-1', 'CAT-2', 'CAT-3']);
+        [$order] = $this->categoryOrder(['CAT-1', 'CAT-2', 'CAT-3']);
 
-        $this->get(route('maintenance-orders.results.create', $order))->assertOk()->assertSee('CAT-1')->assertSee('CAT-3');
+        $this->get(route('maintenance-orders.results.create', $order))->assertOk()->assertDontSee('name="ng_device_ids[]"', false);
         $this->post(route('maintenance-orders.results.store', $order), [
-            'result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '濾網破損', 'ng_device_ids' => [$devices[0]->id, $devices[2]->id],
+            'result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '濾網破損',
         ])->assertSessionHasNoErrors();
 
-        $repairs = RepairRequest::orderBy('id')->get();
-        $this->assertSame([$devices[0]->id, $devices[2]->id], $repairs->pluck('device_id')->all());
+        $repair = RepairRequest::sole();
+        $this->assertNull($repair->device_id);
+        $this->assertStringContainsString('（整類）', $repair->title);
         $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status);
 
-        $workflow = app(RepairRequestWorkflow::class);
-        $workflow->returnRequest($repairs[0], '不是故障', $this->admin->id);
-        $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status, '還有一張沒結案');
-        $repairs[1]->update(['status' => RepairRequestStatus::PendingReview->value]);
-        $workflow->complete($repairs[1]->fresh());
+        $repair->update(['status' => RepairRequestStatus::PendingReview->value]);
+        app(RepairRequestWorkflow::class)->complete($repair->fresh());
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
     }
 
-    // NG 一定要選設備、填說明；選了不在這張工單範圍的設備會被擋下，什麼都不寫入。OK 不用選設備。
-    public function test_ng_needs_devices_from_the_order_and_a_note(): void
+    // NG 一定要填說明；沒填就整筆不寫入。OK 不用說明、不轉報修。
+    public function test_ng_needs_a_note(): void
     {
-        [$order, $devices] = $this->categoryOrder(['CAT-1']);
-        $other = Device::create(['device_code' => 'OTHER', 'device_category_id' => \App\Models\DeviceCategory::create(['name' => '別類'])->id, 'classroom_id' => $devices[0]->classroom_id, 'status' => 'normal']);
+        [$order] = $this->categoryOrder(['CAT-1']);
         $base = ['result' => 'ng', 'executed_at' => '2026-10-07 08:30:00'];
 
-        $this->post(route('maintenance-orders.results.store', $order), $base)->assertSessionHasErrors(['note', 'ng_device_ids']);
-        $this->post(route('maintenance-orders.results.store', $order), $base + ['note' => 'x', 'ng_device_ids' => [$other->id]])->assertSessionHasErrors('ng_device_ids');
-
+        $this->post(route('maintenance-orders.results.store', $order), $base)->assertSessionHasErrors(['note']);
         $this->assertSame(0, MaintenanceResult::count());
         $this->assertSame(0, RepairRequest::count());
         $this->assertSame(MaintenanceOrder::STATUS_IN_PROGRESS, $order->fresh()->status);
 
-        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-10-07 08:30:00', 'ng_device_ids' => [$other->id]])->assertSessionHasNoErrors();
+        $this->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-10-07 08:30:00'])->assertSessionHasNoErrors();
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
         $this->assertSame(0, RepairRequest::count());
     }

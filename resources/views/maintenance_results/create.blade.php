@@ -37,40 +37,9 @@
             @error('result')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
-            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝選出異常的設備，每台各自建立一張報修單。</div>
+            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝要填寫說明，整張工單建立一張報修單，工單改成「已轉報修」。</div>
         </div>
 
-        {{-- NG 的設備：計畫是一台設備就是那台（預設勾好）；計畫是設備類別就從這一類的設備裡複選。選 OK 時隱藏、也不會送出。 --}}
-        @php $oldNgIds = array_map('intval', (array) old('ng_device_ids', $ngDevices->count() === 1 ? [$ngDevices->first()->id] : [])); @endphp
-        <div class="mb-3" id="ngDevicesBlock" @if (old('result') !== 'ng') hidden @endif>
-            <label class="form-label">NG 設備（可複選） <span class="text-danger">*</span></label>
-            @if ($ngDevices->isEmpty())
-                <p class="text-muted small mb-0">這張工單沒有可選的設備（計畫沒有指定設備或設備類別），請洽保養管理者。</p>
-            @else
-                @if ($ngDevices->count() > 6)
-                    <input type="search" class="form-control form-control-sm mb-2" id="ngDeviceFilter" placeholder="輸入設備編號、教室搜尋" autocomplete="off">
-                @endif
-                <div class="border rounded p-2 @error('ng_device_ids') border-danger @enderror" style="max-height: 220px; overflow-y: auto;">
-                    @foreach ($ngDevices as $ngDevice)
-                        @php $ngLabel = $ngDevice->device_code . '（' . trim(($ngDevice->category?->name ?? '') . ' ' . ($ngDevice->classroom?->name ?? '')) . '）'; @endphp
-                        <div class="form-check" data-ng-device data-search="{{ mb_strtolower($ngLabel) }}">
-                            <input type="checkbox" class="form-check-input" name="ng_device_ids[]" value="{{ $ngDevice->id }}" id="ng_device_{{ $ngDevice->id }}"
-                                @checked(in_array($ngDevice->id, $oldNgIds, true))>
-                            <label class="form-check-label" for="ng_device_{{ $ngDevice->id }}">{{ $ngLabel }}</label>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-            {{-- 工單指定的設備已經淘汰或停用：不能再報修，列出來說明不轉報修。 --}}
-            @foreach ($skippedDevices ?? [] as $skipped)
-                <div class="form-check text-muted">
-                    <input type="checkbox" class="form-check-input" disabled>
-                    <label class="form-check-label">{{ $skipped->device_code }}（{{ $skipped->category?->name ?? '—' }}）<span class="badge text-bg-secondary ms-1">已淘汰或停用，不轉報修</span></label>
-                </div>
-            @endforeach
-            @error('ng_device_ids')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-            @error('ng_device_ids.*')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-        </div>
 
         <div class="mb-3">
             <label class="form-label">執行人</label>
@@ -124,26 +93,16 @@
     </form>
 
     <script>
-    // 選 NG 才顯示「NG 設備」、說明改成必填；選 OK 時隱藏並停用設備勾選（不會送出）。
+    // 選 NG 時說明改成必填（標紅色星號）。
     (function () {
-        const block = document.getElementById('ngDevicesBlock');
         const mark = document.getElementById('noteRequiredMark');
         const note = document.getElementById('note');
-        const filter = document.getElementById('ngDeviceFilter');
         function sync() {
             const ng = document.getElementById('result_ng').checked;
-            block.hidden = !ng;
             mark.hidden = !ng;
             note.required = ng;
-            block.querySelectorAll('input[name="ng_device_ids[]"]').forEach(function (input) { input.disabled = !ng; });
         }
         document.querySelectorAll('input[name="result"]').forEach(function (radio) { radio.addEventListener('change', sync); });
-        if (filter) {
-            filter.addEventListener('input', function () {
-                const keyword = filter.value.trim().toLowerCase();
-                block.querySelectorAll('[data-ng-device]').forEach(function (row) { row.hidden = keyword !== '' && !row.dataset.search.includes(keyword); });
-            });
-        }
         sync();
 
         // 執行時間不能晚於現在（和後端一樣容許 5 分鐘誤差）：先在畫面上擋下，不用送出後才發現、附件又要重新選。

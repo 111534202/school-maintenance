@@ -129,7 +129,6 @@
                     @if ($maintenanceOrder->result->isNg())
                         <dt class="col-sm-3">轉出的報修單</dt>
                         <dd class="col-sm-9">
-                            @php $orderSkipped = app(\App\Services\NgToRepairService::class)->skippedDevices($maintenanceOrder); @endphp
                             @forelse ($maintenanceOrder->result->repairRequests as $ngRepair)
                                 <div>
                                     @can('view', $ngRepair)
@@ -140,12 +139,13 @@
                                     @include('repairs._status-badge', ['status' => $ngRepair->status])
                                 </div>
                             @empty
-                                @if ($orderSkipped->isEmpty())—@endif
+                                {{-- 設備已淘汰或停用：不能報修，沒有轉報修單。 --}}
+                                @if ($maintenanceOrder->result->ng_conversion_status === \App\Models\MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE)
+                                    <span class="badge text-bg-secondary">不建立報修單</span> 設備已淘汰或停用，不能報修
+                                @else
+                                    —
+                                @endif
                             @endforelse
-                            {{-- 工單指定的設備已經淘汰或停用：不能報修，沒有轉報修單。 --}}
-                            @foreach ($orderSkipped as $skipped)
-                                <div class="text-muted">{{ $skipped->device_code }} <span class="badge text-bg-secondary">已淘汰或停用，不轉報修</span></div>
-                            @endforeach
                         </dd>
                     @endif
                 </dl>

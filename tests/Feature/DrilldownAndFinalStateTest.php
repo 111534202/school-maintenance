@@ -320,11 +320,11 @@ class DrilldownAndFinalStateTest extends TestCase
         $order = MaintenanceOrder::factory()->create(['device_id' => $device->id, 'status' => MaintenanceOrder::STATUS_COMPLETED]);
         $result = MaintenanceResult::factory()->create(['maintenance_order_id' => $order->id, 'result' => 'ng']);
 
-        app(NgToRepairService::class)->convert($result, [$device->id]);
+        app(NgToRepairService::class)->convert($result);
 
         $this->assertSame(0, RepairRequest::count());
         $this->assertSame(MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE, $result->fresh()->ng_conversion_status);
-        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'))->get(route('maintenance-orders.show', $order))->assertOk()->assertSee('DEV-NG')->assertSee('已淘汰或停用，不轉報修');
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'))->get(route('maintenance-orders.show', $order))->assertOk()->assertSee('設備已淘汰或停用，不能報修');
     }
 
     public function test_ai_candidate_for_a_retired_device_cannot_be_approved(): void
@@ -443,44 +443,21 @@ class DrilldownAndFinalStateTest extends TestCase
         $this->assertNull($this->actingAs($admin)->get(route('classrooms.index'))->headers->get('Content-Encoding'));
     }
 
-    // ---------- 合併到本分支後補的：一個計畫好幾個對象、淘汰的設備跳過並標示、取消淘汰 ----------
+    // ---------- 合併到本分支後補的：淘汰的設備不產生工單並記錄、取消淘汰 ----------
 
-    // 計畫有好幾台設備：已淘汰的那台略過（工單只放還能保養的），操作紀錄寫出略過了誰；全部都淘汰就不產生工單。
-    public function test_a_plan_with_several_devices_skips_only_the_retired_ones(): void
+    // 計畫的設備已淘汰：到期也不產生工單，操作紀錄寫出原因；「建立工單」按鈕不顯示、硬送也擋下。
+    public function test_a_plan_on_a_retired_device_creates_no_order_and_logs_why(): void
     {
-        $ok = $this->device('DEV-KEEP');
         $old = $this->device('DEV-GONE', 'retired');
-        $plan = MaintenancePlan::factory()->create(['device_id' => $ok->id, 'device_category_id' => null, 'cycle_days' => 30, 'start_date' => now()->subDays(40)->toDateString(), 'next_due_date' => now()->toDateString(), 'is_active' => true]);
-        $plan->targets()->create(['device_id' => $ok->id]);
-        $plan->targets()->create(['device_id' => $old->id]);
+        $plan = MaintenancePlan::factory()->create(['device_id' => $old->id, 'device_category_id' => null, 'cycle_days' => 30, 'start_date' => now()->subDays(30)->toDateString(), 'next_due_date' => now()->toDateString(), 'is_active' => true]);
 
-        $order = app(DueMaintenanceOrderGenerator::class)->generateForPlan($plan)->first();
-        $this->assertSame([$ok->id], $order->targets()->pluck('device_id')->all());
-        $this->assertDatabaseHas('audit_logs', ['description' => '依保養計畫「' . $plan->name . '」產生保養工單 ' . $order->displayNumber() . '（排定 ' . now()->toDateString() . '）；略過已淘汰或停用的設備 DEV-GONE']);
+        $this->assertSame(0, app(DueMaintenanceOrderGenerator::class)->generate());
+        $this->assertDatabaseHas('audit_logs', ['description' => '保養計畫「' . $plan->name . '」' . now()->toDateString() . ' 這一期沒有產生工單：設備已淘汰或停用']);
 
-        $ok->update(['status' => 'retired']);
-        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'))
-            ->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error', '這個計畫的設備都已淘汰或停用，不能再建立保養工單。');
-    }
-
-    // 回報 NG：工單裡已淘汰的設備不能勾（灰掉、標「已淘汰或停用，不轉報修」），只為還在用的設備建報修單。
-    public function test_ng_skips_retired_devices_and_says_so(): void
-    {
         $admin = $this->makeUserWithRole('admin', '系統管理員');
-        $ok = $this->device('DEV-NG-OK');
-        $old = $this->device('DEV-NG-OLD', 'retired');
-        $order = MaintenanceOrder::factory()->create(['device_id' => $ok->id, 'status' => MaintenanceOrder::STATUS_IN_PROGRESS, 'assigned_to' => $admin->id]);
-        $order->targets()->create(['device_id' => $ok->id]);
-        $order->targets()->create(['device_id' => $old->id]);
-
-        $this->assertSame(['DEV-NG-OK'], app(NgToRepairService::class)->selectableDevices($order)->pluck('device_code')->all());
-        $this->actingAs($admin)->get(route('maintenance-orders.results.create', $order))->assertOk()
-            ->assertSee('DEV-NG-OLD')->assertSee('已淘汰或停用，不轉報修');
-
-        $result = MaintenanceResult::factory()->create(['maintenance_order_id' => $order->id, 'result' => 'ng']);
-        $repairs = app(NgToRepairService::class)->convert($result, [$ok->id, $old->id]);   // 就算硬送淘汰的設備也會略過
-        $this->assertSame([$ok->id], $repairs->pluck('device_id')->all());
-        $this->actingAs($admin)->get(route('maintenance-orders.results.show', $order))->assertOk()->assertSee('DEV-NG-OLD')->assertSee('已淘汰或停用，不轉報修');
+        $this->actingAs($admin)->get(route('maintenance-plans.index'))->assertOk()->assertDontSee(route('maintenance-plans.create-order', $plan), false);
+        $this->actingAs($admin)->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error', '這個計畫的設備已淘汰或停用，不能再建立保養工單。');
+        $this->assertSame(0, MaintenanceOrder::count());
     }
 
     // 不小心改成已淘汰：只有系統管理員能「取消淘汰」改回正常（留下紀錄）；其他有設備權限的人不行。

@@ -203,12 +203,9 @@ class WorkOrderEditCancelTest extends TestCase
 
         $this->assertSoftDeleted('maintenance_orders', ['id' => $order->id]);
         $this->get(route('maintenance-orders.index'))->assertDontSee('#' . $order->id . '<', false);
-        // 排程不會把取消掉的那一期（排定今天）重新產生出來；只會照常產生下一期（排定今天＋週期）。
-        $this->assertSame(1, app(DueMaintenanceOrderGenerator::class)->generate());
-        $this->assertSame(
-            [now()->addDays($plan->cycle_days)->toDateString()],
-            MaintenanceOrder::where('maintenance_plan_id', $plan->id)->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all()
-        );
+        // 排程不會因為取消了，隔天又把同一期的工單重新產生出來。
+        $this->assertSame(0, app(DueMaintenanceOrderGenerator::class)->generate());
+        $this->assertSame(0, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
     }
 
     public function test_completed_or_reported_maintenance_orders_cannot_be_edited_or_cancelled(): void

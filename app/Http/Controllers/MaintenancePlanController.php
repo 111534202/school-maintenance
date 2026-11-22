@@ -24,15 +24,13 @@ class MaintenancePlanController extends Controller
     public function index(Request $request): View
     {
         $plans = MaintenancePlan::query()
-            ->with(['deviceCategory', 'device.category', 'targets.device.category', 'targets.deviceCategory'])
+            ->with(['deviceCategory', 'device.category'])
             // 關鍵字搜尋：計畫名稱、設備（編號、資產編號、品牌、型號）、設備類別名稱。
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $like = '%' . trim($request->string('keyword')->toString()) . '%';
                 $query->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('description', 'like', $like)
                     ->orWhereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
-                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like))
-                    ->orWhereHas('targets.device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like))
-                    ->orWhereHas('targets.deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
+                    ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like)));
             })
             ->orderByDesc('is_active')
             ->orderBy('next_due_date')
@@ -53,7 +51,6 @@ class MaintenancePlanController extends Controller
         $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
 
         $plan = MaintenancePlan::create($data);
-        $this->syncTargets($plan, $request->targets());
         AuditLogger::log('created', $plan, ['name' => $plan->name], '新增保養計畫「' . $plan->name . '」');
 
         return redirect()
@@ -78,7 +75,6 @@ class MaintenancePlanController extends Controller
         }
 
         $maintenancePlan->update($data);
-        $this->syncTargets($maintenancePlan, $request->targets());
         AuditLogger::log('updated', $maintenancePlan, ['name' => $maintenancePlan->name], '修改保養計畫「' . $maintenancePlan->name . '」');
 
         return redirect()
@@ -113,7 +109,7 @@ class MaintenancePlanController extends Controller
             'group' => '設備類別',
         ]);
 
-        $keptDeviceIds = $plan ? $plan->targets()->pluck('device_id')->filter()->push($plan->device_id)->filter()->all() : [];
+        $keptDeviceIds = $plan?->device_id ? [$plan->device_id] : [];
         $devices = Device::query()->with(['category', 'classroom'])
             ->where(fn ($query) => $query->where('status', '<>', 'retired')->when($keptDeviceIds, fn ($q, $ids) => $q->orWhereIn('id', $ids)))
             ->orderBy('device_code')->get()
@@ -128,8 +124,8 @@ class MaintenancePlanController extends Controller
     }
 
     /**
-     * 存檔後馬上檢查這個計畫要不要產生工單（不用等半夜的排程）：起始日已經到了、而且勾選啟用，
-     * 就產生排定在下次到期日的工單，下次到期日往後推一個週期（規則見 DueMaintenanceOrderGenerator）。
+     * 存檔後馬上檢查這個計畫要不要產生工單（不用等半夜的排程）：下次到期日就是今天、而且勾選啟用，
+     * 就產生排定今天的工單（規則見 DueMaintenanceOrderGenerator；下次到期日要等工單做完或取消才往後推）。
      * 回傳要接在成功訊息後面的說明。
      */
     private function generateNow(MaintenancePlan $plan): string
@@ -140,15 +136,6 @@ class MaintenancePlanController extends Controller
         }
 
         return '；已產生保養工單 ' . $orders->map(fn ($order) => $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）')->implode('、');
-    }
-
-    /** 保養對象換成表單送來的清單（先刪掉舊的再依順序建立）。 */
-    private function syncTargets(MaintenancePlan $plan, array $targets): void
-    {
-        $plan->targets()->delete();
-        foreach ($targets as $target) {
-            $plan->targets()->create($target);
-        }
     }
 
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon

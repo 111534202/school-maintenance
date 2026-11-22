@@ -24,8 +24,6 @@ class StoreMaintenanceResultRequest extends FormRequest
             // 說明：OK 可以不填；NG 必填（會帶進每一張轉出的報修單）。
             'note' => ['nullable', 'required_if:result,' . MaintenanceResult::RESULT_NG, 'string', 'max:2000'],
             // NG 的設備（可複選）：只能從這張工單可選的設備裡選（Controller 再檢查範圍）；OK 不用選。
-            'ng_device_ids' => ['nullable', 'required_if:result,' . MaintenanceResult::RESULT_NG, 'array'],
-            'ng_device_ids.*' => ['integer', 'distinct'],
 
             // 保養用料（可以不填）：每種零件最多選一次，有選零件時數量必須是正整數。
             'part_usages' => ['nullable', 'array'],
@@ -45,12 +43,11 @@ class StoreMaintenanceResultRequest extends FormRequest
             'executed_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
             'executed_at.after' => ':attribute 不是合理的日期，請重新選擇。',
             'note.required_if' => '結果是 NG 時請填寫說明。',
-            'ng_device_ids.required_if' => '結果是 NG 時請選擇異常的設備。',
         ];
     }
 
     public function attributes(): array
     {
-        return ['note' => '說明', 'ng_device_ids' => 'NG 設備', 'executed_at' => '執行時間', 'result' => '保養結果'];
+        return ['note' => '說明', 'executed_at' => '執行時間', 'result' => '保養結果'];
     }
 }

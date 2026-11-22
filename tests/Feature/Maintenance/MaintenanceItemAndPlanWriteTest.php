@@ -148,16 +148,15 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
             'cycle_days' => 30,
             'start_date' => '2026-10-07',
             'is_active' => 1,
-        ])->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫新增成功；已產生保養工單 MO-00001（排定 2026-11-06）');
+        ])->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫新增成功');
 
         $plan = MaintenancePlan::where('name', '電腦月保養')->firstOrFail();
         $this->assertSame(30, $plan->cycle_days);
         $this->assertSame($category->id, $plan->device_category_id);
         $this->assertNull($plan->device_id, '以設備類別建立的計畫不另存單一設備');
         $this->assertSame('清潔風扇、更新防毒', $plan->description);
-        // 起始日＋週期＝11/06 是第一期：存檔就產生排定 11/06 的工單，下次到期日往後推一個週期變成 12/06。
-        $this->assertSame(['2026-11-06'], \App\Models\MaintenanceOrder::where('maintenance_plan_id', $plan->id)->get()->map(fn ($o) => $o->scheduled_date->toDateString())->all());
-        $this->assertSame('2026-12-06', $plan->next_due_date->toDateString(), '下次到期日 = 開始日 + 週期天數，第一期工單產生後再加一個週期');
+        $this->assertSame('2026-11-06', $plan->next_due_date->toDateString(), '下次到期日 = 開始日 + 週期天數');
+        $this->assertSame(0, \App\Models\MaintenanceOrder::count(), '還沒到期，不產生工單（到了 11/06 才產生）');
         $this->assertDatabaseCount('maintenance_plan_items', 0);
     }
 
@@ -174,36 +173,30 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $this->assertNull($plan->device_category_id, '選設備時類別由設備推得，不另存');
     }
 
-    // 一個計畫可以有好幾個保養對象（設備、類別混著選）；建立工單時只建一張，對象全部放在這張工單裡。
-    public function test_a_plan_can_have_several_targets_and_creates_one_order_each(): void
+    // 一個計畫只能有一個保養對象（一台設備或一個設備類別）；工單照計畫的對象建立。
+    public function test_a_plan_has_exactly_one_target(): void
     {
         $category = DeviceCategory::create(['name' => '冷氣']);
-        $a = $this->makeDevice('MULTI-A');
-        $b = $this->makeDevice('MULTI-B');
+        $a = $this->makeDevice('ONE-A');
+        $base = ['name' => '單一對象', 'description' => '清潔', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1];
 
-        $this->post(route('maintenance-plans.store'), [
-            'name' => '多對象月檢', 'targets' => ['device:' . $a->id, 'category:' . $category->id, '', 'device:' . $b->id],
-            'description' => '清潔', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1,
-        ])->assertSessionHasNoErrors();
+        $this->post(route('maintenance-plans.store'), $base + ['targets' => ['device:' . $a->id, 'category:' . $category->id]])
+            ->assertSessionHasErrors(['targets' => '一個保養計畫只能選一台設備或一個設備類別。']);
+        $this->post(route('maintenance-plans.store'), $base + ['targets' => []])->assertSessionHasErrors('targets');
+        $this->assertDatabaseCount('maintenance_plans', 0);
 
-        $plan = MaintenancePlan::where('name', '多對象月檢')->firstOrFail();
-        $this->assertSame(['device:' . $a->id, 'category:' . $category->id, 'device:' . $b->id], $plan->targets->map->value()->all());
-        $this->assertSame($a->id, $plan->device_id, '第一個對象也存在計畫本身');
-        $this->get(route('maintenance-plans.index'))->assertSee('MULTI-A（測試電腦）、冷氣（整類）、MULTI-B（測試電腦）');
-        $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('設備：MULTI-A', false)->assertSee('類別：冷氣', false);
+        $this->post(route('maintenance-plans.store'), $base + ['targets' => ['device:' . $a->id]])->assertSessionHasNoErrors();
+        $plan = MaintenancePlan::where('name', '單一對象')->firstOrFail();
+        $this->assertSame($a->id, $plan->device_id);
+        $this->get(route('maintenance-plans.index'))->assertSee('ONE-A（測試電腦）');
+        $html = $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('設備：ONE-A', false)->getContent();
+        $this->assertStringNotContainsString('planTargetAdd', $html);   // 沒有「新增設備／類別」
 
-        // 啟用的計畫存檔就產生第一期的工單（一張，對象全部在裡面）。
+        $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('success');
         $order = \App\Models\MaintenanceOrder::where('maintenance_plan_id', $plan->id)->sole();
-        $this->assertSame([$a->id, null, $b->id], $order->targets->pluck('device_id')->all());
-        $this->assertSame([null, $category->id, null], $order->targets->pluck('device_category_id')->all());
-        $this->assertSame($a->id, $order->device_id, '第一個對象也存在工單本身');
-        $this->assertSame('MULTI-A（測試電腦）、冷氣（整類）、MULTI-B（測試電腦）', $order->targetsLabel());
-        $this->get(route('maintenance-orders.index'))->assertSee('MULTI-B');
-        // NG 時可以從所有對象裡選設備：兩台指定的設備（冷氣類別沒有設備）。
-        $this->assertSame(['MULTI-A', 'MULTI-B'], app(\App\Services\NgToRepairService::class)->selectableDevices($order)->pluck('device_code')->all());
-        // 兩台設備的設備履歷都看得到這張工單。
-        $this->get(route('device-profile.show', $b))->assertSee('多對象月檢')->assertSee(route('maintenance-orders.show', $order), false);
-        $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error');   // 還有沒到期的工單，不重複建立
+        $this->assertSame($a->id, $order->device_id);
+        $this->assertSame('ONE-A（測試電腦）', $order->targetsLabel());
+        $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error');   // 同一期不重複建立
     }
 
     // 下次到期日（起始日＋週期）已經過了就擋下：今天 10/07，起始日 10/01＋3 天＝10/04 已過期；改舊計畫時沒動起始日、週期就不檢查。
@@ -216,13 +209,12 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
             ->assertSessionHasErrors(['start_date' => '依起始日加上週期設定，下次到期日是 2026-10-04，已經過了。請修改起始日或將週期調長。']);
         $this->assertDatabaseCount('maintenance_plans', 0);
 
-        // 到期日剛好是今天：可以。啟用的計畫存檔馬上產生這一期（排定今天）的工單，而且今天也到了下一期的產生日，
-        // 所以下一期（排定 10/13）也一起產生；停用的不建立。
+        // 到期日剛好是今天：可以，而且啟用的計畫馬上產生排定今天的工單（不用等半夜排程）；下次到期日不動（做完才推）。停用的不建立。
         $this->post(route('maintenance-plans.store'), $base + ['start_date' => '2026-10-01', 'cycle_days' => 6])->assertSessionHasNoErrors()
-            ->assertSessionHas('success', fn ($message) => str_contains($message, '（排定 2026-10-07）') && str_contains($message, '（排定 2026-10-13）'));
-        $this->assertSame(2, \App\Models\MaintenanceOrder::count());
+            ->assertSessionHas('success', '保養計畫新增成功；已產生保養工單 MO-00001（排定 2026-10-07）');
+        $this->assertSame(1, \App\Models\MaintenanceOrder::count());
         $this->post(route('maintenance-plans.store'), ['is_active' => 0] + $base + ['name' => '停用的', 'start_date' => '2026-10-01', 'cycle_days' => 6])->assertSessionHasNoErrors();
-        $this->assertSame(2, \App\Models\MaintenanceOrder::count());
+        $this->assertSame(1, \App\Models\MaintenanceOrder::count());
 
         $old = $this->planWith([]);   // 起始日 2026-01-01、週期 30 天（舊資料，到期日早就過了）
         $this->put(route('maintenance-plans.update', $old), $this->updatePayload($old, ['name' => '只改名稱']))->assertSessionHasNoErrors();
@@ -292,7 +284,7 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('舊說明')->assertSee('類別：投影機')->assertDontSee('保養項目（可複選）');
         $this->put(route('maintenance-plans.update', $plan), $this->updatePayload($plan, [
             'name' => '新計畫', 'targets' => ['device:' . $device->id], 'description' => '新說明', 'cycle_days' => 90, 'start_date' => '2026-10-07',
-        ]))->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫更新成功；已產生保養工單 MO-00001（排定 2027-01-05）');
+        ]))->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('success', '保養計畫更新成功');
 
         $plan->refresh();
         $this->assertSame('新計畫', $plan->name);
@@ -300,7 +292,7 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $this->assertSame($device->id, $plan->device_id);
         $this->assertNull($plan->device_category_id);
         $this->assertSame(90, $plan->cycle_days);
-        $this->assertSame('2027-04-05', $plan->next_due_date->toDateString(), '下次到期日依新的開始日與週期重算（10/07＋90＝01/05 那一期已產生工單，再往後一個週期）');
+        $this->assertSame('2027-01-05', $plan->next_due_date->toDateString(), '下次到期日依新的開始日與週期重算');
         $this->assertSame([$a->id], $plan->maintenanceItems()->pluck('maintenance_items.id')->all(), '舊的保養項目資料保留');
         $this->assertDatabaseCount('maintenance_plans', 1);
     }

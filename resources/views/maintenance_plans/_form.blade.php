@@ -13,16 +13,14 @@
     @enderror
 </div>
 
-{{-- 保養對象：可以有好幾個，每一列是一台設備或一個設備類別（至少一列）。每一列可輸入關鍵字搜尋，只能從清單裡選；
-     按「新增設備／類別」多一列、按 ✕ 拿掉一列（跟零件使用明細一樣）。送出 targets[]＝device:編號 或 category:編號。
-     建立工單時每個對象各建一張工單。 --}}
+{{-- 保養對象：一個計畫一個——一台設備或一個設備類別。可輸入關鍵字搜尋，只能從清單裡選。送出 targets[]＝device:編號 或 category:編號。 --}}
 @php
     $optionByValue = $targets->keyBy('value');
     $displayLabel = fn (array $option) => ($option['group'] === '設備類別' ? '類別：' : '設備：') . $option['label'];
     $currentValues = old('targets', $plan->exists
-        ? ($plan->targets->isNotEmpty() ? $plan->targets->map->value()->all() : array_filter([$plan->device_id ? 'device:' . $plan->device_id : ($plan->device_category_id ? 'category:' . $plan->device_category_id : null)]))
+        ? array_filter([$plan->device_id ? 'device:' . $plan->device_id : ($plan->device_category_id ? 'category:' . $plan->device_category_id : null)])
         : []);
-    $currentValues = array_values(array_filter((array) $currentValues, fn ($value) => is_string($value) && $optionByValue->has($value)));
+    $currentValues = array_slice(array_values(array_filter((array) $currentValues, fn ($value) => is_string($value) && $optionByValue->has($value))), 0, 1);
     if ($currentValues === []) {
         $currentValues = [''];   // 至少一列空白的讓人選
     }
@@ -41,11 +39,9 @@
                     <input type="hidden" name="targets[]" class="target-value" value="{{ $value }}">
                     @error('targets.' . $index)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
-                <button type="button" class="btn btn-outline-danger icon-btn target-remove flex-shrink-0" title="拿掉這一列" aria-label="拿掉這一列"><i class="bi bi-x-lg"></i></button>
             </div>
         @endforeach
     </div>
-    <button type="button" id="planTargetAdd" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>新增設備／類別</button>
     <div class="form-text">選「設備類別」＝這一類的設備一起保養；選「設備」＝只保養這台。</div>
     @if ($targetError)
         <div class="invalid-feedback d-block">{{ $targetError }}</div>
@@ -81,7 +77,7 @@
         <input type="date" name="start_date" id="start_date"
             class="form-control @error('start_date') is-invalid @enderror"
             value="{{ old('start_date', $plan->start_date?->format('Y-m-d')) }}" required>
-        <div class="form-text">第一期排定日＝起始日 + 週期天數；啟用的計畫存檔就產生這一期的保養工單，之後每到一期的排定日，就產生下一期的工單。</div>
+        <div class="form-text">下次到期日＝起始日 + 週期天數；到了下次到期日會自動產生保養工單，工單完成或取消後，下次到期日再往後推一個週期。</div>
         @error('start_date')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
@@ -115,90 +111,51 @@
 </div>
 
 <script>
-// 設備／設備類別選擇器（可以好幾列）：每一列輸入關鍵字篩選或點開清單直接選，只能選清單裡的項目（沒選就清空）；
-// 已經被別列選走的項目不再列出（不能重複）。「新增設備／類別」多一列，✕ 拿掉一列（只剩一列時改成清空）。
+// 設備／設備類別選擇器（一個）：輸入關鍵字篩選或點開清單直接選，只能選清單裡的項目（沒選就清空）。
 document.addEventListener('DOMContentLoaded', function () {
-    const rowsBox = document.getElementById('planTargets');
+    const row = document.querySelector('#planTargets .plan-target-row');
     const list = document.getElementById('target_options');
-    const addButton = document.getElementById('planTargetAdd');
-    if (!rowsBox || !list || !addButton) { return; }
+    if (!row || !list) { return; }
     const noResults = document.getElementById('target_no_results');
     const options = Array.from(list.querySelectorAll('button[data-value]'));
     const headers = Array.from(list.querySelectorAll('[data-group-header]'));
-    let active = null;   // 目前正在選的那一列 { search, hidden }
-    let counter = rowsBox.querySelectorAll('.plan-target-row').length;
+    const search = row.querySelector('.target-search');
+    const hidden = row.querySelector('.target-value');
+    search.parentElement.appendChild(list);   // 清單放在搜尋框下面
 
-    function rowParts(row) { return { search: row.querySelector('.target-search'), hidden: row.querySelector('.target-value') }; }
-    function takenValues(except) {
-        return Array.from(rowsBox.querySelectorAll('.target-value')).filter(function (h) { return h !== except && h.value; }).map(function (h) { return h.value; });
-    }
-    function closeList() { list.style.display = 'none'; if (active) { active.search.setAttribute('aria-expanded', 'false'); } }
+    function closeList() { list.style.display = 'none'; search.setAttribute('aria-expanded', 'false'); }
     function choose(option) {
-        active.hidden.value = option.dataset.value;
-        active.search.value = option.dataset.label;
-        active.search.classList.remove('is-invalid');
+        hidden.value = option.dataset.value;
+        search.value = option.dataset.label;
+        search.classList.remove('is-invalid');
         closeList();
     }
     function filter() {
-        if (!active) { return; }
-        const keyword = active.hidden.value ? '' : active.search.value.trim().toLowerCase();
-        const taken = takenValues(active.hidden);
+        const keyword = hidden.value ? '' : search.value.trim().toLowerCase();
         const shownGroups = new Set();
         options.forEach(function (option) {
-            const matched = taken.indexOf(option.dataset.value) === -1 && (!keyword || option.dataset.search.includes(keyword));
+            const matched = !keyword || option.dataset.search.includes(keyword);
             option.style.display = matched ? '' : 'none';
             if (matched) { shownGroups.add(option.dataset.group); }
         });
         headers.forEach(function (header) { header.style.display = shownGroups.has(header.dataset.groupHeader) ? '' : 'none'; });
         noResults.style.display = shownGroups.size === 0 ? '' : 'none';
         list.style.display = '';
-        active.search.setAttribute('aria-expanded', 'true');
+        search.setAttribute('aria-expanded', 'true');
     }
-    function bind(row) {
-        const parts = rowParts(row);
-        parts.search.addEventListener('focus', function () {
-            active = parts;
-            parts.search.parentElement.appendChild(list);   // 清單搬到這一列下面
-            filter();
-        });
-        parts.search.addEventListener('input', function () { parts.hidden.value = ''; filter(); });
-        parts.search.addEventListener('blur', function () { closeList(); if (!parts.hidden.value) { parts.search.value = ''; } });
-        parts.search.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') { closeList(); }
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const first = options.find(function (o) { return o.style.display !== 'none'; });
-                if (first) { choose(first); }
-            }
-        });
-        row.querySelector('.target-remove').addEventListener('click', function () {
-            const rows = rowsBox.querySelectorAll('.plan-target-row');
-            if (rows.length === 1) { parts.search.value = ''; parts.hidden.value = ''; return; }
-            if (list.parentElement === parts.search.parentElement) { rowsBox.parentElement.appendChild(list); closeList(); }
-            row.remove();
-            const first = rowsBox.querySelector('.target-search');
-            if (first) { first.required = true; first.id = 'target_search_0'; }
-        });
-    }
-    options.forEach(function (option) {
-        option.addEventListener('mousedown', function (event) { event.preventDefault(); if (active) { choose(option); } });
+    search.addEventListener('focus', filter);
+    search.addEventListener('input', function () { hidden.value = ''; filter(); });
+    search.addEventListener('blur', function () { closeList(); if (!hidden.value) { search.value = ''; } });
+    search.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') { closeList(); }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const first = options.find(function (o) { return o.style.display !== 'none'; });
+            if (first) { choose(first); }
+        }
     });
-    rowsBox.querySelectorAll('.plan-target-row').forEach(bind);
-    addButton.addEventListener('click', function () {
-        const template = rowsBox.querySelector('.plan-target-row');
-        const row = template.cloneNode(true);
-        row.querySelectorAll('.invalid-feedback, #target_options').forEach(function (el) { if (el.id !== 'target_options') { el.remove(); } });
-        const box = row.querySelector('#target_options');
-        if (box) { box.remove(); }
-        const parts = rowParts(row);
-        parts.search.value = '';
-        parts.search.required = false;
-        parts.search.classList.remove('is-invalid');
-        parts.search.id = 'target_search_' + (counter++);
-        parts.hidden.value = '';
-        rowsBox.appendChild(row);
-        bind(row);
-        parts.search.focus();
+    options.forEach(function (option) {
+        option.addEventListener('mousedown', function (event) { event.preventDefault(); choose(option); });
     });
 });
 </script>
