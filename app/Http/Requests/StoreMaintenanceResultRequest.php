@@ -22,6 +22,9 @@ class StoreMaintenanceResultRequest extends FormRequest
             // 執行人不用填：由登入帳號自動帶入（controller 寫入 executed_by，指向 users.id）。
             'executed_at' => ['required', 'date', 'after:1971-01-01', 'before_or_equal:+5 minutes'],   // 執行時間不能是未來
             // 說明：OK 可以不填；NG 必填（會帶進每一張轉出的報修單）。
+            // 整類設備的工單回報 NG 時勾選的異常設備（是否在這一類裡由 controller 檢查）。
+            'ng_device_ids' => ['nullable', 'array'],
+            'ng_device_ids.*' => ['integer', 'distinct'],
             'note' => ['nullable', 'required_if:result,' . MaintenanceResult::RESULT_NG, 'string', 'max:2000'],
             // NG 的設備（可複選）：只能從這張工單可選的設備裡選（Controller 再檢查範圍）；OK 不用選。
 
@@ -48,6 +51,6 @@ class StoreMaintenanceResultRequest extends FormRequest
 
     public function attributes(): array
     {
-        return ['note' => '說明', 'executed_at' => '執行時間', 'result' => '保養結果'];
+        return ['note' => '說明', 'ng_device_ids' => 'NG 的設備', 'executed_at' => '執行時間', 'result' => '保養結果'];
     }
 }

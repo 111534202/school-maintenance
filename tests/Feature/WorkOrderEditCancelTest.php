@@ -191,7 +191,8 @@ class WorkOrderEditCancelTest extends TestCase
         $this->assertNull($order->fresh()->deleted_at);
     }
 
-    public function test_cancelling_a_maintenance_order_soft_deletes_it_and_the_schedule_does_not_recreate_it(): void
+    // 取消保養工單＝改成「已中止」（保留紀錄、唯讀）：列表平常不顯示，篩選「已中止」才看得到；排程不會重新產生那一期。
+    public function test_cancelling_a_maintenance_order_makes_it_aborted_and_hidden_unless_filtered(): void
     {
         $plan = MaintenancePlan::factory()->create(['is_active' => true, 'next_due_date' => now()->toDateString()]);
         $order = MaintenanceOrder::factory()->create([
@@ -201,11 +202,16 @@ class WorkOrderEditCancelTest extends TestCase
 
         $this->delete(route('maintenance-orders.destroy', $order))->assertRedirect(route('maintenance-orders.index'))->assertSessionHas('success');
 
-        $this->assertSoftDeleted('maintenance_orders', ['id' => $order->id]);
-        $this->get(route('maintenance-orders.index'))->assertDontSee('#' . $order->id . '<', false);
-        // 排程不會因為取消了，隔天又把同一期的工單重新產生出來。
+        $this->assertSame(MaintenanceOrder::STATUS_ABORTED, $order->fresh()->status);
+        $this->assertNull($order->fresh()->deleted_at);
+        $this->get(route('maintenance-orders.index'));   // 第一次會顯示「已取消」的提示訊息（含編號）
+        $this->get(route('maintenance-orders.index'))->assertDontSee($order->displayNumber());
+        $this->get(route('maintenance-orders.index', ['status' => 'aborted']))->assertSee($order->displayNumber());
+        $this->get(route('maintenance-orders.show', $order))->assertSee('已中止');
+        $this->delete(route('maintenance-orders.destroy', $order))->assertSessionHas('error');   // 已中止不能再取消
+        // 排程不會因為取消了，又把同一期的工單重新產生出來。
         $this->assertSame(0, app(DueMaintenanceOrderGenerator::class)->generate());
-        $this->assertSame(0, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
+        $this->assertSame(1, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count());
     }
 
     public function test_completed_or_reported_maintenance_orders_cannot_be_edited_or_cancelled(): void

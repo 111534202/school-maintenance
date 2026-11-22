@@ -225,24 +225,34 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
     }
 
-    // 工單是設備類別：NG 只建一張報修單（不帶設備，維修人員填維修紀錄時再選是哪一台）；報修單結案後工單才完成。
-    public function test_category_ng_creates_one_repair_without_a_device(): void
+    // 工單是整類設備：NG 要勾出這一類裡異常的設備（只列還在使用的），每台各建一張報修單；全部結案後工單才完成。
+    public function test_category_ng_asks_which_devices_and_creates_one_repair_each(): void
     {
-        [$order] = $this->categoryOrder(['CAT-1', 'CAT-2', 'CAT-3']);
+        [$order, $devices] = $this->categoryOrder(['CAT-1', 'CAT-2', 'CAT-3']);
+        $devices[2]->update(['status' => 'retired']);
 
-        $this->get(route('maintenance-orders.results.create', $order))->assertOk()->assertDontSee('name="ng_device_ids[]"', false);
-        $this->post(route('maintenance-orders.results.store', $order), [
-            'result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '濾網破損',
-        ])->assertSessionHasNoErrors();
+        $this->get(route('maintenance-orders.results.create', $order))->assertOk()
+            ->assertSee('name="ng_device_ids[]"', false)->assertSee('CAT-1')->assertDontSee('CAT-3');
+        $base = ['result' => 'ng', 'executed_at' => '2026-10-07 08:30:00', 'note' => '濾網破損'];
 
-        $repair = RepairRequest::sole();
-        $this->assertNull($repair->device_id);
-        $this->assertStringContainsString('（整類）', $repair->title);
+        $this->post(route('maintenance-orders.results.store', $order), $base)->assertSessionHasErrors('ng_device_ids');   // 沒勾設備
+        $this->post(route('maintenance-orders.results.store', $order), $base + ['ng_device_ids' => [$devices[2]->id]])->assertSessionHasErrors('ng_device_ids');   // 淘汰的不能選
+        $this->assertSame(0, RepairRequest::count());
+
+        $this->post(route('maintenance-orders.results.store', $order), $base + ['ng_device_ids' => [$devices[0]->id, $devices[1]->id]])->assertSessionHasNoErrors();
+        $repairs = RepairRequest::orderBy('id')->get();
+        $this->assertSame([$devices[0]->id, $devices[1]->id], $repairs->pluck('device_id')->all());
         $this->assertSame(MaintenanceOrder::STATUS_CONVERTED, $order->fresh()->status);
 
-        $repair->update(['status' => RepairRequestStatus::PendingReview->value]);
-        app(RepairRequestWorkflow::class)->complete($repair->fresh());
-        $this->assertSame(MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
+        foreach ($repairs as $i => $repair) {
+            $repair->update(['status' => RepairRequestStatus::PendingReview->value]);
+            app(RepairRequestWorkflow::class)->complete($repair->fresh());
+            $this->assertSame($i === 0 ? MaintenanceOrder::STATUS_CONVERTED : MaintenanceOrder::STATUS_COMPLETED, $order->fresh()->status);
+        }
+
+        // 報修單的描述：「保養工單 MO-xxxxx」是連結，點了在對話框打開那張保養工單。
+        $this->get(route('repairs.show', $repairs[0]))->assertOk()
+            ->assertSee('<a href="' . route('maintenance-orders.show', $order) . '" data-modal-frame data-modal-title="保養紀錄" data-modal-size="xl">保養工單 ' . $order->displayNumber() . '</a>', false);
     }
 
     // NG 一定要填說明；沒填就整筆不寫入。OK 不用說明、不轉報修。

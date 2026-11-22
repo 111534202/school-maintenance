@@ -36,7 +36,7 @@
     @if ($maintenanceOrder->status === \App\Models\MaintenanceOrder::STATUS_ABORTED)
         <div class="alert alert-dark d-flex gap-2" role="status">
             <i class="bi bi-slash-circle mt-1"></i>
-            <div>這張保養工單已中止：設備已淘汰，沒做完的工單一併中止。資料已定案，只能查看，不能再修改、指派或回報結果。</div>
+            <div>這張保養工單已中止（工單被取消，或設備已淘汰）。資料已定案，只能查看，不能再修改、指派或回報結果。</div>
         </div>
     @endif
 

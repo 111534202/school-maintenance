@@ -1136,7 +1136,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (period.is_class) {
                     addScheduleText(cell, 'div', period.class_name || '已有課程', 'fw-semibold');
-                    addScheduleText(cell, 'div', period.course_name || '課程中', 'small');
+                    // 有課程名稱才顯示（免登入查詢課表不給課程名稱，只顯示「已有課程」）。
+                    if (period.course_name) { addScheduleText(cell, 'div', period.course_name, 'small'); }
                 } else if (!hasApproved && !pending.length) {
                     addScheduleText(cell, 'div', '空堂', 'fw-semibold mb-2');
                     if (!isPast) {

@@ -134,7 +134,12 @@
 
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white form-section-title"><i class="bi bi-chat-left-text me-2"></i>{{ __('repair_requests.show.description_heading') }}</div>
-                <div class="card-body" style="white-space: pre-line;">{{ $repairRequest->description }}</div>
+                {{-- 保養 NG 轉來的報修單：描述裡的「保養工單 MO-00041」做成連結，點了在對話框打開那張保養工單（其他文字照樣跳脫）。 --}}
+                @php
+                    $ngOrder = $repairRequest->maintenance_result_id ? \App\Models\MaintenanceResult::find($repairRequest->maintenance_result_id)?->maintenanceOrder : null;
+                    $ngLabel = $ngOrder && auth()->user()->can('maintenance.view') ? '保養工單 ' . $ngOrder->displayNumber() : null;   // 看得到保養工單的人才給連結
+                @endphp
+                <div class="card-body" style="white-space: pre-line;">@if ($ngLabel && str_contains((string) $repairRequest->description, $ngLabel)){!! collect(explode($ngLabel, (string) $repairRequest->description))->map(fn ($part) => e($part))->implode('<a href="' . e(route('maintenance-orders.show', $ngOrder)) . '" data-modal-frame data-modal-title="保養紀錄" data-modal-size="xl">' . e($ngLabel) . '</a>') !!}@else{{ $repairRequest->description }}@endif</div>
             </div>
 
             {{-- 有上傳附件（故障照片／影片）才顯示附件卡片，點檔名會在新分頁開啟。 --}}

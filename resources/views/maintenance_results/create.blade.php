@@ -37,8 +37,37 @@
             @error('result')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
-            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝要填寫說明，整張工單建立一張報修單，工單改成「已轉報修」。</div>
+            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝要填寫說明並轉報修，工單改成「已轉報修」：工單是一台設備就為那台建一張報修單；
+                工單是整類設備就勾選這一類裡異常的設備，每台各建一張報修單。</div>
         </div>
+
+        {{-- 整類設備的工單回報 NG：從這一類（還在使用、沒淘汰）的設備裡勾出異常的（可複選）。選 OK 時隱藏、也不會送出。
+             工單是一台設備時不用選，NG 就是那台。 --}}
+        @if ($order->device_id === null)
+            @php $oldNgIds = array_map('intval', (array) old('ng_device_ids', [])); @endphp
+            <div class="mb-3" id="ngDevicesBlock" @if (old('result') !== 'ng') hidden @endif>
+                <label class="form-label">NG 的設備（可複選） <span class="text-danger">*</span></label>
+                @if ($ngDevices->isEmpty())
+                    <p class="text-muted small mb-0">這一類目前沒有可報修的設備（沒有設備，或都已淘汰／停用），NG 不會建立報修單。</p>
+                @else
+                    @if ($ngDevices->count() > 6)
+                        <input type="search" class="form-control form-control-sm mb-2" id="ngDeviceFilter" placeholder="輸入設備編號、教室搜尋" autocomplete="off">
+                    @endif
+                    <div class="border rounded p-2 @error('ng_device_ids') border-danger @enderror" style="max-height: 220px; overflow-y: auto;">
+                        @foreach ($ngDevices as $ngDevice)
+                            @php $ngLabel = $ngDevice->device_code . '（' . trim(($ngDevice->category?->name ?? '') . ' ' . ($ngDevice->classroom?->name ?? '')) . '）'; @endphp
+                            <div class="form-check" data-ng-device data-search="{{ mb_strtolower($ngLabel) }}">
+                                <input type="checkbox" class="form-check-input" name="ng_device_ids[]" value="{{ $ngDevice->id }}" id="ng_device_{{ $ngDevice->id }}"
+                                    @checked(in_array($ngDevice->id, $oldNgIds, true))>
+                                <label class="form-check-label" for="ng_device_{{ $ngDevice->id }}">{{ $ngLabel }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+                @error('ng_device_ids')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                @error('ng_device_ids.*')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+            </div>
+        @endif
 
 
         <div class="mb-3">
@@ -62,7 +91,7 @@
         <div class="mb-4">
             <label for="note" class="form-label">說明 <span class="text-danger" id="noteRequiredMark" @if (old('result') !== 'ng') hidden @endif>*</span></label>
             <textarea name="note" id="note" class="form-control @error('note') is-invalid @enderror"
-                rows="3" maxlength="2000" placeholder="NG 時必填：異常狀況（會帶進每一張報修單）">{{ old('note') }}</textarea>
+                rows="3" maxlength="2000" placeholder="NG 時必填：異常狀況（會帶進轉出的報修單）">{{ old('note') }}</textarea>
             @error('note')
                 <div class="invalid-feedback">{{ $message }}</div>
             @enderror
@@ -93,16 +122,28 @@
     </form>
 
     <script>
-    // 選 NG 時說明改成必填（標紅色星號）。
+    // 選 NG 時說明改成必填（標紅色星號）；整類設備的工單另外顯示「NG 的設備」勾選（選 OK 時隱藏、停用，不會送出）。
     (function () {
         const mark = document.getElementById('noteRequiredMark');
         const note = document.getElementById('note');
+        const block = document.getElementById('ngDevicesBlock');
+        const filter = document.getElementById('ngDeviceFilter');
         function sync() {
             const ng = document.getElementById('result_ng').checked;
             mark.hidden = !ng;
             note.required = ng;
+            if (block) {
+                block.hidden = !ng;
+                block.querySelectorAll('input[name="ng_device_ids[]"]').forEach(function (input) { input.disabled = !ng; });
+            }
         }
         document.querySelectorAll('input[name="result"]').forEach(function (radio) { radio.addEventListener('change', sync); });
+        if (filter) {
+            filter.addEventListener('input', function () {
+                const keyword = filter.value.trim().toLowerCase();
+                block.querySelectorAll('[data-ng-device]').forEach(function (row) { row.hidden = keyword !== '' && !row.dataset.search.includes(keyword); });
+            });
+        }
         sync();
 
         // 執行時間不能晚於現在（和後端一樣容許 5 分鐘誤差）：先在畫面上擋下，不用送出後才發現、附件又要重新選。

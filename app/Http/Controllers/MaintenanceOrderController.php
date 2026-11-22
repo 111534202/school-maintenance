@@ -75,7 +75,9 @@ class MaintenanceOrderController extends Controller
                 });
             })
             // 狀態：待處理、進行中、已轉報修、已完成，直接照資料表的狀態篩選。
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            // 狀態篩選；沒選狀態時不列「已中止」（取消的工單、設備淘汰中止的工單），要在篩選選「已中止」才看得到。
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')),
+                fn ($query) => $query->where('status', '<>', MaintenanceOrder::STATUS_ABORTED))
             ->when($request->filled('source'), fn ($query) => $query->where('source', $request->string('source')))
             ->when($request->filled('from'), fn ($query) => $query->whereDate('scheduled_date', '>=', $request->date('from')))
             ->when($request->filled('to'), fn ($query) => $query->whereDate('scheduled_date', '<=', $request->date('to')))
@@ -208,8 +210,9 @@ class MaintenanceOrderController extends Controller
             return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('error', '已完成或已回報保養結果的工單不能取消。');
         }
 
-        $id = $maintenanceOrder->id;
-        $maintenanceOrder->delete();
+        // 取消＝改成「已中止」（保留紀錄、唯讀；列表平常不顯示，篩選「已中止」才看得到）。
+        $oldStatus = $maintenanceOrder->status;
+        $maintenanceOrder->update(['status' => MaintenanceOrder::STATUS_ABORTED]);
 
         // 取消的是計畫目前這一期的工單：到期日往後推一個週期，不然這個計畫會因為「這一期已經產生過」而永遠停住。
         // 新的到期日已經在 3 天內就馬上產生下一張（跟回報結果一樣）。
@@ -218,9 +221,9 @@ class MaintenanceOrderController extends Controller
             app(\App\Services\DueMaintenanceOrderGenerator::class)->generateForPlan($plan);
         }
 
-        AuditLogger::log('deleted', $maintenanceOrder, ['status' => $maintenanceOrder->status], '取消（刪除）保養工單 #' . $id);
+        AuditLogger::log('status_changed', $maintenanceOrder, ['status' => ['old' => $oldStatus, 'new' => MaintenanceOrder::STATUS_ABORTED]], '取消保養工單 ' . $maintenanceOrder->displayNumber() . '（改為已中止）');
 
-        return $this->backToList('maintenance-orders.index')->with('success', '保養工單 #' . $id . ' 已取消。');
+        return $this->backToList('maintenance-orders.index')->with('success', '保養工單 ' . $maintenanceOrder->displayNumber() . ' 已取消，改為「已中止」（在篩選選「已中止」可以查看）。');
     }
 
     /**
@@ -266,7 +269,7 @@ class MaintenanceOrderController extends Controller
     private function finalMessage(MaintenanceOrder $order, string $action): string
     {
         return $order->status === MaintenanceOrder::STATUS_ABORTED
-            ? "這張保養工單已因設備淘汰中止，資料已定案，不能{$action}。"
+            ? "這張保養工單已中止（取消或設備淘汰），資料已定案，不能{$action}。"
             : "已完成的保養工單不能{$action}。";
     }
 

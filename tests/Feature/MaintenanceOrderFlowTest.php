@@ -266,6 +266,6 @@ class MaintenanceOrderFlowTest extends TestCase
         $this->actingAs($this->manager())->delete(route('maintenance-orders.destroy', $order))->assertSessionHas('success');
 
         $this->assertSame(now()->addDays(16)->toDateString(), $plan->fresh()->next_due_date->toDateString());
-        $this->assertSame(0, MaintenanceOrder::where('maintenance_plan_id', $plan->id)->count(), '新的到期日在 16 天後，還不用產生');
+        $this->assertSame([MaintenanceOrder::STATUS_ABORTED], MaintenanceOrder::where('maintenance_plan_id', $plan->id)->pluck('status')->all(), '取消的那張改成已中止；新的到期日在 16 天後，還不用產生');
     }
 }

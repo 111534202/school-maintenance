@@ -775,6 +775,11 @@
         (function () {
             if (window.parent === window) return;
             function post(msg) { window.parent.postMessage(msg, window.location.origin); }
+            // 在對話框裡送出成功、又回到對話框裡的頁面（例如保養紀錄「確認派工」後回到同一張工單）：
+            // 通知外面的頁面「資料改過了」，關掉對話框時列表自動重新整理。
+            @if (session('success'))
+                post({ type: 'modal-changed' });
+            @endif
             // 表單送出時帶著 modal=1，失敗時才會回到對話框裡的表單。
             document.querySelectorAll('form').forEach(function (form) {
                 if (form.querySelector('input[name="modal"]')) return;
@@ -987,6 +992,10 @@
             window.addEventListener('message', function (event) {
                 if (event.origin !== window.location.origin || event.source !== topFrame.contentWindow || !event.data) return;
                 var data = event.data;
+                if (data.type === 'modal-changed') {
+                    changed = true;   // 上層改過資料：關掉整個對話框時重新整理列表
+                    return;
+                }
                 if (data.type === 'modal-size') {
                     topFrame.style.height = Math.min(data.height, maxFrameHeight(topEl)) + 'px';
                     contentReady(topEl, '_tbSized');
@@ -1055,6 +1064,8 @@
                     // 在對話框裡點一筆（例如申請清單→預約詳細、清單→詳細）：在目前的對話框上面再開一個對話框，
                     // 不把下面那一層換掉（不用等重新載入），關掉上面那個就回到原本的清單。
                     openTopUrl(data.url, data.title, data.size);
+                } else if (data.type === 'modal-changed') {
+                    changed = true;   // 關掉對話框時重新整理列表
                 } else if (data.type === 'modal-width') {
                     // 對話框寬度＝表格需要的寬度（加上對話框本身的框線），最寬到瀏覽器視窗左右各留 16px。
                     // 同一次打開只會變寬、不會變窄：捲軸出現／消失會讓量到的寬度差一點點，來回調整會讓對話框晃動。

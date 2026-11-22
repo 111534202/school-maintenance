@@ -109,7 +109,7 @@ class RepairBoardTweaksTest extends TestCase
     public function test_a_repair_without_device_needs_the_technician_to_pick_one_in_the_log(): void
     {
         $technician = $this->makeTechnician();
-        $repair = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id, 'device_id' => null, 'device_note' => '走廊電燈']);
+        $repair = RepairRequest::factory()->create(['status' => 'assigned', 'assigned_to' => $technician->id, 'device_id' => null, 'device_note' => '走廊電燈', 'created_at' => now()->subDay()]);
         $device = $this->device('LAMP-1');
         $this->actingAs($technician);
 

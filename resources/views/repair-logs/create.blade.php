@@ -139,6 +139,7 @@
                                 id="started_at"
                                 name="started_at"
                                 value="{{ old('started_at') }}"
+                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 required>
                             @error('started_at')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -155,6 +156,7 @@
                                 id="ended_at"
                                 name="ended_at"
                                 value="{{ old('ended_at') }}"
+                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 required>
                             @error('ended_at')
                                 <div class="invalid-feedback">{{ $message }}</div>

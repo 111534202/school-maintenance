@@ -68,7 +68,8 @@ class RepairRequestBoardFlowTest extends TestCase
         $this->assertSame($technician->id, $repairRequest->fresh()->assigned_to);
         Mail::assertSent(RepairDispatchedMail::class, fn ($mail) => $mail->hasTo($technician->email));
 
-        // 填寫維修紀錄（已派工就能直接填，原本的「開始處理」已拿掉）
+        // 填寫維修紀錄（已派工就能直接填，原本的「開始處理」已拿掉；時間往後推一小時：維修時間不能早於報修送出的時間）
+        $this->travelTo(now()->addHour());
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'device_id' => $this->anyDeviceId(), 'cause' => '燈泡使用超過壽命',
             'resolution' => '更換新燈泡並測試投影正常',
@@ -88,7 +89,7 @@ class RepairRequestBoardFlowTest extends TestCase
     // 還沒派工的案件不能填維修紀錄（不能跳過派工），狀態不變。
     public function test_cannot_fill_a_repair_log_before_the_request_is_assigned(): void
     {
-        $repairRequest = RepairRequest::factory()->create(['status' => 'pending']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending', 'created_at' => now()->subDay()]);   // 維修時間要晚於報修送出
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'device_id' => $this->anyDeviceId(), 'cause' => 'x', 'resolution' => 'y',
@@ -130,7 +131,7 @@ class RepairRequestBoardFlowTest extends TestCase
         // 迴歸測試：曾經的 bug 是先建立 repair_log（可能還帶附件）才檢查狀態，
         // 若案件已經是 pending_review（例如重複送出同一份表單），會留下一筆孤兒
         // repair_log，案件狀態卻沒有改變。現在應該完全不寫入任何東西。
-        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'pending_review', 'created_at' => now()->subDay()]);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'device_id' => $this->anyDeviceId(), 'cause' => '重複送出測試',
@@ -338,7 +339,7 @@ class RepairRequestBoardFlowTest extends TestCase
     {
         // 依《第四週個人工作計畫》第 2、4 項：維修紀錄要能上傳影片、記錄使用備品說明。
         Storage::fake('local');
-        $repairRequest = RepairRequest::factory()->create(['status' => 'assigned']);
+        $repairRequest = RepairRequest::factory()->create(['status' => 'assigned', 'created_at' => now()->subDay()]);
 
         $response = $this->post(route('repair-logs.store', $repairRequest), [
             'device_id' => $this->anyDeviceId(), 'cause' => '風扇葉片變形產生異音',
