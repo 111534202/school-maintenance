@@ -17,19 +17,26 @@ class MyRepairsTest extends TestCase
     use InteractsWithRolesAndUsers;
     use RefreshDatabase;
 
-    public function test_every_role_sees_the_my_repairs_button_on_the_board(): void
+    // 有派工、維修或驗收權限的人：看板右上角有「我的報修」按鈕（在對話框打開自己提的）。
+    // 沒有這些權限的人（例如學生、只能報修的帳號）：看板本身就是「我的報修」，只列自己提的，不放按鈕與「範圍」篩選。
+    public function test_the_board_is_my_repairs_for_people_without_dispatch_process_or_accept_permissions(): void
     {
         $nobody = User::factory()->create(['role_id' => Role::create(['name' => '無權限', 'role_code' => 'nobody', 'is_system' => false, 'permissions' => []])->id]);
-        $users = [
-            $this->makeUserWithRole('admin', '系統管理員'), $this->makeItManager(), $this->makeTechnician(),
-            $this->makeUserWithRole('teacher', '教師'), $this->makeUserWithRole('executive', '主管'), $nobody,
-        ];
-
-        foreach ($users as $user) {
+        foreach ([$this->makeUserWithRole('admin', '系統管理員'), $this->makeItManager(), $this->makeTechnician()] as $user) {
             $this->actingAs($user)->get(route('repairs.index'))->assertOk()
-                ->assertSee('我的報修')
                 ->assertSee('href="' . route('repairs.index', ['mine' => 1]) . '"', false)
                 ->assertSee('data-modal-title="我的報修"', false);
+        }
+
+        foreach ([$this->makeUserWithPermissions(['repairs.create']), $nobody] as $user) {
+            $this->assertTrue(\App\Http\Controllers\RepairRequestController::onlyOwnRepairs($user));
+            RepairRequest::factory()->create(['title' => '自己報的-' . $user->id, 'requester_id' => $user->id]);
+            RepairRequest::factory()->create(['title' => '別人報的-' . $user->id]);
+            $this->actingAs($user)->get(route('repairs.index'))->assertOk()
+                ->assertSee('<h1 class="tb-title">我的報修</h1>', false)
+                ->assertDontSee('data-modal-title="我的報修"', false)
+                ->assertDontSee('name="mine"', false)
+                ->assertSee('自己報的-' . $user->id)->assertDontSee('別人報的-' . $user->id);
         }
     }
 

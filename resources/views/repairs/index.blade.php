@@ -9,14 +9,20 @@
 @section('content')
 <div class="tb">
     {{-- 在對話框裡打開「我的報修」（?mine=1&modal=1）時：標題已經在對話框上方，頁首、篩選列與右下角匯出都不顯示，只列自己的報修單。 --}}
-    @php $inModal = request()->boolean('modal'); @endphp
+    @php
+        $inModal = request()->boolean('modal');
+        // 沒有派工、維修、驗收權限的人：看板就是「我的報修」（標題改成我的報修，不放「我的報修」按鈕與「範圍」篩選）。
+        $onlyOwn = \App\Http\Controllers\RepairRequestController::onlyOwnRepairs(auth()->user());
+    @endphp
     <div class="tb-header" @if ($inModal) data-modal-hide @endif>
         <div>
-            <h1 class="tb-title">{{ __('repair_requests.board_title') }}</h1>
+            <h1 class="tb-title">{{ $onlyOwn ? __('common.nav.my_repairs') : __('repair_requests.board_title') }}</h1>
         </div>
         <div class="d-flex flex-wrap gap-2 justify-content-end">
             {{-- 我的報修：像空間申請的「我的申請」，在畫面中的對話框打開自己提出的報修單（表格／清單自動切換）。 --}}
+            @unless ($onlyOwn)
             <a href="{{ route('repairs.index', ['mine' => 1]) }}" class="tb-btn tb-btn-outline" data-modal-frame data-modal-table data-modal-title="{{ __('common.nav.my_repairs') }}"><i class="bi bi-person-lines-fill" aria-hidden="true"></i>{{ __('common.nav.my_repairs') }}</a>
+            @endunless
         {{-- 有「提出報修」權限才顯示「新增報修」按鈕。 --}}
         @can('repairs.create')
             <a class="tb-btn tb-btn-primary" href="{{ route('repairs.create') }}" data-modal-frame data-modal-title="{{ __('repair_requests.add_request') }}" data-modal-size="xl">
@@ -34,7 +40,7 @@
                 <div>
                     <label for="keyword" class="form-label small mb-1">關鍵字</label>
                     <input type="text" id="keyword" name="keyword" class="form-control form-control-sm" style="width: 15rem;"
-                        value="{{ request('keyword') }}" placeholder="標題、設備編號、教室、報修人、編號">
+                        value="{{ request('keyword') }}" placeholder="標題、設備編號、教室、報修人、維修人員、編號">
                 </div>
                 <div>
                     <label for="status" class="form-label small mb-1">{{ __('repair_requests.filter.status') }}</label>
@@ -75,11 +81,11 @@
                         @endforeach
                     </select>
                 </div>
-                <div>
-                    <label for="assignee" class="form-label small mb-1">{{ __('repair_requests.filter.assignee') }}</label>
-                    <input type="text" id="assignee" name="assignee" class="form-control form-control-sm" style="width: 11rem;"
-                        value="{{ request('assignee') }}" placeholder="{{ __('repair_requests.filter.assignee_placeholder') }}">
-                </div>
+                {{-- 維修人員併進關鍵字搜尋；主控台等連結帶來的 ?assignee= 照樣保留。 --}}
+                @if (request()->filled('assignee'))
+                    <input type="hidden" name="assignee" value="{{ request('assignee') }}">
+                @endif
+                @unless ($onlyOwn)
                 <div>
                     <label for="mine" class="form-label small mb-1">範圍</label>
                     <select id="mine" name="mine" class="form-select form-select-sm" style="width: 9rem;">
@@ -87,6 +93,7 @@
                         <option value="1" @selected(request()->boolean('mine'))>我的報修</option>
                     </select>
                 </div>
+                @endunless
                 {{-- 從設備主檔連過來時網址帶有 device_id；按「篩選」時要一併帶著，才不會篩一次就跑掉。 --}}
                 @if (request('device_id'))
                     <input type="hidden" name="device_id" value="{{ request('device_id') }}">

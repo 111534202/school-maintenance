@@ -107,7 +107,7 @@
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none" data-modal-frame data-modal-title="設備詳細" data-modal-size="xl">{{ $device->device_code }}</a>
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，紅色粗體字；點了跳到報修看板，關鍵字帶入設備編號篩選；只有文字本身能點，點旁邊空白不會誤跳。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                    <div><a href="{{ route('repairs.index', ['device_id' => $device->id, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString(), 'status' => 'pending,assigned,pending_review,completed']) }}" class="small text-danger fw-bold text-decoration-none"
+                                    <div><a href="{{ route('repairs.index', ['keyword' => $device->device_code, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString(), 'status' => 'pending,assigned,pending_review,completed']) }}" class="small text-danger fw-bold text-decoration-none"
                                         title="{{ __('devices.repeat_repair_hint') }}">{{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}</a></div>
                                 @endif
                             </td>
@@ -116,10 +116,10 @@
                             <td>{{ $device->classroom->name ?? __('devices.no_value') }}</td>
                             {{-- 狀態徽章依狀態上色：正常綠、待維修黃（由報修單推算）、已淘汰灰、停用紅（和主控台的設備狀態圖同一套顏色）。 --}}
                             <td class="text-center"><span class="badge {{ \App\Models\Device::statusBadgeClass($device->display_status) }}">{{ \App\Models\Device::statusLabel($device->display_status) }}</span></td>
-                            {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，只看這台設備的報修單。 --}}
+                            {{-- 這台設備進行中的報修單數（不含已結案）：大於 0 顯示藍色徽章，點了跳到報修看板，關鍵字帶入設備編號篩選。 --}}
                             <td class="text-center">
                                 @if ($device->open_repairs_count > 0)
-                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['device_id' => $device->id, 'open' => 1]) }}"
+                                    <a class="badge tb-pill tb-pill-info text-decoration-none" href="{{ route('repairs.index', ['keyword' => $device->device_code, 'open' => 1]) }}"
                                         title="{{ __('devices.links.view_repairs') }}"><i class="bi bi-tools me-1"></i>{{ $device->open_repairs_count }}</a>
                                 @else
                                     <span class="text-muted">0</span>

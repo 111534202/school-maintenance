@@ -12,7 +12,7 @@ use Illuminate\Validation\Validator;
  * 新增／修改保養計畫共用的驗證（UpdateMaintenancePlanRequest 繼承這支）。
  *
  * 依《報修與保養流程修改說明》：
- * - 保養對象：一個計畫一個——一台「設備」或一個「設備類別」（表單用可搜尋的下拉選單，送出 targets[]＝device:編號 或 category:編號）。
+ * - 保養對象：可以有好幾個，每一個是「設備」或「設備類別」（表單用可搜尋的下拉選單，送出 targets[]＝device:編號 或 category:編號），至少一個、不能重複。
  * - 「保養項目」勾選改成直接輸入「說明」（必填）。
  */
 class StoreMaintenancePlanRequest extends FormRequest
@@ -40,7 +40,7 @@ class StoreMaintenancePlanRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:200'],
             'description' => ['required', 'string', 'max:2000'],
-            'targets' => ['required', 'array', 'min:1', 'max:1'],
+            'targets' => ['required', 'array', 'min:1', 'max:100'],
             'targets.*' => ['string', 'distinct', 'regex:/^(device|category):\d+$/'],
             'cycle_days' => ['required', 'integer', 'min:1', 'max:3650'],
             'start_date' => ['required', 'date', 'after_or_equal:2020-01-01', 'before:2038-01-01'],
@@ -75,7 +75,7 @@ class StoreMaintenancePlanRequest extends FormRequest
                     return;
                 }
                 $plan = $this->route('maintenancePlan');
-                $kept = $plan instanceof MaintenancePlan && $plan->device_id ? [$plan->device_id] : [];
+                $kept = $plan instanceof MaintenancePlan ? $plan->targets()->pluck('device_id')->push($plan->device_id)->filter()->all() : [];
 
                 foreach ($this->input('targets', []) as $index => $value) {
                     [$type, $id] = explode(':', $value, 2);
@@ -102,9 +102,8 @@ class StoreMaintenancePlanRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'targets.required' => '請選擇保養的設備或設備類別。',
-            'targets.min' => '請選擇保養的設備或設備類別。',
-            'targets.max' => '一個保養計畫只能選一台設備或一個設備類別。',
+            'targets.required' => '請至少選擇一個保養的設備或設備類別。',
+            'targets.min' => '請至少選擇一個保養的設備或設備類別。',
             'targets.*.distinct' => '同一個設備或類別不能重複選。',
             'targets.*.regex' => '請從清單中選擇設備或設備類別。',
             'description.required' => '請輸入保養說明。',
@@ -122,7 +121,7 @@ class StoreMaintenancePlanRequest extends FormRequest
         return $this->parsedTargets;
     }
 
-    /** 存進計畫本身的欄位：設備存 device_id，設備類別存 device_category_id（只會有一個有值）。 */
+    /** 存進計畫本身的欄位：第一個對象另外存在 device_id／device_category_id（給舊的程式讀）。 */
     public function planData(): array
     {
         $first = $this->parsedTargets[0] ?? ['device_id' => null, 'device_category_id' => null];

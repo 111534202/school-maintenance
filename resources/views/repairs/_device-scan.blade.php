@@ -7,6 +7,16 @@
 {{-- 相機掃描視窗與掃描器已搬到共用元件 scanner/_camera（新增設備也用同一份）；掃到內容後它會填入輸入框並觸發 code-scanned 事件。 --}}
 @include('scanner._camera')
 
+{{-- 設備條碼框也可以打字搜尋：列出還在使用的設備（設備編號＋類別、教室），輸入關鍵字會篩選，選一個就自動查詢帶入。 --}}
+@php
+    $deviceOptions = \App\Models\Device::query()->with(['category', 'classroom'])->whereNotIn('status', ['retired'])->orderBy('device_code')->get();
+@endphp
+<datalist id="device_code_options">
+    @foreach ($deviceOptions as $option)
+        <option value="{{ $option->device_code }}">{{ trim(($option->category?->name ?? '') . ' ' . ($option->brand ?? '') . ' ' . ($option->model ?? '') . '（' . ($option->classroom?->name ?? '—') . '）') }}</option>
+    @endforeach
+</datalist>
+
 <script>
     // 用一個立即執行的函式把所有變數包起來，避免和頁面其他程式的變數名稱衝突。
     (function () {
@@ -55,7 +65,9 @@
                     lookedUpCode = data.device_code;
                     deviceIdField.value = data.id;
                     displayText.textContent = data.device_code + ' ' + data.display + (data.serial_number ? '（序號 ' + data.serial_number + '）' : '');
-                    displayBox.style.display = '';
+                    // 「掃描到的設備：…」只在用相機掃描時顯示（手動輸入、從清單選的，輸入框裡已經看得到設備，就不再多一個框）。
+                    displayBox.style.display = fromCamera ? '' : 'none';
+                    fromCamera = false;
                     // 發現地點自動帶入設備所在的教室（例如掃到 DEV-0001 → 資訊教室一）。
                     if (data.classroom && window.setRepairClassroom) {
                         window.setRepairClassroom(data.classroom.id, data.classroom.label);
@@ -88,6 +100,9 @@
         });
         // 輸入框失去焦點（點到別處）時也查詢。
         input.addEventListener('blur', lookup);
+        // 打字搜尋：接上設備清單（datalist），從清單選一個就馬上查詢帶入（不用再按 Enter）。
+        input.setAttribute('list', 'device_code_options');
+        input.addEventListener('change', lookup);
 
         // 設備條碼／編號可以留空（例如電燈壞了沒有條碼可掃），由維修人員填維修紀錄時再補上設備。
         // 輸入框內容一改（包含清空），就把之前查到的設備清掉，不會留著上一次掃到的設備；
@@ -114,6 +129,7 @@
 
         // ---- 相機掃描 ----
         // 共用元件掃到內容後會把原文填進輸入框並觸發 code-scanned：立刻查詢設備（後端認得設備編號、資產編號、序號與 QR 網址）。
-        input.addEventListener('code-scanned', lookup);
+        var fromCamera = false;
+        input.addEventListener('code-scanned', function () { fromCamera = true; lookup(); });
     })();
 </script>

@@ -410,12 +410,14 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     Route::middleware('can:repairs.dispatch')->group(function () {
         Route::post('repairs/{repair_request}/assign', [RepairRequestController::class, 'assign'])->name('repairs.assign');
         Route::post('repairs/{repair_request}/reassign', [RepairRequestController::class, 'reassign'])->name('repairs.reassign');
-        // 修改報修單：同樣需要 repairs.dispatch。（報修單不能刪除，改成「退回」，見下面。）
-        Route::get('repairs/{repair_request}/edit', [RepairRequestController::class, 'edit'])->name('repairs.edit');
-        Route::put('repairs/{repair_request}', [RepairRequestController::class, 'update'])->name('repairs.update');
         // 派工時查詢報修地點那間教室的一週課表，挑空堂當建議處理時間。
         Route::get('repairs/{repair_request}/timetable', [\App\Http\Controllers\TimetableController::class, 'repairWeek'])->name('repairs.timetable');
     });
+
+    // 修改報修單：有派工權限的人可以改全部欄位；報修人自己在還沒派工（新報修）前可以改故障描述
+    // （權限在 RepairRequestController::canEdit 檢查）。報修單不能刪除，改成「退回」，見下面。
+    Route::get('repairs/{repair_request}/edit', [RepairRequestController::class, 'edit'])->name('repairs.edit');
+    Route::put('repairs/{repair_request}', [RepairRequestController::class, 'update'])->name('repairs.update');
 
     // 退回報修單（必填原因）：新報修由能派工的人、已派工由被指派的維修人員退回（權限在 ReturnRepairRequestRequest／RepairRequestPolicy 檢查）。
     Route::post('repairs/{repair_request}/return', [RepairRequestController::class, 'returnRequest'])->name('repairs.return');

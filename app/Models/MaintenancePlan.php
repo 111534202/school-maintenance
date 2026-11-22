@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * 保養計畫。
@@ -90,9 +91,50 @@ class MaintenancePlan extends Model
         return $this->belongsTo(DeviceCategory::class);
     }
 
-    /** 畫面顯示的保養對象：「DEV-0001（投影機）」或「投影機（整類）」。 */
+    /**
+     * 保養對象（好幾台設備或好幾個設備類別，每一列擇一）。計畫上的 device_id／device_category_id 存第一個對象，給舊的程式讀。
+     *
+     * @return HasMany<MaintenancePlanTarget, $this>
+     */
+    public function targets(): HasMany
+    {
+        return $this->hasMany(MaintenancePlanTarget::class)->orderBy('id');
+    }
+
+    /**
+     * 建立工單用的對象清單：每個對象一筆 [device_id, device_category_id]（一張工單一筆）。
+     * 還沒有設定對象清單的舊計畫（或測試直接建立的計畫）就用計畫本身的設備／類別。
+     *
+     * @return list<array{device_id: int|null, device_category_id: int|null}>
+     */
+    public function orderTargets(): array
+    {
+        $targets = $this->relationLoaded('targets') ? $this->targets : $this->targets()->get();
+        if ($targets->isEmpty()) {
+            return [['device_id' => $this->device_id, 'device_category_id' => $this->device_id ? null : $this->device_category_id]];
+        }
+
+        return $targets->map(fn (MaintenancePlanTarget $target) => ['device_id' => $target->device_id, 'device_category_id' => $target->device_category_id])->all();
+    }
+
+    /**
+     * 還能保養的對象：指定的設備已淘汰或停用（Device::canBeMaintained）就略過；設備類別照常（NG 時只能選還在用的設備）。
+     *
+     * @return list<array{device_id: int|null, device_category_id: int|null}>
+     */
+    public function maintainableTargets(): array
+    {
+        return array_values(array_filter($this->orderTargets(), fn (array $target) => $target['device_id'] === null
+            || Device::canBeMaintained($target['device_id'])));
+    }
+
+    /** 畫面顯示的保養對象（用「、」串起來）；沒有對象清單時用計畫本身的設備／類別。 */
     public function targetsLabel(): string
     {
+        $targets = $this->relationLoaded('targets') ? $this->targets : $this->targets()->with(['device.category', 'deviceCategory'])->get();
+        if ($targets->isNotEmpty()) {
+            return $targets->map(fn (MaintenancePlanTarget $target) => $target->label())->implode('、');
+        }
         if ($this->device) {
             return $this->device->device_code . '（' . ($this->categoryName() ?? '—') . '）';
         }
@@ -100,10 +142,10 @@ class MaintenancePlan extends Model
         return $this->deviceCategory ? $this->deviceCategory->name . '（整類）' : '—';
     }
 
-    /** 還能不能產生工單：計畫的設備已淘汰或停用就不行（只綁設備類別的照常）。 */
+    /** 還能不能產生工單：計畫的對象裡至少還有一個能保養（指定的設備全都淘汰或停用就不行；設備類別照常）。 */
     public function canGenerateOrders(): bool
     {
-        return Device::canBeMaintained($this->device_id);
+        return $this->maintainableTargets() !== [];
     }
 
     /**

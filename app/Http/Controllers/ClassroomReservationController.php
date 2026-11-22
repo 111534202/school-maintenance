@@ -467,12 +467,10 @@ class ClassroomReservationController extends Controller
 
 
         // 送出後一律回到「空間申請」主畫面（reservations.index），不停留在送出申請的畫面：
-        // 有審核權限的人回到全部申請的列表，其他人回到有課表的申請頁（頁面最上面看得到成功訊息）。
+        // 有審核權限的人回到全部申請的列表，其他人回到有課表的申請頁（頁面最上面看得到成功訊息；兩種人看到的訊息一樣）。
         return redirect()
             ->route('reservations.index')
-            ->with('success', $request->user()->hasPermission('reservations.manage')
-                ? '已送出預約申請，請等待審核。可以在空間申請右上角的「我的申請」查看進度。'
-                : '已送出預約申請，請等待審核。可以在下方「我的申請」查看進度。');
+            ->with('success', '已送出預約申請，請等待審核。可以在我的申請中查看進度。');
     }
     /**
      * 逐節審核：decisions[時段 id] = approved／rejected，每一節都要選；拒絕原因（選填）套用在被拒絕的節次。

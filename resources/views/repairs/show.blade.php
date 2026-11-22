@@ -49,13 +49,13 @@
             {{-- 引入共用的狀態徽章（看板與詳細頁用同一份）。 --}}
             @include('repairs._status-badge', ['status' => $status])
         </div>
-        {{-- 修改：只給有派工權限的人；已結案、已退回不能改。報修單不能刪除（原本的「取消工單」改成右欄的「退回報修單」）。
-             圓形圖示按鈕，在對話框裡會搬到標題列 ✕ 左邊（data-modal-header）。 --}}
-        @can('repairs.dispatch')
+        {{-- 修改：有派工權限的人（全部欄位），或報修人自己在還沒派工前（只能改故障描述）；已結案、已退回不能改。
+             報修單不能刪除（原本的「取消工單」改成右欄的「退回報修單」）。圓形圖示按鈕，在對話框裡會搬到標題列 ✕ 左邊（data-modal-header）。 --}}
+        @if (\App\Http\Controllers\RepairRequestController::editScope(auth()->user(), $repairRequest))
             @unless ($status->isClosed())
                 <a class="btn btn-outline-primary btn-sm icon-btn flex-shrink-0" href="{{ route('repairs.edit', $repairRequest) }}" data-modal-header data-modal-frame data-modal-title="修改報修單" data-modal-size="lg" title="修改" aria-label="修改"><i class="bi bi-pencil"></i></a>
             @endunless
-        @endcan
+        @endif
     </div>
 
     @if ($status === \App\Enums\RepairRequestStatus::Aborted)

@@ -125,12 +125,28 @@ class MaintenanceOrder extends Model
     }
 
     /**
-     * 保養對象（給畫面用）：一張工單一個對象——一台設備，或一個設備類別。
+     * 這張工單的保養對象（好幾台設備或好幾個設備類別，每一列擇一），建立工單時從保養計畫複製。
+     * device_id／device_category_id 存第一個對象（AI 預防保養工單只有一台設備）。
+     *
+     * @return HasMany<MaintenanceOrderTarget, $this>
+     */
+    public function targets(): HasMany
+    {
+        return $this->hasMany(MaintenanceOrderTarget::class)->orderBy('id');
+    }
+
+    /**
+     * 保養對象清單（給畫面用）：有對象清單就用清單，沒有（舊資料、測試直接建立的工單）就用工單本身的設備／類別。
      *
      * @return \Illuminate\Support\Collection<int, array{device: Device|null, category: DeviceCategory|null}>
      */
     public function targetItems(): \Illuminate\Support\Collection
     {
+        $targets = $this->relationLoaded('targets') ? $this->targets : $this->targets()->with(['device.category', 'deviceCategory'])->get();
+        if ($targets->isNotEmpty()) {
+            return $targets->map(fn (MaintenanceOrderTarget $t) => ['device' => $t->device_id ? $t->device : null, 'category' => $t->device_id ? $t->device?->category : $t->deviceCategory]);
+        }
+
         if ($this->device_id === null && $this->device_category_id === null) {
             return collect();
         }
@@ -138,36 +154,51 @@ class MaintenanceOrder extends Model
         return collect([['device' => $this->device, 'category' => $this->device ? $this->device->category : $this->deviceCategory]]);
     }
 
-    /** 畫面顯示的保養對象：「DEV-0001（投影機）」或「投影機（整類）」。 */
+    /** 畫面／匯出用的保養對象文字：「DEV-0001（投影機）、冷氣（整類）」。 */
     public function targetsLabel(): string
     {
-        $item = $this->targetItems()->first();
-        if ($item === null) {
+        $items = $this->targetItems();
+        if ($items->isEmpty()) {
             return '—';
         }
 
-        return $item['device']
+        return $items->map(fn (array $item) => $item['device']
             ? $item['device']->device_code . '（' . ($item['category']?->name ?? '—') . '）'
-            : ($item['category']?->name ?? '—') . '（整類）';
+            : ($item['category']?->name ?? '—') . '（整類）')->implode('、');
     }
 
-    /** 依保養計畫建立這一期的工單（待處理、排定日期＝計畫的下次到期日、對象＝計畫的設備或設備類別）。 */
-    public static function createFromPlan(MaintenancePlan $plan): self
+    /**
+     * 依保養計畫建立這一期的工單（待處理、排定日期＝計畫的下次到期日）：計畫的所有保養對象都放進這張工單的對象清單，
+     * 工單本身的 device_id／device_category_id 存第一個對象。
+     */
+    public static function createFromPlan(MaintenancePlan $plan): ?self
     {
-        return self::create([
+        // 已淘汰或停用的設備不再保養：略過；全部對象都不能保養就不建立（回傳 null）。
+        $targets = $plan->maintainableTargets();
+        if ($targets === []) {
+            return null;
+        }
+        $order = self::create([
             'maintenance_plan_id' => $plan->id,
-            'device_id' => $plan->device_id,
-            'device_category_id' => $plan->device_id ? null : $plan->device_category_id,
+            ...($targets[0] ?? ['device_id' => null, 'device_category_id' => null]),
             'source' => self::SOURCE_PERIODIC,
             'status' => self::STATUS_PENDING,
             'scheduled_date' => $plan->next_due_date,
         ]);
+        foreach ($targets as $target) {
+            if ($target['device_id'] !== null || $target['device_category_id'] !== null) {
+                $order->targets()->create($target);
+            }
+        }
+
+        return $order;
     }
 
-    /** 查詢範圍：這台設備的工單。 */
+    /** 查詢範圍：包含這台設備的工單（工單本身的設備，或對象清單裡有這台設備）。 */
     public function scopeCoveringDevice(Builder $query, int $deviceId): Builder
     {
-        return $query->where($query->qualifyColumn('device_id'), $deviceId);
+        return $query->where(fn ($q) => $q->where($q->qualifyColumn('device_id'), $deviceId)
+            ->orWhereHas('targets', fn ($t) => $t->where('device_id', $deviceId)));
     }
 
     /** @return HasOne<MaintenanceResult, $this> */

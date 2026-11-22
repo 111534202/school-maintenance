@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
  * - 下次到期日要等這張工單做完（回報結果）或取消後，才往後推一個週期（MaintenancePlan::advanceDueDateAfter），
  *   推完如果新的到期日已經在 3 天內，馬上產生下一張（不用等半夜排程）；不然到了新的到期日前 3 天再產生。
  * - 同一個計畫、同一個排定日只會有一張工單（取消掉的也算），重複執行不會疊加。停用的計畫不產生。
- * - 計畫的設備已淘汰或停用：不產生（寫在操作紀錄）。
+ * - 計畫有好幾個保養對象時全部放在同一張工單；指定的設備已淘汰或停用就略過那幾台，全部都不能保養才不產生（寫在操作紀錄）。
  */
 class DueMaintenanceOrderGenerator
 {
@@ -77,14 +77,19 @@ class DueMaintenanceOrderGenerator
             return null;
         }
 
-        if (! Device::canBeMaintained($plan->device_id)) {
-            AuditLogger::log('updated', $plan, ['device_id' => $plan->device_id], '保養計畫「' . $plan->name . '」' . $plan->next_due_date->toDateString() . ' 這一期沒有產生工單：設備已淘汰或停用');
+        // 指定的設備已淘汰或停用：這一期略過那幾台（全部對象都不能保養就不產生工單），寫在操作紀錄。
+        $skipped = collect($plan->orderTargets())->pluck('device_id')->filter()
+            ->reject(fn (int $deviceId) => Device::canBeMaintained($deviceId))->values();
+        $skippedCodes = $skipped->isEmpty() ? '' : Device::withTrashed()->whereKey($skipped->all())->orderBy('device_code')->pluck('device_code')->implode('、');
+
+        $order = MaintenanceOrder::createFromPlan($plan);
+        if ($order === null) {
+            AuditLogger::log('updated', $plan, ['skipped_device_ids' => $skipped->all()], '保養計畫「' . $plan->name . '」' . $plan->next_due_date->toDateString() . ' 這一期沒有產生工單：設備已淘汰或停用');
 
             return null;
         }
-
-        $order = MaintenanceOrder::createFromPlan($plan);
-        AuditLogger::log('created', $order, ['maintenance_plan_id' => $plan->id], '依保養計畫「' . $plan->name . '」產生保養工單 ' . $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）');
+        AuditLogger::log('created', $order, ['maintenance_plan_id' => $plan->id, 'skipped_device_ids' => $skipped->all()], '依保養計畫「' . $plan->name . '」產生保養工單 ' . $order->displayNumber() . '（排定 ' . $order->scheduled_date?->toDateString() . '）'
+            . ($skippedCodes === '' ? '' : '；略過已淘汰或停用的設備 ' . $skippedCodes));
 
         return $order;
     }

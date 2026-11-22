@@ -31,10 +31,11 @@ class MaintenanceResultController extends Controller
         // 保養用料選單：列出全部零件（沒有庫存的顯示庫存 0、不能選），和維修紀錄的選法相同。
         $parts = Part::query()->orderBy('id')->get();
 
-        // 整類設備的工單：NG 時從這一類還在使用的設備裡勾選異常的。
-        $ngDevices = app(NgToRepairService::class)->selectableDevices($maintenanceOrder);
+        // 有設備類別或好幾個對象的工單：NG 時從工單的對象裡（還在使用的設備）勾選異常的。
+        $ngService = app(NgToRepairService::class);
 
-        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts, 'ngDevices' => $ngDevices]);
+        return view('maintenance_results.create', ['order' => $maintenanceOrder, 'parts' => $parts,
+            'needsNgChoice' => $ngService->needsDeviceChoice($maintenanceOrder), 'ngDevices' => $ngService->selectableDevices($maintenanceOrder)]);
     }
 
     /**
@@ -64,13 +65,13 @@ class MaintenanceResultController extends Controller
         $partUsages = $validated['part_usages'] ?? [];
         $isNg = $validated['result'] === MaintenanceResult::RESULT_NG;
 
-        // 整類設備的工單回報 NG：要勾出異常的設備（只能從這一類還在使用的設備裡選）；這一類沒有可選的設備就不用選。
+        // 有設備類別或好幾個對象的工單回報 NG：要勾出異常的設備（只能從工單的對象裡還在使用的設備選）；沒有可選的設備就不用選。
         $ngDeviceIds = [];
-        if ($isNg && $maintenanceOrder->device_id === null) {
+        if ($isNg && $ngToRepairService->needsDeviceChoice($maintenanceOrder)) {
             $allowed = $ngToRepairService->selectableDevices($maintenanceOrder)->pluck('id')->all();
             $ngDeviceIds = array_values(array_unique(array_map('intval', (array) ($validated['ng_device_ids'] ?? []))));
             if ($allowed !== [] && ($ngDeviceIds === [] || array_diff($ngDeviceIds, $allowed) !== [])) {
-                throw ValidationException::withMessages(['ng_device_ids' => '請勾選這一類裡異常的設備。']);
+                throw ValidationException::withMessages(['ng_device_ids' => '請從清單中勾選這張工單裡異常的設備。']);
             }
         }
         unset($validated['part_usages'], $validated['attachments'], $validated['ng_device_ids']);

@@ -7,6 +7,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>登入 - 學校設備維保電子化系統</title>
+    {{-- 登入逾時後在對話框裡點開資料，對話框裡會跑出登入頁（大小也不對）：改成整個畫面重新整理，
+         外面的頁面會自己轉到完整的登入頁，登入後回到原本的列表。 --}}
+    <script>
+        if (window.top !== window.self) {
+            try { window.top.location.reload(); } catch (e) { window.top.location.href = window.location.href; }
+        }
+    </script>
     <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
     {{-- 跟登入後的頁面同一套風格 B（墨綠主色、暖白底、思源黑體／宋體），見 public/css/theme-b.css。 --}}

@@ -173,29 +173,36 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
         $this->assertNull($plan->device_category_id, '選設備時類別由設備推得，不另存');
     }
 
-    // 一個計畫只能有一個保養對象（一台設備或一個設備類別）；工單照計畫的對象建立。
-    public function test_a_plan_has_exactly_one_target(): void
+    // 一個計畫可以有好幾個保養對象（設備、類別混著選）；建立工單時只建一張，對象全部放在這張工單裡。
+    public function test_a_plan_can_have_several_targets_in_one_order(): void
     {
         $category = DeviceCategory::create(['name' => '冷氣']);
-        $a = $this->makeDevice('ONE-A');
-        $base = ['name' => '單一對象', 'description' => '清潔', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1];
+        $a = $this->makeDevice('MULTI-A');
+        $b = $this->makeDevice('MULTI-B');
 
-        $this->post(route('maintenance-plans.store'), $base + ['targets' => ['device:' . $a->id, 'category:' . $category->id]])
-            ->assertSessionHasErrors(['targets' => '一個保養計畫只能選一台設備或一個設備類別。']);
-        $this->post(route('maintenance-plans.store'), $base + ['targets' => []])->assertSessionHasErrors('targets');
-        $this->assertDatabaseCount('maintenance_plans', 0);
+        $this->post(route('maintenance-plans.store'), [
+            'name' => '多對象月檢', 'targets' => ['device:' . $a->id, 'category:' . $category->id, '', 'device:' . $b->id],
+            'description' => '清潔', 'cycle_days' => 30, 'start_date' => '2026-10-07', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
 
-        $this->post(route('maintenance-plans.store'), $base + ['targets' => ['device:' . $a->id]])->assertSessionHasNoErrors();
-        $plan = MaintenancePlan::where('name', '單一對象')->firstOrFail();
-        $this->assertSame($a->id, $plan->device_id);
-        $this->get(route('maintenance-plans.index'))->assertSee('ONE-A（測試電腦）');
-        $html = $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('設備：ONE-A', false)->getContent();
-        $this->assertStringNotContainsString('planTargetAdd', $html);   // 沒有「新增設備／類別」
+        $plan = MaintenancePlan::where('name', '多對象月檢')->firstOrFail();
+        $this->assertSame(['device:' . $a->id, 'category:' . $category->id, 'device:' . $b->id], $plan->targets->map->value()->all());
+        $this->assertSame($a->id, $plan->device_id, '第一個對象也存在計畫本身');
+        $this->get(route('maintenance-plans.index'))->assertSee('MULTI-A（測試電腦）、冷氣（整類）、MULTI-B（測試電腦）');
+        $this->get(route('maintenance-plans.edit', $plan))->assertOk()->assertSee('設備：MULTI-A', false)->assertSee('類別：冷氣', false);
 
+        // 建立工單：一張，對象全部在裡面。
         $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('success');
         $order = \App\Models\MaintenanceOrder::where('maintenance_plan_id', $plan->id)->sole();
-        $this->assertSame($a->id, $order->device_id);
-        $this->assertSame('ONE-A（測試電腦）', $order->targetsLabel());
+        $this->assertSame([$a->id, null, $b->id], $order->targets->pluck('device_id')->all());
+        $this->assertSame([null, $category->id, null], $order->targets->pluck('device_category_id')->all());
+        $this->assertSame($a->id, $order->device_id, '第一個對象也存在工單本身');
+        $this->assertSame('MULTI-A（測試電腦）、冷氣（整類）、MULTI-B（測試電腦）', $order->targetsLabel());
+        $this->get(route('maintenance-orders.index', ['keyword' => 'MULTI-B']))->assertSee($order->displayNumber());   // 用第二台設備也搜得到
+        // NG 時可以從所有對象裡選設備：兩台指定的設備（冷氣類別沒有設備）。
+        $this->assertSame(['MULTI-A', 'MULTI-B'], app(\App\Services\NgToRepairService::class)->selectableDevices($order)->pluck('device_code')->all());
+        // 兩台設備的設備履歷都看得到這張工單。
+        $this->get(route('device-profile.show', $b))->assertSee('多對象月檢')->assertSee(route('maintenance-orders.show', $order), false);
         $this->post(route('maintenance-plans.create-order', $plan))->assertSessionHas('error');   // 同一期不重複建立
     }
 

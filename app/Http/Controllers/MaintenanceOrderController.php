@@ -52,7 +52,7 @@ class MaintenanceOrderController extends Controller
         ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'source' => '來源', 'due' => '期限', 'assignee' => '負責人', 'from' => '起始日期', 'to' => '結束日期']);
 
         return MaintenanceOrder::query()
-            ->with(['maintenancePlan', 'result', 'device', 'assignee', 'deviceCategory'])
+            ->with(['maintenancePlan', 'result', 'device', 'assignee', 'deviceCategory', 'targets.device.category', 'targets.deviceCategory'])
             // 期限：overdue＝已逾期、week＝一週內到期（含已逾期）；只看自己負責的用 mine=1；assignee＝指定負責人（none＝還沒指派）。
             ->when($request->string('due')->toString() === 'overdue', fn ($query) => $query->overdue())
             ->when($request->string('due')->toString() === 'week', fn ($query) => $query->dueWithin(7))
@@ -68,6 +68,9 @@ class MaintenanceOrderController extends Controller
                     $q->whereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
                         ->orWhereHas('maintenancePlan', fn ($plan) => $plan->where('name', 'like', $like))
                         ->orWhereHas('deviceCategory', fn ($category) => $category->where('name', 'like', $like))
+                        // 一張工單有好幾個保養對象時，對象清單裡的設備、類別也搜得到。
+                        ->orWhereHas('targets.device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like))
+                        ->orWhereHas('targets.deviceCategory', fn ($category) => $category->where('name', 'like', $like))
                         ->orWhereHas('assignee', fn ($user) => $user->where('name', 'like', $like));
                     if (ctype_digit(ltrim($keyword, '#'))) {
                         $q->orWhere('maintenance_orders.id', (int) ltrim($keyword, '#'));
@@ -108,7 +111,7 @@ class MaintenanceOrderController extends Controller
     /** 匯出與預覽共用的查詢：列表的查詢，再一併載入匯出欄位要用的關聯。 */
     private function exportQuery(Request $request)
     {
-        return $this->indexQuery($request)->with(['result.executor', 'result.repairRequests', 'deviceCategory', 'device.category']);
+        return $this->indexQuery($request)->with(['result.executor', 'result.repairRequests', 'deviceCategory', 'device.category', 'targets.device.category', 'targets.deviceCategory']);
     }
 
     /**

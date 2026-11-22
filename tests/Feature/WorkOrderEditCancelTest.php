@@ -40,7 +40,7 @@ class WorkOrderEditCancelTest extends TestCase
 
     public function test_a_dispatcher_can_edit_a_repair_request_and_it_is_logged(): void
     {
-        $repair = RepairRequest::factory()->create(['title' => '原標題', 'status' => 'assigned', 'device_note' => '原設備']);
+        $repair = RepairRequest::factory()->create(['title' => '原標題', 'status' => 'assigned', 'device_note' => '原設備', 'device_id' => $this->anyDeviceId()]);
         $this->actingAs($this->dispatcher());
 
         $this->get(route('repairs.edit', $repair))->assertOk()->assertSee('原標題');
@@ -60,6 +60,32 @@ class WorkOrderEditCancelTest extends TestCase
         $this->actingAs($this->dispatcher());
 
         $this->put(route('repairs.update', $repair), $this->payload(['device_note' => '', 'classroom_id' => '']))->assertSessionHasErrors('device_note');
+    }
+
+    // 沒綁定設備的報修單：修改時可以掃描／輸入設備條碼補上；已派工的一定要補上才能儲存，新報修可以不補。已綁定的設備不能在這裡換。
+    public function test_editing_can_add_a_device_by_scanning_and_requires_it_after_dispatch(): void
+    {
+        $device = \App\Models\Device::findOrFail($this->anyDeviceId());
+        $retired = \App\Models\Device::create(['device_code' => 'DEV-OLD', 'device_category_id' => $device->device_category_id, 'classroom_id' => $device->classroom_id, 'status' => 'retired']);
+        $this->actingAs($this->dispatcher());
+
+        $assigned = RepairRequest::factory()->create(['device_id' => null, 'status' => 'assigned', 'device_note' => '投影機']);
+        $this->get(route('repairs.edit', $assigned))->assertOk()->assertSee('id="device_code_input"', false)->assertSee('id="scan_camera_btn"', false)
+            ->assertSee('這張報修單已派工，請掃描或輸入設備條碼');
+        $this->put(route('repairs.update', $assigned), $this->payload())->assertSessionHasErrors(['device_id' => '這張報修單已派工，請掃描或輸入設備條碼，補上是哪一台設備。']);
+        $this->put(route('repairs.update', $assigned), $this->payload(['device_id' => $retired->id]))->assertSessionHasErrors('device_id');
+        $this->put(route('repairs.update', $assigned), $this->payload(['device_id' => $device->id]))->assertSessionHasNoErrors();
+        $this->assertSame($device->id, $assigned->fresh()->device_id);
+
+        $pending = RepairRequest::factory()->create(['device_id' => null, 'status' => 'pending', 'device_note' => '投影機']);
+        $this->put(route('repairs.update', $pending), $this->payload())->assertSessionHasNoErrors();   // 新報修可以先不補
+        $this->assertNull($pending->fresh()->device_id);
+
+        $bound = RepairRequest::factory()->create(['device_id' => $device->id, 'status' => 'assigned']);
+        $other = \App\Models\Device::create(['device_code' => 'DEV-OTHER', 'device_category_id' => $device->device_category_id, 'classroom_id' => $device->classroom_id, 'status' => 'normal']);
+        $this->get(route('repairs.edit', $bound))->assertOk()->assertDontSee('id="device_code_input"', false);
+        $this->put(route('repairs.update', $bound), $this->payload(['device_id' => $other->id]))->assertSessionHasNoErrors();
+        $this->assertSame($device->id, $bound->fresh()->device_id);   // 已綁定的不會被換掉
     }
 
     public function test_people_without_dispatch_permission_cannot_edit_or_cancel(): void

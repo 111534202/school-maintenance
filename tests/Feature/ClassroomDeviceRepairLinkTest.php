@@ -184,7 +184,7 @@ class ClassroomDeviceRepairLinkTest extends TestCase
 
         $all = $this->get(route('devices.index'))->assertOk();
         $all->assertSee('DEV-OK')->assertSee('DEV-BROKEN');
-        $all->assertSee(htmlspecialchars(route('repairs.index', ['device_id' => $broken->id, 'open' => 1])), false);   // 跳到看板：這台設備、未結案
+        $all->assertSee(htmlspecialchars(route('repairs.index', ['keyword' => $broken->device_code, 'open' => 1])), false);   // 跳到看板：關鍵字帶設備編號、未結案
         $all->assertSee('text-bg-warning', false)->assertSee('待維修');   // 有已派工的報修單 = 待維修（黃色徽章）
         $all->assertSee('text-bg-success', false);   // 正常 = 綠色徽章
     }

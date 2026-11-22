@@ -90,6 +90,12 @@ class RepairRequestController extends Controller
         return view('repairs.index', compact('repairRequests', 'statuses', 'activeCaseCountsByAssignee', 'classrooms', 'exportRepairs', 'filteredDevice', 'activeFilters'));
     }
 
+    /** 沒有任何派工、維修、驗收權限：看板直接顯示「我的報修」（只列自己提出的報修單）。 */
+    public static function onlyOwnRepairs(?\App\Models\User $user): bool
+    {
+        return $user !== null && ! $user->can('repairs.dispatch') && ! $user->can('repairs.process') && ! $user->can('repairs.accept');
+    }
+
     /**
      * 看板網址上的狀態篩選：['overdue']（逾時）、一個或好幾個狀態代碼（逗號分開，不認得的代碼略過），或 []（全部）。
      * ?open=1（教室、設備主檔的「進行中」數字連過來）＝未結案：新報修、已派工、待驗收（已結案、已退回不算）。
@@ -194,20 +200,26 @@ class RepairRequestController extends Controller
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = trim($request->string('keyword')->toString());
                 $like = '%' . $keyword . '%';
-                $query->where(function ($q) use ($like, $keyword) {
+                // 關鍵字剛好是某台設備的完整編號（例如從設備主檔點過來）：設備編號只比對完全相同的，
+                // 不然 DEV-0001 也會找到 DEV-00011，數量就跟設備主檔顯示的不一樣。
+                $exactDevice = Device::withTrashed()->where('device_code', $keyword)->exists();
+                $query->where(function ($q) use ($like, $keyword, $exactDevice) {
                     $q->where('title', 'like', $like)
                         ->orWhere('description', 'like', $like)
                         ->orWhere('device_note', 'like', $like)
-                        ->orWhereHas('device', fn ($device) => $device->where('device_code', 'like', $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
+                        ->orWhereHas('device', fn ($device) => $device->where('device_code', $exactDevice ? '=' : 'like', $exactDevice ? $keyword : $like)->orWhere('asset_code', 'like', $like)->orWhere('brand', 'like', $like)->orWhere('model', 'like', $like)->orWhere('serial_number', 'like', $like))
                         ->orWhereHas('classroom', fn ($room) => $room->where('name', 'like', $like)->orWhere('classroom_code', 'like', $like))
-                        ->orWhereHas('requester', fn ($user) => $user->where('name', 'like', $like));
+                        ->orWhereHas('requester', fn ($user) => $user->where('name', 'like', $like))
+                        // 維修人員也用關鍵字搜（原本單獨一格「維修人員」，併進關鍵字）。
+                        ->orWhereHas('assignedTechnician', fn ($user) => $user->where('name', 'like', $like));
                     if (ctype_digit(ltrim($keyword, '#'))) {
                         $q->orWhere('id', (int) ltrim($keyword, '#'));
                     }
                 });
             })
             // 我的報修：?mine=1 只看「我提出的」報修單（選單的「我的報修」連過來）；所有身分都能用，管理員與主管也能只看自己提的。
-            ->when($request->boolean('mine'), fn ($query) => $query->where('requester_id', $request->user()->id))
+            // 沒有派工、維修、驗收權限的人（例如學生、一般教師）看板就是「我的報修」，固定只列自己提出的。
+            ->when($request->boolean('mine') || self::onlyOwnRepairs($request->user()), fn ($query) => $query->where('requester_id', $request->user()->id))
             // 狀態篩選（見 boardStatusFilter）：
             //   ?status=overdue：只看已逾時（未結案且超過預計處理時間）的案件（主控台「逾時工單」卡片；舊網址 ?overdue=1 也一樣）。
             //   ?status=assigned,pending_review：好幾個狀態用逗號分開（主控台「進行中工單」＝未結案、「待修數」＝新報修＋已派工）。
@@ -658,12 +670,31 @@ class RepairRequestController extends Controller
     }
 
     /**
-     * 「修改報修單」表單（GET /repairs/{id}/edit）：只有有派工權限的人能改（路由 can:repairs.dispatch）。
+     * 「修改報修單」表單（GET /repairs/{id}/edit）：有派工權限的人可以改全部欄位；報修人自己在派工前只能改故障描述（見 editScope）。
      * 已結案的報修單不能再改。可以改標題、描述、影響程度、是否影響上課、設備位置／描述、發現地點。
      */
+    /**
+     * 能不能修改這張報修單：有派工權限的人（全部欄位）；或報修人自己、還沒派工（新報修）時（只能改故障描述）。
+     * 回傳 'all'、'description' 或 null（不能改）。
+     */
+    public static function editScope(?\App\Models\User $user, RepairRequest $repairRequest): ?string
+    {
+        if ($user === null || $repairRequest->status->isClosed()) {
+            return null;
+        }
+        if ($user->can('repairs.dispatch')) {
+            return 'all';
+        }
+
+        return $repairRequest->requester_id === $user->id && $repairRequest->status === RepairRequestStatus::Pending ? 'description' : null;
+    }
+
     public function edit(RepairRequest $repairRequest)
     {
         Gate::authorize('view', $repairRequest);   // 跟自己無關的案件看不到，也不能開修改表單
+        if (! $repairRequest->status->isClosed() && self::editScope(auth()->user(), $repairRequest) === null) {
+            abort(403);   // 沒有派工權限、也不是還沒派工的自己的報修單
+        }
         if ($repairRequest->status->isClosed()) {
             return redirect()->route('repairs.show', $repairRequest)->with('error', $repairRequest->status === RepairRequestStatus::Aborted ? $this->finalEditMessage($repairRequest) : '已結案或已退回的報修單不能修改。');
         }
@@ -692,7 +723,18 @@ class RepairRequestController extends Controller
             return redirect()->route('repairs.show', $repairRequest)->with('error', $repairRequest->status === RepairRequestStatus::Aborted ? $this->finalEditMessage($repairRequest) : '已結案或已退回的報修單不能修改。');
         }
 
-        $repairRequest->fill($request->validated());
+        $scope = self::editScope($request->user(), $repairRequest);
+        abort_if($scope === null, 403);
+        $data = $request->validated();
+        // 報修人自己（沒有派工權限）在派工前只能改故障描述。
+        if ($scope === 'description') {
+            $data = ['description' => $data['description']];
+        }
+        // 已綁定的設備不能在這裡換；沒有設備的才補上（沒送就不動）。
+        if ($repairRequest->device_id !== null || empty($data['device_id'])) {
+            unset($data['device_id']);
+        }
+        $repairRequest->fill($data);
         $changes = [];
         foreach ($repairRequest->getDirty() as $field => $new) {
             $changes[$field] = ['old' => $repairRequest->getOriginal($field), 'new' => $new];

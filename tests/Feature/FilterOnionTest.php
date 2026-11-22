@@ -29,7 +29,7 @@ class FilterOnionTest extends TestCase
     public static function filterPages(): array
     {
         return [
-            '報修' => ['repairs.index', ['status', 'classroom_id', 'assignee']],
+            '報修' => ['repairs.index', ['status', 'classroom_id', 'keyword']],
             '用戶' => ['users.index', []],
             '設備' => ['devices.index', []],
             '教室' => ['classrooms.index', []],
@@ -56,7 +56,7 @@ class FilterOnionTest extends TestCase
         $admin = $this->makeUser('admin');
 
         // 套用了條件的網址：頁面正常顯示，摘要列的「清除」連結（原本的清除篩選連結）也在。
-        $html = $this->actingAs($admin)->get(route('repairs.index', ['status' => 'pending', 'assignee' => 'y']))->assertOk()->getContent();
+        $html = $this->actingAs($admin)->get(route('repairs.index', ['status' => 'pending', 'keyword' => 'y']))->assertOk()->getContent();
         $this->assertMatchesRegularExpression('/<option value="pending"\s+selected/', $html);
         $this->assertStringContainsString('value="y"', $html);
     }

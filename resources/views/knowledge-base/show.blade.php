@@ -22,11 +22,14 @@
 
         <div class="d-flex flex-wrap gap-3 mb-4 text-muted align-items-center">
             <span><i class="bi bi-folder2 me-1"></i>{{ $knowledgeBase->category ?? __('knowledge_base.uncategorized') }}</span>
-            @if ($knowledgeBase->is_published)
-                <span class="badge text-bg-success">{{ __('knowledge_base.published') }}</span>
-            @else
-                <span class="badge text-bg-secondary">{{ __('knowledge_base.unpublished') }}</span>
-            @endif
+            {{-- 上架狀態只給有知識庫管理權限的人看（一般使用者看到的文章一定都是已上架，不用顯示）。 --}}
+            @can('knowledge-base.manage')
+                @if ($knowledgeBase->is_published)
+                    <span class="badge text-bg-success">{{ __('knowledge_base.published') }}</span>
+                @else
+                    <span class="badge text-bg-secondary">{{ __('knowledge_base.unpublished') }}</span>
+                @endif
+            @endcan
         </div>
 
         <div class="card shadow-sm mb-3">

@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
  * 保養 NG 轉報修（依《報修與保養流程修改說明》與劉家芸的確認）。
  *
  * - 回報 NG 時要填寫說明，建立「新報修」報修單（呼叫彭仕衡提供的 CreateRepairRequestFromMaintenanceNg）：
- *   工單是一台設備：為那台建一張；工單是整類設備：回報時勾選這一類裡異常的設備，每台各建一張
- *   （這一類沒有可報修的設備時，建一張不帶設備的，維修人員填維修紀錄時再選）。
+ *   工單只有一台設備：為那台建一張；工單有設備類別或好幾個對象：回報時勾選異常的設備，每台各建一張
+ *   （沒有可報修的設備可以勾時，建一張不帶設備的，維修人員填維修紀錄時再選）。
  *   報修單帶入保養的說明，repair_requests.maintenance_result_id 指回這筆保養結果，報修人是回報 NG 的人。
  * - 工單狀態改成「已轉報修」；報修單結案（已結案或已退回）後，由 MaintenanceNgRepairSync 把工單改成「已完成」。
  * - 工單的設備已淘汰或停用：不能再報修，不建報修單（標成「不需轉報修」，畫面說明原因）。
@@ -22,20 +22,33 @@ use Illuminate\Support\Collection;
 class NgToRepairService
 {
     /**
-     * 整類設備的工單回報 NG 時可以勾的設備：那一類、還在使用（沒淘汰、沒停用）的設備，依設備編號排序。
-     * 一台設備的工單不用選（回傳空的）。
+     * 回報 NG 時要不要勾選設備：工單只有一台設備時不用（NG 就是那台）；有設備類別、或好幾個對象時要勾出異常的設備。
+     */
+    public function needsDeviceChoice(MaintenanceOrder $order): bool
+    {
+        $items = $order->targetItems();
+
+        return $items->count() > 1 || $items->contains(fn (array $item) => $item['device'] === null);
+    }
+
+    /**
+     * 回報 NG 時可以勾的設備：工單的每個保養對象——指定的設備就是那台、設備類別就是那一類——裡還在使用（沒淘汰、沒停用）的設備，
+     * 不重複、依設備編號排序。不用勾選的工單（只有一台設備）回傳空的。
      *
      * @return Collection<int, Device>
      */
     public function selectableDevices(MaintenanceOrder $order): Collection
     {
-        if ($order->device_id !== null || $order->device_category_id === null) {
+        if (! $this->needsDeviceChoice($order)) {
             return collect();
         }
+        $items = $order->targetItems();
+        $deviceIds = $items->pluck('device')->filter()->pluck('id')->all();
+        $categoryIds = $items->filter(fn (array $item) => $item['device'] === null)->pluck('category')->filter()->pluck('id')->all();
 
         return Device::query()->with(['category', 'classroom'])
-            ->where('device_category_id', $order->device_category_id)
             ->whereNotIn('status', ['retired', 'disabled'])
+            ->where(fn ($query) => $query->whereIn('id', $deviceIds)->orWhereIn('device_category_id', $categoryIds))
             ->orderBy('device_code')
             ->get();
     }
@@ -60,9 +73,9 @@ class NgToRepairService
         }
 
         $order = $result->maintenanceOrder()->first();
-        $device = $order?->device_id ? Device::withTrashed()->with('classroom')->find($order->device_id) : null;
-
-        // 設備已淘汰（或已停用）：不能再報修，NG 不轉報修單（標成「不需轉報修」，畫面會說明原因）。
+        $choose = $order && $this->needsDeviceChoice($order);
+        // 只有一台設備的工單：NG 就是那台；那台已淘汰（或已停用）就不能再報修，不轉報修單（畫面會說明原因）。
+        $device = ! $choose && $order?->device_id ? Device::withTrashed()->with('classroom')->find($order->device_id) : null;
         if ($device && ! Device::canBeMaintained($device->id)) {
             $result->update(['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE]);
             AuditLogger::log('updated', $result, ['ng_conversion_status' => MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE], '保養 NG 未轉報修：設備 ' . $device->device_code . ' 已淘汰或停用');
@@ -70,7 +83,7 @@ class NgToRepairService
             return collect();
         }
 
-        // 整類設備的工單：每台勾選的設備各建一張（只收還能報修的）；沒勾到（這一類沒有可選的設備）就建一張不帶設備的。
+        // 要勾選設備的工單：每台勾選的設備各建一張（只收還能報修的）；沒勾到（沒有可選的設備）就建一張不帶設備的。
         $devices = $device
             ? collect([$device])
             : Device::query()->with('classroom')->whereKey($deviceIds)->get()
@@ -88,7 +101,7 @@ class NgToRepairService
     /** 建立一張 NG 轉出的報修單（$device 為 null＝整類、不帶設備）。 */
     private function createRepair(MaintenanceResult $result, ?MaintenanceOrder $order, ?Device $device): RepairRequest
     {
-        $target = $device?->device_code ?? (($order?->deviceCategory?->name ?? '—') . '（整類）');
+        $target = $device?->device_code ?? ($order?->targetsLabel() ?? '—');
         $repairRequest = app(CreateRepairRequestFromMaintenanceNg::class)->execute(
             // 來源標記寫在故障描述最前面，給人看的：「【保養 NG 自動轉入，來源：保養工單 MO-00001】」
             //（程式要追溯時用 repair_requests.maintenance_result_id，不靠這段文字；報修案件頁會把它做成可以點開工單的連結）。

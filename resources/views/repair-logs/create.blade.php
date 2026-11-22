@@ -137,9 +137,9 @@
                                 type="datetime-local"
                                 class="form-control @error('started_at') is-invalid @enderror"
                                 id="started_at"
+                                data-earliest="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 name="started_at"
                                 value="{{ old('started_at') }}"
-                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 required>
                             @error('started_at')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -156,7 +156,6 @@
                                 id="ended_at"
                                 name="ended_at"
                                 value="{{ old('ended_at') }}"
-                                min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}"
                                 required>
                             @error('ended_at')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -225,23 +224,33 @@
         </form>
 
         <script>
-        // 送出前先在畫面上檢查時間（結束不能早於開始、都不能晚於現在），有錯就不送出：
+        // 時間選擇器不限制可選的日期（維修紀錄不一定當天填），按「送出」時才檢查：
+        // 開始不能早於報修申請時間、結束不能早於開始、都不能晚於現在。有錯就不送出，
         // 送出後才被擋下的話，瀏覽器不能把剛選的附件自動填回去，要重新選一次。
         (function () {
             const started = document.getElementById('started_at');
             const ended = document.getElementById('ended_at');
             if (!started || !ended) return;
+            const form = started.form;
             const pad = (n) => String(n).padStart(2, '0');
-            const now = new Date(Date.now() + 5 * 60 * 1000);   // 和後端一樣容許 5 分鐘誤差
-            const max = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
-            started.max = max;
-            ended.max = max;
+            const stamp = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            const earliest = started.dataset.earliest || '';
             function check() {
-                ended.setCustomValidity(started.value && ended.value && ended.value < started.value ? '結束時間不能早於開始時間。' : '');
+                const latest = stamp(new Date(Date.now() + 5 * 60 * 1000));   // 和後端一樣容許 5 分鐘誤差
+                let s = '';
+                if (started.value && earliest && started.value < earliest) s = '開始時間不能早於報修申請的時間（' + earliest.replace('T', ' ') + '）。';
+                else if (started.value && started.value > latest) s = '開始時間不能晚於現在的時間。';
+                let e = '';
+                if (ended.value && ended.value > latest) e = '結束時間不能晚於現在的時間。';
+                else if (started.value && ended.value && ended.value < started.value) e = '結束時間不能早於開始時間。';
+                started.setCustomValidity(s);
+                ended.setCustomValidity(e);
             }
-            started.addEventListener('change', check);
-            ended.addEventListener('change', check);
-            check();
+            // 改動時先清掉舊的錯誤，等送出再重新檢查
+            started.addEventListener('input', () => started.setCustomValidity(''));
+            ended.addEventListener('input', () => ended.setCustomValidity(''));
+            form?.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((btn) => btn.addEventListener('click', check));
+            form?.addEventListener('submit', (event) => { check(); if (!form.checkValidity()) { event.preventDefault(); form.reportValidity(); } });
         })();
         </script>
     </div>

@@ -1,5 +1,6 @@
-{{-- 修改報修單頁（對應 RepairRequestController::edit / update）：只有有派工權限的人能改，已結案、已退回的不能改。
-     可以改標題、故障描述、影響程度、是否影響上課、設備位置／描述、發現地點；綁定的設備、附件、狀態不在這裡改。
+{{-- 修改報修單頁（對應 RepairRequestController::edit / update）：有派工權限的人能改全部欄位；報修人自己在還沒派工前只能改故障描述。已結案、已退回的不能改。
+     可以改標題、故障描述、影響程度、是否影響上課、設備位置／描述、發現地點；還沒綁定設備的可以掃描或輸入設備條碼補上
+     （已派工、待驗收的報修單沒有設備時一定要補上才能儲存）。已綁定的設備、附件、狀態不在這裡改。
      從報修案件的對話框按「修改」時，會在上面再疊一層對話框打開（不換頁）；整頁打開也可以。
      版面跟新增報修一樣：「設備」「問題描述」兩個區塊，取消／儲存放在外框外面靠右。 --}}
 @extends('layouts.app')
@@ -8,6 +9,32 @@
 
 @section('content')
     <h1 class="tb-title mb-3" data-modal-hide>修改報修單</h1>
+
+    @php $editScope = \App\Http\Controllers\RepairRequestController::editScope(auth()->user(), $repairRequest); @endphp
+    @if ($editScope === 'description')
+        {{-- 報修人自己、還沒派工：只能補充或修改故障描述（其他欄位要請有派工權限的人改）。 --}}
+        <form method="POST" action="{{ route('repairs.update', $repairRequest) }}">
+            @csrf
+            @method('PUT')
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-white form-section-title"><i class="bi bi-exclamation-triangle me-2"></i>問題描述</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">報修標題</label>
+                        <div class="form-control-plaintext">{{ $repairRequest->title }}</div>
+                    </div>
+                    <label for="description" class="form-label">故障描述</label>
+                    <textarea id="description" name="description" rows="5" class="form-control @error('description') is-invalid @enderror" required>{{ old('description', $repairRequest->description) }}</textarea>
+                    @error('description')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <div class="form-text">還沒派工前可以補充或修改故障描述；派工之後就不能再改。</div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a class="btn btn-outline-secondary" href="{{ route('repairs.show', $repairRequest) }}"><i class="bi bi-x-lg me-1"></i>取消</a>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>儲存</button>
+            </div>
+        </form>
+    @else
 
     <form method="POST" action="{{ route('repairs.update', $repairRequest) }}">
         @csrf
@@ -22,6 +49,32 @@
                         <label class="form-label">設備</label>
                         <div class="form-control-plaintext">{{ $repairRequest->device->device_code }} {{ $repairRequest->device->category->name ?? '' }} {{ $repairRequest->device->brand }} {{ $repairRequest->device->model }}</div>
                     </div>
+                @else
+                    {{-- 還沒綁定設備：跟新增報修一樣，可以掃描或輸入設備條碼補上（掃描的 JavaScript 在 repairs/_device-scan）。
+                         已派工、待驗收的報修單一定要補上設備才能儲存（維修人員要知道修的是哪一台）。 --}}
+                    @php $deviceRequired = in_array($repairRequest->status, [\App\Enums\RepairRequestStatus::Assigned, \App\Enums\RepairRequestStatus::PendingReview], true); @endphp
+                    @php $oldDevice = old('device_id') ? \App\Models\Device::with(['category', 'classroom'])->find(old('device_id')) : null; @endphp
+                    <label for="device_code_input" class="form-label">{{ __('repair_requests.create.device_code_label') }} @if ($deviceRequired)<span class="text-danger">*</span>@endif</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                        <input type="text" class="form-control @error('device_id') is-invalid @enderror" id="device_code_input" autocomplete="off"
+                            placeholder="{{ __('repair_requests.create.device_code_placeholder') }}" value="{{ $oldDevice?->device_code }}">
+                        <button type="button" class="btn btn-outline-primary" id="scan_camera_btn"
+                            data-scan-target="#device_code_input" data-scan-title="{{ __('repair_requests.create.scan_title') }}"
+                            title="{{ __('repair_requests.create.scan_button') }}" aria-label="{{ __('repair_requests.create.scan_button') }}">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">{{ $deviceRequired ? '這張報修單已派工，請掃描或輸入設備條碼，補上是哪一台設備才能儲存。' : __('repair_requests.create.device_code_hint') }}</div>
+                    @error('device_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                    <div id="device_lookup_error" class="text-danger small mt-2" style="display:none;">
+                        <i class="bi bi-exclamation-circle me-1"></i><span id="device_lookup_error_text" data-default-text="{{ __('repair_requests.create.device_lookup_error') }}">{{ __('repair_requests.create.device_lookup_error') }}</span>
+                    </div>
+                    <div id="device_display" class="alert alert-success py-2 mt-3 mb-0" style="{{ $oldDevice ? '' : 'display:none;' }}">
+                        <i class="bi bi-check-circle me-1"></i>{{ __('repair_requests.create.device_display_label') }}<strong id="device_display_text">{{ $oldDevice?->device_code }} {{ $oldDevice?->category?->name }}</strong>
+                    </div>
+                    <input type="hidden" id="device_id" name="device_id" autocomplete="off" value="{{ old('device_id') }}">
+                    <hr class="my-4">
                 @endif
 
                 <div class="row g-3">
@@ -80,4 +133,9 @@
             <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>儲存</button>
         </div>
     </form>
+    @endif
+    {{-- 還沒綁定設備時：引入「掃描設備條碼」的視窗與 JavaScript（跟新增報修共用）。 --}}
+    @if (! $repairRequest->device && $editScope === 'all')
+        @include('repairs._device-scan')
+    @endif
 @endsection

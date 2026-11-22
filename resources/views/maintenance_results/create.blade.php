@@ -37,18 +37,18 @@
             @error('result')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
-            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝要填寫說明並轉報修，工單改成「已轉報修」：工單是一台設備就為那台建一張報修單；
-                工單是整類設備就勾選這一類裡異常的設備，每台各建一張報修單。</div>
+            <div class="form-text">OK＝整張工單都正常，直接完成。NG＝要填寫說明並轉報修，工單改成「已轉報修」：工單只有一台設備就為那台建一張報修單；
+                工單有設備類別或好幾個對象，就勾選裡面異常的設備，每台各建一張報修單。</div>
         </div>
 
-        {{-- 整類設備的工單回報 NG：從這一類（還在使用、沒淘汰）的設備裡勾出異常的（可複選）。選 OK 時隱藏、也不會送出。
-             工單是一台設備時不用選，NG 就是那台。 --}}
-        @if ($order->device_id === null)
+        {{-- 有設備類別或好幾個對象的工單回報 NG：從工單的對象裡（還在使用、沒淘汰）的設備勾出異常的（可複選）。選 OK 時隱藏、也不會送出。
+             工單只有一台設備時不用選，NG 就是那台。 --}}
+        @if ($needsNgChoice)
             @php $oldNgIds = array_map('intval', (array) old('ng_device_ids', [])); @endphp
             <div class="mb-3" id="ngDevicesBlock" @if (old('result') !== 'ng') hidden @endif>
                 <label class="form-label">NG 的設備（可複選） <span class="text-danger">*</span></label>
                 @if ($ngDevices->isEmpty())
-                    <p class="text-muted small mb-0">這一類目前沒有可報修的設備（沒有設備，或都已淘汰／停用），NG 不會建立報修單。</p>
+                    <p class="text-muted small mb-0">這張工單目前沒有可報修的設備（沒有設備，或都已淘汰／停用），NG 會建立一張不帶設備的報修單。</p>
                 @else
                     @if ($ngDevices->count() > 6)
                         <input type="search" class="form-control form-control-sm mb-2" id="ngDeviceFilter" placeholder="輸入設備編號、教室搜尋" autocomplete="off">
@@ -146,12 +146,18 @@
         }
         sync();
 
-        // 執行時間不能晚於現在（和後端一樣容許 5 分鐘誤差）：先在畫面上擋下，不用送出後才發現、附件又要重新選。
+        // 執行時間的選擇器不限制可選的日期，按「送出」時才檢查不能晚於現在（和後端一樣容許 5 分鐘誤差）：
+        // 先在畫面上擋下，不用送出後才發現、附件又要重新選。
         const executed = document.getElementById('executed_at');
-        if (executed) {
+        if (executed && executed.form) {
             const pad = (n) => String(n).padStart(2, '0');
-            const t = new Date(Date.now() + 5 * 60 * 1000);
-            executed.max = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + 'T' + pad(t.getHours()) + ':' + pad(t.getMinutes());
+            const checkExecuted = () => {
+                const t = new Date(Date.now() + 5 * 60 * 1000);
+                const latest = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + 'T' + pad(t.getHours()) + ':' + pad(t.getMinutes());
+                executed.setCustomValidity(executed.value && executed.value > latest ? '執行時間不能晚於現在的時間。' : '');
+            };
+            executed.addEventListener('input', () => executed.setCustomValidity(''));
+            executed.form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((btn) => btn.addEventListener('click', checkExecuted));
         }
     })();
     </script>
