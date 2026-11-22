@@ -82,12 +82,12 @@ class RepairCostAnalysisExportTest extends TestCase
         $export = new RepairCostAnalysisExport($data);
         $sheets = $export->sheets();
 
-        // 預設「報廢損失：一起顯示」，多一張報廢明細；選「不顯示」時只有原本三張。
-        $this->assertCount(4, $sheets);
-        $this->assertCount(3, (new RepairCostAnalysisExport(app(RepairCostAnalysisService::class)->generate($user, ['scraps' => 'exclude'])))->sheets());
+        // 預設「報廢損失：一起顯示」，多一張報廢明細；選「不顯示」時少一張。另有保養用料明細與進貨明細。
+        $this->assertCount(6, $sheets);
+        $this->assertCount(5, (new RepairCostAnalysisExport(app(RepairCostAnalysisService::class)->generate($user, ['scraps' => 'exclude'])))->sheets());
 
         $this->assertSame(
-            ['成本總覽', '備品彙總', '用料明細', '報廢明細'],
+            ['成本總覽', '備品彙總', '用料明細', '保養用料明細', '報廢明細', '進貨明細'],
             array_map(
                 fn ($sheet) => $sheet->title(),
                 $sheets
@@ -103,7 +103,7 @@ class RepairCostAnalysisExportTest extends TestCase
         $summaryRows = $sheets[0]->array();
 
         $this->assertSame(
-            ['已知材料費小計', 300.0, '只計算有歷史單價的用料明細'],
+            ['已知材料費小計', 300.0, '維修用料＋保養用料；只計算有歷史單價的用料明細（維修 300、保養 0）'],
             $summaryRows[0]
         );
         $this->assertSame(1, $summaryRows[1][1]);

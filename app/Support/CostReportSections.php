@@ -4,13 +4,15 @@ namespace App\Support;
 
 use App\Enums\RepairRequestStatus;
 use App\Exports\RepairCostDetailsSheet;
+use App\Exports\RepairCostMaintenanceSheet;
 use App\Exports\RepairCostPartsSheet;
+use App\Exports\RepairCostPurchasesSheet;
 use App\Exports\RepairCostScrapsSheet;
 use App\Exports\RepairCostSummarySheet;
 
 /**
  * 成本分析報表「匯出 Excel／PDF」的各區塊與欄位。
- * 資料直接沿用原本完整匯出的四張工作表（RepairCost*Sheet），所以預覽視窗、只匯出勾選欄位的 Excel、PDF 三邊數字一致。
+ * 資料直接沿用完整匯出的各張工作表（RepairCost*Sheet），所以預覽視窗、只匯出勾選欄位的 Excel、PDF 三邊數字一致。
  */
 class CostReportSections
 {
@@ -19,7 +21,9 @@ class CostReportSections
         'summary' => ['成本總覽', RepairCostSummarySheet::class, [1]],
         'parts' => ['備品使用彙總', RepairCostPartsSheet::class, [1, 2, 3]],
         'details' => ['材料費明細', RepairCostDetailsSheet::class, [1, 2, 8, 9, 10]],
+        'maintenance' => ['保養用料明細', RepairCostMaintenanceSheet::class, [5, 6, 7]],
         'scraps' => ['報廢明細', RepairCostScrapsSheet::class, [4, 6]],
+        'purchases' => ['進貨明細', RepairCostPurchasesSheet::class, [4, 6, 7]],
     ];
 
     /**

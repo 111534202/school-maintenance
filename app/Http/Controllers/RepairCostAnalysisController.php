@@ -36,6 +36,7 @@ class RepairCostAnalysisController extends Controller
 
         // 「匯出 Excel／PDF」預覽視窗：各區塊的欄位與資料（跟匯出的內容相同）。
         $data['exportSections'] = CostReportSections::build($data);
+        $data['period'] = $filters['period'] ?? '';
 
         return view('repair-cost-analysis.index', $data);
     }
@@ -103,7 +104,7 @@ class RepairCostAnalysisController extends Controller
     {
         $request->validate([
             'sections' => ['required', 'array', 'min:1'],
-            'sections.*' => ['string', 'in:summary,parts,details,scraps'],
+            'sections.*' => ['string', 'in:summary,parts,details,maintenance,scraps,purchases'],
             'cols' => ['nullable', 'array'],
         ], [
             'sections.required' => '請至少勾選一個要匯出的區塊。',
@@ -134,9 +135,20 @@ class RepairCostAnalysisController extends Controller
                 'nullable',
                 'in:pending,assigned,in_progress,pending_review,completed,aborted',
             ],
+            // 期間：week＝當周（週一到週日）、month＝當月；空白＝全部。畫面上的日期欄位先隱藏，改用這個快捷選項。
+            'period' => ['nullable', 'in:week,month'],
             // 報廢損失：include＝一起顯示（預設）、exclude＝不顯示。
             'scraps' => ['nullable', 'in:include,exclude'],
         ]);
+
+        // 選了「當周／當月」就以今天算出起訖日（網址上自己帶 start_date／end_date 仍然有效，只是畫面不再提供）。
+        if (($filters['period'] ?? null) === 'week') {
+            $filters['start_date'] = now()->startOfWeek()->toDateString();
+            $filters['end_date'] = now()->endOfWeek()->toDateString();
+        } elseif (($filters['period'] ?? null) === 'month') {
+            $filters['start_date'] = now()->startOfMonth()->toDateString();
+            $filters['end_date'] = now()->endOfMonth()->toDateString();
+        }
 
         $startDate = $filters['start_date'] ?? null;
         $endDate = $filters['end_date'] ?? null;

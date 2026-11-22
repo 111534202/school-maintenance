@@ -246,7 +246,8 @@ class RepairCostAnalysisTest extends TestCase
 
         $response->assertOk()
             ->assertSee('本人案件的備品')
-            ->assertDontSee('其他案件的備品')
+            // 用料明細沒有別人的案件（零件本身的進貨紀錄跟案件無關，會出現在進貨明細，所以不用整頁找字串）
+            ->assertViewHas('partUsages', fn ($usages) => $usages->pluck('part.name')->doesntContain('其他案件的備品'))
             ->assertViewHas('knownSubtotal', 100);
     }
 
@@ -362,7 +363,7 @@ class RepairCostAnalysisTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('已完成案件備品')
-            ->assertDontSee('待處理案件備品')
+            ->assertViewHas('partUsages', fn ($usages) => $usages->pluck('part.name')->doesntContain('待處理案件備品'))   // 進貨明細不受案件狀態影響，所以不用整頁找字串
             ->assertViewHas('knownSubtotal', 300);
     }
 

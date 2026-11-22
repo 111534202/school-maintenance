@@ -17,8 +17,10 @@ class RepairCostAnalysisExport implements Export, WithMultipleSheets
             new RepairCostSummarySheet($this->data),
             new RepairCostPartsSheet($this->data),
             new RepairCostDetailsSheet($this->data),
+            new RepairCostMaintenanceSheet($this->data),
             // 篩選「顯示報廢損失」時多一張報廢明細。
             ($this->data['includeScraps'] ?? false) ? new RepairCostScrapsSheet($this->data) : null,
+            new RepairCostPurchasesSheet($this->data),
         ]);
     }
 }

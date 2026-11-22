@@ -63,7 +63,6 @@
         }
 
         .summary td {
-            width: 33.33%;
             border: 1px solid #ccc;
             padding: 8px;
             vertical-align: top;
@@ -189,6 +188,12 @@
                     </div>
                 </td>
             @endif
+            <td>
+                <div class="metric-label">進貨成本（含期初庫存）</div>
+                <div class="metric-value">
+                    NT$ {{ number_format($purchaseTotal, 2) }}
+                </div>
+            </td>
             <td>
                 <div class="metric-label">涉及維修案件數</div>
                 <div class="metric-value">
@@ -318,8 +323,48 @@
         </tbody>
     </table>
 
+    <h2>三、保養用料明細（共 {{ number_format($maintenanceUsages->count()) }} 筆，材料費 NT$ {{ number_format($maintenanceSubtotal, 2) }}）</h2>
+
+    <table class="data">
+        <thead>
+            <tr>
+                <th>保養日期</th>
+                <th>保養工單</th>
+                <th>設備</th>
+                <th>教室／地點</th>
+                <th>備品名稱</th>
+                <th>數量</th>
+                <th>歷史單價</th>
+                <th>材料費小計</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($maintenanceUsages as $usage)
+                @php
+                    $order = $usage->maintenanceResult?->maintenanceOrder;
+                    $device = $order?->device;
+                    $classroom = $device?->classroom;
+                @endphp
+                <tr>
+                    <td>{{ $usage->maintenanceResult?->executed_at?->format('Y-m-d') ?? '—' }}</td>
+                    <td>{{ $order?->displayNumber() ?? '—' }}</td>
+                    <td>{{ $device ? ($device->device_code ?: $device->asset_code ?: '設備資料') : '未指定設備' }}</td>
+                    <td>{{ $classroom ? trim(($classroom->classroom_code ?? '') . ' ' . ($classroom->name ?? '')) : '未指定地點' }}</td>
+                    <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
+                    <td class="number">{{ number_format((int) $usage->quantity) }} {{ $usage->part?->unit }}</td>
+                    <td class="number">{{ $usage->unit_price === null ? '缺少單價' : number_format((float) $usage->unit_price, 2) }}</td>
+                    <td class="number">{{ $usage->unit_price === null ? '缺少單價' : number_format((float) ($usage->quantity * $usage->unit_price), 2) }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="no-data">此篩選條件下沒有保養用料。</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
     @if ($includeScraps)
-        <h2>三、報廢明細（共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss, 2) }}）</h2>
+        <h2>四、報廢明細（共 {{ number_format($scrapCount) }} 筆，損失 NT$ {{ number_format($scrapLoss, 2) }}）</h2>
 
         <table class="data">
             <thead>
@@ -352,6 +397,39 @@
             </tbody>
         </table>
     @endif
+
+    <h2>{{ $includeScraps ? '五' : '四' }}、進貨明細（共 {{ number_format($purchaseCount) }} 批，進貨金額 NT$ {{ number_format($purchaseTotal, 2) }}，其中期初庫存 NT$ {{ number_format($purchaseOpeningTotal, 2) }}）</h2>
+
+    <table class="data">
+        <thead>
+            <tr>
+                <th>進貨日期</th>
+                <th>零件名稱</th>
+                <th>廠商</th>
+                <th>數量</th>
+                <th>單價</th>
+                <th>進貨金額</th>
+                <th>備註</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($purchases as $purchase)
+                <tr>
+                    <td>{{ $purchase->purchase_date->format('Y-m-d') }}</td>
+                    <td>{{ $purchase->part?->name ?? '零件資料不存在' }}{{ $purchase->part?->specification ? '（' . $purchase->part->specification . '）' : '' }}</td>
+                    <td>{{ $purchase->vendor_name ?? '—' }}</td>
+                    <td class="number">{{ number_format($purchase->quantity) }} {{ $purchase->part?->unit }}</td>
+                    <td class="number">{{ number_format((float) $purchase->unit_price, 2) }}</td>
+                    <td class="number">{{ number_format((float) $purchase->totalPrice(), 2) }}</td>
+                    <td>{{ $purchase->note ?? '—' }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" class="no-data">此日期範圍內沒有進貨紀錄。</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
 
     <div class="footer">
         維修材料成本分析報表｜第 <span class="page-number"></span>

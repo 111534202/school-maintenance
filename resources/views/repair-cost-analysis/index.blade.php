@@ -12,16 +12,17 @@
     </div>
 
     {{-- 篩選：直接顯示在頁面上（data-no-onion：不收成右邊滑出的「篩選條件」面板）；寬度不夠時自動換行，不用左右滑動。
-         兩個日期都不填時，檢視全部日期。 --}}
+         期間選「全部」時，檢視全部日期。 --}}
     <div class="tb-card tb-card-pad">
     <form method="GET" action="{{ route('repair-cost-analysis.index') }}" class="filter-bar tb-form-row tb-filter cost-filter" data-no-onion>
+        {{-- 期間：先只提供全部／當月／當周；自選起訖日的欄位暫時隱藏（後端仍接受 start_date、end_date，之後要開再加回來）。 --}}
         <div class="tb-field">
-            <label for="start_date" class="form-label small mb-1">開始日期</label>
-            <input type="date" id="start_date" name="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
-        </div>
-        <div class="tb-field">
-            <label for="end_date" class="form-label small mb-1">結束日期</label>
-            <input type="date" id="end_date" name="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}">
+            <label for="period" class="form-label small mb-1">期間</label>
+            <select id="period" name="period" class="form-select form-select-sm">
+                <option value="" @selected(($period ?? '') === '')>全部</option>
+                <option value="month" @selected(($period ?? '') === 'month')>當月</option>
+                <option value="week" @selected(($period ?? '') === 'week')>當周</option>
+            </select>
         </div>
         <div class="tb-field">
             <label for="status" class="form-label small mb-1">案件狀態</label>
@@ -44,16 +45,17 @@
                 <option value="exclude" @selected(! $includeScraps)>不顯示</option>
             </select>
         </div>
-        @include('layouts.partials.filter-actions', ['reset' => route('repair-cost-analysis.index'), 'fields' => ['start_date', 'end_date', 'status', 'scraps']])
+        @include('layouts.partials.filter-actions', ['reset' => route('repair-cost-analysis.index'), 'fields' => ['period', 'status', 'scraps']])
     </form>
     </div>
 
     {{-- 成本摘要：缺少單價時，只呈現已知成本，不把缺價當成零元。 --}}
-    <div class="tb-card tb-stat-band {{ $includeScraps ? 'tb-stat-band-4' : '' }}">
+    <div class="tb-card tb-stat-band {{ $includeScraps ? 'cost-band-5' : 'tb-stat-band-4' }}">
         <div>
             <div class="tb-stat-label">已知材料費小計</div>
             <div class="tb-stat-value tb-c-accent tb-num">NT$ {{ number_format($knownSubtotal) }}</div>
-            <div class="tb-stat-note">依零件使用當下的歷史單價計算。</div>
+            {{-- 材料費＝維修用料＋保養用料；選了案件狀態（報修單的條件）就只看維修用料。 --}}
+            <div class="tb-stat-note">依零件使用當下的歷史單價計算；維修用料 NT$ {{ number_format($repairSubtotal) }}＋保養用料 NT$ {{ number_format($maintenanceSubtotal) }}。@if ($status !== null && $status !== '')選了案件狀態時不含保養用料。@endif</div>
         </div>
         <div>
             <div class="tb-stat-label">缺少單價的明細數</div>
@@ -71,12 +73,58 @@
                 <div class="tb-stat-note">共 {{ number_format($scrapCount) }} 筆報廢；材料費＋報廢損失 NT$ {{ number_format($totalCost) }}。</div>
             </div>
         @endif
+        {{-- 進貨成本：買進零件花的錢（依進貨日期；含新增零件時填的期初庫存），是「買進來」不是「用掉了」，所以不併入材料費合計。明細在下方「進貨成本」區塊。 --}}
+        <div>
+            <div class="tb-stat-label">進貨成本</div>
+            <div class="tb-stat-value tb-num">NT$ {{ number_format($purchaseTotal) }}</div>
+            <div class="tb-stat-note">共 {{ number_format($purchaseCount) }} 批，其中期初庫存 NT$ {{ number_format($purchaseOpeningTotal) }}；不併入材料費。</div>
+        </div>
         <div>
             <div class="tb-stat-label">涉及維修案件數</div>
             <div class="tb-stat-value tb-num">{{ number_format($repairRequestCount) }} 件</div>
             <div class="tb-stat-note">同一案件即使有多筆維修紀錄，也只計算一次。</div>
         </div>
     </div>
+
+    {{-- 進貨成本：期間內買進零件花的錢（依進貨日期；含新增零件時填的期初庫存）。進貨是「買進來」、材料費是「用掉了」，所以不併入上面的材料費合計。 --}}
+    <section class="tb-table-wrap" aria-labelledby="purchaseTitle">
+        <div class="tb-section-head" data-onion-header>
+            <div class="d-flex flex-wrap align-items-baseline gap-2">
+                <h2 id="purchaseTitle" class="tb-section-title">進貨成本</h2>
+                <span class="tb-note">共 {{ number_format($purchaseCount) }} 批，進貨金額 NT$ {{ number_format($purchaseTotal) }}（其中期初庫存 NT$ {{ number_format($purchaseOpeningTotal) }}）{{ $purchases->isEmpty() ? '；此日期範圍內沒有進貨紀錄。' : '' }}</span>
+            </div>
+        </div>
+        @if ($purchases->isNotEmpty())
+            <div class="table-responsive">
+                <table class="tb-table tb-table-hover cost-table" style="font-size: 0.9rem" data-onion-panel-title="進貨明細" data-onion-list-only>
+                    <thead>
+                        <tr>
+                            <th class="cost-col-first">進貨日期</th>
+                            <th>零件名稱</th>
+                            <th>廠商</th>
+                            <th class="text-end">數量</th>
+                            <th class="text-end">單價</th>
+                            <th class="text-end">進貨金額</th>
+                            <th>備註</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($purchases as $purchase)
+                            <tr @if ($purchase->part) data-href="{{ route('parts.show', $purchase->part) }}" @endif>
+                                <td class="tb-num text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
+                                <td>{{ $purchase->part?->name ?? '零件資料不存在' }}{{ $purchase->part?->specification ? '（' . $purchase->part->specification . '）' : '' }}</td>
+                                <td>{{ $purchase->vendor_name ?? '—' }}</td>
+                                <td class="text-end text-nowrap">{{ number_format($purchase->quantity) }} {{ $purchase->part?->unit }}</td>
+                                <td class="text-end text-nowrap">NT$ {{ number_format($purchase->unit_price) }}</td>
+                                <td class="text-end text-nowrap"><span class="fw-bold">NT$ {{ number_format($purchase->totalPrice()) }}</span></td>
+                                <td>{{ $purchase->note ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
 
     {{-- 備品使用彙總：依備品分組，以橫條比較各備品的已知材料費；缺價明細仍納入使用數量。 --}}
     <section class="tb-card tb-card-pad d-flex flex-column gap-3" aria-labelledby="summaryTitle">
@@ -202,6 +250,65 @@
             @endif
     </section>
 
+    {{-- 保養用料明細：保養時用掉的零件，單價是扣料當下那一批的進貨單價；選了案件狀態（報修單的條件）時不列。 --}}
+    <section class="tb-table-wrap" aria-labelledby="maintenanceTitle">
+        <div class="tb-section-head" data-onion-header>
+            <div class="d-flex flex-wrap align-items-baseline gap-2">
+                <h2 id="maintenanceTitle" class="tb-section-title">保養用料明細</h2>
+                <span class="tb-note">共 {{ number_format($maintenanceUsages->count()) }} 筆，材料費 NT$ {{ number_format($maintenanceSubtotal) }}{{ $maintenanceUsages->isEmpty() ? '；此篩選範圍內沒有保養用料紀錄。' : '' }}</span>
+            </div>
+        </div>
+        @if ($maintenanceUsages->isNotEmpty())
+            <div class="table-responsive">
+                <table class="tb-table tb-table-hover cost-table" style="font-size: 0.9rem" data-onion-panel-title="保養用料明細" data-onion-list-only>
+                    <thead>
+                        <tr>
+                            <th class="cost-col-first">保養日期</th>
+                            <th>保養工單</th>
+                            <th>設備</th>
+                            <th>教室／地點</th>
+                            <th>零件名稱</th>
+                            <th class="text-end">數量</th>
+                            <th class="text-end">歷史單價</th>
+                            <th class="text-end">小計</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($maintenanceUsages as $usage)
+                            @php
+                                $order = $usage->maintenanceResult?->maintenanceOrder;
+                                $device = $order?->device;
+                                $classroom = $device?->classroom;
+                            @endphp
+                            <tr @if ($order) data-href="{{ route('maintenance-orders.show', $order) }}" @endif>
+                                <td class="tb-num text-nowrap">{{ $usage->maintenanceResult?->executed_at?->format('Y-m-d') ?? '—' }}</td>
+                                <td>{{ $order?->displayNumber() ?? '工單資料不存在' }}</td>
+                                <td>{{ $device ? ($device->device_code ?: $device->asset_code ?: '設備未編碼') : '未關聯設備' }}</td>
+                                <td>{{ $classroom ? trim(($classroom->name ?? '') . ' ' . ($classroom->classroom_code ?? '')) : '未記錄地點' }}</td>
+                                <td>{{ $usage->part?->name ?? '零件資料不存在' }}</td>
+                                <td class="text-end text-nowrap">{{ number_format($usage->quantity) }} {{ $usage->part?->unit }}</td>
+                                <td class="text-end">
+                                    @if ($usage->unit_price === null)
+                                        <span class="text-danger">缺少單價</span>
+                                    @else
+                                        NT$ {{ number_format($usage->unit_price) }}
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    @if ($usage->unit_price === null)
+                                        —
+                                    @else
+                                        <span class="fw-bold">NT$ {{ number_format($usage->quantity * $usage->unit_price) }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
+
     {{-- 報廢明細（篩選「報廢損失：一起顯示」時才有）：依報廢日期篩選；損失金額＝扣到的各批數量×那一批的單價。 --}}
     @if ($includeScraps)
         <section class="tb-table-wrap" aria-labelledby="scrapTitle">
@@ -259,7 +366,7 @@
     'modalTitle' => '匯出成本分析報表',
     'excelUrl' => route('repair-cost-analysis.export.excel'),
     'pdfUrl' => route('repair-cost-analysis.export.pdf'),
-    'hidden' => request()->only(['start_date', 'end_date', 'status', 'scraps']),
+    'hidden' => request()->only(['period', 'start_date', 'end_date', 'status', 'scraps']),
     'note' => '範圍跟著目前的篩選：' . ($startDate ?: '不限') . ' 至 ' . ($endDate ?: '不限') . '；勾選要匯出的區塊與欄位，取消勾選的欄位在預覽裡會隱藏。',
     'sections' => $exportSections,
 ])
@@ -271,6 +378,16 @@
     .tb .cost-table > tbody > tr > td:first-child { padding-left: 24px; }
     .tb .cost-table .cost-col-first { width: 9.5rem; min-width: 9.5rem; }
     .tb .cost-table > tbody > tr[data-href] { cursor: pointer; }
+</style>
+<style>
+    /* 成本卡片列：有「報廢損失」時共五格（共用樣式只有三格、四格）。寬螢幕一排五格，中等寬度排三格換行，手機沿用共用的單欄。 */
+    @media (min-width: 1200px) { .tb-stat-band.cost-band-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+    @media (min-width: 768px) and (max-width: 1199.98px) {
+        .tb-stat-band.cost-band-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .tb-stat-band.cost-band-5 > div:nth-child(3n + 1) { border-left: 0; }
+        .tb-stat-band.cost-band-5 > div:nth-child(n + 4) { border-top: 1px solid #EFEAE0; }
+    }
+    @media (max-width: 767.98px) { .tb-stat-band.cost-band-5 { grid-template-columns: minmax(0, 1fr); } }
 </style>
 <style>
     /* 篩選列的排版跟其他列表頁共用（tb-filter，見 public/css/theme-b.css）。 */
