@@ -156,12 +156,15 @@
                                 $impactBadge = ['low' => 'text-bg-success', 'medium' => 'text-bg-warning', 'high' => 'text-bg-danger'][$repairRequest->impact_level] ?? 'text-bg-secondary';
                             @endphp
                             {{-- 點這一列的任何地方都會在畫面中的對話框打開案件詳細（data-modal-frame-href，行為在共用版型）。 --}}
-                            <tr data-modal-frame-href="{{ route('repairs.show', $repairRequest) }}" data-modal-title="報修案件" data-modal-size="xl" tabindex="0" role="link">
+                            @php($repeatRepair = $repairRequest->device && ($repairRequest->device->recent_repairs_count ?? 0) >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
+                            {{-- 重複報修的設備：手機版清單不另外列「近30天報修N次」，改成標題用紅色粗體字（data-onion-alert）。 --}}
+                            <tr data-modal-frame-href="{{ route('repairs.show', $repairRequest) }}" data-modal-title="報修案件" data-modal-size="xl" tabindex="0" role="link"
+                                @if ($repeatRepair) data-onion-alert="{{ __('devices.repeat_repair_badge', ['count' => $repairRequest->device->recent_repairs_count]) }}" @endif>
                                 <td class="fw-semibold">
                                     {{ $repairRequest->title }}
                                     {{-- 重複報修提醒：這台設備近 30 天報修達到門檻次數，標題下面紅色粗體字；點了用關鍵字（設備編號）篩選看板；只有文字本身能點（不是整格），點標題旁邊的空白不會誤跳。 --}}
-                                    @if ($repairRequest->device && ($repairRequest->device->recent_repairs_count ?? 0) >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                        <div><a href="{{ route('repairs.index', ['keyword' => $repairRequest->device->device_code]) }}" class="small text-danger fw-bold text-decoration-none"
+                                    @if ($repeatRepair)
+                                        <div data-onion-skip><a href="{{ route('repairs.index', ['keyword' => $repairRequest->device->device_code]) }}" class="small text-danger fw-bold text-decoration-none"
                                             title="{{ __('devices.repeat_repair_hint') }}">{{ __('devices.repeat_repair_badge', ['count' => $repairRequest->device->recent_repairs_count]) }}</a></div>
                                     @endif
                                 </td>

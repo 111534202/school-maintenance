@@ -64,6 +64,15 @@ class UpdateRepairRequestRequest extends FormRequest
                 if (! $hasDevice && ! $hasNote && ! $hasClassroom) {
                     $validator->errors()->add('device_note', '請至少提供一項：填寫設備位置／描述，或選擇發現地點（這張報修單沒有綁定設備）。');
                 }
+
+                // 發現地點和設備登記的教室不同：這次有改發現地點、或這次才補上設備時，要勾確認才能儲存（原本就不同、這次沒動的不用再勾）。
+                $newDevice = $current?->device_id === null && $this->filled('device_id');
+                $device = $newDevice ? \App\Models\Device::find($this->integer('device_id')) : $current?->device;
+                $changedRoom = $hasClassroom && $this->integer('classroom_id') !== $current?->classroom_id;
+                if ($device?->classroom_id && $hasClassroom && $this->integer('classroom_id') !== $device->classroom_id
+                    && ($changedRoom || $newDevice) && ! $this->boolean('location_differs_confirmed')) {
+                    $validator->errors()->add('classroom_id', '發現地點和設備登記的教室不同，請勾選「確認發現地點與設備登記的教室不同」，或改回設備所在的教室。');
+                }
             },
         ];
     }

@@ -77,6 +77,19 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee('chart-repairStatus', false);
         $response->assertSee('chart-repairTrend', false);
     }
+
+    // 甜甜圈圖不畫「已中止」；折線圖點圖框外面跳到近 14 天新增的報修單。
+    public function test_status_chart_skips_aborted_and_trend_links_to_the_14_day_range(): void
+    {
+        $this->loginAsAnyUser();
+        $html = $this->get(route('dashboard'))->assertOk()->getContent();
+
+        preg_match('/var charts = (\{.*?\});\n/s', $html, $m);
+        $charts = json_decode($m[1], true);
+        $this->assertNotContains('已中止', $charts['repairStatus']['labels']);
+        $this->assertContains('已退回', $charts['repairStatus']['labels']);
+        $this->assertSame(route('repairs.index', ['created_from' => now()->subDays(13)->toDateString(), 'created_to' => now()->toDateString()]), $charts['repairTrend']['rangeUrl']);
+    }
         // 本月新增報修卡片只計算本月建立的報修單，不包含上個月的資料。
     public function test_dashboard_shows_the_correct_monthly_repair_count(): void
     {

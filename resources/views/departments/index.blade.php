@@ -53,9 +53,10 @@
                     <thead>
                         <tr>
                             <th>{{ __('departments.table.code') }}</th>
-                            <th>{{ __('departments.table.name') }}</th>
+                            <th data-onion-sub="{v}">{{ __('departments.table.name') }}</th>
                             <th>{{ __('departments.table.description') }}</th>
-                            <th class="text-center">{{ __('departments.table.users') }}</th>
+                            {{-- 手機版清單的副標題：部門名稱 · 用戶數（不放備註）。 --}}
+                            <th class="text-center" data-onion-sub="用戶數：{v}">{{ __('departments.table.users') }}</th>
                             <th class="text-center">{{ __('departments.table.classrooms') }}</th>
                             <th class="text-center">{{ __('departments.table.status') }}</th>
                             <th class="text-end tb-col-fit">{{ __('departments.table.actions') }}</th>

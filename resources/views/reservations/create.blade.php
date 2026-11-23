@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function () {
         optionsList.querySelectorAll('button[data-id]')
     );
 
-    // 教室目前在等待維修的設備：{ 教室編號: [{ text }] }。只是提醒，不擋送出。
+    // 教室目前在等待維修的設備：{ 教室編號: [{ text, full? }] }（full＝描述太長時的完整文字）。只是提醒，不擋送出。
     const repairNotices = @json((object) $repairNotices);
     const repairNotice = document.getElementById('classroom_repair_notice');
 
@@ -486,6 +486,16 @@ document.addEventListener('DOMContentLoaded', function () {
         items.forEach(function (item) {
             const li = document.createElement('li');
             li.textContent = item.text;
+            // 設備位置／描述太長只顯示前 10 個字，點一下顯示完整、再點收回。
+            if (item.full) {
+                li.setAttribute('role', 'button');
+                li.tabIndex = 0;
+                li.title = '點一下顯示完整內容';
+                li.style.cursor = 'pointer';
+                const toggle = function () { li.textContent = li.textContent === item.full ? item.text : item.full; };
+                li.addEventListener('click', toggle);
+                li.addEventListener('keydown', function (event) { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); } });
+            }
             list.appendChild(li);
         });
         repairNotice.appendChild(list);

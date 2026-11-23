@@ -91,11 +91,38 @@ class ReservationRepairNoticeTest extends TestCase
 
     public function test_repair_without_device_but_with_classroom_is_listed(): void
     {
-        RepairRequest::factory()->create(['device_id' => null, 'classroom_id' => $this->classroom->id, 'title' => '冷氣不冷', 'status' => 'pending']);
+        RepairRequest::factory()->create(['device_id' => null, 'device_note' => null, 'classroom_id' => $this->classroom->id, 'title' => '冷氣不冷', 'status' => 'pending']);
 
         $notices = ClassroomRepairNotices::for([$this->classroom->id]);
 
         $this->assertSame('報修案件「冷氣不冷」正在等待維修', $notices[$this->classroom->id][0]['text']);
+    }
+
+    // 沒有設備、有填「設備位置／描述」：顯示描述前 10 個字，超過的用「…」，完整內容放在 full（點了才顯示）；免登入的課表不顯示描述。
+    public function test_repair_without_device_shows_the_first_ten_characters_of_the_note(): void
+    {
+        RepairRequest::factory()->create(['device_id' => null, 'device_note' => '講台旁邊的延長線插座沒有電', 'classroom_id' => $this->classroom->id, 'status' => 'pending']);
+        RepairRequest::factory()->create(['device_id' => null, 'device_note' => '後門門鎖', 'classroom_id' => $this->classroom->id, 'status' => 'pending']);
+
+        $notices = ClassroomRepairNotices::for([$this->classroom->id])[$this->classroom->id];
+        $this->assertSame('「講台旁邊的延長線插座…」正在等待維修', $notices[0]['text']);
+        $this->assertSame('「講台旁邊的延長線插座沒有電」正在等待維修', $notices[0]['full']);
+        $this->assertSame(['text' => '「後門門鎖」正在等待維修'], $notices[1]);
+
+        $guest = ClassroomRepairNotices::for([$this->classroom->id], withTitles: false, withNotes: false)[$this->classroom->id];
+        $this->assertSame([['text' => '有報修案件正在等待維修']], $guest);
+    }
+
+    // 發現地點和設備所在的教室不同：提醒算在發現地點那間，設備所在的教室不提醒（一張報修只算一間教室）。
+    public function test_a_repair_counts_in_its_reported_location_only(): void
+    {
+        $other = \App\Models\Classroom::create(['classroom_code' => 'OTHER-1', 'campus' => '本', 'building' => 'O', 'floor' => '1', 'name' => '別的教室', 'is_active' => true]);
+        $projector = $this->makeDevice($this->classroom, 'DEV-LOC', '投影機');
+        RepairRequest::factory()->create(['device_id' => $projector->id, 'classroom_id' => $other->id, 'status' => 'pending']);
+
+        $notices = ClassroomRepairNotices::for([$this->classroom->id, $other->id]);
+        $this->assertArrayNotHasKey($this->classroom->id, $notices);
+        $this->assertSame('投影機正在等待維修', $notices[$other->id][0]['text']);
     }
 
     public function test_dropdown_has_no_hint_and_a_repair_still_allows_booking(): void

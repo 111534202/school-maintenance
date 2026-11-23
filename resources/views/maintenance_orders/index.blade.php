@@ -38,16 +38,6 @@
             </select>
         </div>
         <div>
-            <label for="assignee" class="form-label small mb-1">負責人</label>
-            <select name="assignee" id="assignee" class="form-select form-select-sm">
-                <option value="">全部</option>
-                <option value="none" @selected(request('assignee') === 'none')>還沒指派</option>
-                @foreach ($assignees as $assignee)
-                    <option value="{{ $assignee->id }}" @selected((string) request('assignee') === (string) $assignee->id)>{{ $assignee->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div>
             <label for="source" class="form-label small mb-1">來源</label>
             <select name="source" id="source" class="form-select form-select-sm">
                 <option value="">全部</option>
@@ -63,19 +53,23 @@
             <label for="to" class="form-label small mb-1">排定日期（迄）</label>
             <input type="date" name="to" id="to" class="form-control form-control-sm" value="{{ request('to') }}">
         </div>
-        {{-- 從通知鈴鐺連過來的「只看我負責的」「只看還沒完成的」，按「篩選」時要一併帶著，不然一篩選就被洗掉。 --}}
+        {{-- 從通知鈴鐺連過來的「只看我負責的」「只看還沒完成的」「還沒指派負責人」，按「篩選」時要一併帶著，不然一篩選就被洗掉。
+             （負責人不另外放下拉選單：要找某位負責人的工單，在關鍵字輸入姓名。） --}}
         @foreach (['mine', 'unfinished'] as $carry)
             @if (request()->boolean($carry))
                 <input type="hidden" name="{{ $carry }}" value="1">
             @endif
         @endforeach
+        @if (request()->filled('assignee'))
+            <input type="hidden" name="assignee" value="{{ request('assignee') }}">
+        @endif
         @include('layouts.partials.filter-actions', ['reset' => route('maintenance-orders.index'), 'fields' => ['keyword', 'status', 'due', 'assignee', 'mine', 'unfinished', 'source', 'from', 'to']])
     </form>
     </div>
 
     {{-- 目前套用的進階篩選說明（一行一項，附清除連結）。 --}}
-    @foreach (['mine' => '只顯示指派給我的保養工單', 'unfinished' => '只顯示還沒完成（待處理、進行中）的保養工單'] as $param => $text)
-        @if (request()->boolean($param))
+    @foreach (['mine' => '只顯示指派給我的保養工單', 'unfinished' => '只顯示還沒完成（待處理、進行中）的保養工單', 'assignee' => '只顯示還沒指派負責人的保養工單'] as $param => $text)
+        @if ($param === 'assignee' ? request('assignee') === 'none' : request()->boolean($param))
             <div class="text-muted small d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                 <span><i class="bi bi-funnel me-2"></i>{{ $text }}</span>
                 <a class="btn btn-sm btn-outline-secondary" href="{{ route('maintenance-orders.index', request()->except([$param, 'page'])) }}"><i class="bi bi-x-lg me-1"></i>{{ __('common.buttons.clear_filter') }}</a>

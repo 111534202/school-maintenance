@@ -222,11 +222,12 @@ body.tb-body {
 .tb-header > div:not(:first-child) { display: flex; flex-wrap: nowrap; justify-content: flex-end; }
 @media (max-width: 575.98px) {
     .tb-header { gap: 8px; }
-    .tb-header .tb-title { font-size: 1.35rem; line-height: 1.3; }
+    /* 標題大小和對話框標題（例如「設備詳細」）一樣維持 2rem，手機也不縮小；太長時標題自己換行。 */
+    .tb-header .tb-title { line-height: 1.25; }
     .tb .tb-header .tb-btn { min-height: 36px; padding: 0 12px; gap: 5px; font-size: .875rem; }
     .tb-header > div:not(:first-child) { gap: 6px !important; }
 }
-.tb-title { margin: 0; font-family: var(--tb-font-heading); font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }
+.tb-title { margin: 0; font-family: var(--tb-font-heading); font-size: 2rem; font-weight: 700; letter-spacing: 0.02em; }   /* 和對話框標題同樣大小，各種畫面寬度都一樣 */
 .tb-subtitle { margin: 6px 0 0; color: var(--tb-muted); font-size: 1rem; line-height: 1.7; }
 .tb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 
@@ -505,7 +506,6 @@ tr[data-modal-frame-href] { cursor: pointer; }
 
 /* 手機寬度：統計卡改成單欄、橫條圖每列換行。 */
 @media (max-width: 767.98px) {
-    .tb-title { font-size: 1.6rem; }
     .tb-stat-band, .tb-stat-band.tb-stat-band-4 { grid-template-columns: minmax(0, 1fr); }
     /* 統計卡在手機上仍排成一列三格，只縮小字與留白，避免佔掉整個畫面。 */
     .tb-stats { gap: 8px; }
@@ -770,6 +770,8 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 
 /* 詳細頁的名稱／內容清單：每一列的高度跟狀態標籤（正常、庫存充足…）一樣（26px），有標籤的那一列不會比較高。 */
 .tb-body .app-content dl.row > dt, .tb-body .app-content dl.row > dd { line-height: 26px; }
+/* 名稱／內容清單裡橫跨整列的一行（例如報修詳細的「近30天報修N次」提示）：手機改成兩欄格線時也佔滿一整列，不會擠在左欄換行。 */
+.tb-body .app-content dl.row > .tb-dl-full { grid-column: 1 / -1; }
 .tb-body .app-content dl.row > dd > .badge { vertical-align: top; }
 /* 表格裡有文字的小按鈕（查看履歷、回報結果、核准建單、駁回…）：高度跟同一列的狀態標籤一樣（26px），圓角膠囊。 */
 .tb-body .tb-table td .btn-sm:not(.icon-btn), .tb-body .tb-table td .tb-btn-sm { min-height: 0; padding: 3px 12px; font-size: .8125rem; line-height: 1.4; border-radius: 999px; }
@@ -899,4 +901,11 @@ body.tb-body.tb-embedded { background: var(--tb-surface); }
 @media (max-width: 767.98px) {
     .tb-header .tb-label-long { display: none; }
     .tb-header .tb-label-short { display: inline; }
+}
+
+/* 頂端列的下拉清單（通知鈴鐺、手機版的用戶資訊）：手機寬度時改成貼齊畫面左右兩邊、從按鈕下方展開，
+   不會因為清單比較寬就跑出畫面左邊；文字太長自動換行。 */
+@media (max-width: 575.98px) {
+    .tb-header-menu.dropdown-menu { position: fixed !important; left: 8px !important; right: 8px !important; top: auto !important; min-width: 0 !important; max-height: 70vh; overflow-y: auto; margin-top: 6px !important; }
+    .tb-header-menu .dropdown-item { white-space: normal; }
 }

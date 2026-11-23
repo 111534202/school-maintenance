@@ -87,7 +87,14 @@
             <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>教室設備報修中</div>
             <ul class="mb-0 ps-3">
                 @foreach ($repairNotices as $notice)
-                    <li>{{ $notice['text'] }}</li>
+                    @if (! empty($notice['full']))
+                        {{-- 設備位置／描述太長只顯示前 10 個字，點一下顯示完整、再點收回。 --}}
+                        <li role="button" tabindex="0" style="cursor: pointer;" title="點一下顯示完整內容" data-repair-note-short="{{ $notice['text'] }}" data-repair-note-full="{{ $notice['full'] }}"
+                            onclick="this.textContent = this.textContent === this.dataset.repairNoteFull ? this.dataset.repairNoteShort : this.dataset.repairNoteFull"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">{{ $notice['text'] }}</li>
+                    @else
+                        <li>{{ $notice['text'] }}</li>
+                    @endif
                 @endforeach
             </ul>
         </div>

@@ -85,7 +85,7 @@
                     </div>
                     <div class="col-md-5 position-relative">
                         {{-- 發現地點：跟新增報修一樣，可以輸入教室名稱、代碼搜尋，也可以點開清單直接選。 --}}
-                        @include('repairs._classroom-picker', ['selectedId' => old('classroom_id', $repairRequest->classroom_id), 'label' => __('repair_requests.create.location_label')])
+                        @include('repairs._classroom-picker', ['selectedId' => old('classroom_id', $repairRequest->classroom_id), 'label' => __('repair_requests.create.location_label'), 'deviceClassroom' => $repairRequest->device?->classroom, 'originalClassroomId' => $repairRequest->classroom_id])
                     </div>
                 </div>
             </div>

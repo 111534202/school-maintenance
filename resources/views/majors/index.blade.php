@@ -48,9 +48,10 @@
                         <tr>
                             <th>{{ __('majors.table.code') }}</th>
                             <th>{{ __('majors.table.name') }}</th>
-                            <th class="text-center">{{ __('majors.table.abbreviation') }}</th>
-                            <th class="text-center">{{ __('majors.table.grades') }}</th>
-                            <th class="text-center">{{ __('majors.table.classes') }}</th>
+                            {{-- 手機版清單的副標題：簡稱 · 年級數 · 班級數（每年級幾班）。 --}}
+                            <th class="text-center" data-onion-sub="{v}">{{ __('majors.table.abbreviation') }}</th>
+                            <th class="text-center" data-onion-sub="年級數：{v}">{{ __('majors.table.grades') }}</th>
+                            <th class="text-center" data-onion-sub="班級數：{v}">{{ __('majors.table.classes') }}</th>
                             <th>{{ __('majors.table.example') }}</th>
                             <th class="text-center">{{ __('majors.table.reservations') }}</th>
                             <th class="text-center">{{ __('majors.table.status') }}</th>

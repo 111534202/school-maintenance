@@ -58,7 +58,9 @@ class RepairBoardTweaksTest extends TestCase
 
         $html = $this->get(route('repairs.index'))->assertOk()->getContent();
         $link = htmlspecialchars(route('repairs.index', ['keyword' => 'DEV-REP']));
-        $this->assertStringContainsString('<div><a href="' . $link . '" class="small text-danger fw-bold text-decoration-none"', $html);
+        $this->assertStringContainsString('<div data-onion-skip><a href="' . $link . '" class="small text-danger fw-bold text-decoration-none"', $html);
+        // 手機版清單：不另外列提醒，改成標題紅色粗體字（data-onion-alert）
+        $this->assertStringContainsString('data-onion-alert="近30天報修2次"', $html);
         $this->assertStringContainsString('近30天報修2次</a>', $html);
         $this->assertStringNotContainsString('bi-arrow-repeat', $html);
         $this->assertStringContainsString('設備／發現地點', $html);

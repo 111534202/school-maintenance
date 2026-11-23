@@ -121,10 +121,12 @@ class DeviceController extends Controller
     }
 
     /** 檢視單一設備（GET /devices/{device}）；Device $device 由網址上的編號自動帶入。 */
-    public function show(Device $device)
+    public function show(Request $request, Device $device)
     {
         // load：補查關聯資料（類別、教室，以及教室所屬的部門）。
         $device->load(['category', 'classroom.department']);
+        // 進行中的報修單數：和設備主檔列表的「進行中」同一個算法（未結案、這位用戶在看板上看得到的）。
+        $device->open_repairs_count = $device->repairRequests()->visibleOnBoard($request->user())->open()->count();
 
         return view('devices.show', compact('device'));
     }

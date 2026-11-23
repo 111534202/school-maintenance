@@ -81,7 +81,8 @@
             <div class="card-body text-muted small">這次保養沒有使用零件。</div>
         @else
             <div class="table-responsive">
-                <table class="tb-table align-middle mb-0">
+                {{-- 手機版清單點一筆時，對話框標題是「使用零件」（不是零件編號）。 --}}
+                <table class="tb-table align-middle mb-0" data-onion-panel-title="使用零件">
                     <thead>
                         <tr><th>零件編號</th><th>零件</th><th class="text-end">數量</th>@if ($canSeePrice)<th class="text-end">單價</th><th class="text-end">小計</th>@endif</tr>
                     </thead>

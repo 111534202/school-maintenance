@@ -521,7 +521,8 @@ class PartProfileAndStockTest extends TestCase
         $withStock = $this->makePart();
         $this->buy($withStock, '2026-10-10', 2, 20);
         $this->assertStringContainsString('目前還有庫存', (string) $withStock->fresh()->deletionBlocker());
-        $this->get(route('parts.show', $withStock))->assertOk()->assertSee('不能刪除：目前還有庫存')->assertDontSee('action="' . route('parts.destroy', $withStock) . '"', false);
+        // 不能刪時旁邊不再寫一長串，按「刪除零件」才跳出視窗說明原因
+        $this->get(route('parts.show', $withStock))->assertOk()->assertSee('partDeleteBlockedDialog', false)->assertSee('目前還有庫存')->assertDontSee('不能刪除：目前還有庫存')->assertDontSee('action="' . route('parts.destroy', $withStock) . '"', false);
         $this->delete(route('parts.destroy', $withStock))->assertSessionHas('error');
         $this->assertNotNull($withStock->fresh());
 

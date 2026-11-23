@@ -41,7 +41,9 @@ class DepartmentController extends Controller
             // 啟用狀態篩選：選「啟用」只看 is_active=true，選「停用」只看 false，沒選就都看。
             ->when($request->string('status')->toString() === 'active', fn ($query) => $query->where('is_active', true))
             ->when($request->string('status')->toString() === 'inactive', fn ($query) => $query->where('is_active', false))
-            ->orderBy('id')       // 依編號由小到大
+            ->orderByRaw('department_code is null')   // 依代碼 A→Z 排序；沒有代碼的排最後，再依名稱
+            ->orderBy('department_code')
+            ->orderBy('name')
             ->paginate(15)        // 分頁，每頁 15 筆
             ->withQueryString();  // 換頁時保留篩選條件
 

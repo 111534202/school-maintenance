@@ -4,6 +4,7 @@
      不想套用的表格：在 <table> 加 data-no-onion。只要清單、不要「表格檢視」切換按鈕：在 <table> 加 data-onion-list-only。
      清單每一筆的副標題預設是第 2、3 欄；想指定副標題放哪幾欄：在那幾個 <th> 加 data-onion-sub="格式"（{v} 換成那一格內容），
      要換順序再加 data-onion-sub-order="1"、"2"…（沒加就照表頭順序）。
+     格子裡加了 data-onion-skip 的內容清單不放；<tr data-onion-alert="說明"> 的那一筆清單標題用紅色粗體字。
      沒有 JavaScript 時就是原本的表格，什麼都不會少。 --}}
 <style>
     .onion-item { text-align: left; min-height: 3.25rem; }
@@ -47,6 +48,8 @@
             var notes = [];
             // 徽章不算文字（狀態另外放右邊）；加了 data-onion-text 的徽章例外，例如保養工單編號要當清單標題。
             Array.prototype.forEach.call(c.querySelectorAll('.badge:not([data-onion-text])'), function (b) { b.remove(); });
+            // 加了 data-onion-skip 的內容只在表格顯示，清單不放（例如報修看板的重複報修提醒：清單改成標題用紅色粗體字）。
+            Array.prototype.forEach.call(c.querySelectorAll('[data-onion-skip]'), function (n) { n.remove(); });
             Array.prototype.forEach.call(c.querySelectorAll('small, .small, .text-muted'), function (n) { var t = text(n); if (t) notes.push(t); n.remove(); });
             return { main: text(c), note: notes.join(' ') };
         }
@@ -230,6 +233,8 @@
                 var t1 = document.createElement('span');
                 t1.className = 'onion-title';
                 t1.textContent = title;
+                // 表格列加了 data-onion-alert：清單的標題用紅色粗體字提醒（例如報修看板裡近 30 天重複報修的設備）。
+                if (tr.hasAttribute('data-onion-alert')) { t1.classList.add('text-danger', 'fw-bold'); t1.title = tr.getAttribute('data-onion-alert'); }
                 body.appendChild(t1);
                 if (sub) { var t2 = document.createElement('span'); t2.className = 'onion-sub'; t2.textContent = sub; body.appendChild(t2); }
                 item.appendChild(body);

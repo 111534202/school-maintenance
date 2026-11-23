@@ -27,25 +27,7 @@ class ClassroomController extends Controller
         $user = $request->user();
 
         // with(...)：順便查好所屬部門與管理人，畫面顯示名稱時不用每間教室再多查一次。
-        $classrooms = Classroom::with(['department', 'manager'])
-            // withCount：一次算出每間教室的三個數字，列表上顯示並連到對應的設備主檔／報修看板：
-            //   devices_count          設備總數；
-            //   abnormal_devices_count 異常設備數（有未結束報修單的設備，不含已淘汰；定義見 Device::scopeAbnormal）；
-            //   （進行中的報修單數 open_repairs_count 在下面另外算）
-            ->withCount([
-                'devices',
-                'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
-            ])
-            // 進行中的報修單數：算法和報修看板的「教室」篩選一樣（報修時填的發現地點是這間教室，或報修的設備現在放在這間教室），
-            // 只算這位用戶在看板上看得到、未結案（已結案、已退回、已中止都不算）的案件，點進去的列表筆數才會一致。
-            ->addSelect(['open_repairs_count' => \App\Models\RepairRequest::query()
-                ->selectRaw('count(*)')
-                ->visibleOnBoard($user)
-                ->open()
-                ->where(fn ($q) => $q
-                    ->whereColumn('repair_requests.classroom_id', 'classrooms.id')
-                    ->orWhereHas('device', fn ($device) => $device->whereColumn('devices.classroom_id', 'classrooms.id'))),
-            ])
+        $classrooms = $this->withStats(Classroom::with(['department', 'manager']), $user)
             ->when($request->filled('keyword'), function ($query) use ($request) {
                 $keyword = $request->string('keyword');
                 // 教室代碼或名稱包含關鍵字即可；括號包起來避免「或」影響其他篩選。
@@ -94,6 +76,39 @@ class ClassroomController extends Controller
         AuditLogger::log('created', $classroom, $data);
 
         return redirect()->route('classrooms.index')->with('success', __('classrooms.flash.created'));
+    }
+
+    /**
+     * 每間教室順便算好三個數字（教室列表與教室詳細共用）：
+     *   devices_count          設備總數；
+     *   abnormal_devices_count 異常設備數（有未結束報修單的設備，不含已淘汰；定義見 Device::scopeAbnormal）；
+     *   open_repairs_count     進行中的報修單數：算法和報修看板的「教室」篩選一樣（以發現地點為準，沒填發現地點的才看設備現在放在哪；
+     *                          一張只算一間教室，見 RepairRequest::scopeLocatedIn），只算這位用戶在看板上看得到、未結案的案件，點進去的列表筆數才會一致。
+     */
+    private function withStats($query, User $user)
+    {
+        return $query
+            ->withCount([
+                'devices',
+                'devices as abnormal_devices_count' => fn ($devices) => $devices->abnormal(),
+            ])
+            ->addSelect(['open_repairs_count' => \App\Models\RepairRequest::query()
+                ->selectRaw('count(*)')
+                ->visibleOnBoard($user)
+                ->open()
+                ->where(fn ($q) => $q
+                    ->whereColumn('repair_requests.classroom_id', 'classrooms.id')
+                    ->orWhere(fn ($none) => $none->whereNull('repair_requests.classroom_id')
+                        ->whereHas('device', fn ($device) => $device->whereColumn('devices.classroom_id', 'classrooms.id')))),
+            ]);
+    }
+
+    /** 教室詳細（GET /classrooms/{classroom}）：教室列表點一列先打開這頁（手機版清單看不到位置、管理人、各項數字），要改再按右上角的鉛筆。 */
+    public function show(Request $request, Classroom $classroom)
+    {
+        $classroom = $this->withStats(Classroom::with(['department', 'manager'])->whereKey($classroom->id), $request->user())->firstOrFail();
+
+        return view('classrooms.show', compact('classroom'));
     }
 
     /** 顯示編輯表單（GET /classrooms/{classroom}/edit）。 */

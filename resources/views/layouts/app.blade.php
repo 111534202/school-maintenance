@@ -116,7 +116,7 @@
                          點開清單，點其中一項直接跳到對應的案件列表。資料由 AppServiceProvider 的 view composer 算好。 --}}
                     <div class="dropdown">
                         <button class="btn btn-outline-light btn-sm icon-btn position-relative" type="button" id="notificationBell"
-                            data-bs-toggle="dropdown" aria-expanded="false"
+                            data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false"
                             title="{{ __('notifications.title') }}" aria-label="{{ __('notifications.title') }}">
                             <i class="bi {{ ($notificationTotal ?? 0) > 0 ? 'bi-bell-fill' : 'bi-bell' }}"></i>
                             @if (($notificationTotal ?? 0) > 0)
@@ -125,7 +125,7 @@
                                 </span>
                             @endif
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notificationBell" style="min-width: 17rem;">
+                        <ul class="dropdown-menu dropdown-menu-end shadow tb-header-menu" aria-labelledby="notificationBell" style="min-width: 17rem;">
                             <li><h6 class="dropdown-header">{{ __('notifications.title') }}</h6></li>
                             {{-- @forelse：逐項列出通知；沒有任何通知時改走 @empty 區塊（顯示「目前沒有待處理事項」）。 --}}
                             @forelse (($notificationItems ?? []) as $item)
@@ -144,8 +144,17 @@
                     <span class="text-light tb-nav-user d-none d-sm-inline">
                         {{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}
                     </span>
-                    {{-- 手機寬度放不下姓名文字，改顯示人像圖示，長按/滑過仍可看到姓名與角色。 --}}
-                    <i class="bi bi-person-circle text-light fs-5 d-sm-none" title="{{ Auth::user()->name }}｜{{ Auth::user()->role->name ?? '尚未指派角色' }}"></i>
+                    {{-- 手機寬度放不下姓名文字，改顯示人像圖示；點一下在下面顯示登入的姓名與身分。 --}}
+                    <div class="dropdown d-sm-none">
+                        <button class="btn btn-link text-light p-0 border-0 lh-1" type="button" id="userMenuButton"
+                            data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="登入的用戶" title="登入的用戶">
+                            <i class="bi bi-person-circle fs-5"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow tb-header-menu px-3 py-2" aria-labelledby="userMenuButton">
+                            <div class="fw-semibold">{{ Auth::user()->name }}</div>
+                            <div class="text-muted small">{{ Auth::user()->role->name ?? '尚未指派角色' }}</div>
+                        </div>
+                    </div>
                     {{-- 登出按鈕其實是一個送出 POST 的表單（登出是「動作」，不能用一般連結）。 --}}
                     <form method="POST" action="{{ route('logout') }}">
                         {{-- 表單防偽 token（CSRF）：Laravel 要求所有 POST 表單都要有，沒有會被擋下（錯誤 419）。 --}}
@@ -918,6 +927,14 @@
                     if (copy.pathname) hoistedPaths.push(copy.pathname);
                     actionsBox.appendChild(copy);
                     el.style.setProperty('display', 'none', 'important');   // 頁面裡原本那一個藏起來，不重複顯示
+                });
+                // 標題列（隱藏的頁面標題＋已經搬到對話框標題列的按鈕）搬完之後如果什麼都不剩，整列藏起來，
+                // 不然會留下一塊空白和下邊距，內容上面的空隙就比下面大（例如教室詳細、保養紀錄）。
+                Array.prototype.forEach.call(doc.querySelectorAll('.app-content [data-modal-hide]'), function (heading) {
+                    var row = heading.parentElement;
+                    if (!row || row.classList.contains('app-content') || row === doc.body) return;
+                    var empty = Array.prototype.every.call(row.children, function (child) { return child.getBoundingClientRect().height === 0; });
+                    if (empty) row.style.setProperty('display', 'none', 'important');
                 });
                 showActions();
             });

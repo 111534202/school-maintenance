@@ -37,6 +37,10 @@ class RoleController extends Controller
                 // 名稱或說明包含關鍵字即可（括號包起來避免「或」影響其他條件）。
                 $query->where(fn ($q) => $q->where('name', 'like', "%{$keyword}%")->orWhere('description', 'like', "%{$keyword}%"));
             })
+            // 依開放的權限數量由多到少排序：系統管理員永遠擁有全部權限，排最前面；一樣多的依建立先後。
+            ->withCount('rolePermissions')
+            ->orderByRaw("case when role_code = 'admin' then 0 else 1 end")
+            ->orderByDesc('role_permissions_count')
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString();   // 換頁時保留篩選條件

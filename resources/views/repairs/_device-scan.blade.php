@@ -68,6 +68,8 @@
                     // 「掃描到的設備：…」只在用相機掃描時顯示（手動輸入、從清單選的，輸入框裡已經看得到設備，就不再多一個框）。
                     displayBox.style.display = fromCamera ? '' : 'none';
                     fromCamera = false;
+                    // 記下設備登記的教室：發現地點之後若改成別間，要勾確認才能送出。
+                    if (window.setRepairDeviceClassroom) { window.setRepairDeviceClassroom(data.classroom || null); }
                     // 發現地點自動帶入設備所在的教室（例如掃到 DEV-0001 → 資訊教室一）。
                     if (data.classroom && window.setRepairClassroom) {
                         window.setRepairClassroom(data.classroom.id, data.classroom.label);
@@ -79,6 +81,7 @@
                 // 找不到設備或網路錯誤：清掉設備編號、隱藏設備資訊、顯示紅字錯誤提示。
                 .catch(function (error) {
                     deviceIdField.value = '';
+                    if (window.setRepairDeviceClassroom) { window.setRepairDeviceClassroom(null); }
                     displayBox.style.display = 'none';
                     // 找不到設備沿用原本的提示；有明確原因（例如已淘汰）就改顯示原因。
                     var text = document.getElementById('device_lookup_error_text');

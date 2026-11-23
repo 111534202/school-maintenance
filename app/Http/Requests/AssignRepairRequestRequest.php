@@ -53,7 +53,8 @@ class AssignRepairRequestRequest extends FormRequest
             ],
             // 預計處理時間：可以不填；有填就必須是正確的日期時間格式。
             // 上限 2037 年：資料庫的時間欄位超過 2038 年會寫入失敗（整頁 500），先在這裡擋下並說明。
-            'scheduled_at' => ['nullable', 'date', 'after:1971-01-01', 'before:2038-01-01'],
+            // 不能早於現在（容許 5 分鐘誤差，選完到送出之間會過幾分鐘）；報修申請時間一定比現在早，所以也不會早於申請時間。
+            'scheduled_at' => ['nullable', 'date', 'after:1971-01-01', 'before:2038-01-01', 'after_or_equal:-5 minutes'],
         ];
     }
 
@@ -63,6 +64,7 @@ class AssignRepairRequestRequest extends FormRequest
         return [
             'scheduled_at.before' => ':attribute 不能晚於 2037 年底。',
             'scheduled_at.after' => ':attribute 不是合理的日期，請重新選擇。',
+            'scheduled_at.after_or_equal' => ':attribute 不能早於現在的時間（也不能早於報修申請的時間）。',
         ];
     }
 }

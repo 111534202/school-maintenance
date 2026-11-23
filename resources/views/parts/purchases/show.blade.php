@@ -4,8 +4,7 @@
 @section('title', '採購紀錄：' . $part->part_code)
 
 @section('content')
-    <h1 data-modal-hide class="tb-title mb-1">採購紀錄</h1>
-    <p class="text-muted mb-3">{{ $part->part_code }} {{ $part->name }}{{ $part->specification ? '（' . $part->specification . '）' : '' }}</p>
+    <h1 data-modal-hide class="tb-title mb-3">{{ $part->part_code }} 採購紀錄</h1>
 
     <div class="card shadow-sm">
         <div class="card-header bg-white form-section-title"><i class="bi bi-cart me-2"></i>採購資料</div>
@@ -34,8 +33,11 @@
 
                 <dt class="col-sm-3">附件</dt>
                 <dd class="col-sm-9">
-                    @forelse ($purchase->attachments as $attachment)
-                        <div><a href="{{ route('attachments.show', $attachment) }}" target="_blank" rel="noopener"><i class="bi bi-paperclip me-1"></i>{{ $attachment->file_name }}</a></div>
+                    {{-- 點附件在預覽視窗裡看（圖片、PDF 直接顯示，‹ › 切換），不另開新頁面。 --}}
+                    @php($attachmentItems = $purchase->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values())
+                    @forelse ($purchase->attachments as $index => $attachment)
+                        <div><a href="{{ route('attachments.show', $attachment) }}" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                            data-attachments="{{ $attachmentItems->toJson() }}" data-index="{{ $index }}" data-title="{{ $part->part_code }} 採購附件"><i class="bi bi-paperclip me-1"></i>{{ $attachment->file_name }}</a></div>
                     @empty
                         沒有附件
                     @endforelse
@@ -44,4 +46,6 @@
         </div>
     </div>
     <p class="text-muted small mt-3 mb-0"><i class="bi bi-lock me-1"></i>採購紀錄送出後就定案，不能修改或刪除。</p>
+
+    @include('parts._attachment-modal')
 @endsection

@@ -76,6 +76,7 @@ class PermissionMatrixTest extends TestCase
             'major' => Major::create(['name' => '資訊科', 'major_code' => 'CS', 'abbreviation' => '資', 'grade_count' => 5, 'class_count' => 4, 'is_active' => true]),
             'part' => $part,
             'purchase' => $purchase,
+            'scrap' => $part->scraps()->create(['scrap_date' => now()->toDateString(), 'quantity' => 1, 'reason' => '損壞', 'recorded_by' => $owner->id]),
             'repair_request' => RepairRequest::factory()->create(['requester_id' => $owner->id, 'classroom_id' => $classroom->id]),
             'maintenanceItem' => MaintenanceItem::factory()->create(),
             'maintenancePlan' => MaintenancePlan::factory()->create(),

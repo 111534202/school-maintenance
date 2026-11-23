@@ -36,7 +36,9 @@ class MajorController extends Controller
             })
             ->when($request->string('status')->toString() === 'active', fn ($query) => $query->where('is_active', true))
             ->when($request->string('status')->toString() === 'inactive', fn ($query) => $query->where('is_active', false))
-            ->orderBy('id')
+            ->orderByRaw('major_code is null')   // 依代碼 A→Z 排序；沒有代碼的排最後，再依名稱
+            ->orderBy('major_code')
+            ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
 

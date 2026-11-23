@@ -259,8 +259,8 @@ class ClassroomReservationController extends Controller
             ->get();
 
         // 報修提醒（黃色）一樣顯示，只是提醒，不擋預約。
-        // 不帶報修單標題（使用者自由填寫的文字，不對未登入的人公開；同步 integrate/all f3a55bf）。
-        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: false);
+        // 不帶報修單標題、設備位置／描述（使用者自由填寫的文字，不對未登入的人公開；同步 integrate/all f3a55bf）。
+        $repairNotices = ClassroomRepairNotices::for($classrooms->pluck('id'), withTitles: false, withNotes: false);
 
         return view('reservations.create', [
             'classrooms' => $classrooms,

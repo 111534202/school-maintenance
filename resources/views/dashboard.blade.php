@@ -75,6 +75,8 @@
     // 圖表資料統一整理成 {labels, counts, colors, urls}，前端 JS 只要照著畫、點了就跳 urls。
     $charts = [];
     // 圖表一：報修單各狀態的數量（甜甜圈圖），點哪一塊就跳到該狀態的看板。
+    // 「已中止」（取消、設備淘汰而中止的案件）不畫進圖裡，和看板預設不顯示已中止一致。
+    $repairStatuses = array_values(array_filter($repairStatuses, fn ($s) => $s['key'] !== \App\Enums\RepairRequestStatus::Aborted->value));
     $charts['repairStatus'] = [
         'title' => __('dashboard.charts.repair_status'),
         'type' => 'doughnut',
@@ -92,6 +94,8 @@
         'colors' => ['#0d6efd'],
         // 點某一天的折線點，只看那一天新增的報修單。
         'urls' => array_map(fn ($day) => route('repairs.index', ['created_from' => $day['date'], 'created_to' => $day['date']]), $trend),
+        // 點圖框外面（座標軸、日期文字、四周空白）：看這 14 天新增的全部報修單。
+        'rangeUrl' => route('repairs.index', ['created_from' => $trend[0]['date'] ?? null, 'created_to' => $trend[count($trend) - 1]['date'] ?? null]),
         'series' => __('dashboard.charts.repair_trend_series'),
     ];
 @endphp
@@ -201,7 +205,7 @@
                 if (spec.type === 'line') { dataset.fill = true; dataset.tension = 0.3; dataset.pointRadius = 3; }
 
                 // 建立圖表：type 是圖表種類、data 是標籤與數值、options 是外觀與點擊行為。
-                new Chart(canvas, {
+                var chart = new Chart(canvas, {
                     type: spec.type,
                     data: { labels: spec.labels, datasets: [dataset] },
                     options: {
@@ -210,9 +214,9 @@
                         maintainAspectRatio: false,
                         plugins: { legend: { display: isRound, position: 'bottom' } },
                         scales: isRound ? {} : { y: { beginAtZero: true, ticks: { precision: 0 } } },
-                        // 點圖表跳到對應功能區：圓餅／長條點哪一塊就跳哪一塊的網址，折線圖點哪裡都去報修看板。
+                        // 點圖表跳到對應功能區：圓餅／長條點哪一塊就跳哪一塊的網址（折線圖在下面另外處理）。
                         onClick: function (event, elements) {
-                            if (spec.type === 'line') { window.location.href = spec.urls[0]; return; }
+                            if (spec.type === 'line') { return; }
                             if (elements.length) { window.location.href = spec.urls[elements[0].index]; }
                         },
                         onHover: function (event, elements) {
@@ -220,6 +224,21 @@
                         },
                     },
                 });
+
+                // 折線圖：點在圖框（座標格線範圍）裡面，跳到最靠近的那一天；點在圖框外面（日期、數字、四周空白），跳到這 14 天的全部報修單。
+                // Chart.js 只在圖框裡面才會呼叫 onClick，所以直接聽畫布的點擊。
+                if (spec.type === 'line') {
+                    canvas.style.cursor = 'pointer';   // 整張折線圖（含圖框外）都能點
+                    canvas.addEventListener('click', function (event) {
+                        var rect = canvas.getBoundingClientRect();
+                        var x = event.clientX - rect.left, y = event.clientY - rect.top;
+                        var area = chart.chartArea;
+                        var inside = x >= area.left && x <= area.right && y >= area.top && y <= area.bottom;
+                        if (!inside) { if (spec.rangeUrl) { window.location.href = spec.rangeUrl; } return; }
+                        var near = chart.getElementsAtEventForMode(event, 'index', { intersect: false }, false);
+                        if (near.length) { window.location.href = spec.urls[near[0].index]; }
+                    });
+                }
             });
         })();
     </script>

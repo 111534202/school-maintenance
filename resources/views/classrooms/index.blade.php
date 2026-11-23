@@ -83,9 +83,9 @@
                 <tbody>
                     {{-- @forelse：逐筆列出教室；一筆都沒有時改顯示下面 @empty 的「尚無教室資料」。 --}}
                     @forelse ($classrooms as $classroom)
-                        {{-- 有異常設備的教室整列用淡紅色標示，一眼就能看出是哪間教室。 --}}
-                        {{-- 點這一列的任何地方都會在畫面中的對話框打開編輯頁（data-modal-frame-href，行為在共用版型）。 --}}
-                        <tr class="{{ $classroom->abnormal_devices_count > 0 ? 'table-danger' : '' }}" data-modal-frame-href="{{ route('classrooms.edit', $classroom) }}" data-modal-title="修改教室" data-modal-size="lg" tabindex="0" role="link">
+                        {{-- 有進行中工單的教室整列用淡紅色標示，一眼就能看出是哪間教室。 --}}
+                        {{-- 點這一列的任何地方都會在畫面中的對話框打開教室詳細（位置、管理人、各項數字；要改再按右上角的鉛筆）。 --}}
+                        <tr class="{{ $classroom->open_repairs_count > 0 ? 'table-danger' : '' }}" data-modal-frame-href="{{ route('classrooms.show', $classroom) }}" data-modal-title="教室詳細" data-modal-size="lg" tabindex="0" role="link">
                             <td>{{ $classroom->classroom_code }}</td>
                             <td>{{ $classroom->name }}</td>
                             <td>{{ $classroom->department->name ?? __('classrooms.no_value') }}</td>

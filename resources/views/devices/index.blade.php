@@ -102,12 +102,14 @@
                 <tbody>
                     {{-- 逐筆列出設備；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($devices as $device)
-                        <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link">
+                        {{-- 重複報修的設備：手機版清單不另外列「近30天報修N次」，改成設備編號用紅色粗體字（data-onion-alert，同報修看板）。 --}}
+                        <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link"
+                            @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD) data-onion-alert="{{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}" @endif>
                             <td>
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none" data-modal-frame data-modal-title="設備詳細" data-modal-size="xl">{{ $device->device_code }}</a>
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，紅色粗體字；點了跳到報修看板，關鍵字帶入設備編號篩選；只有文字本身能點，點旁邊空白不會誤跳。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
-                                    <div><a href="{{ route('repairs.index', ['keyword' => $device->device_code, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString(), 'status' => 'pending,assigned,pending_review,completed']) }}" class="small text-danger fw-bold text-decoration-none"
+                                    <div data-onion-skip><a href="{{ route('repairs.index', ['keyword' => $device->device_code, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString(), 'status' => 'pending,assigned,pending_review,completed']) }}" class="small text-danger fw-bold text-decoration-none"
                                         title="{{ __('devices.repeat_repair_hint') }}">{{ __('devices.repeat_repair_badge', ['count' => $device->recent_repairs_count]) }}</a></div>
                                 @endif
                             </td>

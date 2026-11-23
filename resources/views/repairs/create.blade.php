@@ -66,7 +66,7 @@
                         </div>
                         <div class="col-md-5 position-relative">
                             {{-- 發現地點：從現有教室選（可輸入關鍵字搜尋），掃描設備時會自動帶入設備所在的教室。 --}}
-                            @include('repairs._classroom-picker', ['selectedId' => old('classroom_id', $device?->classroom_id), 'label' => __('repair_requests.create.location_label')])
+                            @include('repairs._classroom-picker', ['selectedId' => old('classroom_id', $device?->classroom_id), 'label' => __('repair_requests.create.location_label'), 'deviceClassroom' => $device?->classroom])
                         </div>
                     </div>
                     <div class="form-text mt-2">{{ __('repair_requests.create.device_note_hint') }}</div>

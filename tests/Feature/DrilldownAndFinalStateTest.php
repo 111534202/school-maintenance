@@ -122,6 +122,24 @@ class DrilldownAndFinalStateTest extends TestCase
         $this->assertMatchesRegularExpression('/bi-tools me-1"><\/i>3</', $html);   // 徽章數字和看板筆數一樣
     }
 
+    // 發現地點和設備所在的教室不同：只算在發現地點那間（教室主檔的進行中工單和看板教室篩選都是），不會兩間都算。
+    public function test_a_repair_with_a_different_location_counts_only_in_the_reported_room(): void
+    {
+        $admin = $this->makeUserWithRole('admin', '系統管理員');
+        $a = $this->room('A101');
+        $b = $this->room('B202');
+        $this->repair('案件-MOVE', 'pending', ['device_id' => $this->device('DEV-MOVE', 'normal', $a)->id, 'classroom_id' => $b->id]);
+        $this->repair('案件-STAY', 'pending', ['device_id' => $this->device('DEV-STAY', 'normal', $a)->id, 'classroom_id' => null]);
+
+        $this->assertSame(['案件-STAY'], $this->boardTitles($admin, ['classroom_id' => $a->id, 'open' => 1]));
+        $this->assertSame(['案件-MOVE'], $this->boardTitles($admin, ['classroom_id' => $b->id, 'open' => 1]));
+
+        $html = $this->actingAs($admin)->get(route('classrooms.index'))->assertOk()->getContent();
+        foreach ([$a, $b] as $room) {
+            $this->assertMatchesRegularExpression('/classroom_id='.$room->id.'&amp;open=1"[^>]*>\s*<i class="bi bi-tools me-1"><\/i>1</', $html);
+        }
+    }
+
     public function test_device_category_filter_only_lists_that_category(): void
     {
         $admin = $this->makeUserWithRole('admin', '系統管理員');

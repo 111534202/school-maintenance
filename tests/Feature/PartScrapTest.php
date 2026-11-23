@@ -97,10 +97,12 @@ class PartScrapTest extends TestCase
         $scrap = PartScrap::sole();
 
         // 登記後定案：沒有取消的網址或按鈕，庫存不會加回。
-        $this->delete("/parts/{$part->part_code}/scraps/{$scrap->id}")->assertNotFound();
+        $this->delete("/parts/{$part->part_code}/scraps/{$scrap->id}")->assertMethodNotAllowed();   // 只能查看（GET 詳細），沒有刪除
         $this->assertSame(2, $part->fresh()->current_stock);
         $this->assertSame(1, PartScrap::count());
-        $this->get(route('parts.show', $part))->assertOk()->assertDontSee('取消報廢')->assertDontSee('parts/' . $part->part_code . '/scraps/' . $scrap->id, false);
+        $this->get(route('parts.show', $part))->assertOk()->assertDontSee('取消報廢');
+        // 報廢紀錄可以點開看詳細（唯讀），沒有修改、刪除的按鈕
+        $this->get(route('parts.scraps.show', [$part, $scrap]))->assertOk()->assertSee('報廢紀錄登記後就定案')->assertDontSee('value="DELETE"', false);
     }
 
     public function test_a_part_with_scraps_cannot_be_deleted_and_a_scrap_of_another_part_is_not_found(): void

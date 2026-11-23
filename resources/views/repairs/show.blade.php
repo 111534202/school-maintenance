@@ -108,6 +108,21 @@
 
                         <dt class="col-6 col-sm-5 text-muted fw-normal text-nowrap"><i class="bi bi-clock me-2"></i>{{ __('repair_requests.show.submitted_prefix') }}</dt>
                         <dd class="col-6 col-sm-7 mb-0">{{ $repairRequest->created_at->format('Y-m-d H:i') }}</dd>
+
+                        {{-- 重複報修提醒：這台設備近 30 天報修達到門檻次數（已退回的不算，和看板、設備主檔同一個算法），送出時間下面紅字提示。 --}}
+                        @php
+                            $recentRepairs = $repairRequest->device
+                                ? $repairRequest->device->repairRequests()
+                                    ->where('created_at', '>=', now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS))
+                                    ->where('status', '<>', \App\Enums\RepairRequestStatus::Returned->value)
+                                    ->count()
+                                : 0;
+                        @endphp
+                        @if ($recentRepairs >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
+                            <dd class="col-12 mb-0 text-danger fw-bold small tb-dl-full" id="repeatRepairHint">
+                                <i class="bi bi-exclamation-circle me-1"></i>{{ $repairRequest->device->device_code }} {{ __('devices.repeat_repair_badge', ['count' => $recentRepairs]) }}
+                            </dd>
+                        @endif
                     </dl>
                 </div>
             </div>
@@ -191,7 +206,8 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
-                                    <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at">
+                                    <input type="datetime-local" class="form-control @error('scheduled_at') is-invalid @enderror" id="scheduled_at" name="scheduled_at" value="{{ old('scheduled_at') }}" data-not-before-now>
+                                    @error('scheduled_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     @if ($timetableClassroom)
                                         <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="scheduled_at">
                                             <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂
@@ -257,7 +273,10 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="reassign_scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
-                                        <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at" value="{{ old('scheduled_at', $repairRequest->scheduled_at?->format('Y-m-d\TH:i')) }}">
+                                        {{-- 原本的建議處理時間已經過了就不帶入（不能早於現在），要的話重新選。 --}}
+                                        <input type="datetime-local" class="form-control @error('scheduled_at') is-invalid @enderror" id="reassign_scheduled_at" name="scheduled_at" data-not-before-now
+                                            value="{{ old('scheduled_at', $repairRequest->scheduled_at?->isFuture() ? $repairRequest->scheduled_at->format('Y-m-d\TH:i') : '') }}">
+                                        @error('scheduled_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                         @if ($timetableClassroom)
                                             <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="reassign_scheduled_at">
                                                 <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂
@@ -338,7 +357,8 @@
                 <p class="text-muted mb-0">目前沒有零件使用紀錄。</p>
             @else
                 <div class="table-responsive">
-                    <table class="tb-table tb-table-sm align-middle mb-3">
+                    {{-- 手機版清單點一筆時，對話框標題和這個區塊的標題一樣（材料費明細／使用零件）。 --}}
+                    <table class="tb-table tb-table-sm align-middle mb-3" data-onion-panel-title="{{ $canSeePrice ? '材料費明細' : '使用零件' }}">
                         <thead>
                             <tr>
                                 <th>零件名稱</th>
@@ -430,4 +450,21 @@
 
     {{-- 附件預覽視窗：報修附件、維修紀錄附件點了都在這裡打開（不換頁）。 --}}
     @include('parts._attachment-modal')
+    <script>
+    // 建議處理時間不能早於現在（也就不會早於報修申請時間）：按送出時才檢查，選擇器不限制日期。和後端一樣容許 5 分鐘誤差。
+    (function () {
+        var pad = function (n) { return String(n).padStart(2, '0'); };
+        document.querySelectorAll('input[data-not-before-now]').forEach(function (input) {
+            var form = input.form;
+            if (!form) { return; }
+            var check = function () {
+                var t = new Date(Date.now() - 5 * 60 * 1000);
+                var earliest = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()) + 'T' + pad(t.getHours()) + ':' + pad(t.getMinutes());
+                input.setCustomValidity(input.value && input.value < earliest ? '建議處理時間不能早於現在的時間。' : '');
+            };
+            input.addEventListener('input', function () { input.setCustomValidity(''); });
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) { btn.addEventListener('click', check); });
+        });
+    })();
+    </script>
 @endsection

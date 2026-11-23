@@ -95,4 +95,48 @@ class RepairEditByRequesterTest extends TestCase
         $result = file_get_contents(resource_path('views/maintenance_results/create.blade.php'));
         $this->assertStringNotContainsString('executed.max =', $result);
     }
+
+    private function roomAndDevice(): array
+    {
+        $category = \App\Models\DeviceCategory::create(['name' => '地點測試']);
+        $a = \App\Models\Classroom::create(['classroom_code' => 'LOC-A', 'campus' => '本', 'building' => 'L', 'floor' => '1', 'name' => '甲教室']);
+        $b = \App\Models\Classroom::create(['classroom_code' => 'LOC-B', 'campus' => '本', 'building' => 'L', 'floor' => '2', 'name' => '乙教室']);
+        $device = \App\Models\Device::create(['device_code' => 'LOC-001', 'device_category_id' => $category->id, 'classroom_id' => $a->id, 'status' => 'normal']);
+
+        return [$a, $b, $device];
+    }
+
+    // 有選設備、發現地點改成別間：沒勾確認不能送出；勾了才可以。發現地點就是設備的教室則不用勾。
+    public function test_a_different_location_from_the_device_needs_confirmation(): void
+    {
+        [$a, $b, $device] = $this->roomAndDevice();
+        $user = $this->makeUserWithRole('admin', '系統管理員');
+        $base = ['title' => '地點不同', 'description' => 'x', 'impact_level' => 'low', 'is_class_affected' => 0, 'device_id' => $device->id];
+
+        $this->actingAs($user)->post(route('repairs.store'), $base + ['classroom_id' => $b->id])->assertSessionHasErrors('classroom_id');
+        $this->assertSame(0, RepairRequest::count());
+
+        $this->actingAs($user)->post(route('repairs.store'), $base + ['classroom_id' => $b->id, 'location_differs_confirmed' => 1])->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('repairs.store'), $base + ['classroom_id' => $a->id])->assertSessionHasNoErrors();
+        $this->assertSame(2, RepairRequest::count());
+
+        $html = $this->actingAs($user)->get(route('repairs.create'))->getContent();
+        $this->assertStringContainsString('確認發現地點與設備登記的教室不同', $html);
+    }
+
+    // 修改報修單：改發現地點成和設備不同要勾確認；原本就不同、這次沒改的不用。
+    public function test_editing_the_location_away_from_the_device_needs_confirmation(): void
+    {
+        [$a, $b, $device] = $this->roomAndDevice();
+        $user = $this->makeUserWithRole('admin', '系統管理員');
+        $repair = RepairRequest::factory()->create(['device_id' => $device->id, 'classroom_id' => $a->id, 'status' => 'pending']);
+        $form = ['title' => '改地點', 'description' => 'x', 'impact_level' => 'low', 'is_class_affected' => 0];
+
+        $this->actingAs($user)->put(route('repairs.update', $repair), $form + ['classroom_id' => $b->id])->assertSessionHasErrors('classroom_id');
+        $this->actingAs($user)->put(route('repairs.update', $repair), $form + ['classroom_id' => $b->id, 'location_differs_confirmed' => 1])->assertSessionHasNoErrors();
+        $this->assertSame($b->id, $repair->refresh()->classroom_id);
+
+        // 已經是不同的教室，這次沒改：直接儲存
+        $this->actingAs($user)->put(route('repairs.update', $repair), $form + ['classroom_id' => $b->id])->assertSessionHasNoErrors();
+    }
 }

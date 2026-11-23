@@ -3,7 +3,7 @@
 // i18n：報修單模組（看板、新增表單、詳細頁：派工/開始處理/驗收/退回/重新指派）。
 // 修改這個檔案時，記得同步修改 lang/en/repair_requests.php，兩邊的 key 必須完全一致。
 return [
-    'board_title' => '維修案件看板',
+    'board_title' => '維修案件',
     'add_request' => '新增報修',
     'empty_list' => '目前沒有符合條件的報修案件。',
 

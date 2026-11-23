@@ -10,20 +10,27 @@
 
     {{-- 基本資料：修改基本資料、刪除零件都在這裡（權限與零件庫存相同）。 --}}
     @php($average = $part->averageUnitPrice())
-    {{-- 清單檢視點一筆時的對話框標題：零件名稱（規格）＋ 哪一種紀錄。 --}}
-    @php($panelName = $part->name . ($part->specification ? '（' . $part->specification . '）' : ''))
+    {{-- 清單檢視點一筆時的對話框標題：零件編號 ＋ 哪一種紀錄（例如「HDMI-2 使用紀錄」，和採購、報廢紀錄的對話框一樣）。 --}}
+    @php($panelName = $part->part_code . ' ')
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             {{-- 區塊標題統一用 .tb-section-title（字型、大小、顏色在 theme-b.css 最上面的變數設定）。 --}}
             <h2 class="tb-section-title">基本資料</h2>
             <div class="d-flex gap-2">
                 <a href="{{ route('parts.edit', $part) }}" class="btn btn-sm btn-primary" data-modal-frame data-modal-title="修改零件基本資料">修改基本資料</a>
-                {{-- 沒有庫存、也沒有任何維修、保養使用或報廢紀錄才能刪除；不能刪時按鈕灰掉，滑鼠停留說明原因。 --}}
+                {{-- 沒有庫存、也沒有任何維修、保養使用或報廢紀錄才能刪除；不能刪時按「刪除零件」跳出視窗說明原因（不另外在旁邊寫一長串）。 --}}
                 @if ($deletionBlocker = $part->deletionBlocker())
-                    <span class="text-muted small align-self-center">不能刪除：{{ $deletionBlocker }}</span>
-                    <span title="{{ $deletionBlocker }}">
-                        <button type="button" class="btn btn-sm btn-danger" disabled aria-disabled="true">刪除零件</button>
-                    </span>
+                    <button type="button" class="btn btn-sm btn-danger" id="partDeleteBlocked">刪除零件</button>
+                    <dialog id="partDeleteBlockedDialog" class="tb-confirm-dialog" aria-labelledby="partDeleteBlockedTitle">
+                        <form method="dialog">
+                            <h2 id="partDeleteBlockedTitle" class="tb-confirm-title">不能刪除這個零件</h2>
+                            <p class="tb-confirm-message">{{ $deletionBlocker }}</p>
+                            <div class="tb-confirm-actions"><button type="submit" class="btn btn-primary">知道了</button></div>
+                        </form>
+                    </dialog>
+                    <script>
+                        document.getElementById('partDeleteBlocked').addEventListener('click', function () { document.getElementById('partDeleteBlockedDialog').showModal(); });
+                    </script>
                 @else
                     <form method="POST" action="{{ route('parts.destroy', $part) }}" data-confirm="請問確定要刪除零件「{{ $part->part_code }} {{ $part->name }}」嗎？刪除後無法還原。">
                         @csrf
@@ -102,13 +109,15 @@
                     </thead>
                     <tbody>
                         @foreach ($usages as $usage)
-                            <tr>
+                            @php($usageTitle = $usage['source'] === '報修' ? '報修案件' : '保養工單')
+                            {{-- 點這一列（或單號）在對話框打開那張報修單／保養工單，表格、清單都一樣，不離開零件履歷。 --}}
+                            <tr @if ($usage['link']) data-modal-frame-href="{{ $usage['link'] }}" data-modal-title="{{ $usageTitle }}" data-modal-size="xl" tabindex="0" role="link" @endif>
                                 <td class="tb-col-fit text-center"><span class="badge {{ $usage['source'] === '報修' ? 'text-bg-primary' : 'text-bg-success' }}">{{ $usage['source'] }}</span></td>
                                 <td class="text-nowrap">{{ $usage['used_at']?->format('Y-m-d') ?? '—' }}</td>
                                 <td>{{ $usage['status'] ?? '—' }}</td>
                                 <td class="text-nowrap">
                                     @if ($usage['link'])
-                                        <a href="{{ $usage['link'] }}">{{ $usage['reference_label'] }}</a>
+                                        <a href="{{ $usage['link'] }}" data-modal-frame data-modal-title="{{ $usageTitle }}" data-modal-size="xl">{{ $usage['reference_label'] }}</a>
                                     @else
                                         {{ $usage['reference_label'] }}
                                     @endif
@@ -153,7 +162,7 @@
                     <tbody>
                         @foreach ($purchases as $purchase)
                             {{-- 點一列在對話框打開這筆採購紀錄的詳細（唯讀）。 --}}
-                            <tr data-modal-frame-href="{{ route('parts.purchases.show', [$part, $purchase]) }}" data-modal-title="採購紀錄" tabindex="0" role="link">
+                            <tr data-modal-frame-href="{{ route('parts.purchases.show', [$part, $purchase]) }}" data-modal-title="{{ $part->part_code }} 採購紀錄" tabindex="0" role="link">
                                 <td class="text-nowrap">{{ $purchase->purchase_date->format('Y-m-d') }}</td>
                                 {{-- 沒填廠商也顯示文字（不用「—」），清單的副標題才會固定是「廠商 · 數量」。 --}}
                                 <td>{{ filled($purchase->vendor_name) ? $purchase->vendor_name : '未填廠商' }}</td>
@@ -164,12 +173,12 @@
                                 <td>{{ $purchase->note ?? '—' }}</td>
                                 <td class="text-end tb-col-fit">
                                     <div class="d-inline-flex gap-1">
-                                    {{-- 附件：有附件時只放一個「附件」按鈕，在目前畫面用視窗預覽（圖片、PDF）；有好幾個附件時在視窗裡左右切換。 --}}
+                                    {{-- 附件：有附件時放一個「📎 共 N 個檔案」按鈕，在目前畫面用視窗預覽（圖片、PDF）；有好幾個附件時在視窗裡左右切換。 --}}
                                     @if ($purchase->attachments->isNotEmpty())
-                                        <button type="button" class="btn btn-outline-secondary btn-sm icon-btn" title="附件" aria-label="附件" data-bs-toggle="modal" data-bs-target="#attachmentModal"
+                                        <button type="button" class="btn btn-outline-secondary btn-sm text-nowrap" title="附件" data-bs-toggle="modal" data-bs-target="#attachmentModal"
                                             data-attachments="{{ $purchase->attachments->map(fn ($attachment) => ['url' => route('attachments.show', $attachment), 'mime' => $attachment->mime_type, 'filename' => $attachment->file_name])->values()->toJson() }}"
                                             data-title="{{ $purchase->purchase_date->format('Y-m-d') }} {{ $purchase->vendor_name }} 的附件">
-                                            <i class="bi bi-paperclip" aria-hidden="true"></i>
+                                            <i class="bi bi-paperclip me-1" aria-hidden="true"></i>共 {{ $purchase->attachments->count() }} 個檔案
                                         </button>
                                     @endif
                                     </div>
@@ -219,7 +228,8 @@
                     </thead>
                     <tbody>
                         @foreach ($scraps as $scrap)
-                            <tr>
+                            {{-- 點這一列在對話框打開這筆報廢紀錄（表格、清單都一樣）。 --}}
+                            <tr data-modal-frame-href="{{ route('parts.scraps.show', [$part, $scrap]) }}" data-modal-title="{{ $part->part_code }} 報廢紀錄" tabindex="0" role="link">
                                 <td class="text-nowrap">{{ $scrap->scrap_date->format('Y-m-d') }}</td>
                                 <td>{{ $scrap->recorder?->name ?? '—' }}</td>
                                 <td class="text-end text-nowrap">{{ $part->withUnit($scrap->quantity) }}</td>

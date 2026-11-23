@@ -212,7 +212,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
     // ---- 主檔管理 ----
     // 教室主檔：沒有 show（檢視）與 destroy（刪除），教室只能停用不能刪。
     Route::middleware('can:classrooms.manage')->group(function () {
-        Route::resource('classrooms', ClassroomController::class)->except(['show', 'destroy']);
+        Route::resource('classrooms', ClassroomController::class)->except(['destroy']);   // show：教室詳細（列表點一列先打開）
         Route::patch('classrooms/{classroom}/toggle', [ClassroomController::class, 'toggle'])->name('classrooms.toggle');   // 啟用／停用
     });
 
@@ -286,7 +286,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         Route::resource('parts', PartController::class);
         // 採購紀錄與報廢紀錄送出後就定案（唯讀）：只能新增與查看，不能修改、刪除或取消。
         Route::resource('parts.purchases', PartPurchaseController::class)->only(['create', 'store', 'show']);
-        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store']);
+        Route::resource('parts.scraps', PartScrapController::class)->only(['create', 'store', 'show']);   // show：報廢紀錄詳細（唯讀）
     });
 
     // 設備主檔：沒有 destroy，改用 disable（停用 + 軟刪除）。

@@ -5,15 +5,11 @@
 @section('content')
     @php [$statusText, $statusColor] = $maintenanceOrder->statusLabel(); @endphp
 
-    {{-- 在對話框裡打開時只有標題隱藏（跟對話框標題重複）；「回報保養結果」「修改日期」「取消工單」都有 data-modal-header，
-         會被搬到對話框標題列（✕ 左邊），修改日期、取消工單是圓形圖示按鈕（跟修改用戶的標題列一樣）。 --}}
+    {{-- 在對話框裡打開時只有標題隱藏（跟對話框標題重複）；「修改日期」「取消工單」有 data-modal-header，
+         會被搬到對話框標題列（✕ 左邊），是圓形圖示按鈕（跟修改用戶的標題列一樣）。「回報保養結果」放在工單資料下面。 --}}
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 class="tb-title mb-0" data-modal-hide>保養紀錄</h1>
         <div class="d-inline-flex flex-wrap gap-2">
-            @if (! $maintenanceOrder->result && $maintenanceOrder->canBeReportedBy(auth()->user()))
-                <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-outline-success btn-sm" data-modal-header
-                    data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg">回報保養結果</a>
-            @endif
             {{-- 修改（排定日期）與取消（刪除）：需要 maintenance.manage；已完成或已回報結果的工單不能改、不能取消。
                  取消與刪除是同一件事（軟刪除，資料與操作紀錄保留），送出前先跳出確認視窗。 --}}
             @can('maintenance.manage')
@@ -71,13 +67,8 @@
                     @endif
                 </dd>
 
-                <dt class="col-sm-3">排定保養日期</dt>
-                <dd class="col-sm-9">
-                    {{ $maintenanceOrder->scheduled_date?->format('Y-m-d') ?? '—' }}
-                    @if ($maintenanceOrder->isOverdue())
-                        <span class="badge text-bg-danger ms-1">逾期 {{ $maintenanceOrder->scheduled_date->diffInDays(now()->startOfDay(), true) }} 天</span>
-                    @endif
-                </dd>
+                <dt class="col-sm-3">建立時間</dt>
+                <dd class="col-sm-9">{{ $maintenanceOrder->created_at?->format('Y-m-d H:i') }}</dd>
 
                 <dt class="col-sm-3">負責人</dt>
                 <dd class="col-sm-9">
@@ -106,11 +97,24 @@
                     @endif
                 </dd>
 
-                <dt class="col-sm-3">建立時間</dt>
-                <dd class="col-sm-9">{{ $maintenanceOrder->created_at?->format('Y-m-d H:i') }}</dd>
+                <dt class="col-sm-3">排定保養日期</dt>
+                <dd class="col-sm-9">
+                    {{ $maintenanceOrder->scheduled_date?->format('Y-m-d') ?? '—' }}
+                    @if ($maintenanceOrder->isOverdue())
+                        <span class="badge text-bg-danger ms-1">逾期 {{ $maintenanceOrder->scheduled_date->diffInDays(now()->startOfDay(), true) }} 天</span>
+                    @endif
+                </dd>
             </dl>
         </div>
     </div>
+
+    {{-- 回報保養結果：放在工單資料下面（不放到對話框標題列），還沒回報、而且這個人可以回報時才出現。 --}}
+    @if (! $maintenanceOrder->result && $maintenanceOrder->canBeReportedBy(auth()->user()))
+        <div class="mt-3">
+            <a href="{{ route('maintenance-orders.results.create', $maintenanceOrder) }}" class="btn btn-success w-100"
+                data-modal-frame data-modal-title="回報保養結果" data-modal-size="lg"><i class="bi bi-clipboard-check me-1"></i>回報保養結果</a>
+        </div>
+    @endif
 
     @if ($maintenanceOrder->result)
         @php [$resultText, $resultColor] = $maintenanceOrder->result->resultLabel(); @endphp

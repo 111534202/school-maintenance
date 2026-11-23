@@ -188,13 +188,11 @@ class RepairRequestController extends Controller
                 'assignedTechnician',
             ])
             // 教室篩選（篩選列的「教室」，教室主檔的連結也帶這個參數過來）：
-            //   ?classroom_id= 只看這間教室的報修單：報修單的發現地點是這間教室，或報修的設備現在在這間教室。
+            //   ?classroom_id= 只看這間教室的報修單：以發現地點為準，沒填發現地點的才看設備現在放在哪（見 RepairRequest::scopeLocatedIn）。
             // 設備主檔連過來時改用關鍵字（?keyword=設備編號），直接顯示在篩選列的關鍵字欄位裡。
             // ?device_id= 只看這台設備的報修單（設備主檔的「重複報修」「進行中」連結帶過來）。
             ->when($request->filled('device_id'), fn ($query) => $query->where('device_id', $request->integer('device_id')))
-            ->when($request->filled('classroom_id'), fn ($query) => $query->where(fn ($q) => $q
-                ->where('classroom_id', $request->integer('classroom_id'))
-                ->orWhereHas('device', fn ($device) => $device->where('classroom_id', $request->integer('classroom_id')))))
+            ->when($request->filled('classroom_id'), fn ($query) => $query->locatedIn($request->integer('classroom_id')))
             // 關鍵字搜尋：標題、故障描述、設備位置文字、設備（編號、資產編號、品牌、型號、序號）、教室（名稱、代碼）、報修人姓名；
             // 輸入 12 或 #12 也找得到編號 12 的報修單。
             ->when($request->filled('keyword'), function ($query) use ($request) {

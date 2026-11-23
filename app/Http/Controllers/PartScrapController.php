@@ -25,6 +25,15 @@ class PartScrapController extends Controller
         return view('parts.scraps.create', ['part' => $part, 'reasons' => PartScrap::COMMON_REASONS]);
     }
 
+    /** 報廢紀錄詳細（唯讀，在零件履歷的對話框開啟）：登記後就定案，只能查看。 */
+    public function show(Part $part, PartScrap $scrap)
+    {
+        abort_unless($scrap->part_id === $part->id, 404);   // 網址上的零件和報廢紀錄要對得上
+        $scrap->load(['recorder', 'batches.purchase']);
+
+        return view('parts.scraps.show', compact('part', 'scrap'));
+    }
+
     public function store(Request $request, Part $part)
     {
         $validated = $request->validate([

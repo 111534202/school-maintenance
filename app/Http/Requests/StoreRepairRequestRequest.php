@@ -40,6 +40,12 @@ class StoreRepairRequestRequest extends FormRequest
                 if (! $hasDevice && ! $hasNote && ! $hasClassroom) {
                     $validator->errors()->add('device_note', '請至少提供一項：掃描或輸入設備條碼、填寫設備位置／描述，或選擇發現地點。');
                 }
+
+                // 有選設備、發現地點卻不是設備登記的教室：要勾「確認發現地點與設備登記的教室不同」才能送出。
+                $device = $hasDevice ? Device::find($this->integer('device_id')) : null;
+                if ($device?->classroom_id && $hasClassroom && $this->integer('classroom_id') !== $device->classroom_id && ! $this->boolean('location_differs_confirmed')) {
+                    $validator->errors()->add('classroom_id', '發現地點和設備登記的教室不同，請勾選「確認發現地點與設備登記的教室不同」，或改回設備所在的教室。');
+                }
             },
         ];
     }

@@ -169,6 +169,21 @@ class RepairRequest extends Model
     }
 
     /**
+     * 只看「在這間教室」的報修單：以發現地點為準；沒填發現地點的，才看報修的設備現在放在哪間教室。
+     * 一張報修單只會算在一間教室（教室主檔的進行中工單、報修看板的教室篩選、空間預約的報修提醒都用這個規則）。
+     *
+     * @param  Builder<RepairRequest>  $query
+     * @return Builder<RepairRequest>
+     */
+    public function scopeLocatedIn(Builder $query, int $classroomId): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('repair_requests.classroom_id', $classroomId)
+            ->orWhere(fn (Builder $none) => $none->whereNull('repair_requests.classroom_id')
+                ->whereHas('device', fn ($device) => $device->where('classroom_id', $classroomId))));
+    }
+
+    /**
      * 未結束的案件：不是「已結案」也不是「已退回」（已退回不算待處理、不算待維修）。
      *
      * @param  Builder<RepairRequest>  $query
