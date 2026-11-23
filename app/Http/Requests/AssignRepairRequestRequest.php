@@ -37,6 +37,9 @@ class AssignRepairRequestRequest extends FormRequest
         // 能當驗收人的身分：身分主檔有勾「驗收」，或是系統管理員身分（永遠全開）。
         $acceptorRoleIds = Role::withPermission('repairs.accept')->pluck('id')->merge(Role::where('role_code', 'admin')->pluck('id'))->unique()->all();
 
+        // 預計處理時間不能早於這張報修單送出的時間（精確到分鐘）。
+        $submittedAt = $this->route('repair_request')?->created_at?->format('Y-m-d H:i') ?? '1971-01-01';
+
         return [
             // assigned_to（維修人員）：必填、必須是整數，而且要是 users 表裡「身分可被指派 + 帳號啟用中」的人。
             // 這樣即使有人偽造表單、塞入別人的編號，也會被擋下來。
@@ -53,7 +56,7 @@ class AssignRepairRequestRequest extends FormRequest
             ],
             // 預計處理時間：可以不填；有填就必須是正確的日期時間格式。
             // 上限 2037 年：資料庫的時間欄位超過 2038 年會寫入失敗（整頁 500），先在這裡擋下並說明。
-            'scheduled_at' => ['nullable', 'date', 'after:1971-01-01', 'before:2038-01-01'],
+            'scheduled_at' => ['nullable', 'date', 'after:1971-01-01', 'after_or_equal:' . $submittedAt, 'before:2038-01-01'],
         ];
     }
 
@@ -62,6 +65,7 @@ class AssignRepairRequestRequest extends FormRequest
     {
         return [
             'scheduled_at.before' => ':attribute 不能晚於 2037 年底。',
+            'scheduled_at.after_or_equal' => ':attribute 不能早於報修申請的時間（:date）。',
             'scheduled_at.after' => ':attribute 不是合理的日期，請重新選擇。',
         ];
     }

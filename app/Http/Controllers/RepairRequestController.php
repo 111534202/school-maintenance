@@ -153,10 +153,10 @@ class RepairRequestController extends Controller
             'status' => ['nullable', 'string', 'max:120'],
             'assignee' => ['nullable', 'string', 'max:100'],
             'created_from' => ['nullable', 'date_format:Y-m-d'],
-            'created_to' => ['nullable', 'date_format:Y-m-d'],
+            'created_to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('created_from') ? ['after_or_equal:created_from'] : [])],   // 迄日不能早於起日
             'ended_from' => ['nullable', 'date_format:Y-m-d'],
-            'ended_to' => ['nullable', 'date_format:Y-m-d'],
-        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員', 'created_from' => '新增日期（起）', 'created_to' => '新增日期（迄）', 'ended_from' => '完修日期（起）', 'ended_to' => '完修日期（迄）']);
+            'ended_to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('ended_from') ? ['after_or_equal:ended_from'] : [])],
+        ], ['created_to.after_or_equal' => ':attribute不能早於起始日期。', 'ended_to.after_or_equal' => ':attribute不能早於起始日期。'], ['keyword' => '關鍵字', 'status' => '狀態', 'assignee' => '維修人員', 'created_from' => '新增日期（起）', 'created_to' => '新增日期（迄）', 'ended_from' => '完修日期（起）', 'ended_to' => '完修日期（迄）']);
 
         return RepairRequest::query()
             // 只列出這位用戶看得到的案件：能派工的人看全部，其他人只看自己報修的或指派給自己的（規則見 RepairRequestPolicy）。

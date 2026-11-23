@@ -22,8 +22,8 @@ class AuditLogController extends Controller
         // 日期欄位如果有填，必須是正確的日期格式；亂填會導回並顯示錯誤。
         $request->validate([
             'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date'],
-        ]);
+            'date_to' => ['nullable', 'date', ...($request->filled('date_from') ? ['after_or_equal:date_from'] : [])],   // 迄日不能早於起日
+        ], ['date_to.after_or_equal' => '結束日期不能早於起始日期。']);
 
         $logs = $this->filteredQuery($request)
             ->paginate(30)
@@ -62,7 +62,7 @@ class AuditLogController extends Controller
     /** 匯出操作紀錄（GET /audit-logs/export）：依目前的篩選條件輸出 Excel，單次最多 5000 筆；不含變更內容（可能有敏感資料）。 */
     public function export(Request $request)
     {
-        $request->validate(['date_from' => ['nullable', 'date'], 'date_to' => ['nullable', 'date']]);
+        $request->validate(['date_from' => ['nullable', 'date'], 'date_to' => ['nullable', 'date', ...($request->filled('date_from') ? ['after_or_equal:date_from'] : [])]], ['date_to.after_or_equal' => '結束日期不能早於起始日期。']);
 
         $rows = $this->filteredQuery($request)->limit(5000)->get()->map(fn (AuditLog $log) => [
             $log->created_at?->format('Y-m-d H:i:s'),

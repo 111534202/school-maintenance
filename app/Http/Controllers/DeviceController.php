@@ -276,7 +276,7 @@ class DeviceController extends Controller
             'brand' => ['nullable', 'string', 'max:255'],                             // 品牌
             'model' => ['nullable', 'string', 'max:255'],                             // 型號
             'serial_number' => ['nullable', 'string', 'max:255'],                     // 序號
-            'warranty_end_date' => ['nullable', 'date'],                                 // 保固到期日
+            'warranty_end_date' => ['nullable', 'date', 'after_or_equal:2000-01-01', 'before:2100-01-01'],   // 保固到期日（合理範圍）
             // 教室不能指到已被軟刪除的教室，exists 預設不看 deleted_at
             'classroom_id' => ['required', Rule::exists('classrooms', 'id')->whereNull('deleted_at')],
             // 狀態只能是 Device::STATUSES 列出的幾種（normal / repairing / retired / disabled）。

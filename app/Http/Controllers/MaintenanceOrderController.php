@@ -42,8 +42,8 @@ class MaintenanceOrderController extends Controller
             'due' => ['nullable', 'string', 'max:30'],
             'assignee' => ['nullable', 'string', 'max:30'],
             'from' => ['nullable', 'date_format:Y-m-d'],
-            'to' => ['nullable', 'date_format:Y-m-d'],
-        ], [], ['keyword' => '關鍵字', 'status' => '狀態', 'source' => '來源', 'due' => '期限', 'assignee' => '負責人', 'from' => '起始日期', 'to' => '結束日期']);
+            'to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('from') ? ['after_or_equal:from'] : [])],   // 結束日期不能早於起始日期
+        ], ['to.after_or_equal' => '結束日期不能早於起始日期。'], ['keyword' => '關鍵字', 'status' => '狀態', 'source' => '來源', 'due' => '期限', 'assignee' => '負責人', 'from' => '起始日期', 'to' => '結束日期']);
 
         return MaintenanceOrder::query()
             ->with(['maintenancePlan', 'result', 'device', 'assignee'])
@@ -202,10 +202,12 @@ class MaintenanceOrderController extends Controller
         }
 
         $validated = $request->validate([
-            'scheduled_date' => ['required', 'date'],
+            'scheduled_date' => ['required', 'date', 'after_or_equal:2020-01-01', 'before:2038-01-01'],
         ], [
             'scheduled_date.required' => '請選擇排定保養日期。',
             'scheduled_date.date' => '排定保養日期格式不正確。',
+            'scheduled_date.after_or_equal' => '排定保養日期不是合理的日期，請重新選擇。',
+            'scheduled_date.before' => '排定保養日期不能晚於 2037 年底。',
         ]);
 
         $old = $maintenanceOrder->scheduled_date?->toDateString();

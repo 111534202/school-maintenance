@@ -32,7 +32,10 @@ class AiOrderLifecycleTest extends TestCase
         $this->addHistory($this->makeDevice($code), 'ononnn');
         app(PreventiveCandidateService::class)->scan();
 
-        return app(PreventiveCandidateService::class)->approve(PreventiveCandidate::firstOrFail());
+        $order = app(PreventiveCandidateService::class)->approve(PreventiveCandidate::firstOrFail());
+        $order->forceFill(['created_at' => now()->subYear()])->save();   // 執行時間不能早於工單建立時間
+
+        return $order;
     }
 
     public function test_ai_order_pages_render_without_a_source_plan(): void

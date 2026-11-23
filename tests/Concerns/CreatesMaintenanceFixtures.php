@@ -99,7 +99,7 @@ trait CreatesMaintenanceFixtures
 
     protected function makeOpenOrder(Device $device, int $dueInDays, string $source = MaintenanceOrder::SOURCE_PERIODIC): MaintenanceOrder
     {
-        return MaintenanceOrder::create([
+        $order = MaintenanceOrder::create([
             'maintenance_plan_id' => null,
             'device_id' => $device->id,
             'device_category_id' => $device->device_category_id,
@@ -107,5 +107,10 @@ trait CreatesMaintenanceFixtures
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->addDays($dueInDays)->toDateString(),
         ]);
+
+        // 建立時間放在一年前：回報保養結果的執行時間不能早於工單建立時間，測試才好填時間。
+        $order->forceFill(['created_at' => now()->subYear()])->save();
+
+        return $order;
     }
 }

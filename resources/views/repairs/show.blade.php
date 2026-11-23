@@ -186,7 +186,7 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
-                                    <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at">
+                                    <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at" min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}">
                                     @if ($timetableClassroom)
                                         <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="scheduled_at">
                                             <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂
@@ -258,7 +258,7 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="reassign_scheduled_at" class="form-label">{{ __('repair_requests.show.scheduled_field_label') }}</label>
-                                        <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at" value="{{ old('scheduled_at', $repairRequest->scheduled_at?->format('Y-m-d\TH:i')) }}">
+                                        <input type="datetime-local" class="form-control" id="reassign_scheduled_at" name="scheduled_at" min="{{ $repairRequest->created_at?->format('Y-m-d\TH:i') }}" value="{{ old('scheduled_at', $repairRequest->scheduled_at?->format('Y-m-d\TH:i')) }}">
                                         @if ($timetableClassroom)
                                             <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" data-bs-toggle="modal" data-bs-target="#timetableModal" data-target-input="reassign_scheduled_at">
                                                 <i class="bi bi-calendar-week me-1"></i>從 {{ $timetableClassroom->name }} 的課表挑空堂

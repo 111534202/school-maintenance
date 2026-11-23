@@ -17,10 +17,14 @@ class StoreMaintenanceResultRequest extends FormRequest
      */
     public function rules(): array
     {
+        // 保養不可能早於工單建立：執行時間不能早於這張工單建立的時間（精確到分鐘，因為輸入欄位只有到分鐘）。
+        $order = $this->route('maintenanceOrder');
+        $createdAt = $order?->created_at?->format('Y-m-d H:i') ?? '1971-01-01';
+
         return [
             'result' => ['required', 'in:'.MaintenanceResult::RESULT_OK.','.MaintenanceResult::RESULT_NG],
             // 執行人不用填：由登入帳號自動帶入（controller 寫入 executed_by，指向 users.id）。
-            'executed_at' => ['required', 'date', 'after:1971-01-01', 'before_or_equal:+5 minutes'],   // 執行時間不能是未來
+            'executed_at' => ['required', 'date', 'after:1971-01-01', 'after_or_equal:' . $createdAt, 'before_or_equal:+5 minutes'],   // 執行時間不能是未來
             'note' => ['nullable', 'string', 'max:2000'],
 
             // 保養用料（可以不填）：每種零件最多選一次，有選零件時數量必須是正整數。
@@ -39,6 +43,7 @@ class StoreMaintenanceResultRequest extends FormRequest
     {
         return [
             'executed_at.before_or_equal' => ':attribute 不能晚於現在的時間。',
+            'executed_at.after_or_equal' => ':attribute 不能早於保養工單建立的時間（:date）。',
             'executed_at.after' => ':attribute 不是合理的日期，請重新選擇。',
         ];
     }

@@ -28,7 +28,7 @@ class PartScrapController extends Controller
     public function store(Request $request, Part $part)
     {
         $validated = $request->validate([
-            'scrap_date' => ['required', 'date', 'before_or_equal:today'],
+            'scrap_date' => ['required', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:today'],
             'scrap_time' => ['nullable', 'date_format:H:i'],
             'quantity' => ['required', 'integer', 'min:1', 'max:' . max(1, $part->current_stock)],
             'reason' => ['required', 'string', 'max:50'],
@@ -36,6 +36,7 @@ class PartScrapController extends Controller
         ], [
             'scrap_date.required' => '請填寫報廢日期。',
             'scrap_date.before_or_equal' => '報廢日期不能晚於今天。',
+            'scrap_date.after_or_equal' => '報廢日期不是合理的日期，請重新選擇。',
             'scrap_time.date_format' => '時間格式不正確。',
             'quantity.required' => '請填寫報廢數量。',
             'quantity.min' => '報廢數量至少要 1。',

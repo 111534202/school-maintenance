@@ -22,7 +22,7 @@ class MaintenanceCompletionRateController extends Controller
 {
     public function index(Request $request, MaintenanceCompletionRateService $service): JsonResponse
     {
-        $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d'], 'device_id' => ['nullable', 'integer']]);
+        $request->validate(['from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d', ...($request->filled('from') ? ['after_or_equal:from'] : [])], 'device_id' => ['nullable', 'integer']], ['to.after_or_equal' => '結束日期不能早於起始日期。']);
         $from = $request->filled('from') ? Carbon::parse($request->string('from')) : null;
         $to = $request->filled('to') ? Carbon::parse($request->string('to')) : null;
         $deviceId = $request->filled('device_id') ? $request->integer('device_id') : null;

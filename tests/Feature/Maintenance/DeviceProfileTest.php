@@ -168,6 +168,7 @@ class DeviceProfileTest extends TestCase
             'status' => MaintenanceOrder::STATUS_PENDING,
             'scheduled_date' => now()->toDateString(),
         ]);
+        $order->forceFill(['created_at' => now()->subYear()])->save();   // 執行時間不能早於工單建立時間
 
         $this->post(route('maintenance-orders.results.store', $order), [
             'result' => 'ng',

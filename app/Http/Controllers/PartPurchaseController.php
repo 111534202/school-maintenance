@@ -59,7 +59,7 @@ class PartPurchaseController extends Controller
     private function validated(Request $request): array
     {
         return $request->validate([
-            'purchase_date' => ['required', 'date', 'before_or_equal:today'],
+            'purchase_date' => ['required', 'date', 'after_or_equal:2000-01-01', 'before_or_equal:today'],
             'vendor_name' => ['required', 'string', 'max:255'],
             'quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
             'unit_price' => ['required', 'integer', 'min:0', 'max:100000000'],
@@ -74,6 +74,7 @@ class PartPurchaseController extends Controller
             'remove_attachments.*' => ['integer'],
         ], [
             'purchase_date.before_or_equal' => '採購日期不能晚於今天。',
+            'purchase_date.after_or_equal' => '採購日期不是合理的日期，請重新選擇。',
             'invoices.max' => '一筆採購最多 ' . self::MAX_ATTACHMENTS . ' 個附件。',
             'invoices.*.mimes' => '附件只能是 PDF 或圖片（JPG、PNG）。',
         ]);
