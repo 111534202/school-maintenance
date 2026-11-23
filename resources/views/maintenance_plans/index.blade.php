@@ -72,7 +72,8 @@
                                         <i class="bi {{ $plan->is_active ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
                                     </button>
                                 </form>
-                                @if ($plan->is_active && $plan->canGenerateOrders())
+                                {{-- 手動「建立工單」預設隱藏（config/maintenance.php manual_orders）：工單由系統在到期日前 3 天自動產生。 --}}
+                                @if (config('maintenance.manual_orders') && $plan->is_active && $plan->canGenerateOrders())
                                     <form action="{{ route('maintenance-plans.create-order', $plan) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-outline-success icon-btn" title="建立工單" aria-label="建立工單"><i class="bi bi-clipboard-plus"></i></button>

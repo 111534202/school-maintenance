@@ -176,6 +176,7 @@ class MaintenanceItemAndPlanWriteTest extends TestCase
     // 一個計畫可以有好幾個保養對象（設備、類別混著選）；建立工單時只建一張，對象全部放在這張工單裡。
     public function test_a_plan_can_have_several_targets_in_one_order(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $category = DeviceCategory::create(['name' => '冷氣']);
         $a = $this->makeDevice('MULTI-A');
         $b = $this->makeDevice('MULTI-B');

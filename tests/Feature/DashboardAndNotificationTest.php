@@ -78,6 +78,18 @@ class DashboardAndNotificationTest extends TestCase
         $response->assertSee('chart-repairTrend', false);
     }
 
+    // 用戶數只算啟用中的帳號，點過去用戶主檔篩選「啟用中」。
+    public function test_user_card_counts_only_active_users(): void
+    {
+        $admin = $this->makeUserWithRole('admin', '系統管理員');
+        $active = \App\Models\User::where('is_active', true)->count();
+        \App\Models\User::factory()->create(['is_active' => false]);
+
+        $this->actingAs($admin)->get(route('dashboard'))->assertOk()
+            ->assertViewHas('userTotal', $active)
+            ->assertSee(route('users.index', ['status' => 'active']), false);
+    }
+
     // 甜甜圈圖不畫「已中止」；折線圖點圖框外面跳到近 14 天新增的報修單。
     public function test_status_chart_skips_aborted_and_trend_links_to_the_14_day_range(): void
     {

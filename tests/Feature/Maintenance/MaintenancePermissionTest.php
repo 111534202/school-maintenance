@@ -100,6 +100,7 @@ class MaintenancePermissionTest extends TestCase
 
     public function test_write_actions_are_blocked_without_the_matching_permission(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         [$order, , $plan] = $this->fixtures();
 
         // 維修人員：能看、能回報，但不能改計畫、不能由計畫建工單、不能掃描 AI。
@@ -159,6 +160,7 @@ class MaintenancePermissionTest extends TestCase
 
     public function test_action_buttons_are_hidden_when_the_user_cannot_use_them(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         [$order, , $plan] = $this->fixtures();
         $createOrderUrl = route('maintenance-plans.create-order', $plan);
         $reportUrl = route('maintenance-orders.results.create', $order);

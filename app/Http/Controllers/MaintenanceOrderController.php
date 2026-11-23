@@ -130,9 +130,12 @@ class MaintenanceOrderController extends Controller
     /**
      * 保養計畫的「建立工單」按鈕：馬上產生排定在下次到期日的工單（不用等到到期日）；這一期已經有工單就不重複建立。
      * 下次到期日要等工單做完或取消才往後推。產生規則見 DueMaintenanceOrderGenerator。
+     * 目前預設關閉（config/maintenance.php 的 manual_orders）：工單只由系統自動產生，按鈕不顯示、直接送出也是 404。
      */
     public function storeFromPlan(MaintenancePlan $maintenancePlan, \App\Services\DueMaintenanceOrderGenerator $generator): RedirectResponse
     {
+        abort_unless(config('maintenance.manual_orders'), 404);
+
         if (! $maintenancePlan->is_active) {
             return redirect()->route('maintenance-plans.index')->with('error', '已停用的保養計畫不能建立工單。');
         }

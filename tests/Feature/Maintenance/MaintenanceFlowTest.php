@@ -69,6 +69,7 @@ class MaintenanceFlowTest extends TestCase
 
     public function test_creating_an_order_from_a_plan_copies_device_and_due_date(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $device = $this->makeDevice();
         $plan = $this->makePlan($device, ['next_due_date' => '2026-10-20']);
 
@@ -85,6 +86,7 @@ class MaintenanceFlowTest extends TestCase
 
     public function test_inactive_plan_cannot_create_an_order(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $plan = $this->makePlan($this->makeDevice(), ['is_active' => false]);
 
         $this->post(route('maintenance-plans.create-order', $plan))->assertRedirect(route('maintenance-plans.index'))->assertSessionHas('error');

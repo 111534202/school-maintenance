@@ -64,6 +64,7 @@ class UiTweaks1123Test extends TestCase
     // 一張工單有一台設備＋一個設備類別：NG 要從全部對象勾選（指定的設備＋那一類還在用的設備），每台各建一張報修單。
     public function test_ng_on_a_multi_target_order_picks_devices_from_all_targets(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $aircon = DeviceCategory::create(['name' => '冷氣']);
         $proj = $this->device('PROJ-1');

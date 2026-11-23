@@ -157,8 +157,8 @@ class DrilldownAndFinalStateTest extends TestCase
 
         $html = $this->actingAs($admin)->get(route('dashboard'))->assertOk()->getContent();
 
-        // 進行中工單＝未結案（新報修、已派工、待驗收；已結案、已退回不算）。
-        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['status' => 'pending,assigned,pending_review'])), $html);
+        // 進行中工單＝已派工、待驗收（新報修還沒派工不算；已結案、已退回不算）。
+        $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['status' => 'assigned,pending_review'])), $html);
         $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['status' => 'pending,assigned'])), $html);
         $this->assertStringContainsString(htmlspecialchars(route('repairs.index', ['created_from' => now()->startOfMonth()->toDateString(), 'created_to' => now()->endOfMonth()->toDateString()])), $html);
         // 趨勢圖：每一天的點連到「那一天新增」的報修單。
@@ -285,6 +285,7 @@ class DrilldownAndFinalStateTest extends TestCase
 
     public function test_a_disabled_but_not_deleted_device_gets_no_maintenance_orders(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $device = $this->device('DEV-DIS', 'disabled');
         $plan = MaintenancePlan::factory()->create(['device_id' => $device->id, 'next_due_date' => now()->toDateString(), 'is_active' => true]);
@@ -366,6 +367,7 @@ class DrilldownAndFinalStateTest extends TestCase
 
     public function test_no_maintenance_orders_are_created_for_a_retired_device(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $device = $this->device('DEV-PLAN', 'retired');
         $plan = MaintenancePlan::factory()->create(['device_id' => $device->id, 'next_due_date' => now()->subDay()->toDateString(), 'is_active' => true]);
@@ -483,6 +485,7 @@ class DrilldownAndFinalStateTest extends TestCase
     // 計畫的設備已淘汰：到期也不產生工單，操作紀錄寫出原因；「建立工單」按鈕不顯示、硬送也擋下。
     public function test_a_plan_on_a_retired_device_creates_no_order_and_logs_why(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $old = $this->device('DEV-GONE', 'retired');
         $plan = MaintenancePlan::factory()->create(['device_id' => $old->id, 'device_category_id' => null, 'cycle_days' => 30, 'start_date' => now()->subDays(30)->toDateString(), 'next_due_date' => now()->toDateString(), 'is_active' => true]);
 

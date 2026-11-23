@@ -54,8 +54,8 @@ class DashboardController extends Controller
             ];
         }
 
-        // 「進行中工單」= 未結案：新報修、已派工、待驗收（已結案、已退回都算結束）。點卡片到看板，篩選同樣這三個狀態，筆數一致。
-        $openCount = collect($repairStatuses)->whereNotIn('key', RepairRequestStatus::closedValues())->sum('count');
+        // 「進行中工單」= 維修人員已經接手、還沒結案的：已派工、待驗收（新報修還沒派工，不算）。點卡片到看板，篩選同樣這兩個狀態，筆數一致。
+        $openCount = (int) (($statusCounts[RepairRequestStatus::Assigned->value] ?? 0) + ($statusCounts[RepairRequestStatus::PendingReview->value] ?? 0));
 
         // 本月新增報修數：從本月第一天開始，到下個月第一天之前。
         $monthStart = now()->startOfMonth();
@@ -130,7 +130,7 @@ class DashboardController extends Controller
 
         // ---- 用戶（需要用戶主檔權限）----
         if ($user->can('users.manage')) {
-            $data['userTotal'] = User::count();   // 用戶總數
+            $data['userTotal'] = User::where('is_active', true)->count();   // 用戶數：只算啟用中的帳號，已停用的不算
         }
 
         // ---- 教室（需要教室主檔權限）----

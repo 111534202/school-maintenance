@@ -78,7 +78,7 @@
     @endforeach
 
     @if ($orders->isEmpty())
-        <div class="tb-card tb-empty">目前沒有保養工單，請到「保養計畫」頁面點選「建立工單」</div>
+        <div class="tb-card tb-empty">目前沒有保養工單。保養計畫的下次到期日前 3 天，系統會自動產生工單</div>
     @else
     <section class="tb-table-wrap" data-no-fit>
     <div class="table-responsive">

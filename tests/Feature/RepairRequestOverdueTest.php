@@ -102,7 +102,7 @@ class RepairRequestOverdueTest extends TestCase
             ->assertDontSee('目前只顯示已逾時');
     }
 
-    // 主控台卡片點過去的篩選：進行中＝未結案（新報修＋已派工＋待驗收）、待修數＝新報修＋已派工、待派工＝新報修、逾時＝逾時；卡片數字跟看板筆數一致。
+    // 主控台卡片點過去的篩選：進行中＝已派工＋待驗收（新報修還沒派工不算）、待修數＝新報修＋已派工、待派工＝新報修、逾時＝逾時；卡片數字跟看板筆數一致。
     public function test_dashboard_cards_link_to_matching_board_filters(): void
     {
         foreach (['pending' => 1, 'assigned' => 2, 'pending_review' => 3, 'completed' => 1] as $status => $count) {
@@ -110,14 +110,14 @@ class RepairRequestOverdueTest extends TestCase
         }
 
         $this->get(route('dashboard'))->assertOk()
-            ->assertSee(route('repairs.index', ['status' => 'pending,assigned,pending_review']), false)
+            ->assertSee(route('repairs.index', ['status' => 'assigned,pending_review']), false)
             ->assertSee(route('repairs.index', ['status' => 'pending,assigned']), false)
             ->assertSee(route('repairs.index', ['status' => 'overdue']), false);
-        $this->assertSame(6, $this->get(route('dashboard'))->viewData('openCount'));
+        $this->assertSame(5, $this->get(route('dashboard'))->viewData('openCount'));
 
-        $board = $this->get(route('repairs.index', ['status' => 'pending,assigned,pending_review']))->assertOk()
-            ->assertSee('<option value="pending,assigned,pending_review" selected>新報修、已派工、待驗收</option>', false);
-        $this->assertSame(6, $board->viewData('repairRequests')->total());
+        $board = $this->get(route('repairs.index', ['status' => 'assigned,pending_review']))->assertOk()
+            ->assertSee('<option value="assigned,pending_review" selected>已派工、待驗收</option>', false);
+        $this->assertSame(5, $board->viewData('repairRequests')->total());
         $this->assertSame(3, $this->get(route('repairs.index', ['status' => 'pending,assigned']))->viewData('repairRequests')->total());
         $this->assertSame(1, $this->get(route('repairs.index', ['status' => 'pending']))->viewData('repairRequests')->total());
     }

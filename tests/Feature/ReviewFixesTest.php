@@ -168,6 +168,7 @@ class ReviewFixesTest extends TestCase
 
     public function test_creating_an_order_from_a_plan_twice_does_not_duplicate_it(): void
     {
+        config(['maintenance.manual_orders' => true]);   // 手動建立工單預設關閉，這個測試要用到
         $admin = $this->makeUserWithRole('admin', '系統管理員');
         $plan = MaintenancePlan::factory()->create(['device_id' => $this->device()->id, 'next_due_date' => '2026-12-20']);
 

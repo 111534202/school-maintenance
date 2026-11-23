@@ -76,4 +76,15 @@ class UiTweaks1123bTest extends TestCase
         $this->actingAs($admin)->post(route('repairs.assign', $repair), ['assigned_to' => $tech->id, 'scheduled_at' => now()->addHour()->format('Y-m-d\TH:i')])
             ->assertSessionHasNoErrors();
     }
+
+    // 手動「建立工單」預設隱藏：保養計畫列表沒有按鈕，直接送出也是 404；工單只由系統自動產生。
+    public function test_manual_order_creation_is_hidden_by_default(): void
+    {
+        $admin = $this->makeUserWithRole('admin', '系統管理員');
+        $plan = \App\Models\MaintenancePlan::factory()->create(['name' => '月檢', 'next_due_date' => now()->addDays(20)->toDateString(), 'is_active' => true]);
+
+        $this->actingAs($admin)->get(route('maintenance-plans.index'))->assertOk()->assertDontSee(route('maintenance-plans.create-order', $plan), false);
+        $this->actingAs($admin)->post(route('maintenance-plans.create-order', $plan))->assertNotFound();
+        $this->assertSame(0, \App\Models\MaintenanceOrder::count());
+    }
 }

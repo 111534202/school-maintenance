@@ -14,7 +14,7 @@
     $repairColors = ["pending" => "#6c757d", "assigned" => "#0dcaf0", "returned" => "#dc3545", "pending_review" => "#0d6efd", "completed" => "#198754", "aborted" => "#343a40"];
     // 數字卡片清單：標題、數字、單位、圖示、顏色、點擊後要跳去的網址、右下角的備註文字。前三張（報修）所有人都看得到。
     $cards = [
-        ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index', ['status' => 'pending,assigned,pending_review']), 'note' => null],
+        ['label' => __('dashboard.cards.open_repairs'), 'value' => $openCount, 'unit' => __('dashboard.cards.unit_repairs'), 'icon' => 'bi-tools', 'color' => 'primary', 'url' => route('repairs.index', ['status' => 'assigned,pending_review']), 'note' => null],
 	    ["label" => __("dashboard.cards.monthly_repairs"), "value" => $monthlyRepairCount, "unit" => __("dashboard.cards.unit_repairs"), "icon" => "bi-calendar-month", "color" => "info", "url" => route("repairs.index", ["created_from" => now()->startOfMonth()->toDateString(), "created_to" => now()->endOfMonth()->toDateString()]), "note" => null],
         [
             'label' => __('dashboard.cards.average_repair_hours'),
@@ -49,7 +49,7 @@
         $cards[] = ['label' => __('dashboard.cards.devices'), 'value' => $deviceTotal, 'unit' => __('dashboard.cards.unit_devices'), 'icon' => 'bi-pc-display', 'color' => 'success', 'url' => route('devices.index'), 'note' => null];
     }
     if ($userTotal !== null) {
-        $cards[] = ['label' => __('dashboard.cards.users'), 'value' => $userTotal, 'unit' => __('dashboard.cards.unit_users'), 'icon' => 'bi-people', 'color' => 'info', 'url' => route('users.index'), 'note' => null];
+        $cards[] = ['label' => __('dashboard.cards.users'), 'value' => $userTotal, 'unit' => __('dashboard.cards.unit_users'), 'icon' => 'bi-people', 'color' => 'info', 'url' => route('users.index', ['status' => 'active']), 'note' => null];
     }
     if ($classroomTotal !== null) {
         $cards[] = ['label' => __('dashboard.cards.classrooms'), 'value' => $classroomTotal, 'unit' => __('dashboard.cards.unit_classrooms'), 'icon' => 'bi-building', 'color' => 'danger', 'url' => route('classrooms.index'), 'note' => null];
