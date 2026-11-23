@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -11,9 +12,13 @@ use Illuminate\Support\Facades\Schema;
  * 用法：
  *   php artisan docs:schema           重新產生（資料表或欄位改了以後執行）
  *   php artisan docs:schema --check   只檢查文件是不是最新（不寫檔；測試會用它，文件過期就失敗）
+ * 連到 MySQL 時，另外會產生／檢查 docs/資料字典.md（實際欄位型態、預設值、外鍵刪除規則與索引，依業務模組分章）。
  * 欄位的中文說明、資料表的中文名稱與正規化結論是這個檔案裡的文字（下面的 $columnText、$tables），新增欄位時請一併補上。
  * 欄位順序固定成「編號 → 關聯 → 一般欄位 → 時間欄位」，欄位型態用「邏輯型態」（整數、文字、布林…），
  * 這樣不管在 MySQL 或測試用的 SQLite 產生出來都一樣。
+ *
+ * @phpstan-type Physical array{engine: string, collation: string, columns: array<string, array{type: string, nullable: bool, default: ?string, extra: string}>, foreign: list<array{column: string, table: string, ref: string, on_delete: string}>, indexes: array<string, array{unique: bool, columns: list<string>}>}
+ * @phpstan-type SchemaMap array<string, array{columns: list<array<string, mixed>>, foreign: array<string, array{table: string, column: string}>}>
  */
 class GenerateSchemaDocs extends Command
 {
@@ -138,6 +143,7 @@ class GenerateSchemaDocs extends Command
         'class_name' => '班級名稱', 'reservation_date' => '預約日期', 'start_time' => '開始時間', 'end_time' => '結束時間', 'reviewed_by' => '審核人（users.id）', 'reviewed_at' => '審核時間', 'purpose' => '用途', 'is_all_or_nothing' => '其中一節無法借用就整筆不要（只能整筆同意或拒絕）',
         'key' => '參數名稱', 'value' => '參數值', 'risk_score' => '風險分數（0～1）', 'threshold' => '當時的門檻', 'algorithm' => '評分演算法版本', 'explanation' => '評分明細（JSON 快照）', 'features' => '輸入特徵（JSON 快照）',
         'decided_by' => '審核人（users.id）', 'decided_at' => '審核時間', 'decision_note' => '審核備註',
+        'import_batch_id' => '由哪一次批次匯入建立（import_batches.id；手動新增的資料是空白）', 'view_count' => '查看次數（打開文章加 1）',
     ];
 
     /** @var array<string, string> 個別資料表裡意思不同的欄位 */
@@ -145,6 +151,32 @@ class GenerateSchemaDocs extends Command
         'part_scraps.quantity' => '報廢數量', 'part_scrap_batches.quantity' => '從這一批扣的數量', 'part_scrap_batches.unit_price' => '這一批的單價（報廢損失用）',
         'roles.name' => '身分名稱', 'classrooms.name' => '教室名稱', 'classrooms.type' => '教室類型', 'departments.name' => '單位名稱', 'maintenance_orders.assigned_to' => '負責人（users.id，保養管理者指派，沒指派是空白）', 'majors.name' => '科系名稱（唯一）', 'mail_settings.password' => '寄信密碼（加密後存放，畫面不顯示）', 'mail_settings.port' => '寄信連接埠（587 或 465）', 'mail_settings.is_enabled' => '是否啟用（啟用後全站寄信改用這組設定）', 'mail_settings.updated_by' => '最後修改者（users.id）', 'device_categories.name' => '類別名稱（唯一）', 'maintenance_items.name' => '項目名稱', 'maintenance_plans.name' => '計畫名稱', 'parts.name' => '零件名稱',
         'repair_requests.description' => '故障描述', 'repair_requests.title' => '報修標題', 'repair_requests.classroom_id' => '設備地點（classrooms.id，報修當時的教室）', 'maintenance_items.description' => '說明',
+        'users.name' => '姓名', 'audit_logs.description' => '操作說明（寫入當下的文字快照，之後資料改名或刪除也不變）',
+        'repair_requests.requester_id' => '報修人（users.id）', 'classroom_reservations.requester_id' => '預約申請人（users.id）', 'classroom_reservations.classroom_id' => '預約的教室（classrooms.id）',
+        'repair_requests.rejection_reason' => '驗收退回原因（只保留最新一次）', 'classroom_reservations.rejection_reason' => '拒絕原因（被拒絕時填寫）', 'classroom_reservation_slots.rejection_reason' => '這個時段的拒絕原因（被拒絕時填寫）',
+        'part_purchases.quantity' => '進貨數量', 'part_purchases.unit_price' => '進貨單價',
+        'repair_part_usages.unit_price' => '扣料當下那一批的單價（成本快照）', 'maintenance_part_usages.unit_price' => '扣料當下那一批的單價（成本快照）',
+        'repair_logs.started_at' => '開始維修的時間', 'repair_logs.ended_at' => '結束維修的時間',
+        'maintenance_plan_items.maintenance_plan_id' => '所屬保養計畫（maintenance_plans.id）', 'maintenance_plan_items.maintenance_item_id' => '計畫包含的保養項目（maintenance_items.id）',
+        'preventive_candidates.maintenance_order_id' => '核准後建立的保養工單（maintenance_orders.id）', 'maintenance_results.repair_request_id' => '由這次 NG 轉出的報修單（repair_requests.id）',
+        'import_batches.import_type' => '匯入種類（devices 設備／users 用戶）', 'import_batches.name' => '匯入的檔案名稱（只是記錄，檔案確認後就刪除）', 'import_batches.imported_count' => '成功寫入幾筆',
+        'import_batches.skipped_count' => '因為有錯誤而略過幾列', 'import_batches.created_by' => '執行匯入的人（users.id）', 'import_batches.undone_at' => '整批復原的時間（空白＝尚未復原）', 'import_batches.undone_by' => '執行復原的人（users.id）',
+    ];
+
+    /**
+     * Laravel 內建資料表的欄位說明（「資料字典.md」的附錄用；業務資料表不放這裡）。
+     *
+     * @var array<string, string>
+     */
+    private array $frameworkText = [
+        'migrations.id' => '流水號', 'migrations.migration' => '已執行的 migration 檔名', 'migrations.batch' => '執行批次',
+        'sessions.id' => '工作階段代碼', 'sessions.user_id' => '登入的用戶（users.id，未登入為空白）', 'sessions.ip_address' => '來源 IP', 'sessions.user_agent' => '瀏覽器資訊', 'sessions.payload' => '工作階段內容（序列化）', 'sessions.last_activity' => '最後活動時間（Unix 時間戳記）',
+        'cache.key' => '快取名稱', 'cache.value' => '快取內容', 'cache.expiration' => '到期時間（Unix 時間戳記）',
+        'cache_locks.key' => '鎖的名稱', 'cache_locks.owner' => '持有者', 'cache_locks.expiration' => '到期時間（Unix 時間戳記）',
+        'jobs.id' => '佇列工作編號', 'jobs.queue' => '佇列名稱', 'jobs.payload' => '工作內容', 'jobs.attempts' => '已嘗試次數', 'jobs.reserved_at' => '被取走處理的時間', 'jobs.available_at' => '可以開始處理的時間', 'jobs.created_at' => '建立時間',
+        'job_batches.id' => '批次代碼', 'job_batches.name' => '批次名稱', 'job_batches.total_jobs' => '工作總數', 'job_batches.pending_jobs' => '尚未處理的數量', 'job_batches.failed_jobs' => '失敗的數量', 'job_batches.failed_job_ids' => '失敗工作的編號清單', 'job_batches.options' => '批次選項', 'job_batches.cancelled_at' => '取消時間', 'job_batches.created_at' => '建立時間', 'job_batches.finished_at' => '完成時間',
+        'failed_jobs.id' => '流水號', 'failed_jobs.uuid' => '工作唯一代碼', 'failed_jobs.connection' => '佇列連線', 'failed_jobs.queue' => '佇列名稱', 'failed_jobs.payload' => '工作內容', 'failed_jobs.exception' => '失敗的錯誤訊息', 'failed_jobs.failed_at' => '失敗時間',
+        'password_reset_tokens.email' => '申請重設的 Email', 'password_reset_tokens.token' => '重設憑證（雜湊）', 'password_reset_tokens.created_at' => '建立時間',
     ];
 
     /**
@@ -159,7 +191,7 @@ class GenerateSchemaDocs extends Command
         'classrooms.reservation_status' => ['normal' => '正常（可預約）', 'abnormal' => '有核心設備異常（不開放預約）'],
         'classroom_reservations.status' => ['pending' => '待審核', 'approved' => '已核准（全部時段同意）', 'rejected' => '已駁回（全部時段拒絕）', 'partially_approved' => '部分核准（有同意也有拒絕的時段）'],
         'classroom_reservation_slots.status' => ['approved' => '同意', 'rejected' => '拒絕'],
-        'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中', 'completed' => '已完成'],
+        'maintenance_orders.status' => ['pending' => '待處理', 'in_progress' => '進行中', 'completed' => '已完成', 'aborted' => '已中止（設備淘汰）'],
         'maintenance_orders.source' => ['periodic' => '定期', 'ai' => 'AI 預防'],
         'maintenance_results.result' => ['ok' => '正常', 'ng' => '異常'],
         'maintenance_results.ng_conversion_status' => ['pending_handoff' => '待轉報修', 'not_applicable' => '不需轉報修', 'converted' => '已轉成報修單'],
@@ -172,6 +204,72 @@ class GenerateSchemaDocs extends Command
 
     /** @var list<string> 在 SQLite 看起來是長文字、但在 MySQL 是 JSON 的欄位（同樣是為了讓兩邊產生的文件一樣） */
     private array $jsonColumns = ['audit_logs.changes', 'preventive_candidates.explanation', 'preventive_candidates.features'];
+
+    /**
+     * 「資料字典.md」的章節分組：模組名稱 => [一句話說明, [資料表…]]。順序就是文件裡的順序。
+     * 新增資料表時要放進其中一個模組（沒放的會顯示「（未分組）」，SchemaDocsAreUpToDateTest 會失敗）。
+     *
+     * @var array<string, array{0: string, 1: list<string>}>
+     */
+    private array $modules = [
+        '帳號與權限' => ['誰可以登入、屬於哪個單位、能做哪些事（身分像 Discord 身分組，勾選要開放的權限）', ['roles', 'role_permissions', 'users', 'departments']],
+        '基本主檔' => ['學校的科系、教室、設備類別與設備', ['majors', 'classrooms', 'device_categories', 'devices']],
+        '報修與維修' => ['報修、派工、維修、驗收的主流程，以及報修前先查的自助知識庫', ['repair_requests', 'repair_logs', 'repair_part_usages', 'knowledge_base']],
+        '保養與 AI 預防保養' => ['定期保養的項目、計畫、工單、結果，以及 AI 預防保養的候選與參數', ['maintenance_items', 'maintenance_plans', 'maintenance_plan_items', 'maintenance_orders', 'maintenance_results', 'maintenance_part_usages', 'ai_settings', 'preventive_candidates']],
+        '零件庫存' => ['零件、進貨批次（先進先出成本）、報廢', ['parts', 'part_purchases', 'part_scraps', 'part_scrap_batches']],
+        '空間預約' => ['教師申請教室時段、逐節審核', ['classroom_reservations', 'classroom_reservation_slots']],
+        '系統共用' => ['附件、操作日誌、批次匯入紀錄、寄信設定（各模組共用）', ['attachments', 'audit_logs', 'import_batches', 'mail_settings']],
+    ];
+
+    /**
+     * 每張資料表「拿來做什麼」的一句話（資料字典用；正規化結論另見 $tables）。
+     *
+     * @var array<string, string>
+     */
+    private array $purposes = [
+        'roles' => '身分。內建五個：admin 系統管理員、it_manager 設備管理員、technician 維修人員、teacher 教師、executive 主管；每個用戶只有一個身分。',
+        'role_permissions' => '每個身分勾選了哪些權限，一列一個權限代碼（權限清單在 PermissionCatalog）。',
+        'users' => '系統帳號。停用或軟刪除後不能登入，但報修、保養等紀錄仍保留；含「忘記密碼」臨時密碼流程用的欄位。',
+        'departments' => '單位（部門）清單，用戶與教室的「所屬單位」下拉選單來源。',
+        'majors' => '科系，以及各科系的年級數與每年級班數；空間預約申請班級的下拉選單來源。',
+        'classrooms' => '教室，含校區、樓層與管理人；有核心設備異常時 reservation_status 會變成 abnormal，教室暫停預約。',
+        'device_categories' => '設備類別（投影機、電腦…）；設備、保養項目、保養計畫與保養工單都依類別分類。',
+        'devices' => '設備。device_code（管制編號）就是 QR Code 的內容；有狀態、是否核心設備與保固日；停用以軟刪除處理，履歷保留。',
+        'repair_requests' => '報修單，也是報修主流程的狀態機：新報修 → 已派工 → 處理中 → 待驗收 → 已結案（驗收不通過退回處理中；設備淘汰時進行中的單會變已中止）。',
+        'repair_logs' => '維修人員每次處理的紀錄（原因、處置、起訖時間、工時）；驗收退回後會再填新的一筆，舊的不修改。',
+        'repair_part_usages' => '維修用掉的零件、數量與「扣料當下那一批」的單價（先進先出成本快照）。',
+        'knowledge_base' => '自助排除知識庫文章（常見故障與處理步驟），報修前先查；有上架旗標與查看次數。',
+        'maintenance_items' => '保養項目（要檢查什麼），可指定適用的設備類別。',
+        'maintenance_plans' => '保養計畫：針對一台設備或一類設備，設定保養週期與下次到期日；排程依它自動產生工單。',
+        'maintenance_plan_items' => '保養計畫包含哪些保養項目（多對多的中間表）。',
+        'maintenance_orders' => '保養工單，來源是定期計畫或 AI 預防保養；狀態：待處理 → 進行中 → 已完成（設備淘汰時未完成的會變已中止）。取消用軟刪除。',
+        'maintenance_results' => '保養結果（OK／NG），與工單一對一；NG 可以轉成一張報修單。',
+        'maintenance_part_usages' => '保養用掉的零件與當時單價，結構與維修用料相同。',
+        'ai_settings' => 'AI 預防保養的參數（「參數名稱＋參數值」），例如門檻、去重天數、是否需主管審核。',
+        'preventive_candidates' => 'AI 掃描出的預防保養候選（含評分明細快照）；主管核准後才建立 AI 來源的保養工單。',
+        'parts' => '零件主檔：編號、單位、安全庫存與目前庫存（目前庫存是各批次剩餘數量的加總，只能由庫存服務更新）。',
+        'part_purchases' => '零件進貨批次，每一筆是一個批次；用料與報廢依先進先出從最早、還有剩的批次扣。',
+        'part_scraps' => '零件報廢單（損壞、過期、遺失）。',
+        'part_scrap_batches' => '報廢扣了哪幾個進貨批次與當時單價（取消報廢時依它加回庫存）。',
+        'classroom_reservations' => '空間預約申請（誰、哪間教室、哪個班級、用途）；整筆申請的狀態由底下各時段的審核結果決定。',
+        'classroom_reservation_slots' => '預約申請的每一個時段（日期與起訖時間），可以逐節同意或拒絕；使用時間只記在這裡。',
+        'attachments' => '附件（報修與維修照片、採購發票），用多型關聯掛在各種資料底下；檔案存在私有磁碟，只能透過網站依權限下載。',
+        'audit_logs' => '操作日誌：誰、何時、對哪筆資料做了什麼；說明文字是寫入當下的快照。',
+        'import_batches' => '批次匯入（設備、用戶）的紀錄；設備與用戶以 import_batch_id 指回來，匯錯時可以整批復原。',
+        'mail_settings' => '寄信用的 SMTP 設定，整張表只有一筆；密碼加密存放。',
+    ];
+
+    /** @var array<string, string> Laravel 內建資料表的用途（資料字典附錄用） */
+    private array $frameworkPurposes = [
+        'migrations' => '記錄哪些 migration 已經執行過（php artisan migrate 靠它判斷要不要再跑）。',
+        'sessions' => '登入狀態（SESSION_DRIVER=database）；帳號被停用時會刪掉他的工作階段把人登出。',
+        'cache' => '快取資料（CACHE_STORE=database），例如排程心跳時間。',
+        'cache_locks' => '快取鎖（避免排程等工作被重複執行）。',
+        'jobs' => 'Laravel 佇列的待處理工作；目前系統的寄信是即時寄出，沒有使用佇列。',
+        'job_batches' => 'Laravel 佇列的批次工作紀錄；目前沒有使用。',
+        'failed_jobs' => 'Laravel 佇列失敗的工作；目前沒有使用。',
+        'password_reset_tokens' => 'Laravel 預設的重設密碼憑證表；本系統的「忘記密碼」改用臨時密碼（存在 users），所以這張表沒有使用。',
+    ];
 
     /**
      * 例外：不照規則取名的欄位與理由。
@@ -200,6 +298,24 @@ class GenerateSchemaDocs extends Command
         $files = [
             base_path('docs/資料庫命名規範與資料字典.md') => $this->document($schema),
         ];
+
+        // 實體資料字典要讀 MySQL 的 information_schema；測試用的 SQLite 沒有這些資訊，就略過（CI 的 MySQL 任務會檢查它）。
+        if (DB::getDriverName() === 'mysql') {
+            $files[base_path('docs/資料字典.md')] = $this->physicalDocument($schema);
+        } else {
+            $this->line('（目前不是 MySQL，略過「資料字典.md」；它只在連到 MySQL 時產生與檢查。）');
+        }
+
+        // 新資料表一定要放進 $modules 分組，並補上 $purposes 的用途，否則資料字典會有沒說明的表（和資料庫種類無關，SQLite 測試也會擋）。
+        $missing = array_unique(array_merge(
+            array_diff(array_keys($schema), array_merge(...array_column($this->modules, 1))),
+            array_diff(array_keys($schema), array_keys($this->purposes)),
+        ));
+        if ($missing) {
+            $this->error('這些資料表還沒放進模組分組或沒有用途說明，請到 GenerateSchemaDocs 的 $modules、$purposes 補上：' . implode('、', $missing));
+
+            return self::FAILURE;
+        }
 
         if ($this->option('check')) {
             $stale = array_keys(array_filter($files, fn ($content, $path) => ! is_file($path) || file_get_contents($path) !== $content, ARRAY_FILTER_USE_BOTH));
@@ -333,9 +449,26 @@ class GenerateSchemaDocs extends Command
         };
     }
 
+    /**
+     * 規格書沒有列出的資料表（$tables 裡「規格書對照」欄以「規格書未列」開頭的），用在第 8 節。
+     *
+     * @param  SchemaMap  $schema
+     */
+    private function tablesNotInSpec(array $schema): string
+    {
+        $names = array_filter(array_keys($schema), fn ($table) => str_starts_with($this->tables[$table][1] ?? '規格書未列', '規格書未列'));
+
+        return implode('、', array_map(fn ($table) => "`{$table}`", $names));
+    }
+
     private function describe(string $table, string $column): string
     {
-        return $this->columnTextSpecific["{$table}.{$column}"] ?? $this->columnText[$column] ?? '';
+        // 先找「資料表.欄位」的專屬說明（兩個陣列都可能放），再用同名欄位共用的說明，最後是 Laravel 內建資料表的說明。
+        return $this->columnTextSpecific["{$table}.{$column}"]
+            ?? $this->columnText["{$table}.{$column}"]
+            ?? $this->frameworkText["{$table}.{$column}"]
+            ?? $this->columnText[$column]
+            ?? '';
     }
 
     /** 狀態、類型欄位的值域文字：「pending 新報修／assigned 已派工…」。 */
@@ -358,7 +491,8 @@ class GenerateSchemaDocs extends Command
         $out = [];
         $out[] = '# 資料庫命名規範與資料字典';
         $out[] = '';
-        $out[] = '> 這是**唯一一份**資料庫文件：命名邏輯、代碼值、例外、正規化結論、資料表一覽、ERD、完整名稱清單與資料字典，以及和規格書的差異都在這裡。';
+        $out[] = '> 這份是資料庫的「命名規範與邏輯字典」：命名邏輯、代碼值、例外、正規化結論、資料表一覽、ERD、完整名稱清單，以及和規格書的差異都在這裡；';
+        $out[] = '> 每個欄位在 MySQL 裡的實際型態、長度、預設值與刪除規則，見同資料夾的《資料字典》。';
         $out[] = '> 內容是從實際的資料庫結構**自動產生**的（`php artisan docs:schema`）；資料庫異動請改 migration，再重新產生。';
         $out[] = '> 命名規則由 `DatabaseNamingConventionTest` 自動檢查、文件過期由 `SchemaDocsAreUpToDateTest` 檢查，不合規則或忘了更新都會測試失敗。';
         $out[] = '';
@@ -610,7 +744,7 @@ class GenerateSchemaDocs extends Command
             ['`maintenance_results.filled_by`', '`executed_by`（users.id）', '已改成外鍵'],
             ['`attachments.ref_type`／`ref_id`／`file_name`／`file_path`／`size_kb`／`uploaded_by`', '`attachable_type`／`attachable_id`／`file_name`／`file_path`／`size_bytes`，無 `uploaded_by`', '檔名與路徑已對齊；來源用 Laravel 多型關聯；大小存位元組'],
             ['`audit_logs.table_name`／`record_id`／`ip_address`', '`loggable_type`／`loggable_id`，無 `ip_address`', 'Laravel 多型關聯'],
-            ['規格書第 7 章 15 張表以外', '另有 `knowledge_base`、`parts`、`repair_part_usages`、`classroom_reservations`、`ai_settings`、`preventive_candidates`', '工作計畫指定的模組'],
+            ['規格書第 7 章列出的資料表以外', '另有 ' . $this->tablesNotInSpec($schema), '工作計畫指定的模組與後來新增的功能'],
         ] as $row) {
             $out[] = '| ' . implode(' | ', $row) . ' |';
         }
@@ -631,7 +765,7 @@ class GenerateSchemaDocs extends Command
         $out[] = '| 主鍵 | 一律 `id`（Laravel 慣例，彭仕衡決定）；外鍵才用 `<表單數>_id` |';
         $out[] = '| 工作計畫與規格文件已經固定的名稱（`knowledge_base`） | 不改，列為例外 |';
         $out[] = '';
-        $out[] = '### 9.2 資料表名稱：22 張全部維持';
+        $out[] = '### 9.2 資料表名稱：' . count($schema) . ' 張全部維持';
         $out[] = '';
         $out[] = '逐張對照第 1.5 節的資料表公式後，沒有任何一張需要改名：';
         $out[] = '';
@@ -640,7 +774,7 @@ class GenerateSchemaDocs extends Command
         $out[] = '| `repair_part_usages` | 維持 | 工作計畫稱 `repair_part_usage`（單數）；依規則 T1 統一複數，並定案為「報修（repair）領域的零件使用（part_usages）」，不再改成 `repair_log_parts`，避免和隊友分支再次衝突。 |';
         $out[] = '| `maintenance_results` | 維持 | 規格書第 7 章的名稱；它是保養工單的結果，一對一，不需要 `maintenance_order_` 前綴。 |';
         $out[] = '| `knowledge_base` | 維持（例外） | 工作計畫與規格文件固定使用的名稱。 |';
-        $out[] = '| 其餘 19 張 | 維持 | 已符合「［領域詞］＿實體詞（複數）」。 |';
+        $out[] = '| 其餘 ' . (count($schema) - 3) . ' 張 | 維持 | 已符合「［領域詞］＿實體詞（複數）」。 |';
         $out[] = '';
         $out[] = '### 9.3 欄位與資料值的改名對照（全部已套用）';
         $out[] = '';
@@ -672,6 +806,315 @@ class GenerateSchemaDocs extends Command
         }
         $out[] = '';
         $out[] = '轉換用的 migration：`2026_10_15_100000`（外鍵、重複欄位、requester_id、資料表複數）、`2026_10_22_000001`（權限拆表）、`2026_10_22_000002`（可推導的類別）、`2026_10_22_000003`（department_code、note）、`2026_10_25_000001`（本次最後一批改名與動作值）。舊資料全部轉換、不遺失，每一支都可以退回。';
+        return implode("\n", $out) . "\n";
+    }
+
+    // ------------------------------------------------------------------ 實體資料字典（資料字典.md，需要 MySQL）
+
+    /**
+     * 從 MySQL 的 information_schema 讀出「實際」的欄位型態、預設值、外鍵刪除規則與索引。
+     * 文件是用這份資料產生的，所以只有連到 MySQL 時才會產生／檢查（SQLite 沒有這些資訊）。
+     *
+     * @return array<string, Physical>
+     */
+    private function readPhysical(): array
+    {
+        $database = DB::connection()->getDatabaseName();
+        $info = [];
+
+        foreach (DB::select('SELECT TABLE_NAME AS t, ENGINE AS e, TABLE_COLLATION AS c FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = ? ORDER BY TABLE_NAME', [$database, 'BASE TABLE']) as $row) {
+            $info[$row->t] = ['engine' => (string) $row->e, 'collation' => (string) $row->c, 'columns' => [], 'foreign' => [], 'indexes' => []];
+        }
+
+        foreach (DB::select('SELECT TABLE_NAME AS t, COLUMN_NAME AS c, COLUMN_TYPE AS ty, IS_NULLABLE AS n, COLUMN_DEFAULT AS d, EXTRA AS x FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME, ORDINAL_POSITION', [$database]) as $row) {
+            $info[$row->t]['columns'][$row->c] = ['type' => (string) $row->ty, 'nullable' => $row->n === 'YES', 'default' => $row->d === null ? null : (string) $row->d, 'extra' => (string) $row->x];
+        }
+
+        foreach (DB::select('SELECT k.TABLE_NAME AS t, k.COLUMN_NAME AS c, k.REFERENCED_TABLE_NAME AS rt, k.REFERENCED_COLUMN_NAME AS rc, r.DELETE_RULE AS dr FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA = k.TABLE_SCHEMA AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME AND r.TABLE_NAME = k.TABLE_NAME WHERE k.TABLE_SCHEMA = ? AND k.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY k.TABLE_NAME, k.COLUMN_NAME', [$database]) as $row) {
+            $info[$row->t]['foreign'][] = ['column' => $row->c, 'table' => $row->rt, 'ref' => $row->rc, 'on_delete' => $row->dr];
+        }
+
+        foreach (DB::select('SELECT TABLE_NAME AS t, INDEX_NAME AS i, NON_UNIQUE AS nu, COLUMN_NAME AS c FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX', [$database]) as $row) {
+            $info[$row->t]['indexes'][$row->i]['unique'] = ! $row->nu;
+            $info[$row->t]['indexes'][$row->i]['columns'][] = $row->c;
+        }
+
+        return $info;
+    }
+
+    /** 外鍵「刪除上一層資料時」的規則，翻成白話。 */
+    private function deleteRule(string $rule): string
+    {
+        return match ($rule) {
+            'CASCADE' => '連帶刪除',
+            'SET NULL' => '設為空白',
+            default => '禁止刪除',
+        };
+    }
+
+    /**
+     * 這個欄位的「約束」欄文字：主鍵、唯一、外鍵（含刪除規則）、組合唯一。
+     *
+     * @param  Physical  $physical
+     */
+    private function constraintText(string $column, array $physical): string
+    {
+        $parts = [];
+        $indexes = $physical['indexes'];
+
+        if (($indexes['PRIMARY']['columns'] ?? []) === [$column]) {
+            $parts[] = 'PK';
+        }
+
+        foreach ($indexes as $name => $index) {
+            if ($name === 'PRIMARY' || ! $index['unique'] || ! in_array($column, $index['columns'], true)) {
+                continue;
+            }
+            $parts[] = count($index['columns']) === 1 ? 'UNI' : '組合唯一(' . implode(', ', $index['columns']) . ')';
+        }
+
+        foreach ($physical['foreign'] as $fk) {
+            if ($fk['column'] === $column) {
+                $parts[] = "FK → `{$fk['table']}.{$fk['ref']}`（刪除時{$this->deleteRule($fk['on_delete'])}）";
+            }
+        }
+
+        return implode('<br>', $parts);
+    }
+
+    /**
+     * 這張表「額外」的索引（主鍵、單欄唯一、外鍵自動建的索引都不重複列）。
+     *
+     * @param  Physical  $physical
+     * @return list<string>
+     */
+    private function extraIndexes(array $physical): array
+    {
+        $foreignColumns = array_column($physical['foreign'], 'column');
+        $lines = [];
+
+        foreach ($physical['indexes'] as $name => $index) {
+            if ($name === 'PRIMARY' || ($index['unique'] && count($index['columns']) === 1)) {
+                continue;
+            }
+            if (! $index['unique'] && count($index['columns']) === 1 && in_array($index['columns'][0], $foreignColumns, true)) {
+                continue;
+            }
+            $lines[] = ($index['unique'] ? '組合唯一 ' : '') . '`' . implode('`＋`', $index['columns']) . '`';
+        }
+
+        sort($lines);
+
+        return $lines;
+    }
+
+    /**
+     * 預設值顯示：沒有預設值留白；字串去掉多餘的引號。
+     *
+     * @param  array{type: string, nullable: bool, default: ?string, extra: string}  $column
+     */
+    private function defaultText(array $column): string
+    {
+        if ($column['default'] === null) {
+            return str_contains($column['extra'], 'auto_increment') ? '自動編號' : '';
+        }
+
+        return '`' . trim($column['default'], "'") . '`';
+    }
+
+    /**
+     * 一張資料表的欄位表（含說明）。
+     *
+     * @param  Physical  $physical
+     * @param  list<array<string, mixed>>|null  $logicalColumns
+     * @return list<string>
+     */
+    private function physicalTable(string $table, array $physical, ?array $logicalColumns): array
+    {
+        // 順序：有邏輯欄位順序（業務資料表）就照「編號 → 關聯 → 一般 → 時間」，沒有（Laravel 內建表）就照資料庫裡的順序。
+        $names = $logicalColumns !== null ? array_column($logicalColumns, 'name') : array_keys($physical['columns']);
+
+        $out = [];
+        $out[] = '| 欄位 | 型態 | 允許空白 | 預設值 | 約束 | 說明 |';
+        $out[] = '|---|---|---|---|---|---|';
+        foreach ($names as $name) {
+            $column = $physical['columns'][$name];
+            $domain = $this->domain($table, $name);
+            $description = $this->describe($table, $name) . ($domain ? "（值：{$domain}）" : '');
+            $out[] = '| `' . $name . '` | `' . $column['type'] . '` | ' . ($column['nullable'] ? 'Y' : '') . ' | ' . $this->defaultText($column) . ' | ' . $this->constraintText($name, $physical) . ' | ' . $description . ' |';
+        }
+
+        $indexes = $this->extraIndexes($physical);
+        if ($indexes) {
+            $out[] = '';
+            $out[] = '其他索引：' . implode('；', $indexes);
+        }
+
+        return $out;
+    }
+
+    /**
+     * 一個模組內的資料表關聯圖（不畫指向 users 的線，人員欄位見欄位表的外鍵）。
+     *
+     * @param  list<string>  $tables
+     * @param  array<string, Physical>  $physicalAll
+     * @return list<string>
+     */
+    private function moduleErd(array $tables, array $physicalAll): array
+    {
+        $lines = [];
+        foreach ($tables as $table) {
+            foreach ($physicalAll[$table]['foreign'] as $fk) {
+                if ($fk['table'] !== 'users') {
+                    $lines[] = '    ' . $fk['table'] . ' ||--o{ ' . $table . ' : "' . $fk['column'] . '"';
+                }
+            }
+        }
+        $lines = array_values(array_unique($lines));
+        sort($lines);
+
+        return $lines ? array_merge(['```mermaid', 'erDiagram'], $lines, ['```']) : [];
+    }
+
+    /**
+     * 資料字典（實體欄位版）：依業務模組分章，每張表有用途、欄位型態、預設值、約束與說明。
+     *
+     * @param  SchemaMap  $schema
+     */
+    private function physicalDocument(array $schema): string
+    {
+        $physical = $this->readPhysical();
+        $framework = array_values(array_filter(array_keys($physical), fn ($t) => in_array($t, self::FRAMEWORK_TABLES, true)));
+        sort($framework);
+
+        $businessTables = array_keys($schema);
+        $columnCount = array_sum(array_map(fn ($t) => count($physical[$t]['columns']), $businessTables));
+        $foreignCount = array_sum(array_map(fn ($t) => count($physical[$t]['foreign']), $businessTables));
+        $grouped = array_merge(...array_map(fn ($m) => $m[1], array_values($this->modules)));
+        $ungrouped = array_values(array_diff($businessTables, $grouped));
+        $first = $businessTables[0];
+
+        $out = [];
+        $out[] = '# 資料字典';
+        $out[] = '';
+        $out[] = '> 每一張資料表的**實際**欄位型態、長度、是否可空白、預設值、主鍵／唯一／外鍵（含刪除規則）與索引。';
+        $out[] = '> 內容從 MySQL 的 `information_schema` **自動產生**（`php artisan docs:schema`，需連到 MySQL）；資料庫異動請改 migration 再重新產生。';
+        $out[] = '> 文件過期時，GitHub 上的「MySQL 資料庫檢查」會失敗（`php artisan docs:schema --check`）。';
+        $out[] = '> 命名規則、正規化結論與和規格書的差異，見同資料夾的《資料庫命名規範與資料字典》；系統整體設計見《系統架構》。';
+        $out[] = '';
+        $out[] = '## 1. 概況';
+        $out[] = '';
+        $out[] = '| 項目 | 內容 |';
+        $out[] = '|---|---|';
+        $out[] = '| 資料庫 | MySQL 8.4（' . $physical[$first]['engine'] . '，定序 ' . $physical[$first]['collation'] . '） |';
+        $out[] = '| 業務資料表 | ' . count($businessTables) . ' 張（另有 Laravel 內建 ' . count($framework) . ' 張，見附錄） |';
+        $out[] = '| 欄位總數 | ' . $columnCount . '（業務資料表） |';
+        $out[] = '| 外鍵約束 | ' . $foreignCount . ' 條（見第 4 節） |';
+        $out[] = '| 主鍵 | 一律是 `id`（自動編號的大整數） |';
+        $out[] = '| 時間 | 系統時區 Asia/Taipei；`created_at`／`updated_at` 由 Laravel 自動維護 |';
+        $out[] = '| 軟刪除 | 有 `deleted_at` 的資料表（用戶、教室、設備、報修單、保養工單）刪除只是填上時間，資料保留供履歷追溯 |';
+        $out[] = '';
+        $out[] = '### 怎麼讀欄位表';
+        $out[] = '';
+        $out[] = '| 欄位 | 意思 |';
+        $out[] = '|---|---|';
+        $out[] = '| 型態 | MySQL 實際型態。`bigint unsigned`＝大整數（不能是負數）；`varchar(255)`＝最長 255 字的文字；`tinyint(1)`＝布林（0／1）；`timestamp`＝日期時間；`text`／`json` 見字面 |';
+        $out[] = '| 允許空白 | Y＝可以沒有值（NULL）；空白＝一定要有值 |';
+        $out[] = '| 預設值 | 新增資料沒有指定時，資料庫自動填的值；空白＝沒有預設值 |';
+        $out[] = '| 約束 | PK 主鍵；UNI 不可重複；FK 外鍵（指向哪張表、被指的那筆刪掉時怎麼辦）；組合唯一＝幾個欄位合起來不可重複 |';
+        $out[] = '| 刪除規則 | **連帶刪除**＝上層刪了，這筆跟著刪；**設為空白**＝上層刪了，這個欄位變空白、這筆保留；**禁止刪除**＝還有資料指向它時，上層不能刪 |';
+        $out[] = '';
+        $out[] = '## 2. 資料表分組總覽';
+        $out[] = '';
+        $out[] = '| 模組 | 資料表 | 中文名稱 | 用途 |';
+        $out[] = '|---|---|---|---|';
+        foreach ($this->modules as $module => [, $tables]) {
+            $tables = array_values(array_filter($tables, fn ($t) => isset($schema[$t])));
+            foreach ($tables as $i => $table) {
+                $out[] = '| ' . ($i === 0 ? "**{$module}**" : '') . ' | `' . $table . '` | ' . ($this->tables[$table][0] ?? $table) . ' | ' . ($this->purposes[$table] ?? '') . ' |';
+            }
+        }
+        foreach ($ungrouped as $table) {
+            $out[] = '| （未分組） | `' . $table . '` | ' . ($this->tables[$table][0] ?? $table) . ' | ' . ($this->purposes[$table] ?? '') . ' |';
+        }
+
+        $out[] = '';
+        $out[] = '## 3. 各模組的資料字典';
+
+        $number = 0;
+        foreach ($this->modules as $module => [$intro, $tables]) {
+            $tables = array_values(array_filter($tables, fn ($t) => isset($schema[$t])));
+            if (! $tables) {
+                continue;
+            }
+            $number++;
+            $out[] = '';
+            $out[] = "### 3.{$number} {$module}";
+            $out[] = '';
+            $out[] = $intro . '。';
+            $erd = $this->moduleErd($tables, $physical);
+            if ($erd) {
+                $out[] = '';
+                $out = array_merge($out, $erd);
+                $out[] = '';
+                $out[] = '（圖中不畫指向 `users` 的線；提出者、指派者、審核人等人員欄位都在欄位表的外鍵裡。）';
+            }
+            foreach ($tables as $table) {
+                $out[] = '';
+                $out[] = "#### {$table}　" . ($this->tables[$table][0] ?? $table);
+                $out[] = '';
+                $out[] = '**用途**：' . ($this->purposes[$table] ?? '');
+                $out[] = '';
+                $out = array_merge($out, $this->physicalTable($table, $physical[$table], $schema[$table]['columns']));
+            }
+        }
+
+        foreach ($ungrouped as $table) {
+            $out[] = '';
+            $out[] = "#### {$table}　（未分組）";
+            $out[] = '';
+            $out = array_merge($out, $this->physicalTable($table, $physical[$table], $schema[$table]['columns']));
+        }
+
+        $out[] = '';
+        $out[] = '## 4. 外鍵與刪除規則一覽';
+        $out[] = '';
+        $out[] = '共 ' . $foreignCount . ' 條。「連帶刪除」的只有「明細跟著主檔」這類（例如刪預約申請，底下的時段一起刪）；指向人與主檔的外鍵多半是「設為空白」，讓歷史資料不會因為帳號或設備被移除而消失。';
+        $out[] = '';
+        $out[] = '| 資料表 | 欄位 | 指向 | 刪除上層時 |';
+        $out[] = '|---|---|---|---|';
+        foreach ($businessTables as $table) {
+            foreach ($physical[$table]['foreign'] as $fk) {
+                $out[] = "| `{$table}` | `{$fk['column']}` | `{$fk['table']}.{$fk['ref']}` | {$this->deleteRule($fk['on_delete'])} |";
+            }
+        }
+
+        $out[] = '';
+        $out[] = '## 5. 代碼值（資料庫裡真正存的值）';
+        $out[] = '';
+        $out[] = '| 資料表.欄位 | 值 | 中文 |';
+        $out[] = '|---|---|---|';
+        foreach ($this->codes as $key => $values) {
+            foreach ($values as $code => $zh) {
+                $out[] = "| `{$key}` | `{$code}` | {$zh} |";
+            }
+        }
+        $out[] = '';
+        $out[] = '代碼值一律是小寫英文加底線；畫面顯示的中文走語言檔（`lang/`），不存進資料庫。權限代碼（`role_permissions.permission`）的完整清單在 `app/Support/PermissionCatalog.php`。';
+
+        $out[] = '';
+        $out[] = '## 附錄　Laravel 內建資料表（' . count($framework) . ' 張）';
+        $out[] = '';
+        $out[] = '框架自己用的表，不是業務資料；列在這裡是為了讓資料字典完整。';
+        foreach ($framework as $table) {
+            $out[] = '';
+            $out[] = "#### {$table}";
+            $out[] = '';
+            $out[] = '**用途**：' . ($this->frameworkPurposes[$table] ?? '');
+            $out[] = '';
+            $out = array_merge($out, $this->physicalTable($table, $physical[$table], null));
+        }
+
         return implode("\n", $out) . "\n";
     }
 }
