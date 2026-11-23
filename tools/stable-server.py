@@ -1,4 +1,4 @@
-"""學校設備維保系統：Windows 本機穩定網頁伺服器（展示、驗收、開發都建議用這個）。
+"""校園設備維保電子化管理系統：Windows 本機穩定網頁伺服器（展示、驗收、開發都建議用這個）。
 
 為什麼不用 `php artisan serve`？
   PHP 內建伺服器（php -S）在 Windows 上會「隨機」把較大的回應截斷在固定大小（例如 65280、129280 位元組），
@@ -215,7 +215,7 @@ class Server(ThreadingHTTPServer):
 
 def main():
     global php_cgi
-    parser = argparse.ArgumentParser(description='學校設備維保系統：Windows 穩定網頁伺服器')
+    parser = argparse.ArgumentParser(description='校園設備維保電子化管理系統：Windows 穩定網頁伺服器')
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()

@@ -134,6 +134,7 @@ return [
     // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => '報修案件已送出。',
+        'submitted_auto_dispatched' => '報修案件已送出，系統已自動派工給「:technician」。',
         'dispatched' => '已派工。',
         'reassigned' => '已重新指派。',
         'started' => '已標記為處理中。',

@@ -24,7 +24,7 @@ class StoreMaintenanceResultRequest extends FormRequest
         return [
             'result' => ['required', 'in:'.MaintenanceResult::RESULT_OK.','.MaintenanceResult::RESULT_NG],
             // 執行人不用填：由登入帳號自動帶入（controller 寫入 executed_by，指向 users.id）。
-            'executed_at' => ['required', 'date', 'after:1971-01-01', 'after_or_equal:' . $createdAt, 'before_or_equal:+5 minutes'],   // 執行時間不能是未來
+            'executed_at' => ['required', 'date', 'after:1971-01-01', 'after_or_equal:' . $createdAt, 'before_or_equal:now'],   // 執行時間不能晚於送出的那一刻
             'note' => ['nullable', 'string', 'max:2000'],
 
             // 保養用料（可以不填）：每種零件最多選一次，有選零件時數量必須是正整數。
@@ -38,7 +38,7 @@ class StoreMaintenanceResultRequest extends FormRequest
         ];
     }
 
-    /** 時間欄位的錯誤訊息：不要把「+5 minutes」這種程式用語顯示給使用者。 */
+    /** 時間欄位的錯誤訊息：不要把「now」這種程式用語顯示給使用者。 */
     public function messages(): array
     {
         return [

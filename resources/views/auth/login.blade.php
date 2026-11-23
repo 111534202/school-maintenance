@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>登入 - 學校設備維保電子化系統</title>
+    <title>登入 - 校園設備維保電子化管理系統</title>
     <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
     {{-- 跟登入後的頁面同一套風格 B（墨綠主色、暖白底、思源黑體／宋體），見 public/css/theme-b.css。 --}}
@@ -29,7 +29,7 @@
     </style>
 </head>
 <body class="tb-body">
-    <div class="login-band"><span class="brand">學校設備維保電子化系統</span></div>
+    <div class="login-band"><span class="brand">校園設備維保電子化管理系統</span></div>
     {{-- 整個畫面垂直、水平置中，把登入卡片放在螢幕正中間。 --}}
     <div class="container d-flex align-items-center justify-content-center py-5" style="min-height: calc(100vh - 60px);">
         {{-- 登入卡片：手機上佔滿寬度，大螢幕最寬 400px。 --}}

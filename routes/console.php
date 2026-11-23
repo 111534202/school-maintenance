@@ -66,6 +66,16 @@ Schedule::command(\App\Console\Commands\RunDatabaseBackup::class, ['--reason=sch
     ->onOneServer();
 
 /**
+ * 報修自動派工的保險：每分鐘把還在等待的新報修派給已經閒下來的維修人員
+ * （送出維修紀錄時會立刻補派；案件被取消、重新指派、新增維修人員時靠這裡補派）。功能關閉時什麼都不做。
+ */
+Schedule::command(\App\Console\Commands\AutoDispatchRepairs::class)
+    ->everyMinute()
+    ->name('repairs:auto-dispatch')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+/**
  * 排程心跳：每分鐘記下「排程正在跑」的時間，php artisan deploy:check 靠它判斷伺服器有沒有設定每分鐘執行 schedule:run
  * （沒設定的話，保養工單不會自動產生、備份不會自動做、空間申請不會定期清除）。
  */

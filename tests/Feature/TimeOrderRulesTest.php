@@ -70,6 +70,39 @@ class TimeOrderRulesTest extends TestCase
         $this->assertSame('assigned', $case->fresh()->status->value);
     }
 
+    // 維修的開始、結束時間都不能晚於「填寫送出的那一刻」（不再有 5 分鐘的寬限）；保養結果的執行時間同理。
+    public function test_repair_and_maintenance_times_cannot_be_later_than_the_moment_of_submission(): void
+    {
+        $technician = $this->makeTechnician();
+        $case = RepairRequestFactory::new()->create(['status' => 'in_progress', 'assigned_to' => $technician->id, 'created_at' => '2026-11-18 09:00:00']);
+        $base = ['cause' => '壞了', 'resolution' => '修好'];
+
+        // 現在是 11:00：結束時間 11:01（只晚 1 分鐘）也不行；開始時間同理。
+        $this->actingAs($technician)
+            ->post(route('repair-logs.store', $case), $base + ['started_at' => '2026-11-18 10:00', 'ended_at' => '2026-11-18 11:01'])
+            ->assertSessionHasErrors('ended_at');
+        $this->assertStringContainsString('不能晚於現在的時間', session('errors')->first('ended_at'));
+        $this->post(route('repair-logs.store', $case), $base + ['started_at' => '2026-11-18 11:01', 'ended_at' => '2026-11-18 11:01'])
+            ->assertSessionHasErrors(['started_at', 'ended_at']);
+        $this->assertSame(0, $case->fresh()->repairLogs()->count());
+
+        // 剛好是現在這一分鐘可以。
+        $this->post(route('repair-logs.store', $case), $base + ['started_at' => '2026-11-18 10:00', 'ended_at' => '2026-11-18 11:00'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, $case->fresh()->repairLogs()->count());
+
+        // 表單也限制最晚時間（現在這一分鐘），瀏覽器就選不到未來的時間。
+        $another = RepairRequestFactory::new()->create(['status' => 'in_progress', 'assigned_to' => $technician->id, 'created_at' => '2026-11-18 09:00:00']);
+        $this->get(route('repair-logs.create', $another))->assertOk()->assertSee('max="2026-11-18T11:00"', false);
+
+        // 保養結果的執行時間：晚 1 分鐘不行。
+        $order = MaintenanceOrder::factory()->create(['created_at' => '2026-11-18 08:00:00']);
+        $this->actingAs($this->makeUserWithRole('admin', '系統管理員'))
+            ->post(route('maintenance-orders.results.store', $order), ['result' => 'ok', 'executed_at' => '2026-11-18 11:01'])
+            ->assertSessionHasErrors('executed_at');
+        $this->get(route('maintenance-orders.results.create', $order))->assertSee('max="2026-11-18T11:00"', false);
+    }
+
     public function test_absurd_years_are_rejected_for_dates(): void
     {
         $admin = $this->makeUserWithRole('admin', '系統管理員');

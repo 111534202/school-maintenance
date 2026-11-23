@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Enums\RepairRequestStatus;   // 報修單狀態列舉
 use App\Models\RepairRequest;        // 報修單資料表模型
+use App\Services\AutoRepairDispatcher;
 
 /**
  * 【給王佑恩（保養/AI 模組）呼叫用】
@@ -53,7 +54,7 @@ class CreateRepairRequestFromMaintenanceNg
         string $impactLevel = 'medium',
         ?int $deviceId = null,   // 放在最後面，原本的具名參數呼叫才不會壞
     ): RepairRequest {
-        return RepairRequest::create([
+        $repairRequest = RepairRequest::create([
             'title' => $title,
             // 把來源標記寫進描述最前面，方便在報修列表/詳細頁一眼看出這張單不是
             // 使用者自己報的，而是保養檢查自動轉來的。
@@ -66,5 +67,14 @@ class CreateRepairRequestFromMaintenanceNg
             'device_note' => $deviceNote,
             'status' => RepairRequestStatus::Pending->value,   // 一律從「新報修」開始，後面照一般流程派工
         ]);
+
+        // 和一般報修一樣：有閒置的維修人員就自動派工（沒有就維持新報修，等人手動派或有人閒下來再補派）。出問題不影響建單。
+        try {
+            app(AutoRepairDispatcher::class)->dispatch($repairRequest);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return $repairRequest->refresh();
     }
 }

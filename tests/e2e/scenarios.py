@@ -10,6 +10,7 @@
 import datetime
 import os
 import re
+import subprocess
 import tempfile
 import time
 import uuid
@@ -98,6 +99,15 @@ def login(page, account, password=PASSWORD):
     settle(page)
 
 
+def run_php(root, code):
+    """在測試用資料庫（school_maintenance_e2e）執行一小段 PHP，用來把畫面上做不到的前置狀態準備好（只給測試用）。"""
+    result = subprocess.run(['php', 'artisan', 'tinker', '--execute', code], cwd=root, capture_output=True, text=True, encoding='utf-8',
+                            env=dict(os.environ, DB_DATABASE=os.environ.get('E2E_DB', 'school_maintenance_e2e')))
+    if result.returncode != 0:
+        raise AssertionError('準備測試資料失敗：' + (result.stdout + result.stderr)[-300:])
+    return result.stdout
+
+
 def body(page):
     return re.sub(r'\n\s*\n+', '\n', page.inner_text('body'))
 
@@ -163,7 +173,10 @@ def permissions_by_role(browser, base, root):
 
 @scenario
 def repair_lifecycle(browser, base, root):
-    """教師報修 → 主管派工 → 維修人員處理並用零件 → 教師驗收結案（零件庫存扣掉）"""
+    """教師報修 → 系統自動派工給閒置的維修人員、管理員看得到 → 維修人員處理並用零件 → 教師驗收結案（零件庫存扣掉）"""
+    # 示範資料裡每位維修人員手上都已經有案件（沒有閒置的人，新報修會留在「新報修」等人手動派）；
+    # 這裡先讓示範帳號 repairer 的案件都進到待驗收（他做完了、等驗收），他就是目前唯一閒置的維修人員。
+    run_php(root, r"App\Models\RepairRequest::where('assigned_to', App\Models\User::where('account', 'repairer')->value('id'))->whereIn('status', ['assigned', 'in_progress'])->update(['status' => 'pending_review']);")
     with session(browser, base) as (page, errors):
         login(page, 'admin')
         goto(page, '/parts/1')
@@ -180,12 +193,12 @@ def repair_lifecycle(browser, base, root):
         match = re.search(r'/repairs/(\d+)', page.url)
         check(match, '送出報修後應進到報修單頁：' + page.url)
         rid = match.group(1)
+        # 自動派工：示範資料裡只有一位維修人員、而且沒有案件，送出報修後直接是「已派工」，不用等主管。
+        check('自動派工' in body(page) and '已派工' in body(page), '送出報修後應由系統自動派工：' + body(page)[:300])
 
         login(page, 'it_manager')
         goto(page, f'/repairs/{rid}')
-        page.select_option('select[name="assigned_to"]', label='維修人員')
-        click_and_wait(page, 'button:has-text("確認派工")')
-        check('已派工' in body(page), '派工後狀態應是已派工')
+        check('已派工' in body(page) and '維修人員' in body(page), '主管看這張報修單應是已派工、並看得到被指派的維修人員')
 
         login(page, 'repairer')
         goto(page, f'/repairs/{rid}')
@@ -203,9 +216,9 @@ def repair_lifecycle(browser, base, root):
         now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
         page.fill('textarea[name="cause"]', '燈泡燒壞')
         page.fill('textarea[name="resolution"]', '更換燈泡')
-        # 維修開始時間不能早於報修送出的時間：報修剛送出，所以從現在這一分鐘開始，2 分鐘後結束（結束時間可比現在晚不超過 5 分鐘）。
+        # 維修開始時間不能早於報修送出的時間、結束時間不能晚於送出的那一刻：報修剛送出，所以開始、結束都填現在這一分鐘。
         page.fill('input[name="started_at"]', now.strftime('%Y-%m-%dT%H:%M'))
-        page.fill('input[name="ended_at"]', (now + datetime.timedelta(minutes=2)).strftime('%Y-%m-%dT%H:%M'))
+        page.fill('input[name="ended_at"]', now.strftime('%Y-%m-%dT%H:%M'))
         click_and_wait(page, 'button:has-text("送出維修紀錄")', 2000)
         check('待驗收' in body(page), '送出維修紀錄後應進入待驗收：' + body(page)[:200])
 
@@ -465,6 +478,166 @@ def mail_settings_page(browser, base, root):
 
         login(page, 'it_manager')
         check(goto(page, '/mail-settings').status == 403, '資訊組主管不能開寄信設定')
+        no_js_errors(errors)
+
+
+@scenario
+def part_create_keeps_safety_stock(browser, base, root):
+    """新增零件：安全庫存要照使用者填的存起來（各種填法：點進去直接打字、填完沒送出再回來、一載入就打字）"""
+    def open_form(page):
+        goto(page, '/parts/create')
+        page.wait_for_selector('#name')
+
+    def saved_safety(page):
+        # 送出後會導到零件履歷；從畫面上讀「安全庫存」那一列。
+        text = body(page)
+        m = re.search(r'安全庫存\s*[:：]?\s*(\d+)', text)
+        return int(m.group(1)) if m else None
+
+    with session(browser, base) as (page, errors):
+        login(page, 'admin')
+
+        # A. 點進安全庫存欄位（原本顯示 0）直接打字。
+        open_form(page)
+        page.wait_for_timeout(600)
+        page.fill('#name', 'E2E 安全庫存 A')
+        page.fill('#unit', '條')
+        page.click('#safety_stock')
+        page.keyboard.type('6')
+        page.fill('#current_stock', '0')
+        click_and_wait(page, 'button:has-text("儲存")')
+        check('零件新增成功' in body(page), 'A：新增零件應成功：' + body(page)[:200])
+        check(saved_safety(page) == 6, f'A：安全庫存應該是 6，實際是 {saved_safety(page)}')
+
+        # B. 一載入頁面就馬上打字（不等任何初始化）。
+        open_form(page)
+        page.fill('#name', 'E2E 安全庫存 B')
+        page.fill('#unit', '個')
+        page.fill('#safety_stock', '9')
+        page.fill('#current_stock', '0')
+        click_and_wait(page, 'button:has-text("儲存")')
+        check(saved_safety(page) == 9, f'B：安全庫存應該是 9，實際是 {saved_safety(page)}')
+
+        # C. 填了一半沒送出就離開，再回來（會還原上次的內容），改完再送出。
+        open_form(page)
+        page.wait_for_timeout(600)
+        page.fill('#name', 'E2E 安全庫存 C')
+        page.fill('#unit', '個')
+        page.fill('#safety_stock', '4')
+        page.wait_for_timeout(900)            # 暫存有 0.4 秒的延遲
+        page.evaluate("()=>{ for (const f of document.forms) f.dataset.guardLeaveOk = '1'; }")   # 不要跳離開提醒
+        open_form(page)
+        page.wait_for_timeout(900)
+        restored = page.input_value('#safety_stock')
+        check(restored == '4', f'C：回來後應還原成 4，實際是 {restored}')
+        page.fill('#current_stock', '0')
+        click_and_wait(page, 'button:has-text("儲存")')
+        check(saved_safety(page) == 4, f'C：安全庫存應該是 4，實際是 {saved_safety(page)}')
+
+        # D. 前一個零件存好以後，再開新增頁，不應該還原到舊的值。
+        open_form(page)
+        page.wait_for_timeout(900)
+        check(page.input_value('#safety_stock') == '0', 'D：新增頁的安全庫存預設應該是 0，不該還原舊內容：' + page.input_value('#safety_stock'))
+
+        # E. 填好安全庫存後，游標還停在欄位上就用滾輪捲頁面：數字不可以被滾輪改掉（數字欄位預設會被滾輪改，最小值 0 會一路捲到 0）。
+        open_form(page)
+        page.wait_for_timeout(600)
+        page.fill('#name', 'E2E 安全庫存 E')
+        page.fill('#unit', '個')
+        page.click('#safety_stock')
+        page.keyboard.type('5')
+        box = page.locator('#safety_stock').bounding_box()
+        page.mouse.move(box['x'] + 20, box['y'] + 10)
+        for _ in range(8):
+            page.mouse.wheel(0, 120)
+            page.wait_for_timeout(60)
+        check(page.input_value('#safety_stock') == '5', '游標停在欄位上滾動滾輪後，安全庫存被改成 ' + page.input_value('#safety_stock'))
+        no_js_errors(errors)
+
+
+@scenario
+def scanner_zoom_works(browser, base, root):
+    """掃描視窗的放大：鏡頭能變焦就用鏡頭，不能變焦就用畫面數位放大；倍率標示跟著變、放大上限擋得住、關掉再開會回到 1 倍"""
+    def open_scanner(page):
+        goto(page, '/repairs/create')
+        page.click('[data-scan-target="#device_code_input"]')
+        page.wait_for_selector('#codeScannerModal.show')
+        page.wait_for_selector('[data-scanner-tools]:not([hidden])', timeout=15000)
+        page.wait_for_timeout(500)
+
+    def label(page):
+        return page.inner_text('[data-scanner-zoom-label]').strip()
+
+    def state(page):
+        return page.evaluate("""()=>{ const v=document.getElementById('codeScannerVideo'); const t=v.srcObject&&v.srcObject.getVideoTracks()[0];
+            return { transform: v.style.transform, zoom: t&&t.getSettings?t.getSettings().zoom:null }; }""")
+
+    # 1. 鏡頭本身的變焦能力（測試用假鏡頭有，也可能沒有；沒有的話走數位放大，兩種都要能放大）。
+    with session(browser, base) as (page, errors):
+        login(page, 'admin')
+        open_scanner(page)
+        check(label(page) == '1.0x', '一開始應該是 1.0x：' + label(page))
+        before = state(page)
+        page.click('[data-scanner-zoom-in]')
+        page.click('[data-scanner-zoom-in]')
+        page.wait_for_timeout(600)
+        check(label(page) == '2.0x', '按兩次放大應該是 2.0x：' + label(page))
+        after = state(page)
+        zoomed = ('scale' in (after['transform'] or '')) or (isinstance(after['zoom'], (int, float)) and isinstance(before['zoom'], (int, float)) and after['zoom'] > before['zoom'])
+        check(zoomed, f'畫面或鏡頭應該真的放大了：之前 {before}、之後 {after}')
+        page.click('[data-scanner-zoom-out]')
+        check(label(page) == '1.5x', '縮小一次應該是 1.5x：' + label(page))
+        page.press('body', 'Escape')
+        page.wait_for_selector('#codeScannerModal.show', state='detached', timeout=5000)
+        open_scanner(page)
+        check(label(page) == '1.0x', '關掉再開應該回到 1.0x：' + label(page))
+        no_js_errors(errors)
+
+    # 2. 鏡頭完全不能變焦（筆電、iPhone）：一定要用數位放大，而且有上限。
+    with session(browser, base) as (page, errors):
+        page.add_init_script("MediaStreamTrack.prototype.getCapabilities = function () { return {}; };")
+        login(page, 'admin')
+        open_scanner(page)
+        for _ in range(10):
+            page.click('[data-scanner-zoom-in]')
+        check(label(page) == '4.0x', '數位放大最多 4.0x：' + label(page))
+        check(state(page)['transform'] == 'scale(4)', '畫面應該放大 4 倍：' + str(state(page)))
+        page.evaluate("()=>{ const r=document.querySelector('[data-scanner-zoom]'); r.value=2; r.dispatchEvent(new Event('input',{bubbles:true})); }")
+        check(label(page) == '2.0x' and state(page)['transform'] == 'scale(2)', '拉滑桿到 2 倍：' + label(page) + ' ' + str(state(page)))
+        no_js_errors(errors)
+
+
+@scenario
+def site_title_goes_home(browser, base, root):
+    """左上角的系統名稱（校園設備維保電子化管理系統）：登入前後都顯示、登入後點它回主控台；電腦、平板、手機寬度都在畫面內、不造成左右溢出"""
+    title = '校園設備維保電子化管理系統'
+    measure = """()=>{ const a=document.querySelector('[data-site-title]'); const r=a.getBoundingClientRect();
+        return { text: a.textContent.trim(), left: r.left, right: r.right, vw: document.documentElement.clientWidth,
+                 truncated: a.scrollWidth > a.clientWidth + 1, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }"""
+    with session(browser, base) as (page, errors):
+        goto(page, '/login')
+        check(title in body(page), '登入頁應該顯示系統名稱')
+        login(page, 'teacher')
+        for width, height, mobile in [(1366, 800, False), (768, 1024, False), (375, 812, True)]:
+            page.set_viewport_size({'width': width, 'height': height})
+            goto(page, '/repairs')
+            page.wait_for_timeout(300)
+            m = page.evaluate(measure)
+            check(m['text'] == title, f'{width}px：標題文字不對：{m["text"]}')
+            check(m['left'] >= 0 and m['right'] <= m['vw'] + 1, f'{width}px：標題超出畫面：{m}')
+            check(m['overflow'] <= 2, f'{width}px：頁面左右溢出 {m["overflow"]}px')
+            if width >= 768:
+                # 比較：舊名稱（11 字）在同一個寬度下是不是本來就被截斷（導覽列右側的按鈕占掉不少寬度，平板寬度本來就放不下整個標題）。
+                old = page.evaluate("()=>{ const a=document.querySelector('[data-site-title]'); const keep=a.textContent; a.textContent='學校設備維保電子化系統'; const t=a.scrollWidth > a.clientWidth + 1; a.textContent=keep; return t; }")
+                print(f'      [{width}px 舊名稱{"也是截斷" if old else "完整顯示"}]')
+            if os.environ.get('E2E_SHOTS'):   # 想看畫面時：E2E_SHOTS=資料夾 python tests/e2e/run.py --only site_title
+                page.screenshot(path=os.path.join(os.environ['E2E_SHOTS'], f'title_{width}.png'), clip={'x': 0, 'y': 0, 'width': width, 'height': 140})
+            print(f'      [{width}px 標題寬 {round(m["right"] - m["left"])}px、畫面 {m["vw"]}px、{"截斷" if m["truncated"] else "完整顯示"}]')
+        # 從別的頁面點標題，回到主控台。
+        page.set_viewport_size({'width': 1366, 'height': 800})
+        goto(page, '/repairs')
+        click_and_wait(page, '[data-site-title]')
+        check(page.url.rstrip('/').endswith('/dashboard'), '點標題應該回到主控台：' + page.url)
         no_js_errors(errors)
 
 

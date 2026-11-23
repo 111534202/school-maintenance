@@ -96,9 +96,9 @@
             {{-- 網站名稱（左側標題）。 --}}
             {{-- 已登入時，點網站名稱回到主控台（沒登入就只是標題）。同步自 integrate/all（彭仕衡 5cc43ed）。 --}}
             @auth
-                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;" data-site-title>{{ __('common.site_title') }}</a>
+                <a href="{{ route('dashboard') }}" class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;" title="{{ __('common.site_title') }}" data-site-title>{{ __('common.site_title') }}</a>
             @else
-                <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;">{{ __('common.site_title') }}</span>
+                <span class="navbar-brand text-truncate me-auto mb-0 fs-6 fs-md-5" style="min-width: 0;" title="{{ __('common.site_title') }}">{{ __('common.site_title') }}</span>
             @endauth
             <div class="d-flex align-items-center gap-2 gap-md-3 flex-shrink-0">
                 {{-- i18n 語言切換：目前先隱藏（config('app.locale_switcher') 預設 false，之後要開放把
@@ -610,6 +610,12 @@
         var el = event.target;
         if (el && el.tagName === 'INPUT' && el.type === 'number' && el.value === '0') el.select();
     });
+    // 數字欄位：游標停在「正在輸入的欄位」上滾動滾輪，瀏覽器會把數字加減掉（最小值 0 的欄位會一路捲到 0，例如新增零件的安全庫存變成 0）。
+    // 滾輪動作一開始就讓欄位失去焦點，數字不會被改，頁面照常往下捲。
+    document.addEventListener('wheel', function (event) {
+        var el = document.activeElement;
+        if (el && el.tagName === 'INPUT' && el.type === 'number' && el === event.target) el.blur();
+    }, { passive: true });
     window.tbLockScroll = function (lock) {
         var html = document.documentElement;
         if (lock) {

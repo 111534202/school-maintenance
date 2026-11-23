@@ -6,13 +6,13 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
-// 為五個內建身分各建立一個測試帳號（密碼都是 password）。
-// 登入帳號名稱：admin（系統管理員）、it_manager（資訊組主管）、repairer（維修人員）、teacher（教師）、executive（主管）。
+// 為六個內建身分各建立一個測試帳號（密碼都是 password）。
+// 登入帳號名稱：admin（系統管理員）、it_manager（資訊組主管）、repairer（維修人員）、teacher（教師）、executive（主管）、student（學生）。
 // 更多示範用戶（不同部門、已停用、已刪除）在 UserDemoSeeder。
 class UserSeeder extends Seeder
 {
     /**
-     * 每個角色建立一個測試帳號，密碼統一為 password，供五種角色登入測試。
+     * 每個角色建立一個測試帳號，密碼統一為 password，供六種角色登入測試。
      * 登入用 account（帳號名稱）；email 目前是佔位用的測試信箱，之後在使用者主檔
      * 改成真實信箱（例如 Gmail），派工通知信會寄到那個信箱。
      *
@@ -28,6 +28,7 @@ class UserSeeder extends Seeder
             ['role_code' => 'technician', 'account' => 'repairer', 'name' => '維修人員', 'email' => 'repairer@school.test'],
             ['role_code' => 'teacher', 'account' => 'teacher', 'name' => '教師／教室管理人', 'email' => 'teacher@school.test'],
             ['role_code' => 'executive', 'account' => 'executive', 'name' => '主管／行政人員', 'email' => 'executive@school.test'],
+            ['role_code' => 'student', 'account' => 'student', 'name' => '學生', 'email' => 'student@school.test'],
         ];
 
         // 逐一建立或更新。

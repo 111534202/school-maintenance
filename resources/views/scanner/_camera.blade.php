@@ -7,7 +7,7 @@
        1. 用高解析度（最高 1080p）後鏡頭、連續自動對焦，每一格畫面都用原始解析度解碼（不縮小）；
        2. 每一輪依序用「原大、放大 2 倍、放大 3 倍」三種大小解碼：小條碼、細條碼放大後才讀得出來（等於自動數位變焦）；
        3. 解碼引擎：瀏覽器內建的 BarcodeDetector（有就用，最快）；沒有就載入 zxing-wasm（BarcodeDetector 的相容實作，放在 public/vendor）；
-       4. 鏡頭支援時可以用滑桿光學放大、開手電筒；
+       4. 放大：鏡頭支援光學變焦就用鏡頭放大，不支援（筆電、iPhone）或不接受就改用畫面數位放大（辨識也同步裁切中央）；鏡頭支援時可開手電筒；
        5. 還是掃不到：「拍照／選照片掃描」用照片原始解析度解碼。
      瀏覽器只允許在 HTTPS 或 localhost 開啟相機。 --}}
 @once
@@ -24,7 +24,7 @@
                         <video id="codeScannerVideo" playsinline muted autoplay></video>
                         <div class="scanner-guide" aria-hidden="true"></div>
                     </div>
-                    {{-- 光學放大與手電筒：鏡頭支援時才會出現。 --}}
+                    {{-- 放大與手電筒：放大永遠可用（鏡頭不能變焦就用數位放大）；手電筒鏡頭支援時才會出現。 --}}
                     <div class="d-flex align-items-center gap-2 mt-3" data-scanner-tools hidden>
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-scanner-zoom-out aria-label="{{ __('scanner.zoom_out') }}"><i class="bi bi-zoom-out"></i></button>
                         <input type="range" class="form-range flex-grow-1" data-scanner-zoom min="1" max="1" step="0.1" value="1" aria-label="{{ __('scanner.zoom') }}">
@@ -62,6 +62,8 @@
         var ZXING_WASM_URL = @json(asset('vendor/zxing/zxing_reader.wasm'));
         var FORMATS = ['qr_code', 'code_128', 'code_39', 'code_93', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'codabar', 'data_matrix'];
         var DIGITAL_ZOOMS = [1, 2, 3];        // 每一輪依序用這幾種放大倍率解碼（裁切畫面中央再放大）
+        var MAX_DIGITAL_ZOOM = 4;             // 鏡頭不能變焦時，畫面最多數位放大 4 倍
+        var MAX_HARDWARE_ZOOM = 10;           // 鏡頭變焦範圍很大時，滑桿最多顯示到 10 倍
         var TEXT = {
             hint: @json(__('scanner.hint')),
             loading: @json(__('scanner.loading')),
@@ -90,6 +92,9 @@
         var track = null;
         var capabilities = {};
         var torchOn = false;
+        var zoomMode = 'digital';  // 'hardware'：鏡頭真的變焦；'digital'：畫面放大＋辨識時裁切中央
+        var zoomLevel = 1;         // 目前放大幾倍（相對於不放大）
+        var hwMin = 1;             // 鏡頭變焦範圍的最小值（有的鏡頭是 1～8，有的是 100～500，所以一律換算成「幾倍」）
         var running = false;     // 掃描迴圈是否繼續
         var tick = 0;
         var current = null;      // 目前這次掃描的設定 { onResult, title }
@@ -153,6 +158,7 @@
             try {
                 if (video.readyState >= 2 && video.videoWidth) {
                     var z = DIGITAL_ZOOMS[tick++ % DIGITAL_ZOOMS.length];
+                    if (zoomMode === 'digital') z = Math.min(8, z * zoomLevel);   // 畫面已數位放大：辨識也只看畫面上看得到的中央
                     var text = await detectAt(video, video.videoWidth, video.videoHeight, z);
                     if (text && running) return finish(text);
                 }
@@ -160,34 +166,52 @@
             if (running) setTimeout(loop, 60);
         }
 
-        function applyZoom(value) {
-            if (!capabilities.zoom) return;
-            var v = Math.max(capabilities.zoom.min, Math.min(capabilities.zoom.max, value));
-            zoomRange.value = v;
-            zoomLabel.textContent = v.toFixed(1) + 'x';
-            track.applyConstraints({ advanced: [{ zoom: v }] }).catch(function () {});
+        // 設定放大倍率（1 = 不放大）。鏡頭能變焦就交給鏡頭；不能或不接受就把畫面放大（辨識的裁切範圍在 loop 裡跟著算）。
+        function applyZoom(level) {
+            level = Math.max(1, Math.min(parseFloat(zoomRange.max) || 1, level));
+            zoomLevel = level;
+            zoomRange.value = level;
+            zoomLabel.textContent = level.toFixed(1) + 'x';
+            if (zoomMode === 'hardware' && track) {
+                video.style.transform = '';
+                track.applyConstraints({ advanced: [{ zoom: hwMin * level }] }).then(function () {
+                    // 有的鏡頭回報能變焦、實際上沒有變：檢查鏡頭現在的設定，沒變就改成數位放大。
+                    var settings = (track && track.getSettings && track.getSettings()) || {};
+                    if (level > 1 && typeof settings.zoom === 'number' && settings.zoom < hwMin * 1.001) useDigitalZoom(level);
+                }).catch(function () { useDigitalZoom(level); });
+            } else {
+                video.style.transform = level > 1 ? 'scale(' + level + ')' : '';
+            }
         }
 
-        // 鏡頭啟動後：支援連續對焦就開、支援光學放大與手電筒才顯示控制項。
+        function useDigitalZoom(level) {
+            zoomMode = 'digital';
+            zoomRange.max = MAX_DIGITAL_ZOOM;
+            applyZoom(Math.min(level, MAX_DIGITAL_ZOOM));
+        }
+
+        // 鏡頭啟動後：支援連續對焦就開；放大永遠可用（能光學變焦就用鏡頭，否則數位放大）；支援手電筒才顯示手電筒。
         function setupTrack() {
             capabilities = (track.getCapabilities && track.getCapabilities()) || {};
-            tools.hidden = true;
             torchBtn.hidden = true;
             torchOn = false;
             if (capabilities.focusMode && capabilities.focusMode.indexOf('continuous') !== -1) {
                 track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {});
             }
-            if (capabilities.zoom && capabilities.zoom.max > capabilities.zoom.min) {
-                zoomRange.min = capabilities.zoom.min;
-                zoomRange.max = capabilities.zoom.max;
-                zoomRange.step = capabilities.zoom.step || 0.1;
-                tools.hidden = false;
-                applyZoom(capabilities.zoom.min);
+            zoomRange.min = 1;
+            zoomRange.step = 0.1;
+            var zoom = capabilities.zoom;
+            if (zoom && zoom.max > zoom.min) {
+                zoomMode = 'hardware';
+                hwMin = zoom.min || 1;
+                zoomRange.max = Math.min(zoom.max / hwMin, MAX_HARDWARE_ZOOM);
+            } else {
+                zoomMode = 'digital';
+                zoomRange.max = MAX_DIGITAL_ZOOM;
             }
-            if (capabilities.torch) {
-                torchBtn.hidden = false;
-                tools.hidden = false;
-            }
+            applyZoom(1);
+            tools.hidden = false;
+            if (capabilities.torch) torchBtn.hidden = false;
         }
 
         function stopCamera() {
@@ -196,6 +220,8 @@
             stream = track = null;
             capabilities = {};
             video.srcObject = null;
+            video.style.transform = '';
+            zoomLevel = 1;
             tools.hidden = true;
         }
 
@@ -266,8 +292,8 @@
         });
 
         zoomRange.addEventListener('input', function () { applyZoom(parseFloat(zoomRange.value)); });
-        modalEl.querySelector('[data-scanner-zoom-in]').addEventListener('click', function () { applyZoom(parseFloat(zoomRange.value) + 0.5); });
-        modalEl.querySelector('[data-scanner-zoom-out]').addEventListener('click', function () { applyZoom(parseFloat(zoomRange.value) - 0.5); });
+        modalEl.querySelector('[data-scanner-zoom-in]').addEventListener('click', function () { applyZoom(zoomLevel + 0.5); });
+        modalEl.querySelector('[data-scanner-zoom-out]').addEventListener('click', function () { applyZoom(zoomLevel - 0.5); });
         torchBtn.addEventListener('click', function () {
             if (!track) return;
             torchOn = !torchOn;

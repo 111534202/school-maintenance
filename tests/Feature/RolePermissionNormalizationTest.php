@@ -78,7 +78,7 @@ class RolePermissionNormalizationTest extends TestCase
 
         $role->delete();
 
-        $this->assertSame(0, DB::table('role_permissions')->count());
+        $this->assertSame(0, DB::table('role_permissions')->where('role_id', $role->id)->count());
     }
 
     public function test_migration_moves_legacy_json_into_rows_and_back(): void

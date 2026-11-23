@@ -2,9 +2,9 @@
 {{-- x-mail::message / table / button 是 Laravel 內建的郵件元件；文字都來自 lang/各語言資料夾/mail.php。 --}}
 {{-- 注意：Markdown 的表格不能在中間夾空行，所以這個檔案的表格區塊不要插入任何註解或空行。 --}}
 <x-mail::message>
-# {{ __('mail.dispatched.heading') }}
+# {{ __($auto ? 'mail.dispatched.auto_heading' : 'mail.dispatched.heading') }}
 
-{{ __('mail.dispatched.intro', ['title' => $repairRequest->title]) }}
+{{ __($auto ? 'mail.dispatched.auto_intro' : 'mail.dispatched.intro', ['title' => $repairRequest->title]) }}
 
 <x-mail::table>
 | | |

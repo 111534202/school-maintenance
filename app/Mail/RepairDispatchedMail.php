@@ -20,6 +20,8 @@ use Illuminate\Queue\SerializesModels;             // 讓信件裡的資料模�
  * 不會真的寄出），之後要接上真的 SMTP，只需要改 .env 設定，這支 Mailable
  * 完全不用改，Laravel 的 Mail facade 會自動套用設定檔裡的寄信方式。
  *
+ * 自動派工（App\Services\AutoRepairDispatcher）寄出的是同一封信，只是主旨與開頭文字標明「系統自動派工」。
+ *
  * 想改信件的文字與版面：改 resources/views/emails/repairs/dispatched.blade.php（內容）
  * 與 lang/各語言資料夾/mail.php（主旨與文字）。
  */
@@ -32,6 +34,7 @@ class RepairDispatchedMail extends Mailable
     public function __construct(
         public RepairRequest $repairRequest,
         public User $technician,
+        public bool $auto = false,   // true：這是系統自動派工（不是管理員手動派的）
     ) {
     }
 
@@ -40,7 +43,7 @@ class RepairDispatchedMail extends Mailable
     {
         return new Envelope(
             // 主旨文字來自翻譯檔，並帶入報修標題。
-            subject: __('mail.dispatched.subject', ['title' => $this->repairRequest->title]),
+            subject: __($this->auto ? 'mail.dispatched.auto_subject' : 'mail.dispatched.subject', ['title' => $this->repairRequest->title]),
         );
     }
 
@@ -52,6 +55,7 @@ class RepairDispatchedMail extends Mailable
             with: [
                 'repairRequest' => $this->repairRequest,
                 'technician' => $this->technician,
+                'auto' => $this->auto,
             ],
         );
     }

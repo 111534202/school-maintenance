@@ -192,6 +192,10 @@ class DatabaseBackup
         Schema::disableForeignKeyConstraints();
         try {
             DB::transaction(function () use ($data, $current) {
+                if (DB::getDriverName() === 'sqlite') {
+                    // SQLite 在交易裡關不掉外鍵檢查：改成交易結束才一次檢查，資料表還原的先後順序（例如先還原 role_permissions 再還原 roles）就不會出錯。
+                    DB::statement('PRAGMA defer_foreign_keys = ON');
+                }
                 foreach ($current as $table) {
                     DB::table($table)->delete();
                 }

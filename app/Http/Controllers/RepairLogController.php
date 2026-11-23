@@ -7,6 +7,7 @@ use App\Http\Requests\StoreRepairLogRequest;
 use App\Models\Part;
 use App\Models\RepairRequest;
 use App\Services\AttachmentUploader;
+use App\Services\AutoRepairDispatcher;
 use App\Services\AuditLogger;
 use App\Services\PartStockService;
 use App\Services\RepairRequestWorkflow;
@@ -195,6 +196,13 @@ class RepairLogController extends Controller
             'title' => $repairRequest->title,
             'hours' => $createdLog->total_hours,
         ]));
+
+        // 維修人員送出維修紀錄後（案件進入待驗收）就閒下來了：把等待中的新報修補派給他（或其他閒置的人）。出問題只記錄，不影響維修紀錄。
+        try {
+            app(AutoRepairDispatcher::class)->dispatchWaiting();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
 
         return redirect()
             ->route('repairs.show', $repairRequest)

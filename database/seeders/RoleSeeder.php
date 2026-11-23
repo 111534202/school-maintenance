@@ -6,12 +6,12 @@ use App\Models\Role;
 use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
 
-// 建立系統內建的五個身分（系統管理員、資訊組主管、維修人員、教師／教室管理人、主管／行政人員）與各自的預設權限。
+// 建立系統內建的六個身分（系統管理員、資訊組主管、維修人員、教師／教室管理人、主管／行政人員、學生）與各自的預設權限。
 // 預設權限來自 App\Support\PermissionCatalog::defaultsFor()，要調整預設值改那裡；
 // 管理員之後可以在「身分主檔」畫面上自行勾選調整，重跑這個 Seeder 不會覆蓋已調整過的權限。
 class RoleSeeder extends Seeder
 {
-    // 執行這個 Seeder：建立五個內建身分與預設權限。
+    // 執行這個 Seeder：建立六個內建身分與預設權限。
     public function run(): void
     {
         // 內建身分清單：name 顯示名稱、role_code 內部代碼（程式判斷用，不要改）、description 說明。
@@ -21,6 +21,7 @@ class RoleSeeder extends Seeder
             ['name' => '維修人員', 'role_code' => 'technician', 'description' => '被指派處理報修單、填寫維修紀錄'],
             ['name' => '教師／教室管理人', 'role_code' => 'teacher', 'description' => '提出報修、驗收維修結果'],
             ['name' => '主管／行政人員', 'role_code' => 'executive', 'description' => '提出報修、派工與驗收'],
+            ['name' => '學生', 'role_code' => 'student', 'description' => '只能借教室（空間預約）與提出報修，沒有其他功能（包含不能驗收）'],
         ];
 
         // 逐一建立。

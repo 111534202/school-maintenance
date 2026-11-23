@@ -50,7 +50,7 @@
 
         <div class="mb-3">
             <label for="executed_at" class="form-label">執行時間 <span class="text-danger">*</span></label>
-            <input type="datetime-local" name="executed_at" id="executed_at" min="{{ $order->created_at?->format('Y-m-d\TH:i') }}"
+            <input type="datetime-local" name="executed_at" id="executed_at" min="{{ $order->created_at?->format('Y-m-d\TH:i') }}" max="{{ now()->format('Y-m-d\TH:i') }}"
                 class="form-control @error('executed_at') is-invalid @enderror"
                 value="{{ old('executed_at', now()->format('Y-m-d\TH:i')) }}" required>
             @error('executed_at')

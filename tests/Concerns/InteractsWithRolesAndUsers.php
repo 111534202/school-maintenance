@@ -19,7 +19,7 @@ trait InteractsWithRolesAndUsers
         // firstOrCreate：同一個身分代碼已經建立過就直接拿來用，不重複建立。
         return Role::firstOrCreate(['role_code' => $slug], [
             'name' => $name,
-            'is_system' => in_array($slug, ['admin', 'it_manager', 'technician', 'teacher', 'executive'], true),
+            'is_system' => in_array($slug, ['admin', 'it_manager', 'technician', 'teacher', 'executive', 'student'], true),
             'permissions' => $permissions ?? PermissionCatalog::defaultsFor($slug),
         ]);
     }

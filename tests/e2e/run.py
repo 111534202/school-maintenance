@@ -102,10 +102,12 @@ def main():
         print('4. 開始執行情境\n')
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
+            # 假鏡頭：讓「掃描」視窗在沒有實體相機的測試機器上也能開（自動允許相機、提供假的影像）。
+            camera_args = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']
             try:
-                browser = p.chromium.launch(channel='chrome', headless=not args.headed)
+                browser = p.chromium.launch(channel='chrome', headless=not args.headed, args=camera_args)
             except Exception:
-                browser = p.chromium.launch(headless=not args.headed)
+                browser = p.chromium.launch(headless=not args.headed, args=camera_args)
             for scenario in chosen:
                 started = time.time()
                 try:

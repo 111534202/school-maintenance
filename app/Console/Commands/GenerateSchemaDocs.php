@@ -227,7 +227,7 @@ class GenerateSchemaDocs extends Command
      * @var array<string, string>
      */
     private array $purposes = [
-        'roles' => '身分。內建五個：admin 系統管理員、it_manager 設備管理員、technician 維修人員、teacher 教師、executive 主管；每個用戶只有一個身分。',
+        'roles' => '身分。內建六個：admin 系統管理員、it_manager 設備管理員、technician 維修人員、teacher 教師、executive 主管、student 學生；每個用戶只有一個身分。',
         'role_permissions' => '每個身分勾選了哪些權限，一列一個權限代碼（權限清單在 PermissionCatalog）。',
         'users' => '系統帳號。停用或軟刪除後不能登入，但報修、保養等紀錄仍保留；含「忘記密碼」臨時密碼流程用的欄位。',
         'departments' => '單位（部門）清單，用戶與教室的「所屬單位」下拉選單來源。',

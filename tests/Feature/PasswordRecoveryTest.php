@@ -193,6 +193,6 @@ class PasswordRecoveryTest extends TestCase
         $this->assertStringContainsString('只能用一次', $html);
         $this->assertStringContainsString(now()->addMinutes(30)->format('Y-m-d H:i'), $html);
         $this->assertStringContainsString('如果不是你申請的', $html);
-        $this->assertSame('【學校設備維保系統】你的臨時密碼', $mail->envelope()->subject);
+        $this->assertSame('【校園設備維保電子化管理系統】你的臨時密碼', $mail->envelope()->subject);
     }
 }

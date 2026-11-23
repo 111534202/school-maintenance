@@ -134,6 +134,7 @@ return [
     // 操作成功後顯示的綠色訊息。
     'flash' => [
         'submitted' => 'Repair request submitted.',
+        'submitted_auto_dispatched' => 'Repair request submitted and automatically dispatched to ":technician".',
         'dispatched' => 'Dispatched.',
         'reassigned' => 'Reassigned.',
         'started' => 'Marked as in progress.',

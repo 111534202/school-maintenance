@@ -63,7 +63,7 @@ class PermissionCatalog
         ],
     ];
 
-    /** 系統內建五個身分的預設權限（種子資料與舊資料補值都用這份）。admin 不用列，永遠全開。 */
+    /** 系統內建六個身分的預設權限（種子資料與舊資料補值都用這份）。admin 不用列，永遠全開。 */
     private const DEFAULTS = [
         'admin' => [],   // 系統管理員：永遠全開，不需要列
         'it_manager' => [   // 設備管理員（資訊組主管）
@@ -77,6 +77,9 @@ class PermissionCatalog
         'teacher' => ['repairs.create', 'repairs.accept'],                              // 教師：不使用保養模組
         // 主管：只看保養資料與完成率
         'executive' => ['repairs.create', 'repairs.dispatch', 'repairs.accept', 'maintenance.view'],
+        // 學生：只能借教室（空間預約，所有登入者都能申請，不需要勾選權限）和報修，不能驗收。
+        // 學生報修的案件由「驗收人」驗收：自動派工時系統會指定（見 AutoRepairDispatcher），手動派工時由派工的人指定。
+        'student' => ['repairs.create'],
     ];
 
     /** @return list<string> 全部權限代碼 */
