@@ -93,7 +93,7 @@
     @else
     <section class="tb-table-wrap" data-no-fit>
     <div class="table-responsive">
-        <table class="tb-table tb-table-hover" data-onion-primary="1">
+        <table class="tb-table tb-table-hover pc-table" data-onion-primary="1">
             <thead>
                 <tr>
                     <th>設備</th>
@@ -102,30 +102,30 @@
                     <th>提出時間</th>
                     <th>評分明細</th>
                     <th>處理結果</th>
-                    <th class="text-end tb-col-fit">操作</th>
+                    <th class="text-end pc-col-actions">操作</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($candidates as $candidate)
                     @php [$statusText, $statusColor] = $candidate->statusLabel(); @endphp
                     <tr data-modal-frame-href="{{ route('device-profile.show', $candidate->device) }}" data-modal-title="設備履歷" data-modal-size="xl" tabindex="0" role="link">
-                        <td>
+                        <td data-label="設備">
                             <span class="fw-semibold">{{ $candidate->device->device_code }}</span>
                             <div class="text-muted small">{{ $candidate->device->brand }} {{ $candidate->device->model }}</div>
                         </td>
-                        <td class="text-end">
+                        <td class="text-end" data-label="風險分數">
                             {{ number_format($candidate->risk_score, 3) }}
                             <div class="text-muted small">門檻 {{ number_format($candidate->threshold, 2) }}</div>
                         </td>
-                        <td><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
-                        <td>{{ $candidate->created_at?->format('Y-m-d H:i') }}</td>
-                        <td style="white-space: normal;">
+                        <td data-label="狀態"><span class="badge text-bg-{{ $statusColor }}">{{ $statusText }}</span></td>
+                        <td data-label="提出時間">{{ $candidate->created_at?->format('Y-m-d H:i') }}</td>
+                        <td style="white-space: normal;" data-label="評分明細">
                             <details>
                                 <summary class="small">展開（{{ $candidate->algorithm }}）</summary>
                                 @include('preventive_candidates._explanation', ['explanation' => $candidate->explanation ?? []])
                             </details>
                         </td>
-                        <td>
+                        <td data-label="處理結果">
                             @if ($candidate->maintenanceOrder)
                                 <a href="{{ route('maintenance-orders.show', $candidate->maintenanceOrder) }}">工單 {{ $candidate->maintenanceOrder->displayNumber() }}</a>
                                 @if ($candidate->maintenanceOrder->scheduled_date)
@@ -144,14 +144,15 @@
                                 —
                             @endif
                         </td>
-                        <td class="text-end tb-col-fit">
-                            @if ($candidate->status === 'pending' && ! \App\Models\Device::canBeMaintained($candidate->device_id))
-                                {{-- 設備已淘汰或停用：不能再核准建單，只能駁回。 --}}
-                                <span class="text-muted small d-block mb-1">設備已淘汰或停用，不能建立保養工單</span>
-                            @endif
+                        <td class="text-end pc-col-actions" data-label="操作">
                             @if ($candidate->status === 'pending')
+                            <div class="pc-actions">
+                                @if (! \App\Models\Device::canBeMaintained($candidate->device_id))
+                                    {{-- 設備已淘汰或停用：不能再核准建單，只能駁回。 --}}
+                                    <span class="text-muted small pc-note">設備已淘汰或停用，不能建立保養工單</span>
+                                @endif
                                 @if (\App\Models\Device::canBeMaintained($candidate->device_id))
-                                <form method="POST" action="{{ route('preventive-candidates.approve', $candidate) }}" class="d-inline-flex flex-wrap gap-1 align-items-center justify-content-end">
+                                <form method="POST" action="{{ route('preventive-candidates.approve', $candidate) }}" class="pc-approve">
                                     @csrf
                                     {{-- 排定保養日期：由主管選（預設是今天加上 AI 設定的預設天數，不能選過去的日子）。 --}}
                                     <label class="visually-hidden" for="scheduled_date_{{ $candidate->id }}">排定保養日期</label>
@@ -168,10 +169,11 @@
                                     <button type="submit" class="btn btn-sm btn-success">核准建單</button>
                                 </form>
                                 @endif
-                                <form method="POST" action="{{ route('preventive-candidates.reject', $candidate) }}" class="d-inline">
+                                <form method="POST" action="{{ route('preventive-candidates.reject', $candidate) }}" class="pc-reject">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-danger">駁回</button>
                                 </form>
+                            </div>
                             @endif
                         </td>
                     </tr>
@@ -186,4 +188,31 @@
     @include('layouts.partials.classroom-timetable-modal', ['classroom' => (object) ['name' => '教室', 'classroom_code' => ''], 'url' => '', 'mode' => 'date', 'busyLabel' => '同教室已排保養', 'busyHint' => '日期標題下方會列出同一間教室其他設備已排的保養工單'])
     @endif
 </div>
+<style>
+    /* 「操作」欄：日期、課表鈕、核准建單、駁回都放在同一個 .pc-actions 裡，空間不夠時整個按鈕換行，絕不被表格外框裁掉。
+       （原本欄位是 white-space: nowrap 又只有 1% 寬，核准表單被擠成兩行，後面的「駁回」就被推出表格外面。） */
+    .pc-table > thead > tr > th.pc-col-actions,
+    .pc-table > tbody > tr > td.pc-col-actions { width: 1%; min-width: 25rem; white-space: normal; }
+    .pc-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .4rem; }
+    .pc-actions form { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .4rem; margin: 0; }
+    .pc-actions .pc-note { flex: 1 0 100%; text-align: right; }
+    .pc-actions input[type=date] { width: auto; max-width: 100%; }
+    .pc-actions .btn { white-space: nowrap; }
+
+    /* 窄畫面（手機、平板，小於 1100px，跟全站表格／清單自動切換的門檻一樣）：表格裡有填日期的欄位，洋蔥清單不會轉它，
+       所以這一頁自己把每一列排成一張直式卡片，不左右捲動。 */
+    @media (max-width: 1099.98px) {
+        .pc-table > thead { display: none; }
+        .pc-table, .pc-table > tbody, .pc-table > tbody > tr { display: block; width: 100%; }
+        .pc-table > tbody > tr { padding: .75rem 1rem; border-bottom: 1px solid var(--tb-border, #dee2e6); }
+        .pc-table > tbody > tr:last-child { border-bottom: 0; }
+        .tb-body .pc-table > tbody > tr > td { display: block; width: auto; padding: .3rem 0; text-align: left !important; background: transparent !important; }
+        .pc-table > tbody > tr > td::before { content: attr(data-label); display: block; font-size: .8rem; color: var(--tb-muted, #6c757d); }
+        .pc-table > tbody > tr > td:first-child { font-weight: normal; }
+        .tb-body .pc-table > tbody > tr > td.pc-col-actions { min-width: 0; width: auto; padding-top: .6rem; }
+        .pc-table > tbody > tr > td.pc-col-actions:not(:has(.pc-actions)) { display: none; }
+        .pc-actions, .pc-actions form { justify-content: flex-start; }
+        .pc-actions .pc-note { text-align: left; }
+    }
+</style>
 @endsection
