@@ -641,6 +641,41 @@ def site_title_goes_home(browser, base, root):
         no_js_errors(errors)
 
 
+@scenario
+def repair_log_max_time_follows_the_clock(browser, base, root):
+    """維修紀錄的「最晚時間」要跟著時間走：表單開著不動、過了幾分鐘再填「現在」不能被瀏覽器誤擋"""
+    run_php(root, r"App\Models\RepairRequest::where('assigned_to', App\Models\User::where('account', 'repairer')->value('id'))->whereIn('status', ['assigned', 'in_progress'])->update(['status' => 'pending_review']);")
+    with session(browser, base) as (page, errors):
+        login(page, 'it_manager')
+        goto(page, '/repairs/create')
+        page.fill('#device_note', 'E2E 最晚時間')
+        page.fill('input[name="title"]', 'E2E 最晚時間測試')
+        page.fill('textarea[name="description"]', '測試')
+        click_and_wait(page, 'button:has-text("送出報修")')
+        rid = re.search(r'/repairs/(\d+)', page.url).group(1)
+        login(page, 'repairer')
+        goto(page, f'/repairs/{rid}')
+        click_and_wait(page, 'button:has-text("開始處理")')
+        goto(page, f'/repairs/{rid}/repair-logs/create')
+        before = page.get_attribute('#ended_at', 'max')
+        # 把這個分頁的時鐘撥快 3 分鐘（模擬表單開著、使用者過了一會兒才填）。
+        page.evaluate("()=>{ const real = Date.now; Date.now = () => real() + 180000; }")
+        page.focus('#ended_at')
+        after = page.get_attribute('#ended_at', 'max')
+        fmt = '%Y-%m-%dT%H:%M'
+        delta = (datetime.datetime.strptime(after, fmt) - datetime.datetime.strptime(before, fmt)).total_seconds() / 60
+        check(delta in (3, 4), f'時鐘撥快 3 分鐘後，最晚時間應該跟著往後約 3 分鐘：{before} → {after}')
+        # 填「撥快後的現在」，不能被瀏覽器擋下。
+        later = datetime.datetime.strptime(after, fmt).strftime(fmt)
+        page.fill('input[name="started_at"]', before)
+        page.fill('textarea[name="cause"]', '測試')
+        page.fill('textarea[name="resolution"]', '測試')
+        page.fill('#ended_at', later)
+        valid = page.evaluate("()=>document.querySelector('#ended_at').checkValidity()")
+        check(valid, f'撥快後填「現在」（{later}）不該被最晚時間擋下')
+        no_js_errors(errors)
+
+
 # ---------------------------------------------------------------- 離線、手機、安全
 
 @scenario

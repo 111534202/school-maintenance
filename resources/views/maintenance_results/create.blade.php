@@ -90,4 +90,7 @@
             <button type="submit" class="btn btn-primary">送出</button>
         </div>
     </form>
+
+    {{-- 執行時間的「最晚時間」跟著伺服器現在的時間走（不能晚於送出的那一刻）。 --}}
+    @include('partials.live-max-now', ['selectors' => ['#executed_at']])
 @endsection

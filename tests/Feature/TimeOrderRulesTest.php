@@ -93,7 +93,8 @@ class TimeOrderRulesTest extends TestCase
 
         // 表單也限制最晚時間（現在這一分鐘），瀏覽器就選不到未來的時間。
         $another = RepairRequestFactory::new()->create(['status' => 'in_progress', 'assigned_to' => $technician->id, 'created_at' => '2026-11-18 09:00:00']);
-        $this->get(route('repair-logs.create', $another))->assertOk()->assertSee('max="2026-11-18T11:00"', false);
+        $this->get(route('repair-logs.create', $another))->assertOk()->assertSee('max="2026-11-18T11:00"', false)
+            ->assertSee('#started_at', false)->assertSee('utcOffsetMinutes', false);   // 最晚時間會跟著伺服器時間更新，不會因為表單開著不動而過時
 
         // 保養結果的執行時間：晚 1 分鐘不行。
         $order = MaintenanceOrder::factory()->create(['created_at' => '2026-11-18 08:00:00']);

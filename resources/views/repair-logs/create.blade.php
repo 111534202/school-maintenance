@@ -180,4 +180,7 @@
             </div>
         </form>
     </div>
+
+    {{-- 開始、結束時間的「最晚時間」跟著伺服器現在的時間走（不能晚於送出的那一刻）。 --}}
+    @include('partials.live-max-now', ['selectors' => ['#started_at', '#ended_at']])
 @endsection
