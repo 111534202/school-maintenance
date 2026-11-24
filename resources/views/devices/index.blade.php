@@ -104,9 +104,14 @@
                 <tbody>
                     {{-- 逐筆列出設備；一筆都沒有時改顯示 @empty 的提示。 --}}
                     @forelse ($devices as $device)
-                        <tr data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link">
+                        {{-- 已停用（軟刪除）的設備沒有詳細頁可開，只留「還原」。 --}}
+                        <tr @unless ($device->trashed()) data-modal-frame-href="{{ route('devices.show', $device) }}" data-modal-title="設備詳細" data-modal-size="xl" tabindex="0" role="link" @endunless>
                             <td>
+                                @if ($device->trashed())
+                                    {{ $device->device_code }}
+                                @else
                                 <a href="{{ route('devices.show', $device) }}" class="text-decoration-none">{{ $device->device_code }}</a>
+                                @endif
                                 {{-- 重複報修提醒：近 30 天報修達到門檻次數，點了跳到報修看板只看這台設備。 --}}
                                 @if ($device->recent_repairs_count >= \App\Models\Device::REPEAT_REPAIR_THRESHOLD)
                                     <a href="{{ route('repairs.index', ['device_id' => $device->id, 'created_from' => now()->subDays(\App\Models\Device::REPEAT_REPAIR_DAYS)->toDateString()]) }}" class="d-block small text-danger text-decoration-none"
@@ -137,6 +142,16 @@
                             </td>
                             <td class="text-end tb-col-fit">
                                 <div class="d-inline-flex gap-1">
+                                    @if ($device->trashed())
+                                    {{-- 已停用的設備：只能還原（取消停用）。 --}}
+                                    <form method="POST" action="{{ route('devices.restore', $device) }}"
+                                        data-confirm="{{ __('devices.confirm.restore') }}" data-confirm-ok="{{ __('devices.actions.restore') }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button class="btn btn-outline-success btn-sm icon-btn" type="submit"
+                                            title="{{ __('devices.actions.restore') }}" aria-label="{{ __('devices.actions.restore') }}"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                    </form>
+                                    @else
                                     {{-- 已淘汰的設備資料已定案，不放「修改」按鈕。 --}}
                                     @if ($device->status !== 'retired')
                                     <a class="btn btn-outline-primary btn-sm icon-btn" href="{{ route('devices.edit', $device) }}" data-modal-frame data-modal-title="修改設備" data-modal-size="lg"
@@ -154,6 +169,7 @@
                                         <button class="btn btn-outline-danger btn-sm icon-btn" type="submit"
                                             title="{{ __('devices.actions.disable') }}" aria-label="{{ __('devices.actions.disable') }}"><i class="bi bi-slash-circle"></i></button>
                                     </form>
+                                    @endif
                                     @endif
                                 </div>
                             </td>

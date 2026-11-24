@@ -21,6 +21,7 @@
     </source>
     <!-- 測試時用的環境設定：資料庫改用記憶體中的 SQLite（每次測試都是全新的，不會動到本機真實資料）；信件、快取、登入狀態都改用暫存或假的實作 -->
     <php>
+        <env name="APP_NAME" value="校園設備維保系統"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

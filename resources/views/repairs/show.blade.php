@@ -169,10 +169,16 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                @php
+                                    // 沒指定驗收人時誰驗收：報修人有驗收權限就是報修人本人；學生（沒有驗收權限）或沒有報修人時，只有系統管理員能驗收。
+                                    $emptyAcceptorLabel = $repairRequest->requester_id !== null && $repairRequest->requester?->can('repairs.accept')
+                                        ? '報修人本人驗收（預設）'
+                                        : '不指定（只有系統管理員能驗收）';
+                                @endphp
                                 <div class="mb-3">
                                     <label for="accepted_by" class="form-label">驗收人</label>
                                     <select class="form-select" id="accepted_by" name="accepted_by">
-                                        <option value="">報修人本人驗收（預設）</option>
+                                        <option value="">{{ $emptyAcceptorLabel }}</option>
                                         @foreach ($acceptors as $acceptor)
                                             <option value="{{ $acceptor->id }}" @selected((int) old('accepted_by', $repairRequest->accepted_by) === $acceptor->id)>{{ $acceptor->name }}</option>
                                         @endforeach
@@ -247,10 +253,15 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                    @php
+                                        $emptyAcceptorLabel = $repairRequest->requester_id !== null && $repairRequest->requester?->can('repairs.accept')
+                                            ? '報修人本人驗收（預設）'
+                                            : '不指定（只有系統管理員能驗收）';
+                                    @endphp
                                     <div class="mb-3">
                                         <label for="reassign_accepted_by" class="form-label">驗收人</label>
                                         <select class="form-select" id="reassign_accepted_by" name="accepted_by">
-                                            <option value="">報修人本人驗收（預設）</option>
+                                            <option value="">{{ $emptyAcceptorLabel }}</option>
                                             @foreach ($acceptors as $acceptor)
                                                 <option value="{{ $acceptor->id }}" @selected($repairRequest->accepted_by === $acceptor->id)>{{ $acceptor->name }}</option>
                                             @endforeach

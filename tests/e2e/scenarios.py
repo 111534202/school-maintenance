@@ -102,6 +102,15 @@ def body(page):
     return re.sub(r'\n\s*\n+', '\n', page.inner_text('body'))
 
 
+def problems(page):
+    """畫面上的錯誤訊息（驗證錯誤、紅字提醒）與網址，失敗時附在訊息後面，才看得出為什麼停在原頁（偶發失敗用）。"""
+    try:
+        texts = page.eval_on_selector_all('.alert-danger, .invalid-feedback, .text-danger, :invalid', 'els => els.map(e => (e.name ? e.name + ": " : "") + (e.validationMessage || e.innerText || "").trim()).filter(Boolean)')
+    except Exception:  # noqa: BLE001
+        texts = []
+    return f'（網址 {page.url}；錯誤訊息 {texts[:6]}）'
+
+
 def click_and_wait(page, selector, ms=1500):
     page.click(selector)
     settle(page, ms)
@@ -207,7 +216,7 @@ def repair_lifecycle(browser, base, root):
         page.fill('input[name="started_at"]', now.strftime('%Y-%m-%dT%H:%M'))
         page.fill('input[name="ended_at"]', now.strftime('%Y-%m-%dT%H:%M'))
         click_and_wait(page, 'button:has-text("送出維修紀錄")', 2000)
-        check('待驗收' in body(page), '送出維修紀錄後應進入待驗收：' + body(page)[:200])
+        check('待驗收' in body(page), '送出維修紀錄後應進入待驗收：' + body(page)[:200] + problems(page))
 
         login(page, 'teacher')
         goto(page, f'/repairs/{rid}')
@@ -359,7 +368,7 @@ def maintenance_order_flow(browser, base, root):
         except Exception:  # noqa: BLE001
             pass
         settle(page)
-        check('已自動建立報修單' in body(page) or '已轉報修' in body(page), 'NG 回報後應轉成報修：' + body(page)[:200])
+        check('已自動建立報修單' in body(page) or '已轉報修' in body(page), 'NG 回報後應轉成報修：' + body(page)[:200] + problems(page))
 
         login(page, 'it_manager')
         goto(page, order_path)

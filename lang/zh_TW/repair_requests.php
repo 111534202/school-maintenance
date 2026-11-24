@@ -136,6 +136,7 @@ return [
         'submitted' => '報修案件已送出。',
         'dispatched' => '已派工。',
         'reassigned' => '已重新指派。',
+        'mail_failed' => '但通知信沒有寄出（請檢查「寄信設定」），請另外通知維修人員。',
         'started' => '已標記為處理中。',
         'completed' => '已驗收結案。',
         'rejected' => '已退回重新處理。',

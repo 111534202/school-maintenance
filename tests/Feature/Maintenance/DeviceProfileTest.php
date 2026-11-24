@@ -43,6 +43,18 @@ class DeviceProfileTest extends TestCase
             ->assertSee('AI 辨識');
     }
 
+    // 摘要的「已完成」要和列表上的標籤一致：NG 的工單列表顯示「待轉報修」，不能算成已完成。
+    public function test_completed_count_does_not_include_ng_orders(): void
+    {
+        $device = $this->makeDevice();
+        $this->addHistory($device, 'onon');
+
+        $this->get(route('device-profile.show', $device))
+            ->assertOk()
+            ->assertSee('共 4 筆、已完成 2 筆', false)
+            ->assertSee('NG 另轉報修追蹤');
+    }
+
     public function test_profile_shows_the_ai_risk_breakdown(): void
     {
         $device = $this->makeDevice();

@@ -175,6 +175,40 @@ class DeviceManagementTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'status_changed', 'loggable_id' => $device->id]);
     }
 
+    // 已停用（軟刪除）的設備：篩選狀態「停用」找得到並有「還原」鈕；還原後回到正常、重新出現在列表、教室標記重新計算。
+    public function test_a_disabled_device_can_be_found_and_restored(): void
+    {
+        $device = $this->makeDevice(['is_core' => true]);
+        $this->patch(route('devices.disable', $device))->assertRedirect(route('devices.index'));
+
+        // 預設列表看不到；篩選「停用」看得到，而且有還原按鈕、沒有詳細頁連結。
+        $this->get(route('devices.index'))->assertDontSee('DEV-1');
+        $this->get(route('devices.index', ['status' => 'disabled']))
+            ->assertOk()
+            ->assertSee('DEV-1')
+            ->assertSee(route('devices.restore', $device), false)
+            ->assertDontSee('data-modal-frame-href="'.route('devices.show', $device).'"', false);
+
+        // 從「篩選停用」的列表按還原，會回到同一個篩選的列表。
+        $this->patch(route('devices.restore', $device))->assertRedirect(route('devices.index', ['status' => 'disabled']))->assertSessionHas('success');
+
+        $this->assertNull(Device::withTrashed()->find($device->id)->deleted_at);
+        $this->assertSame('normal', Device::find($device->id)->status);
+        $this->assertSame('normal', $this->room->fresh()->reservation_status);
+        $this->get(route('devices.index'))->assertSee('DEV-1');
+    }
+
+    public function test_restoring_a_device_that_is_not_disabled_is_refused_and_restore_needs_the_devices_permission(): void
+    {
+        $device = $this->makeDevice();
+        $this->patch(route('devices.restore', $device))->assertSessionHas('error');
+
+        $this->patch(route('devices.disable', $device));
+        $teacher = $this->makeUserWithRole('teacher', '教師');
+        $this->actingAs($teacher)->patch(route('devices.restore', $device))->assertForbidden();
+        $this->assertSoftDeleted('devices', ['id' => $device->id]);
+    }
+
     public function test_index_can_filter_by_keyword_classroom_category_and_status(): void
     {
         $other = $this->makeClassroom('B202');

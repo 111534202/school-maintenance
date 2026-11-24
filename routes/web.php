@@ -304,6 +304,7 @@ Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
         Route::get('devices/qr-sheet', [DeviceController::class, 'qrSheet'])->name('devices.qr-sheet');
         Route::resource('devices', DeviceController::class)->except(['destroy']);
         Route::patch('devices/{device}/disable', [DeviceController::class, 'disable'])->name('devices.disable');   // 停用設備
+        Route::patch('devices/{device}/restore', [DeviceController::class, 'restore'])->withTrashed()->name('devices.restore');   // 還原已停用的設備
         Route::get('devices/{device}/qrcode', [DeviceController::class, 'qrcode'])->name('devices.qrcode');        // 產生 QR Code 圖片
     });
 

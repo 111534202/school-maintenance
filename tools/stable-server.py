@@ -159,7 +159,8 @@ class Handler(BaseHTTPRequestHandler):
 
         with php_slots:
             try:
-                proc = subprocess.run([php_cgi, '-d', 'display_errors=0'], input=body, env=env, cwd=PUBLIC,
+                # 上傳上限：Windows 的 PHP 預設單檔只有 2 MB，但系統允許一筆報修附件加起來 5 MB，所以這裡明確調高。
+                proc = subprocess.run([php_cgi, '-d', 'display_errors=0', '-d', 'upload_max_filesize=8M', '-d', 'post_max_size=10M'], input=body, env=env, cwd=PUBLIC,
                                       capture_output=True, timeout=120)
             except subprocess.TimeoutExpired:
                 self.text_error(504, 'PHP 執行逾時（120 秒）')

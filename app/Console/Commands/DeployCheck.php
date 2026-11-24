@@ -64,6 +64,11 @@ class DeployCheck extends Command
         $this->add($post === 0 || $post >= 8 * 1024 * 1024 ? 'ok' : 'warn', '上傳大小限制（post_max_size）', \App\Support\UploadLimit::human($post),
             '附件一筆最多 5 個、加起來 5 MB；php.ini 的 post_max_size 至少要 8M，upload_max_filesize 也要 5M 以上。');
 
+        // 單一檔案上限：PHP 預設只有 2 MB（Windows 沒有 php.ini 時也是）。低於 5 MB 時，畫面寫「加起來 5MB」但單一 3 MB 的檔案會被擋下。
+        $file = \App\Support\UploadLimit::fileBytes();
+        $this->add($file === 0 || $file >= 5 * 1024 * 1024 ? 'ok' : 'warn', '單一檔案上傳上限（upload_max_filesize）', \App\Support\UploadLimit::human($file),
+            '附件加起來可到 5 MB，單一檔案也要能到 5 MB：php.ini 的 upload_max_filesize 設成 8M 以上（用 tools/stable-server.py 啟動時已自動調高）。');
+
         $this->add(config('app.timezone') === 'Asia/Taipei' ? 'ok' : 'warn', '時區（APP_TIMEZONE）', (string) config('app.timezone'), '台灣請設成 Asia/Taipei，否則預約時間、保養排定日會差 8 小時。');
 
         // 心跳存的是時間戳記（整數）；不是整數（例如舊版存的時間物件）就當作還沒有心跳，下一分鐘排程跑起來會自動換成新格式。

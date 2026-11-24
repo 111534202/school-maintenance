@@ -48,6 +48,8 @@ class DeviceController extends Controller
             ->withCount(['repairRequests as recent_repairs_count' => fn ($repairs) => $repairs
                 ->visibleOnBoard($user)
                 ->where('created_at', '>=', now()->subDays(Device::REPEAT_REPAIR_DAYS)->startOfDay())])
+            // 篩選「停用」時，連已停用（軟刪除、平常不在列表）的設備一起列出，才找得到並還原它們。
+            ->when($request->input('status') === 'disabled', fn ($query) => $query->withTrashed())
             ->tap(fn ($query) => $this->applyFilters($query, $request))
             ->orderBy('device_code')   // 依設備編號排序
             ->paginate(15)
@@ -199,6 +201,25 @@ class DeviceController extends Controller
         DeviceStatusService::syncClassroom($classroom);
 
         return $this->backToList('devices.index')->with('success', __('devices.flash.disabled'));
+    }
+
+    /**
+     * 還原已停用的設備（PATCH /devices/{device}/restore）：取消軟刪除，狀態回到正常
+     * （如果它還有「處理中」的報修就回到維修中），所在教室的異常標記一併重新計算。
+     * 在設備列表篩選狀態「停用」就會看到已停用的設備與「還原」按鈕。
+     */
+    public function restore(Device $device): \Illuminate\Http\RedirectResponse
+    {
+        if (! $device->trashed()) {
+            return $this->backToList('devices.index')->with('error', __('devices.flash.not_disabled'));
+        }
+
+        $device->restore();
+        $status = $device->repairRequests()->where('status', RepairRequestStatus::InProgress->value)->exists() ? 'repairing' : 'normal';
+        DeviceStatusService::updateStatus($device, $status, '設備還原（取消停用）');
+        DeviceStatusService::syncClassroom($device->classroom);
+
+        return $this->backToList('devices.index')->with('success', __('devices.flash.restored'));
     }
 
     /**

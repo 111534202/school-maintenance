@@ -136,6 +136,7 @@ return [
         'submitted' => 'Repair request submitted.',
         'dispatched' => 'Dispatched.',
         'reassigned' => 'Reassigned.',
+        'mail_failed' => 'However, the notification email could not be sent (please check the mail settings); please tell the technician yourself.',
         'started' => 'Marked as in progress.',
         'completed' => 'Accepted and closed.',
         'rejected' => 'Sent back for rework.',

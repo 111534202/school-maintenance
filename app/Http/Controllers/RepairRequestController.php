@@ -546,12 +546,12 @@ class RepairRequestController extends Controller
             'to' => $repairRequest->status->value,
         ], __('audit.messages.repair_assigned', ['technician' => $technician->name, 'title' => $repairRequest->title]));
 
-        // 寄通知信給被派工的維修人員（以及身分有「收到派工通知副本」權限的人）。
-        $notifier->notify($repairRequest, $technician);
+        // 寄通知信給被派工的維修人員（以及身分有「收到派工通知副本」權限的人）。信寄不出去不影響派工，只提醒派工的人。
+        $mailed = $notifier->notify($repairRequest, $technician);
 
         return redirect()
             ->route('repairs.show', $repairRequest)
-            ->with('success', __('repair_requests.flash.dispatched'));
+            ->with('success', __('repair_requests.flash.dispatched') . ($mailed ? '' : ' ' . __('repair_requests.flash.mail_failed')));
     }
 
     /**
@@ -587,12 +587,12 @@ class RepairRequestController extends Controller
             'scheduled_at' => $repairRequest->scheduled_at?->format('Y-m-d H:i'),
         ], __('audit.messages.repair_reassigned', ['technician' => $technician->name, 'title' => $repairRequest->title]));
 
-        // 新的維修人員也要收到通知信。
-        $notifier->notify($repairRequest, $technician);
+        // 新的維修人員也要收到通知信（寄不出去只提醒，不影響重新指派）。
+        $mailed = $notifier->notify($repairRequest, $technician);
 
         return redirect()
             ->route('repairs.show', $repairRequest)
-            ->with('success', __('repair_requests.flash.reassigned'));
+            ->with('success', __('repair_requests.flash.reassigned') . ($mailed ? '' : ' ' . __('repair_requests.flash.mail_failed')));
     }
 
     /**

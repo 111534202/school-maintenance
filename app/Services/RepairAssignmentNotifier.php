@@ -6,6 +6,7 @@ use App\Mail\RepairDispatchedMail;           // 「派工通知」信件的內�
 use App\Models\RepairRequest;                // 報修單資料表模型
 use App\Models\User;                         // 用戶資料表模型
 use Illuminate\Support\Facades\Mail;         // Laravel 的寄信功能
+use Throwable;
 
 /**
  * 派工／重新指派成立後寄送通知信：主收件人是被指派的維修人員，副本（cc）給
@@ -14,11 +15,28 @@ use Illuminate\Support\Facades\Mail;         // Laravel 的寄信功能
  * 不會真的寄出），之後要接上真的 SMTP 只需要改 .env，這支 service 不用改。
  *
  * 想改誰收到副本：到「身分主檔」編輯身分，勾選或取消「接收派工通知副本」即可，不用改程式。
+ *
+ * 信寄不出去（寄信設定有問題、對方信箱無效…）不會讓派工失敗：派工資料已經存好，這裡只記錄錯誤，
+ * 並回傳 false 讓畫面提醒派工的人「通知信沒寄出」。
  */
 class RepairAssignmentNotifier
 {
-    /** 寄出派工通知信。$technician 是被指派的維修人員（主要收件人）。 */
-    public function notify(RepairRequest $repairRequest, User $technician): void
+    /** 寄出派工通知信。$technician 是被指派的維修人員（主要收件人）。寄成功回傳 true；寄失敗只記錄錯誤並回傳 false。 */
+    public function notify(RepairRequest $repairRequest, User $technician): bool
+    {
+        try {
+            $this->send($repairRequest, $technician);
+
+            return true;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
+    }
+
+    /** 組出收件人與副本並送出信件（失敗時丟出例外，由 notify() 接住）。 */
+    private function send(RepairRequest $repairRequest, User $technician): void
     {
         // 副本收件人由身分主檔決定：身分有勾選「接收派工通知副本」權限、且帳號啟用中的用戶。
         // pluck('email') 只取 Email 欄位；all() 把結果轉成一般陣列。

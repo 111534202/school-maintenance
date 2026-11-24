@@ -68,7 +68,7 @@
             <h2 class="tb-section-title">保養紀錄</h2>
             <span class="text-muted small">
                 共 {{ $maintenanceStats['total'] }} 筆、已完成 {{ $maintenanceStats['completed'] }} 筆
-                （OK {{ $maintenanceStats['ok'] }} / NG {{ $maintenanceStats['ng'] }}）
+                （OK {{ $maintenanceStats['ok'] }} / NG {{ $maintenanceStats['ng'] }}，NG 另轉報修追蹤、不算已完成）
             </span>
         </div>
         {{-- data-no-fit：表格檢視整張表都顯示，不限制高度。data-fit-per-page="5"：清單檢視固定一頁 5 筆。清單模式以排定日期當標題（data-onion-title）。 --}}

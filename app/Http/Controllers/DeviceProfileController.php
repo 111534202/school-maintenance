@@ -64,8 +64,9 @@ class DeviceProfileController extends Controller
 
         $maintenanceStats = [
             'total' => $maintenanceOrders->count(),
-            // 用 Model 上已經寫好的 completed scope（本來就是給設備履歷、Dashboard 這類其他模組用的穩定介面）。
-            'completed' => MaintenanceOrder::query()->where('device_id', $device->id)->completed()->count(),
+            // 「已完成」只算結果不是 NG 的：NG 的工單在列表上顯示為「待轉報修／已轉報修」（後續由報修單追蹤），
+            // 摘要的數字要和列表上的標籤一致，NG 另外列在「NG」那一格。
+            'completed' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->status === MaintenanceOrder::STATUS_COMPLETED && ! $order->result?->isNg())->count(),
             'ok' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->result && ! $order->result->isNg())->count(),
             'ng' => $maintenanceOrders->filter(fn (MaintenanceOrder $order) => $order->result?->isNg())->count(),
         ];

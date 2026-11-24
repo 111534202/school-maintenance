@@ -67,10 +67,12 @@ return [
     'actions' => [
         'detail' => 'Details',
         'disable' => 'Disable',
+        'restore' => 'Restore',
     ],
 
     'confirm' => [
         'disable' => 'Disable this device?',
+        'restore' => 'Restore this disabled device? Its status returns to normal and it appears in the list again.',
     ],
 
     'form' => [
@@ -117,6 +119,8 @@ return [
     'flash' => [
         'created' => 'Device added.',
         'updated' => 'Device updated.',
-        'disabled' => 'Device disabled.',
+        'disabled' => 'Device disabled. (To find it again: filter the device list by status "Disabled" and press "Restore".)',
+        'restored' => 'Device restored.',
+        'not_disabled' => 'This device is not disabled; nothing to restore.',
     ],
 ];
