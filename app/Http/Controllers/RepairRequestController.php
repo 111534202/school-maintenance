@@ -16,7 +16,6 @@ use App\Http\Requests\StoreRepairRequestRequest;        // 「新增報修」表
 use App\Http\Requests\UpdateRepairRequestRequest;       // 「修改報修單」表單的驗證規則
 use App\Services\AttachmentUploader;                    // 負責存放上傳附件（照片）的服務
 use App\Services\AuditLogger;                           // 共用的操作紀錄寫入工具
-use App\Services\AutoRepairDispatcher;                  // 報修自動派工
 use App\Services\RepairAssignmentNotifier;              // 派工後寄通知信的服務
 use App\Services\RepairRequestWorkflow;                 // 報修單狀態轉換規則（誰能從哪個狀態變到哪個狀態）
 use DomainException;                                    // 「違反業務規則」的例外，狀態轉換不合法時由 Workflow 丟出
@@ -434,21 +433,10 @@ class RepairRequestController extends Controller
             'impact_level' => $repairRequest->impact_level,
         ], __('audit.messages.repair_created', ['title' => $repairRequest->title]));
 
-        // 自動派工：派給目前沒有進行中工單的維修人員，不用等管理員（沒有閒置的人就維持新報修，等人手動派或有人閒下來再補派）。
-        // 自動派工出任何問題都不能讓報修送不出去，所以只記錄錯誤。
-        $technician = null;
-        try {
-            $technician = app(AutoRepairDispatcher::class)->dispatch($repairRequest);
-        } catch (\Throwable $exception) {
-            report($exception);
-        }
-
         // 送出後直接進到這張報修單的詳細頁，並顯示「已送出」訊息。
         return redirect()
             ->route('repairs.show', $repairRequest)
-            ->with('success', $technician
-                ? __('repair_requests.flash.submitted_auto_dispatched', ['technician' => $technician->name])
-                : __('repair_requests.flash.submitted'));
+            ->with('success', __('repair_requests.flash.submitted'));
     }
 
     /**

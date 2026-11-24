@@ -17,27 +17,14 @@ use Illuminate\Support\Facades\Mail;         // Laravel 的寄信功能
  */
 class RepairAssignmentNotifier
 {
-    /**
-     * 寄出派工通知信。$technician 是被指派的維修人員（主要收件人）。
-     * $auto 為 true 是「系統自動派工」：信件標明是系統派的，副本除了有「接收派工通知副本」權限的人，也給系統管理員
-     * （自動派工沒有人按按鈕，管理員要靠這封信知道案件已經派出去了）。
-     */
-    public function notify(RepairRequest $repairRequest, User $technician, bool $auto = false): void
+    /** 寄出派工通知信。$technician 是被指派的維修人員（主要收件人）。 */
+    public function notify(RepairRequest $repairRequest, User $technician): void
     {
         // 副本收件人由身分主檔決定：身分有勾選「接收派工通知副本」權限、且帳號啟用中的用戶。
         // pluck('email') 只取 Email 欄位；all() 把結果轉成一般陣列。
-        $itManagerEmails = User::query()
+        $itManagerEmails = User::whereHas('role', fn ($q) => $q->withPermission('repairs.notice_cc'))
             ->where('is_active', true)
-            ->where(function ($query) use ($auto) {
-                $query->whereHas('role', fn ($q) => $q->withPermission('repairs.notice_cc'));
-                if ($auto) {
-                    $query->orWhereHas('role', fn ($q) => $q->where('role_code', 'admin'));
-                }
-            })
-            ->where('email', '!=', $technician->email)   // 維修人員自己已經是主要收件人，不重複寄副本
             ->pluck('email')
-            ->unique()
-            ->values()
             ->all();
 
         // 主要收件人：被指派的維修人員。
@@ -49,6 +36,6 @@ class RepairAssignmentNotifier
         }
 
         // 送出信件，內容由 RepairDispatchedMail 組成。
-        $mail->send(new RepairDispatchedMail($repairRequest, $technician, $auto));
+        $mail->send(new RepairDispatchedMail($repairRequest, $technician));
     }
 }

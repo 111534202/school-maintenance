@@ -10,7 +10,6 @@
 import datetime
 import os
 import re
-import subprocess
 import tempfile
 import time
 import uuid
@@ -99,15 +98,6 @@ def login(page, account, password=PASSWORD):
     settle(page)
 
 
-def run_php(root, code):
-    """在測試用資料庫（school_maintenance_e2e）執行一小段 PHP，用來把畫面上做不到的前置狀態準備好（只給測試用）。"""
-    result = subprocess.run(['php', 'artisan', 'tinker', '--execute', code], cwd=root, capture_output=True, text=True, encoding='utf-8',
-                            env=dict(os.environ, DB_DATABASE=os.environ.get('E2E_DB', 'school_maintenance_e2e')))
-    if result.returncode != 0:
-        raise AssertionError('準備測試資料失敗：' + (result.stdout + result.stderr)[-300:])
-    return result.stdout
-
-
 def body(page):
     return re.sub(r'\n\s*\n+', '\n', page.inner_text('body'))
 
@@ -173,10 +163,7 @@ def permissions_by_role(browser, base, root):
 
 @scenario
 def repair_lifecycle(browser, base, root):
-    """教師報修 → 系統自動派工給閒置的維修人員、管理員看得到 → 維修人員處理並用零件 → 教師驗收結案（零件庫存扣掉）"""
-    # 示範資料裡每位維修人員手上都已經有案件（沒有閒置的人，新報修會留在「新報修」等人手動派）；
-    # 這裡先讓示範帳號 repairer 的案件都進到待驗收（他做完了、等驗收），他就是目前唯一閒置的維修人員。
-    run_php(root, r"App\Models\RepairRequest::where('assigned_to', App\Models\User::where('account', 'repairer')->value('id'))->whereIn('status', ['assigned', 'in_progress'])->update(['status' => 'pending_review']);")
+    """教師報修 → 主管派工 → 維修人員處理並用零件 → 教師驗收結案（零件庫存扣掉）"""
     with session(browser, base) as (page, errors):
         login(page, 'admin')
         goto(page, '/parts/1')
@@ -193,12 +180,12 @@ def repair_lifecycle(browser, base, root):
         match = re.search(r'/repairs/(\d+)', page.url)
         check(match, '送出報修後應進到報修單頁：' + page.url)
         rid = match.group(1)
-        # 自動派工：示範資料裡只有一位維修人員、而且沒有案件，送出報修後直接是「已派工」，不用等主管。
-        check('自動派工' in body(page) and '已派工' in body(page), '送出報修後應由系統自動派工：' + body(page)[:300])
 
         login(page, 'it_manager')
         goto(page, f'/repairs/{rid}')
-        check('已派工' in body(page) and '維修人員' in body(page), '主管看這張報修單應是已派工、並看得到被指派的維修人員')
+        page.select_option('select[name="assigned_to"]', label='維修人員')
+        click_and_wait(page, 'button:has-text("確認派工")')
+        check('已派工' in body(page), '派工後狀態應是已派工')
 
         login(page, 'repairer')
         goto(page, f'/repairs/{rid}')
@@ -609,8 +596,8 @@ def scanner_zoom_works(browser, base, root):
 
 @scenario
 def site_title_goes_home(browser, base, root):
-    """左上角的系統名稱（校園設備維保電子化管理系統）：登入前後都顯示、登入後點它回主控台；電腦、平板、手機寬度都在畫面內、不造成左右溢出"""
-    title = '校園設備維保電子化管理系統'
+    """左上角的系統名稱（校園設備維保電子化系統）：登入前後都顯示、登入後點它回主控台；電腦、平板、手機寬度都在畫面內、不造成左右溢出"""
+    title = '校園設備維保電子化系統'
     measure = """()=>{ const a=document.querySelector('[data-site-title]'); const r=a.getBoundingClientRect();
         return { text: a.textContent.trim(), left: r.left, right: r.right, vw: document.documentElement.clientWidth,
                  truncated: a.scrollWidth > a.clientWidth + 1, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }"""
@@ -644,7 +631,6 @@ def site_title_goes_home(browser, base, root):
 @scenario
 def repair_log_max_time_follows_the_clock(browser, base, root):
     """維修紀錄的「最晚時間」要跟著時間走：表單開著不動、過了幾分鐘再填「現在」不能被瀏覽器誤擋"""
-    run_php(root, r"App\Models\RepairRequest::where('assigned_to', App\Models\User::where('account', 'repairer')->value('id'))->whereIn('status', ['assigned', 'in_progress'])->update(['status' => 'pending_review']);")
     with session(browser, base) as (page, errors):
         login(page, 'it_manager')
         goto(page, '/repairs/create')
@@ -653,6 +639,10 @@ def repair_log_max_time_follows_the_clock(browser, base, root):
         page.fill('textarea[name="description"]', '測試')
         click_and_wait(page, 'button:has-text("送出報修")')
         rid = re.search(r'/repairs/(\d+)', page.url).group(1)
+        # 報修由有派工權限的人手動派給維修人員。
+        goto(page, f'/repairs/{rid}')
+        page.select_option('select[name="assigned_to"]', label='維修人員')
+        click_and_wait(page, 'button:has-text("確認派工")')
         login(page, 'repairer')
         goto(page, f'/repairs/{rid}')
         click_and_wait(page, 'button:has-text("開始處理")')

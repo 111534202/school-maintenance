@@ -8,7 +8,7 @@
 // 【想新增一種語言】複製 lang/zh_TW 整個資料夾並翻譯，再到 app/Http/Middleware/SetLocale.php 的支援清單加上語言代碼。
 return [
     'export_excel' => 'Export Excel',   // export button on list pages
-    'site_title' => 'Campus Equipment Maintenance Management System',
+    'site_title' => 'Campus Equipment e-Maintenance System',
 
     // 側邊選單的連結文字。
     'nav' => [

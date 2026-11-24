@@ -39,7 +39,7 @@ return [
     'test_need_save' => '請先儲存寄信設定，再寄測試信。',
     'test_sent' => '測試信已寄出，請到 :recipient 收信（沒收到請看垃圾郵件匣）。',
     'test_failed' => '測試信寄不出去：:reason',
-    'test_subject' => '【校園設備維保電子化管理系統】寄信測試',
+    'test_subject' => '【校園設備維保系統】寄信測試',
     'test_body' => '這是一封測試信。收到代表系統的寄信設定正確，可以放心啟用。',
 
     'help_title' => '使用 Gmail／學校 Google 信箱的步驟',

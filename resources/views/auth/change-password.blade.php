@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>設定新密碼 - 校園設備維保電子化管理系統</title>
+    <title>設定新密碼 - 校園設備維保電子化系統</title>
     <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
     <link href="{{ asset('css/theme-b.css') }}?v={{ filemtime(public_path('css/theme-b.css')) }}" rel="stylesheet">
@@ -19,7 +19,7 @@
     </style>
 </head>
 <body class="tb-body">
-    <div class="login-band"><span class="brand">校園設備維保電子化管理系統</span></div>
+    <div class="login-band"><span class="brand">校園設備維保電子化系統</span></div>
     <div class="container d-flex align-items-center justify-content-center py-5" style="min-height: calc(100vh - 60px);">
         <div class="card shadow-sm login-card">
             <div class="card-body p-4 p-sm-5">

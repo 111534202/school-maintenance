@@ -4,7 +4,7 @@
 return [
     // 忘記密碼寄出的臨時密碼信（resources/views/emails/auth/temporary-password.blade.php）。
     'temporary_password' => [
-        'subject' => '【校園設備維保電子化管理系統】你的臨時密碼',
+        'subject' => '【校園設備維保系統】你的臨時密碼',
         'heading' => '臨時密碼',
         'intro' => ':name 你好，帳號「:account」申請了忘記密碼。下面是你的臨時密碼：',
         'expires' => '這組臨時密碼在 :time 以前有效，而且只能用一次。',
@@ -17,11 +17,8 @@ return [
     // 派工通知信的標題與內文。
     'dispatched' => [
         'subject' => '【報修派工通知】:title',
-        'auto_subject' => '【報修自動派工通知】:title',
         'heading' => '報修案件已派工',
-        'auto_heading' => '報修案件已由系統自動派工',
         'intro' => '案件「:title」已經指派維修人員，請留意處理時間。',
-        'auto_intro' => '系統收到案件「:title」後，已自動派給目前沒有進行中工單的維修人員。管理員如需調整，請到案件詳細頁按「重新指派」。',
         'description_heading' => '故障描述：',
         'view_button' => '查看案件詳情',
         'footer' => '此信件由系統自動寄出，如有疑問請洽資訊組。',

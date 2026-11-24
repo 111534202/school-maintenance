@@ -33,25 +33,8 @@ class AuditLogger
      */
     public static function log(string $action, ?Model $subject = null, array $changes = [], ?string $description = null): AuditLog
     {
-        return self::write(Auth::id(), $action, $subject, $changes, $description);   // 目前登入者；沒登入就是 null（例如登入失敗）
-    }
-
-    /**
-     * 寫一筆「系統自己做的」操作紀錄（沒有操作人，紀錄頁顯示為「系統」）。
-     * 例如自動派工：是系統派的，不能記成「剛好登入、送出報修的那個人」做的。
-     *
-     * @param array<string, mixed> $changes
-     */
-    public static function logAsSystem(string $action, ?Model $subject = null, array $changes = [], ?string $description = null): AuditLog
-    {
-        return self::write(null, $action, $subject, $changes, $description);
-    }
-
-    /** @param array<string, mixed> $changes */
-    private static function write(int|string|null $userId, string $action, ?Model $subject, array $changes, ?string $description): AuditLog
-    {
         return AuditLog::create([
-            'user_id' => $userId,
+            'user_id' => Auth::id(),                           // 目前登入者；沒登入就是 null（例如登入失敗）
             'action' => $action,
             'loggable_type' => $subject?->getMorphClass(),     // 對象的類型（類別名稱）；沒有對象就是 null
             'loggable_id' => $subject?->getKey(),              // 對象的編號（主鍵）

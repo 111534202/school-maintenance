@@ -27,7 +27,7 @@ class MailSettingTest extends TestCase
         return array_merge([
             'host' => 'smtp.gmail.com', 'port' => 587, 'encryption' => 'tls',
             'smtp_account' => 'school@example.edu', 'password' => self::SECRET,
-            'from_address' => 'school@example.edu', 'from_label' => '校園設備維保電子化管理系統', 'is_enabled' => '1',
+            'from_address' => 'school@example.edu', 'from_label' => '校園設備維保系統', 'is_enabled' => '1',
         ], $override);
     }
 
@@ -104,7 +104,7 @@ class MailSettingTest extends TestCase
         $this->assertSame('smtps', config('mail.mailers.smtp.scheme'));
         $this->assertSame(self::SECRET, config('mail.mailers.smtp.password'));
         $this->assertSame('school@example.edu', config('mail.from.address'));
-        $this->assertSame('校園設備維保電子化管理系統', config('mail.from.name'));
+        $this->assertSame('校園設備維保系統', config('mail.from.name'));
     }
 
     public function test_missing_table_does_not_break_the_site(): void

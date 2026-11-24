@@ -91,7 +91,6 @@ return [
         // Shown instead of the typed text when the account does not exist (it may be a mistyped password).
         'unknown_account' => '(unknown account)',
         'repair_assigned' => 'Dispatched to ":technician", repair request ":title"',
-        'repair_auto_assigned' => 'Auto-dispatched by the system to ":technician" (no active job), repair request ":title"',
         'repair_reassigned' => 'Reassigned to ":technician", repair request ":title"',
         'repair_rejected' => 'Rejected repair request ":title"',
         'repair_status' => 'Repair request ":title" status: :from → :to',

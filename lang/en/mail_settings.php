@@ -39,7 +39,7 @@ return [
     'test_need_save' => 'Please save the mail settings before sending a test mail.',
     'test_sent' => 'Test mail sent. Check the inbox of :recipient (and the spam folder).',
     'test_failed' => 'The test mail could not be sent: :reason',
-    'test_subject' => '[Campus Equipment Maintenance Management System] Mail test',
+    'test_subject' => '[Campus Equipment Maintenance System] Mail test',
     'test_body' => 'This is a test mail. If you received it, the mail settings are correct and can be enabled.',
 
     'help_title' => 'Steps for Gmail / a school Google mailbox',

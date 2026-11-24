@@ -7,14 +7,16 @@ use Tests\Concerns\InteractsWithRolesAndUsers;
 use Tests\TestCase;
 
 /**
- * 系統名稱：登入前後的每個畫面左上角都要有「校園設備維保電子化管理系統」，登入後點它要回到主控台。
+ * 左上角的 logo 文字是「校園設備維保電子化系統」（可以調整）；整體專案名稱「校園設備維保系統」不能改（設定檔、信件主旨）。
+ * 登入前後的每個畫面左上角都要有 logo，登入後點它要回到主控台。
  */
 class SiteTitleTest extends TestCase
 {
     use InteractsWithRolesAndUsers;
     use RefreshDatabase;
 
-    private const TITLE = '校園設備維保電子化管理系統';
+    private const TITLE = '校園設備維保電子化系統';       // logo
+    private const PROJECT = '校園設備維保系統';           // 專案名稱
 
     public function test_the_title_is_shown_on_the_login_page_and_the_old_names_are_gone(): void
     {
@@ -38,14 +40,18 @@ class SiteTitleTest extends TestCase
         }
     }
 
-    public function test_the_title_and_mail_texts_use_the_new_name_in_both_languages(): void
+    public function test_logo_and_project_name_are_kept_apart(): void
     {
+        // logo：畫面左上角的文字。
         $this->assertSame(self::TITLE, __('common.site_title'));
-        $this->assertStringContainsString(self::TITLE, __('mail.temporary_password.subject'));
-        $this->assertStringContainsString(self::TITLE, __('mail_settings.test_subject'));
-        $this->assertSame(self::TITLE, config('app.name'));
+
+        // 專案名稱：設定檔與信件主旨，不隨 logo 改動。
+        $this->assertSame(self::PROJECT, config('app.name'));
+        $this->assertStringContainsString(self::PROJECT, __('mail.temporary_password.subject'));
+        $this->assertStringContainsString(self::PROJECT, __('mail_settings.test_subject'));
+        $this->assertStringNotContainsString('電子化', __('mail.temporary_password.subject'));
 
         app()->setLocale('en');
-        $this->assertSame('Campus Equipment Maintenance Management System', __('common.site_title'));
+        $this->assertSame('Campus Equipment e-Maintenance System', __('common.site_title'));
     }
 }

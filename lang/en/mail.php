@@ -4,7 +4,7 @@
 return [
     // 派工通知信的標題與內文。
     'temporary_password' => [
-        'subject' => '[Campus Equipment Maintenance Management System] Your temporary password',
+        'subject' => '[School Maintenance System] Your temporary password',
         'heading' => 'Temporary password',
         'intro' => 'Hello :name, a password reset was requested for account ":account". Your temporary password is:',
         'expires' => 'It is valid until :time and can be used only once.',
@@ -16,11 +16,8 @@ return [
 
     'dispatched' => [
         'subject' => '[Repair Dispatched] :title',
-        'auto_subject' => '[Repair Auto-Dispatched] :title',
         'heading' => 'Repair Request Dispatched',
-        'auto_heading' => 'Repair Request Auto-Dispatched by the System',
         'intro' => 'The repair request ":title" has been assigned to a technician. Please note the scheduled time.',
-        'auto_intro' => 'The system received the repair request ":title" and automatically assigned it to a technician who currently has no active job. To change this, use "Reassign" on the request page.',
         'description_heading' => 'Issue description:',
         'view_button' => 'View Repair Request',
         'footer' => 'This is an automated message. Contact the IT department with questions.',

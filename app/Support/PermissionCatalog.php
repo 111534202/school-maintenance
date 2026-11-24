@@ -78,7 +78,7 @@ class PermissionCatalog
         // 主管：只看保養資料與完成率
         'executive' => ['repairs.create', 'repairs.dispatch', 'repairs.accept', 'maintenance.view'],
         // 學生：只能借教室（空間預約，所有登入者都能申請，不需要勾選權限）和報修，不能驗收。
-        // 學生報修的案件由「驗收人」驗收：自動派工時系統會指定（見 AutoRepairDispatcher），手動派工時由派工的人指定。
+        // 學生報修的案件由「驗收人」驗收：派工時由派工的人指定（沒指定就只有系統管理員能驗收）。
         'student' => ['repairs.create'],
     ];
 
