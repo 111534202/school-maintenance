@@ -131,6 +131,8 @@ class RepairRequestSeeder extends Seeder
                 'assigned_to' => $userId('劉小華'),
             ]
         );
+        // 示範的維修紀錄開始時間在「現在之前」，所以報修單也要是更早送出的（維修開始時間不能早於報修送出）。
+        $this->backdate($pendingReview, now()->subDay());
         // 還沒有維修紀錄才新增（doesntExist = 不存在），避免重跑時重複。
         if ($pendingReview->repairLogs()->doesntExist()) {
             $pendingReview->repairLogs()->create([
@@ -158,6 +160,7 @@ class RepairRequestSeeder extends Seeder
                 'assigned_to' => $userId('陳大成'),
             ]
         );
+        $this->backdate($completed, now()->subDays(4));
         // 還沒有維修紀錄才新增，避免重複。
         if ($completed->repairLogs()->doesntExist()) {
             $completed->repairLogs()->create([
@@ -177,6 +180,15 @@ class RepairRequestSeeder extends Seeder
                 'ended_at' => now()->subDay()->subHours(1),
                 'total_hours' => 1.0,
             ]);
+        }
+    }
+
+    /** 剛建立的示範報修單把送出時間往前挪（已經存在的資料不動，重跑 Seeder 不會改到真實資料）。 */
+    private function backdate(RepairRequest $repairRequest, \Illuminate\Support\Carbon $at): void
+    {
+        if ($repairRequest->wasRecentlyCreated) {
+            $repairRequest->created_at = $at;
+            $repairRequest->saveQuietly();
         }
     }
 }
