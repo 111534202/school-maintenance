@@ -51,8 +51,9 @@ class NavMenu
                 $link(__('common.nav.repair_requests'), 'bi-tools', 'repairs.index', ['repairs.*', 'repair-logs.*'], true, [], request()->routeIs('repairs.*', 'repair-logs.*') && ! $onMyRepairs),
                 // 我的報修：所有身分都看得到（只列自己提出的報修單）。
                 $link(__('common.nav.my_repairs'), 'bi-person-lines-fill', 'repairs.index', [], true, ['mine' => 1], $onMyRepairs),
-                $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ]],
+            // 自助知識庫：獨立放在第一層（緊接報修服務），點一下就進去，不用先展開報修服務；所有身分都看得到。
+            ['type' => 'link'] + $link(__('common.nav.knowledge_base'), 'bi-book', 'knowledge-base.index', ['knowledge-base.*']),
             ['type' => 'group', 'id' => 'maintenance', 'label' => __('common.nav.maintenance_section'), 'icon' => 'bi-wrench-adjustable', 'children' => [
                 $link(__('common.nav.maintenance_items'), 'bi-list-check', 'maintenance-items.index', ['maintenance-items.*'], $can('maintenance.view')),
                 $link(__('common.nav.maintenance_plans'), 'bi-calendar-event', 'maintenance-plans.index', ['maintenance-plans.*'], $can('maintenance.view')),
