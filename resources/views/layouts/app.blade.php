@@ -705,6 +705,10 @@
     {{-- 載入 Bootstrap 的 JavaScript（下拉選單、側邊滑出選單、可收合群組都靠它）。 --}}
     <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     @auth
+        {{-- 右下角「AI 客服」：對話框裡的頁面（?modal=1）不放，不然會出現兩個。 --}}
+        @unless ($embedded)
+            @include('layouts.partials.assistant-widget')
+        @endunless
     @endauth
     {{-- 分步驟表單（洋蔥式）：表單裡有兩段以上標了 data-step 的欄位時，自動變成一步一步填。 --}}
     @include('layouts.partials.form-stepper')

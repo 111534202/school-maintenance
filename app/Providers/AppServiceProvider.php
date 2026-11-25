@@ -36,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // 其他呼叫端（候選掃描、設備履歷、Artisan 指令）全部吃 PredictionServiceInterface，不用動。
         $this->app->bind(PredictionServiceInterface::class, RuleBasedPredictionService::class);
 
+        // 右下角「AI 客服」：目前依知識庫自動回答；之後要換成真正的生成式 AI，只需改這一行。
+        $this->app->bind(\App\Services\Assistant\AssistantInterface::class, \App\Services\Assistant\KnowledgeBaseAssistant::class);
+
         // Timetable source is isolated behind an interface for future API integration.
         $this->app->bind(TimetableProvider::class, function ($app) {
             $provider = config('timetable.provider', 'local');

@@ -105,6 +105,9 @@ Route::middleware('throttle:60,1')->group(function () {
 // 下面整個群組套用 'auth'：一定要先登入，沒登入會被導到登入頁；
 // 再套用 'active'：帳號被停用的人（包含靠「記住我」cookie 自動登入的）會被強制登出。
 Route::middleware(['auth', 'active', 'password.fresh'])->group(function () {
+    // 右下角「AI 客服」：所有登入者都能問，回答依各自的權限與資料範圍；限制每分鐘 20 次避免被狂送。
+    Route::post('/assistant/ask', [\App\Http\Controllers\AssistantController::class, 'ask'])->middleware('throttle:20,1')->name('assistant.ask');
+
     // 設定新密碼：用臨時密碼登入後只能來這裡（password.fresh 中介層）；平常登入的人也能自己改。
     Route::get('/password/change', [PasswordRecoveryController::class, 'showChangeForm'])->name('password.change');
     Route::post('/password/change', [PasswordRecoveryController::class, 'change'])->name('password.update');
