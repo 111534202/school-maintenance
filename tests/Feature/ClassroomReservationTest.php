@@ -128,6 +128,9 @@ class ClassroomReservationTest extends TestCase
             'class_name' => '一年甲班',
             'status' => 'pending',
         ]);
+
+        // 操作紀錄的說明要是中文（不能出現英文句子）。
+        $this->assertDatabaseHas('audit_logs', ['action' => 'created', 'description' => '建立空間申請：一年甲班']);
     }
 
     public function test_my_requests_only_lists_the_users_own_reservations(): void

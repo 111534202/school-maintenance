@@ -126,6 +126,21 @@ class MaintenanceFlowTest extends TestCase
         $this->assertSame('風扇異音', $result->note);
     }
 
+    public function test_ng_message_says_no_repair_was_made_when_the_device_is_retired(): void
+    {
+        $order = $this->pendingOrder();
+        $order->device->update(['status' => 'retired']);
+
+        $this->post(route('maintenance-orders.results.store', $order), [
+            'result' => 'ng',
+            'executed_at' => '2026-10-07 08:30:00',
+            'note' => '已報廢',
+        ])->assertRedirect(route('maintenance-orders.show', $order))
+            ->assertSessionHas('success', '保養結果已回報為 NG，但設備已淘汰或停用，不建立報修單');
+
+        $this->assertSame(MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE, MaintenanceResult::firstOrFail()->ng_conversion_status);
+    }
+
     public function test_result_requires_a_valid_result_value(): void
     {
         $order = $this->pendingOrder();

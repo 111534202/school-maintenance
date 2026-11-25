@@ -128,8 +128,11 @@ class MaintenanceResultController extends Controller
             $status = '保養結果已回報為 OK，工單已完成';
         } elseif ($result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_CONVERTED) {
             $status = '保養結果已回報為 NG，已自動建立報修單（編號 #'.$result->repair_request_id.'）' . (request()->user()->can('view', RepairRequest::find($result->repair_request_id)) ? '，請至報修看板追蹤' : '，由管理人員後續處理');
+        } elseif ($result->ng_conversion_status === MaintenanceResult::NG_CONVERSION_NOT_APPLICABLE) {
+            // 設備已淘汰或停用：不能再報修，所以沒有建報修單（工單畫面會說明原因）。
+            $status = '保養結果已回報為 NG，但設備已淘汰或停用，不建立報修單';
         } else {
-            $status = '保養結果已回報為 NG，已標記待轉報修（報修模組併入後會自動建立報修單）';
+            $status = '保養結果已回報為 NG，已標記待轉報修，請由報修頁手動建立報修單';
         }
 
         return redirect()->route('maintenance-orders.show', $maintenanceOrder)->with('success', $status);

@@ -465,7 +465,7 @@ class ClassroomReservationController extends Controller
                     'slots' => $slots,
                     'status' => $reservation->status,
                 ],
-                'Reservation request created: ' . $reservation->class_name
+                '建立空間申請：' . $reservation->class_name
             );
 
             return ['type' => 'created'];
