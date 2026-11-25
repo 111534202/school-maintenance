@@ -52,6 +52,15 @@ class DeployCheck extends Command
             $this->add('error', '資料庫連線', '失敗：' . $e->getMessage(), '檢查 .env 的 DB_HOST、DB_PORT、DB_DATABASE、DB_USERNAME、DB_PASSWORD，並確認 MySQL 已啟動。');
         }
 
+        // 資料庫帳號：MySQL 的 root 擁有整台伺服器所有資料庫的權限；正式機應該用只管本系統資料庫的專用帳號。
+        $dbDefault = (string) config('database.default');
+        $dbDriver = (string) config("database.connections.{$dbDefault}.driver");
+        if (in_array($dbDriver, ['mysql', 'mariadb'], true)) {
+            $dbUser = (string) config("database.connections.{$dbDefault}.username");
+            $this->add($dbUser === 'root' ? 'warn' : 'ok', '資料庫帳號（DB_USERNAME）', $dbUser === 'root' ? 'root' : $dbUser,
+                '正式機不要用 root：在 MySQL 建立專用帳號，只授與本系統資料庫（例如 school_maintenance）的權限，再把 .env 的 DB_USERNAME、DB_PASSWORD 改成它（作法見 docs/部署檢查清單.md）。');
+        }
+
         foreach (['storage/app', 'storage/logs', 'storage/framework', 'bootstrap/cache'] as $dir) {
             $writable = is_writable(base_path($dir));
             $this->add($writable ? 'ok' : 'error', "資料夾可寫入：{$dir}", $writable ? '可以' : '不行', "讓網站執行的帳號對 {$dir} 有寫入權限（備份檔、附件、日誌、快取都存在這些資料夾）。");

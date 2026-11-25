@@ -76,7 +76,11 @@ class KnowledgeBaseAssistant implements AssistantInterface
         return $this->reply(__('assistant.reply.not_found'), [], $this->repairAction($user), __('assistant.suggestions'));
     }
 
-    /** 報修進度：只查自己提出的報修單；問題裡有「#編號」就只找那一張（不是自己的一律當作找不到）。 */
+    /**
+     * 報修進度：只查自己提出的報修單；問題裡有「#編號」就只找那一張（不是自己的一律當作找不到）。
+     *
+     * @return array{text: string, items: list<array{title: string, text: string, url: string}>, actions: list<array{label: string, url: string}>, suggestions: list<string>}
+     */
     private function repairProgress(User $user, string $question): array
     {
         $query = RepairRequest::query()->where('requester_id', $user->id);
@@ -258,7 +262,14 @@ class KnowledgeBaseAssistant implements AssistantInterface
             : [];
     }
 
-    /** 組成固定格式的回覆。 */
+    /**
+     * 組成固定格式的回覆。
+     *
+     * @param  list<array{title: string, text: string, url: string}>  $items
+     * @param  list<array{label: string, url: string}>  $actions
+     * @param  list<string>  $suggestions
+     * @return array{text: string, items: list<array{title: string, text: string, url: string}>, actions: list<array{label: string, url: string}>, suggestions: list<string>}
+     */
     private function reply(string $text, array $items = [], array $actions = [], array $suggestions = []): array
     {
         return compact('text', 'items', 'actions', 'suggestions');

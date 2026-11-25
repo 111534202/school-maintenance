@@ -35,6 +35,22 @@ class DeployCheckTest extends TestCase
         $this->assertSame(0, $code);   // 開發機只有警告，不算失敗
     }
 
+    public function test_it_warns_when_the_database_account_is_root(): void
+    {
+        [, $out] = $this->run_check('local', ['database.connections.sqlite.driver' => 'mysql', 'database.connections.sqlite.username' => 'root']);
+
+        $this->assertStringContainsString('資料庫帳號（DB_USERNAME）', $out);
+        $this->assertStringContainsString('正式機不要用 root', $out);
+    }
+
+    public function test_a_dedicated_database_account_passes(): void
+    {
+        [, $out] = $this->run_check('local', ['database.connections.sqlite.driver' => 'mysql', 'database.connections.sqlite.username' => 'school_app']);
+
+        $this->assertStringContainsString('school_app', $out);
+        $this->assertStringNotContainsString('正式機不要用 root', $out);
+    }
+
     public function test_debug_on_in_production_is_an_error(): void
     {
         [$code, $out] = $this->run_check('production', ['app.debug' => true]);
