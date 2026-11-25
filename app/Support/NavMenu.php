@@ -59,7 +59,8 @@ class NavMenu
                 $link(__('common.nav.maintenance_plans'), 'bi-calendar-event', 'maintenance-plans.index', ['maintenance-plans.*'], $can('maintenance.view')),
                 $link(__('common.nav.maintenance_orders'), 'bi-wrench-adjustable', 'maintenance-orders.index', ['maintenance-orders.*'], $can('maintenance.view')),
                 $link(__('common.nav.device_profile'), 'bi-journal-text', 'device-profile.index', ['device-profile.*'], $can('maintenance.view')),
-                $link(__('common.nav.preventive_ai'), 'bi-robot', 'preventive-candidates.index', ['preventive-candidates.*', 'ai-settings.*'], $can('ai-maintenance.manage')),
+                // AI 預防保養：目前先隱藏（config/features.php 的 ai_maintenance），功能與資料都還在。
+                $link(__('common.nav.preventive_ai'), 'bi-robot', 'preventive-candidates.index', ['preventive-candidates.*', 'ai-settings.*'], config('features.ai_maintenance') && $can('ai-maintenance.manage')),
             ]],
             ['type' => 'group', 'id' => 'space', 'label' => __('common.nav.resource_section'), 'icon' => 'bi-building', 'children' => [
                 // 空間申請（空間預約已合併進來）：有審核權限的人看到全部申請，其他人看到有課表的申請頁與「我的申請」。
