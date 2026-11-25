@@ -675,6 +675,37 @@ def repair_log_max_time_follows_the_clock(browser, base, root):
         no_js_errors(errors)
 
 
+@scenario
+def device_disable_and_restore(browser, base, root):
+    """設備停用後從列表消失，篩選狀態「停用」找得到並能還原；還原後回到正常、重新出現在列表"""
+    code = 'DEV-0005'   # 示範資料裡狀態正常的筆電；這個情境結束時會還原，不影響其他情境
+    with session(browser, base) as (page, errors):
+        login(page, 'admin')
+        goto(page, f'/devices?keyword={code}')
+        check(code in body(page), f'設備列表應找得到 {code}')
+
+        # 停用：先跳出確認視窗，確認後設備從預設列表消失。
+        page.click('form[action$="/disable"] button')
+        page.wait_for_timeout(400)
+        click_and_wait(page, 'button:has-text("確認停用")')
+        goto(page, f'/devices?keyword={code}')
+        check(code not in body(page), '停用後設備不該出現在預設列表')
+
+        # 篩選「停用」：找得到，有「還原」鈕，沒有「停用」鈕。
+        goto(page, f'/devices?keyword={code}&status=disabled')
+        check(code in body(page), '篩選「停用」應找得到已停用的設備')
+        check(page.locator('form[action$="/restore"] button').count() == 1, '已停用的設備列要有「還原」按鈕')
+        check(page.locator('form[action$="/disable"] button').count() == 0, '已停用的設備不該再有「停用」按鈕')
+
+        # 還原：確認後回到正常，預設列表又看得到。
+        page.click('form[action$="/restore"] button')
+        page.wait_for_timeout(400)
+        click_and_wait(page, 'button:has-text("還原")')
+        goto(page, f'/devices?keyword={code}')
+        check(code in body(page) and '正常' in body(page), '還原後設備應回到預設列表且狀態是正常：' + body(page)[:200])
+        no_js_errors(errors)
+
+
 # ---------------------------------------------------------------- 離線、手機、安全
 
 @scenario
