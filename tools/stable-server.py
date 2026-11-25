@@ -31,6 +31,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PUBLIC = os.path.join(ROOT, 'public')
 INDEX = os.path.join(PUBLIC, 'index.php')
+INI_DIR = os.path.join(ROOT, 'tools', 'php-ini')   # 額外的 PHP 設定（上傳上限等），見 tools/php-ini/stable-server.ini
 
 mimetypes.add_type('text/css', '.css')
 mimetypes.add_type('application/javascript', '.js')
@@ -159,8 +160,10 @@ class Handler(BaseHTTPRequestHandler):
 
         with php_slots:
             try:
-                # 上傳上限：Windows 的 PHP 預設單檔只有 2 MB，但系統允許一筆報修附件加起來 5 MB，所以這裡明確調高。
-                proc = subprocess.run([php_cgi, '-d', 'display_errors=0', '-d', 'upload_max_filesize=8M', '-d', 'post_max_size=10M'], input=body, env=env, cwd=PUBLIC,
+                # 上傳上限：Windows 的 PHP 預設單檔只有 2 MB，但系統允許一筆報修附件加起來 5 MB，所以要調高。
+                # 不能用命令列 -d：php-cgi 有 QUERY_STRING 時會把它當命令列，-d 會被忽略；改用額外的設定檔資料夾（接在原有的後面）。
+                env['PHP_INI_SCAN_DIR'] = os.pathsep.join(filter(None, [os.environ.get('PHP_INI_SCAN_DIR'), INI_DIR]))
+                proc = subprocess.run([php_cgi], input=body, env=env, cwd=PUBLIC,
                                       capture_output=True, timeout=120)
             except subprocess.TimeoutExpired:
                 self.text_error(504, 'PHP 執行逾時（120 秒）')
