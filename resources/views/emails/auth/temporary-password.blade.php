@@ -2,7 +2,7 @@
 <x-mail::message>
 # {{ __('mail.temporary_password.heading') }}
 
-{{ __('mail.temporary_password.intro', ['name' => $user->name, 'account' => $user->account]) }}
+{{ \App\Support\MailText::line(__('mail.temporary_password.intro', ['name' => $user->name, 'account' => $user->account])) }}
 
 <x-mail::panel>
 {{ $temporaryPassword }}
@@ -12,7 +12,7 @@
 
 {{ __('mail.temporary_password.steps') }}
 
-<x-mail::button :url="url('/login')">
+<x-mail::button :url="\App\Support\SiteUrl::to('/login')">
 {{ __('mail.temporary_password.button') }}
 </x-mail::button>
 

@@ -57,7 +57,7 @@
                 @if (! $status->isFinal())
                     <a class="btn btn-outline-primary btn-sm" href="{{ route('repairs.edit', $repairRequest) }}"><i class="bi bi-pencil me-1"></i>修改</a>
                 @endif
-                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed, \App\Enums\RepairRequestStatus::Aborted], true))
+                @unless (in_array($status, [\App\Enums\RepairRequestStatus::PendingReview, \App\Enums\RepairRequestStatus::Completed, \App\Enums\RepairRequestStatus::Aborted], true) || $repairRequest->repairLogs->isNotEmpty())
                     <form method="POST" action="{{ route('repairs.destroy', $repairRequest) }}"
                         data-confirm="請問確定要取消報修單「{{ $repairRequest->title }}」嗎？取消後會從看板與統計中移除，操作紀錄仍會保留。" data-confirm-ok="確認取消">
                         @csrf

@@ -358,6 +358,25 @@ class ClassroomReservationController extends Controller
             'period_number' => null,
         ]];
 
+        // 有節次編號的時段，起訖時間一律以課表設定為準：否則可以送「第 1 節」卻帶 00:00–23:59，
+        // 審核畫面只顯示節次，實際卻占用整天。
+        $periods = collect((array) config('timetable.periods'))->whereNotNull('period_number')->keyBy('period_number');
+
+        foreach ($slots as $index => $slot) {
+            if (($slot['period_number'] ?? null) === null || $slot['period_number'] === '') {
+                continue;   // 沒有節次（例如午休）：畫面會直接顯示起訖時間，看得到實際占用多久
+            }
+
+            $period = $periods->get((int) $slot['period_number']);
+
+            if (! $period) {
+                return back()->withInput()->with('error', '選到的節次不存在，請重新選擇。');
+            }
+
+            $slots[$index]['start_time'] = $period['start_time'];
+            $slots[$index]['end_time'] = $period['end_time'];
+        }
+
         $uniqueSlots = [];
 
         foreach ($slots as $slot) {

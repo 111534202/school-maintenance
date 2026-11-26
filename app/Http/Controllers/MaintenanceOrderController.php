@@ -214,6 +214,13 @@ class MaintenanceOrderController extends Controller
         $maintenanceOrder->update($validated);
         $new = $maintenanceOrder->scheduled_date?->toDateString();
 
+        // 改期的是計畫目前這一期（排定日＝下次到期日）時，下次到期日跟著移到新日期：
+        // 否則排程看舊日期「沒有工單」會再產生一張，完成改期的這張也不會推算下一期。
+        $plan = $maintenanceOrder->maintenancePlan;
+        if ($plan && $old !== null && $new !== $old && $plan->next_due_date?->toDateString() === $old) {
+            $plan->update(['next_due_date' => $new]);
+        }
+
         if ($old !== $new) {
             AuditLogger::log('updated', $maintenanceOrder, ['scheduled_date' => ['old' => $old, 'new' => $new]], '修改保養工單 #' . $maintenanceOrder->id . ' 的排定日期');
         }

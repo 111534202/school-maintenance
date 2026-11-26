@@ -718,9 +718,12 @@ class RepairRequestController extends Controller
      */
     private function redirectWithWorkflowError(RepairRequest $repairRequest, DomainException $exception)
     {
-        return redirect()
-            ->route('repairs.show', $repairRequest)
-            ->with('error', $exception->getMessage());   // 錯誤訊息文字來自 Workflow 丟出例外時寫的說明
+        // 單剛剛被別人取消的話，詳細頁會是 404，改回看板顯示訊息。
+        $redirect = RepairRequest::query()->whereKey($repairRequest->getKey())->exists()
+            ? redirect()->route('repairs.show', $repairRequest)
+            : redirect()->route('repairs.index');
+
+        return $redirect->with('error', $exception->getMessage());   // 錯誤訊息文字來自 Workflow 丟出例外時寫的說明
     }
 
     /**
@@ -777,22 +780,44 @@ class RepairRequestController extends Controller
      * 看板與統計不再列出，資料與操作紀錄仍保留。只有有派工權限的人能做（路由 can:repairs.dispatch）。
      * 已進入待驗收、已結案的報修單已經有維修紀錄與用料（會影響零件庫存與成本），不能取消。
      */
-    public function destroy(RepairRequest $repairRequest)
+    public function destroy(RepairRequest $repairRequest, \App\Services\DeviceStatusSync $deviceStatusSync)
     {
         Gate::authorize('view', $repairRequest);
-        if ($repairRequest->status === RepairRequestStatus::Aborted) {
-            return redirect()->route('repairs.show', $repairRequest)->with('error', '這張報修單已因設備淘汰中止，資料已定案，不能取消。');
+
+        // 整段在同一個交易裡並鎖住這一列：避免「取消」和「送出維修紀錄」同時進行，單被刪掉、扣料卻留著。
+        $error = \Illuminate\Support\Facades\DB::transaction(function () use ($repairRequest, $deviceStatusSync): ?string {
+            $current = RepairRequest::query()->whereKey($repairRequest->getKey())->lockForUpdate()->first();
+
+            if (! $current) {
+                return __('repair_requests.errors.cancelled');
+            }
+            if ($current->status === RepairRequestStatus::Aborted) {
+                return '這張報修單已因設備淘汰中止，資料已定案，不能取消。';
+            }
+            if (in_array($current->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
+                return '已經填寫維修紀錄（待驗收、已結案）的報修單不能取消，因為維修紀錄與用料已經記入零件庫存與成本。';
+            }
+            // 驗收退回後狀態會回到「處理中」，但維修紀錄與扣掉的零件還在，一樣不能取消。
+            if ($current->repairLogs()->exists()) {
+                return '這張報修單已經有維修紀錄（驗收退回過），用料已記入零件庫存與成本，不能取消。';
+            }
+
+            $wasInProgress = $current->status === RepairRequestStatus::InProgress;
+            $current->delete();
+            $deviceStatusSync->restoreAfterCancel($current, $wasInProgress);
+
+            AuditLogger::log('deleted', $current, ['title' => $current->title, 'status' => $current->status->value], '取消（刪除）報修單「' . $current->title . '」');
+
+            return null;
+        });
+
+        if ($error !== null) {
+            // 單已經不在了就回看板，否則詳細頁會是 404。
+            return RepairRequest::query()->whereKey($repairRequest->getKey())->exists()
+                ? redirect()->route('repairs.show', $repairRequest)->with('error', $error)
+                : redirect()->route('repairs.index')->with('error', $error);
         }
-        if (in_array($repairRequest->status, [RepairRequestStatus::PendingReview, RepairRequestStatus::Completed], true)) {
-            return redirect()->route('repairs.show', $repairRequest)
-                ->with('error', '已經填寫維修紀錄（待驗收、已結案）的報修單不能取消，因為維修紀錄與用料已經記入零件庫存與成本。');
-        }
 
-        $title = $repairRequest->title;
-        $repairRequest->delete();
-
-        AuditLogger::log('deleted', $repairRequest, ['title' => $title, 'status' => $repairRequest->status->value], '取消（刪除）報修單「' . $title . '」');
-
-        return redirect()->route('repairs.index')->with('success', '報修單「' . $title . '」已取消。');
+        return redirect()->route('repairs.index')->with('success', '報修單「' . $repairRequest->title . '」已取消。');
     }
 }

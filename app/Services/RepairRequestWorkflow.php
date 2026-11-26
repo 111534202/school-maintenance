@@ -108,7 +108,8 @@ class RepairRequestWorkflow
         // 將報修單狀態更新與設備同步放在同一個交易中。
         // 任一步驟失敗，資料庫變更都會回滾。
         return DB::transaction(function () use ($repairRequest, $to): RepairRequest {
-            // 第一步一定先檢查，不合法就在這裡丟例外。
+            // 第一步：鎖住這一列、改用資料庫裡「現在」的狀態（別人可能剛改過），再檢查合不合法。
+            $this->lockCurrent($repairRequest);
             $this->assertCanTransition($repairRequest, $to);
 
             $repairRequest->status = $to;
@@ -135,14 +136,41 @@ class RepairRequestWorkflow
      */
     public function abort(RepairRequest $repairRequest): RepairRequest
     {
-        if (! in_array($repairRequest->status->value, RepairRequestStatus::openValues(), true)) {
+        return DB::transaction(function () use ($repairRequest): RepairRequest {
+            try {
+                $this->lockCurrent($repairRequest);
+            } catch (DomainException) {
+                return $repairRequest;   // 剛被取消：不用中止
+            }
+
+            if (! in_array($repairRequest->status->value, RepairRequestStatus::openValues(), true)) {
+                return $repairRequest;
+            }
+
+            $repairRequest->status = RepairRequestStatus::Aborted;
+            $repairRequest->save();
+
             return $repairRequest;
+        });
+    }
+
+    /**
+     * 鎖住報修單那一列（SELECT … FOR UPDATE），並把物件上的狀態換成資料庫裡最新的值。
+     * 只能在交易裡呼叫。沒有這一步的話，兩個人同時操作時會用「進頁面當下」的舊狀態判斷，
+     * 例如一人剛按驗收通過、另一人同時按退回，已結案的單會被改回處理中。
+     *
+     * @throws DomainException 這張單剛剛已被取消
+     */
+    private function lockCurrent(RepairRequest $repairRequest): void
+    {
+        $current = RepairRequest::withTrashed()->whereKey($repairRequest->getKey())->lockForUpdate()->first(['id', 'status', 'deleted_at']);
+
+        if (! $current || $current->trashed()) {
+            throw new DomainException(__('repair_requests.errors.cancelled'));
         }
 
-        $repairRequest->status = RepairRequestStatus::Aborted;
-        $repairRequest->save();
-
-        return $repairRequest;
+        $repairRequest->status = $current->status;
+        $repairRequest->syncOriginalAttribute('status');
     }
 
     /**
@@ -160,10 +188,11 @@ class RepairRequestWorkflow
      */
     public function assign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
-        $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
-
         // DB::transaction：裡面的動作「要嘛全部成功，要嘛全部取消」。
         return DB::transaction(function () use ($repairRequest, $scheduledAt, $assignedTo) {
+            $this->lockCurrent($repairRequest);
+            $this->assertCanTransition($repairRequest, RepairRequestStatus::Assigned);
+
             $repairRequest->assigned_to = $assignedTo;       // 維修人員的用戶編號（正式外鍵）
             $repairRequest->scheduled_at = $scheduledAt;     // 預計處理時間
             $repairRequest->save();
@@ -182,16 +211,20 @@ class RepairRequestWorkflow
      */
     public function start(RepairRequest $repairRequest): RepairRequest
     {
-        if ($repairRequest->status !== RepairRequestStatus::Assigned) {
-            throw new DomainException(
-                __('repair_requests.errors.invalid_transition', [
-                    'from' => $repairRequest->status->label(),
-                    'to' => RepairRequestStatus::InProgress->label(),
-                ])
-            );
-        }
+        return DB::transaction(function () use ($repairRequest): RepairRequest {
+            $this->lockCurrent($repairRequest);
 
-        return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
+            if ($repairRequest->status !== RepairRequestStatus::Assigned) {
+                throw new DomainException(
+                    __('repair_requests.errors.invalid_transition', [
+                        'from' => $repairRequest->status->label(),
+                        'to' => RepairRequestStatus::InProgress->label(),
+                    ])
+                );
+            }
+
+            return $this->transitionTo($repairRequest, RepairRequestStatus::InProgress);
+        });
     }
 
     /**
@@ -228,9 +261,10 @@ class RepairRequestWorkflow
     public function reject(RepairRequest $repairRequest, string $reason): RepairRequest
     {
         // 同樣先檢查合法性，再寫退回原因，避免「畫面說失敗、原因卻被偷偷改掉」。
-        $this->assertCanTransition($repairRequest, RepairRequestStatus::InProgress);
-
         return DB::transaction(function () use ($repairRequest, $reason) {
+            $this->lockCurrent($repairRequest);
+            $this->assertCanTransition($repairRequest, RepairRequestStatus::InProgress);
+
             $repairRequest->rejection_reason = $reason;   // 記下退回原因（覆蓋成最新一次）
             $repairRequest->save();
 
@@ -251,18 +285,22 @@ class RepairRequestWorkflow
     public function reassign(RepairRequest $repairRequest, int $assignedTo, ?string $scheduledAt): RepairRequest
     {
         // 這個動作不改狀態，所以不走 TRANSITIONS 表，直接列出「允許換人的狀態」。
-        $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
+        return DB::transaction(function () use ($repairRequest, $assignedTo, $scheduledAt): RepairRequest {
+            $this->lockCurrent($repairRequest);
 
-        if (! in_array($repairRequest->status, $allowedStatuses, true)) {
-            throw new DomainException(
-                __('repair_requests.errors.reassign_invalid_status', ['status' => $repairRequest->status->label()])
-            );
-        }
+            $allowedStatuses = [RepairRequestStatus::Assigned, RepairRequestStatus::InProgress];
 
-        $repairRequest->assigned_to = $assignedTo;
-        $repairRequest->scheduled_at = $scheduledAt;
-        $repairRequest->save();
+            if (! in_array($repairRequest->status, $allowedStatuses, true)) {
+                throw new DomainException(
+                    __('repair_requests.errors.reassign_invalid_status', ['status' => $repairRequest->status->label()])
+                );
+            }
 
-        return $repairRequest;
+            $repairRequest->assigned_to = $assignedTo;
+            $repairRequest->scheduled_at = $scheduledAt;
+            $repairRequest->save();
+
+            return $repairRequest;
+        });
     }
 }

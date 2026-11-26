@@ -4,23 +4,23 @@
 <x-mail::message>
 # {{ __('mail.dispatched.heading') }}
 
-{{ __('mail.dispatched.intro', ['title' => $repairRequest->title]) }}
+{{ \App\Support\MailText::line(__('mail.dispatched.intro', ['title' => $repairRequest->title])) }}
 
 <x-mail::table>
 | | |
 |:---|:---|
-| **{{ __('repair_requests.table.title') }}** | {{ $repairRequest->title }} |
-| **{{ __('repair_requests.table.device_location') }}** | {{ trim(($repairRequest->device?->device_code ?? $repairRequest->device_note ?? '') . ' ' . ($repairRequest->locationLabel() ?? '')) ?: __('repair_requests.not_filled') }} |
-| **{{ __('repair_requests.show.assignee_field_label') }}** | {{ $technician->name }} |
+| **{{ __('repair_requests.table.title') }}** | {{ \App\Support\MailText::line($repairRequest->title) }} |
+| **{{ __('repair_requests.table.device_location') }}** | {{ \App\Support\MailText::line(trim(($repairRequest->device?->device_code ?? $repairRequest->device_note ?? '') . ' ' . ($repairRequest->locationLabel() ?? '')) ?: __('repair_requests.not_filled')) }} |
+| **{{ __('repair_requests.show.assignee_field_label') }}** | {{ \App\Support\MailText::line($technician->name) }} |
 @if ($repairRequest->scheduled_at)
 | **{{ __('repair_requests.show.scheduled_field_label') }}** | {{ $repairRequest->scheduled_at->format('Y-m-d H:i') }} |
 @endif
 </x-mail::table>
 
 **{{ __('mail.dispatched.description_heading') }}**
-{{ $repairRequest->description }}
+{{ \App\Support\MailText::block($repairRequest->description) }}
 
-<x-mail::button :url="route('repairs.show', $repairRequest)">
+<x-mail::button :url="\App\Support\SiteUrl::to(route('repairs.show', $repairRequest, false))">
 {{ __('mail.dispatched.view_button') }}
 </x-mail::button>
 

@@ -146,5 +146,6 @@ return [
     'errors' => [
         'invalid_transition' => 'Cannot change the case from ":from" to ":to" — that is not an allowed status transition.',
         'reassign_invalid_status' => 'The case status is ":status", not "Assigned" or "In Progress" — it cannot be reassigned.',
+        'cancelled' => 'This repair request has been cancelled.',
     ],
 ];

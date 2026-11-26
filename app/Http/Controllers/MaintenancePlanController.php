@@ -86,7 +86,15 @@ class MaintenancePlanController extends Controller
         }
 
         $data = $request->safe()->except('item_ids');
-        $data['next_due_date'] = $this->calculateNextDueDate($request->date('start_date'), (int) $request->integer('cycle_days'));
+
+        // 只改名稱、項目等的話，下次到期日不能動：重算會退回「起始日＋週期」，那一天早就產生過工單，排程從此不再產生。
+        $startDate = $request->date('start_date');
+        $cycleDays = (int) $request->integer('cycle_days');
+        $startChanged = $maintenancePlan->start_date->toDateString() !== $startDate?->toDateString();
+
+        if ($startChanged || (int) $maintenancePlan->cycle_days !== $cycleDays || $maintenancePlan->next_due_date === null) {
+            $data['next_due_date'] = $this->nextDueDateAfterEdit($maintenancePlan, $startDate, $cycleDays, $startChanged);
+        }
 
         $maintenancePlan->update($data);
         $maintenancePlan->maintenanceItems()->sync($request->input('item_ids'));
@@ -122,5 +130,31 @@ class MaintenancePlanController extends Controller
     private function calculateNextDueDate(?Carbon $startDate, int $cycleDays): ?Carbon
     {
         return $startDate?->copy()->addDays($cycleDays);
+    }
+
+    /**
+     * 修改排程（起始日或週期）後的下次到期日：不能落在已經產生過工單的日期以前。
+     * 只改週期：從最後一張工單的日期加新週期；改了起始日：從新起始日推算，推到最後一張工單之後。
+     */
+    private function nextDueDateAfterEdit(MaintenancePlan $plan, ?Carbon $startDate, int $cycleDays, bool $startChanged): ?Carbon
+    {
+        $next = $this->calculateNextDueDate($startDate, $cycleDays);
+        $latest = \App\Models\MaintenanceOrder::withTrashed()->where('maintenance_plan_id', $plan->id)->max('scheduled_date');
+
+        if ($next === null || $latest === null || $cycleDays < 1) {
+            return $next;
+        }
+
+        $latest = Carbon::parse($latest)->startOfDay();
+
+        if (! $startChanged) {
+            return $latest->copy()->addDays($cycleDays);
+        }
+
+        while ($next->lte($latest)) {
+            $next->addDays($cycleDays);
+        }
+
+        return $next;
     }
 }

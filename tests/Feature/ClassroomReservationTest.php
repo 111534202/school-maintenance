@@ -801,11 +801,11 @@ class ClassroomReservationTest extends TestCase
             'purpose' => '跨日活動',
             // 畫面舊版送出的代表時間：第一天的開始＋第二天的結束
             'reservation_date' => $day1,
-            'start_time' => '13:10',
-            'end_time' => '09:00',
+            'start_time' => '13:20',
+            'end_time' => '09:20',
             'slots' => [
-                ['reservation_date' => $day1, 'start_time' => '13:10', 'end_time' => '14:00', 'period_number' => 5],
-                ['reservation_date' => $day2, 'start_time' => '08:10', 'end_time' => '09:00', 'period_number' => 1],
+                ['reservation_date' => $day1, 'start_time' => '13:20', 'end_time' => '14:10', 'period_number' => 5],
+                ['reservation_date' => $day2, 'start_time' => '08:30', 'end_time' => '09:20', 'period_number' => 1],
             ],
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
 
@@ -814,8 +814,8 @@ class ClassroomReservationTest extends TestCase
         $this->assertSame(2, $reservation->slots()->count());
         $first = $reservation->firstSlot;
         $this->assertSame($day1, $first->reservation_date->toDateString());
-        $this->assertSame('13:10', substr((string) $first->start_time, 0, 5));
-        $this->assertSame('14:00', substr((string) $first->end_time, 0, 5));
+        $this->assertSame('13:20', substr((string) $first->start_time, 0, 5));
+        $this->assertSame('14:10', substr((string) $first->end_time, 0, 5));
     }
 
     /** 今天已經開始的節次不能預約；今天稍晚的節次可以。 */

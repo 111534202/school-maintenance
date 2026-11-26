@@ -146,5 +146,6 @@ return [
     'errors' => [
         'invalid_transition' => '無法把案件從「:from」轉成「:to」，不符合合法的狀態流程。',
         'reassign_invalid_status' => '案件狀態是「:status」，不是「已派工」或「處理中」，不能重新指派。',
+        'cancelled' => '這張報修單已經被取消。',
     ],
 ];

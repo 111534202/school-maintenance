@@ -224,8 +224,12 @@ class UserController extends Controller
             'password' => ['required', Password::min(8), 'confirmed'],
         ]);
 
-        // 存入新密碼（User 模型會自動加密）。
-        $user->update(['password' => $data['password']]);
+        // 存入新密碼（User 模型會自動加密）。之前寄出、還沒用的臨時密碼一併作廢，否則仍能用它登入改掉這組新密碼。
+        $user->forceFill([
+            'password' => $data['password'],
+            'temporary_password' => null,
+            'temporary_password_expires_at' => null,
+        ])->save();
 
         // 密碼本身絕對不寫進操作紀錄，只記「重設過密碼」這件事。
         AuditLogger::log('password_reset', $user);

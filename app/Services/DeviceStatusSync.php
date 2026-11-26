@@ -104,4 +104,37 @@ class DeviceStatusSync
             );
         });
     }
+
+    /**
+     * 報修單被取消後：這台設備沒有其他未結案報修單時，把「維修中」恢復正常。
+     * 只在取消的是「處理中」的單，或設備已有結案紀錄（維修中是先前流程留下的）時才恢復，
+     * 避免把管理員手動標的「維修中」洗掉。
+     */
+    public function restoreAfterCancel(RepairRequest $repairRequest, bool $wasInProgress): void
+    {
+        if (! $repairRequest->device_id) {
+            return;
+        }
+
+        DB::transaction(function () use ($repairRequest, $wasInProgress): void {
+            $device = Device::query()->whereKey($repairRequest->device_id)->lockForUpdate()->first();
+
+            // 不存在、已淘汰、停用，或本來就不是維修中：不處理。
+            if (! $device || $device->status !== 'repairing') {
+                return;
+            }
+
+            $others = RepairRequest::query()->where('device_id', $device->id)->whereKeyNot($repairRequest->id);
+
+            if ((clone $others)->whereIn('status', RepairRequestStatus::openValues())->exists()) {
+                return;
+            }
+
+            if (! $wasInProgress && ! (clone $others)->where('status', RepairRequestStatus::Completed)->exists()) {
+                return;
+            }
+
+            DeviceStatusService::updateStatus($device, 'normal', '報修單已取消，沒有其他未結案報修單');
+        });
+    }
 }
