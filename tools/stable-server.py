@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
@@ -215,6 +216,25 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     request_queue_size = 256   # 預設只有 5：瀏覽器同時開很多連線時，後面的會被丟掉、要等好幾秒才重傳
     daemon_threads = True
+    close_wait = 10            # 秒：回應送完後，最多等對方多久先關閉連線
+
+    def shutdown_request(self, request):
+        """關閉連線前先等對方關閉（最多 close_wait 秒）。
+
+        Python 預設在回應交給系統後立刻 shutdown(SHUT_WR) 再 close；這時資料常常還沒送完，
+        在 Windows 本機實測會讓最後一段卡住，約 19 秒後變成 ConnectionResetError（瀏覽器以外、
+        用 Connection: close 的客戶端會收到不完整的檔案或頁面）。先送 FIN 再讀到對方關閉一樣會發生，
+        所以要等對方收完（依 Content-Length 判斷）自己關閉，這裡才送 FIN。
+        """
+        deadline = time.monotonic() + self.close_wait
+        try:
+            while (left := deadline - time.monotonic()) > 0:
+                request.settimeout(left)
+                if not request.recv(4096):
+                    break   # 對方已關閉
+        except OSError:
+            pass            # 逾時或對方直接中斷：照常關閉
+        super().shutdown_request(request)
 
 
 def main():
